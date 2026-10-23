@@ -63,6 +63,9 @@ fun KeycapView(
     onSlidingDragMove: (Offset) -> Unit = {},
     onSlidingDragEnd: (Offset) -> Unit = {},
     onSpacebarTrackpad: (Int) -> Unit = {},
+    onDeleteSwipeMove: (Float) -> Unit = {},
+    onDeleteSwipeEnd: () -> Unit = {},
+    onDeleteSwipeCancel: () -> Unit = {},
     onGestureStart: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
     onGestureMove: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
     onGestureEnd: () -> Unit = {}
@@ -73,12 +76,18 @@ fun KeycapView(
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     // Dynamic key background & foreground colors driven by configurable theme
+    // When showKeyBorders is false (flat theme): key color is same as containerBackground
+    // EXCEPT for Space bar, Sym key, and Enter key
+    val isPillColoredKey = key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS || key.type == KeyType.ACTION
     val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SWITCH_LANGUAGE
     val baseBackground = when {
         key.type == KeyType.ACTION -> colorScheme.accentColor
-        isActionOrModifier -> colorScheme.actionKeyBackground
-        key.type == KeyType.SPACE -> if (showKeyBorders) colorScheme.keyBackground else colorScheme.keyBackground.copy(alpha = 0.5f)
-        else -> if (showKeyBorders) colorScheme.keyBackground else Color.Transparent
+        key.type == KeyType.SYMBOLS -> colorScheme.actionKeyBackground
+        key.type == KeyType.SPACE -> colorScheme.keyBackground
+        showKeyBorders -> {
+            if (isActionOrModifier) colorScheme.actionKeyBackground else colorScheme.keyBackground
+        }
+        else -> colorScheme.containerBackground
     }
 
     val activeBackground = if (isPressed) {
@@ -95,10 +104,10 @@ fun KeycapView(
 
     val displaySymbolLabel = key.displayLabel(shiftState)
 
-    // Key shape: only the bottom row's enter and symkey are rounded stadium pills; all others are standard
-    val isPillKey = isBottomRow && (key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS)
+    // Key shape: stadium pills for bottom row action keys; standard for all others
+    val isPillKey = isBottomRow && (isPillColoredKey || key.type == KeyType.SWITCH_LANGUAGE)
     val keyShape = when {
-        isPillKey -> RoundedCornerShape(24.dp)
+        isPillKey -> RoundedCornerShape(20.dp)
         else -> RoundedCornerShape(8.dp)
     }
 
@@ -112,10 +121,17 @@ fun KeycapView(
         Modifier
     }
 
+    // In flat theme (!showKeyBorders), reduce height of Space bar, Sym key, and Enter key
+    val isReducedHeightKey = !showKeyBorders && isPillColoredKey
+    val verticalPadding = if (isReducedHeightKey) 7.dp else 3.dp
+
     // Capture latest parameters in updated states to allow pointerInput(Unit) without gesture cancellation
     val currentKey = rememberUpdatedState(key)
     val currentOnTap = rememberUpdatedState(onKeyTap)
     val currentOnLongPress = rememberUpdatedState(onKeyLongPress)
+    val currentOnDeleteSwipeMove = rememberUpdatedState(onDeleteSwipeMove)
+    val currentOnDeleteSwipeEnd = rememberUpdatedState(onDeleteSwipeEnd)
+    val currentOnDeleteSwipeCancel = rememberUpdatedState(onDeleteSwipeCancel)
     val currentOnShowMoreKeys = rememberUpdatedState(onShowMoreKeys)
     val currentOnMoreKeysHover = rememberUpdatedState(onMoreKeysHover)
     val currentOnMoreKeysCommit = rememberUpdatedState(onMoreKeysCommit)
@@ -127,7 +143,7 @@ fun KeycapView(
     val currentOnGestureMove = rememberUpdatedState(onGestureMove)
     val currentOnGestureEnd = rememberUpdatedState(onGestureEnd)
 
-    // Flat Material 3 key styling with configurable outlines
+    // Key styling: flat or bordered with reduced height on accent pills
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -135,7 +151,7 @@ fun KeycapView(
                 keyCoordinates = coords
                 onKeyPositioned(key, coords)
             }
-            .padding(horizontal = 3.dp, vertical = 3.dp)
+            .padding(horizontal = 3.dp, vertical = verticalPadding)
             .clip(keyShape)
             .background(activeBackground)
             .then(borderModifier)
@@ -150,6 +166,7 @@ fun KeycapView(
                         var isSlidingDrag = false
                         var isSpacebarTrackpad = false
                         var isGestureTyping = false
+                        var isDeleteSwipeActive = false
                         var gestureEnded = false
                         var lastTrackpadX = 0f
                         val trackpadStepPx = with(density) { 14.dp.toPx() }
@@ -162,7 +179,7 @@ fun KeycapView(
                                 isDeleteLongPressActive = true
                                 while (isActive) {
                                     currentOnLongPress.value(initialKey)
-                                    delay(110L)
+                                    delay(90L)
                                 }
                             } else if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
                                 isMoreKeysActive = true
@@ -180,7 +197,13 @@ fun KeycapView(
                                 // Touch released!
                                 longPressJob.cancel()
                                 val delta = change.position - initialDownPos
-                                if (isGestureTyping) {
+                                if (isDeleteSwipeActive) {
+                                    if (delta.x < -18f) {
+                                        currentOnDeleteSwipeEnd.value()
+                                    } else {
+                                        currentOnDeleteSwipeCancel.value()
+                                    }
+                                } else if (isGestureTyping) {
                                     val coords = keyCoordinates
                                     if (coords != null && coords.isAttached) {
                                         currentOnGestureMove.value(coords, change.position)
@@ -194,7 +217,7 @@ fun KeycapView(
                                 } else if (isSpacebarTrackpad) {
                                     // Trackpad gesture completed, don't emit normal space tap
                                 } else if (isDeleteLongPressActive) {
-                                    // Already handled during long-press deletion
+                                    // Already handled during continuous repeat deletion
                                 } else {
                                     currentOnTap.value(initialKey)
                                 }
@@ -204,6 +227,22 @@ fun KeycapView(
                             val currentPos = change.position
                             val delta = currentPos - initialDownPos
                             val distance = delta.getDistance()
+
+                            // Swipe on Delete key (Selective Delete): sliding left selects range
+                            if (initialKey.type == KeyType.DELETE) {
+                                if (delta.x < -14f) {
+                                    if (!isDeleteSwipeActive) {
+                                        isDeleteSwipeActive = true
+                                        longPressJob.cancel()
+                                        isPressed = false
+                                    }
+                                    change.consume()
+                                    currentOnDeleteSwipeMove.value(delta.x)
+                                } else if (isDeleteSwipeActive) {
+                                    change.consume()
+                                    currentOnDeleteSwipeMove.value(delta.x.coerceAtMost(0f))
+                                }
+                            }
 
                             // Spacebar cursor trackpad gesture: horizontal slide moves caret
                             if (initialKey.type == KeyType.SPACE && Math.abs(delta.x) > 16f) {

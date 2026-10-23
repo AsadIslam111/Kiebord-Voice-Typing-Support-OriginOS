@@ -133,28 +133,26 @@ fun PreferencesScreen(
 
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsToggleItem(
-                title = "Long-Press Continuous Delete",
-                subtitle = "Holding backspace repeats deletion smoothly",
+                title = "Long-Press Repeat Delete",
+                subtitle = "Holding backspace repeats deletion continuously like standard keyboard",
                 icon = Icons.AutoMirrored.Outlined.Backspace,
                 checked = preferences.longPressDeleteEnabled,
                 onCheckedChange = onUpdateLongPressDelete
             )
 
-            if (preferences.longPressDeleteEnabled) {
-                SettingsRadioOption(
-                    title = "Selective Delete: By Word",
-                    subtitle = "Repeated deletion deletes word-by-word at whitespace boundaries",
-                    selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD,
-                    onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_WORD) }
-                )
+            SettingsRadioOption(
+                title = "Swipe Delete (Selective): By Word",
+                subtitle = "Swiping left from backspace selects and deletes text word-by-word",
+                selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD,
+                onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_WORD) }
+            )
 
-                SettingsRadioOption(
-                    title = "Selective Delete: By Character",
-                    subtitle = "Repeated deletion removes one individual character at a time",
-                    selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_CHARACTER,
-                    onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_CHARACTER) }
-                )
-            }
+            SettingsRadioOption(
+                title = "Swipe Delete (Selective): By Character",
+                subtitle = "Swiping left from backspace selects and deletes text character-by-character",
+                selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_CHARACTER,
+                onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_CHARACTER) }
+            )
 
             SettingsToggleItem(
                 title = "Spacebar Cursor Trackpad",

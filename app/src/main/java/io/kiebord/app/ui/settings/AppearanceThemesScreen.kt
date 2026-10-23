@@ -232,7 +232,7 @@ private fun AbstractThemeCard(
                 }
             }
 
-            // Abstract Swatches: Space key & compact Enter key on solid theme container
+            // Abstract Swatches: Space key & compact Enter key on solid theme container (reduced height)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -241,11 +241,11 @@ private fun AbstractThemeCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
-                // Space key swatch
+                // Space key swatch (reduced height)
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(10.dp)
+                        .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(themeOption.scheme.keyBackground)
                         .border(
@@ -255,11 +255,11 @@ private fun AbstractThemeCard(
                         )
                 )
 
-                // Compact Enter key swatch
+                // Compact Enter key swatch (reduced height)
                 Box(
                     modifier = Modifier
                         .width(14.dp)
-                        .height(10.dp)
+                        .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(themeOption.scheme.actionKeyBackground)
                 )
@@ -386,6 +386,8 @@ private fun DemoQwertyKeyboard(
         val row1 = listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p")
         val row2 = listOf("a", "s", "d", "f", "g", "h", "j", "k", "l")
         val row3 = listOf("z", "x", "c", "v", "b", "n", "m")
+        val pillHeight = if (showKeyBorders) 34.dp else 26.dp
+        val pillShape = if (showKeyBorders) RoundedCornerShape(6.dp) else RoundedCornerShape(13.dp)
 
         // Row 1
         Row(
@@ -450,36 +452,50 @@ private fun DemoQwertyKeyboard(
         }
 
         // Row 4: ?123, comma, spacebar, dot, enter
+        // In flat theme (!showKeyBorders): spacebar, sym key and enter have distinct color and reduced height
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            DemoKeycap(
-                label = "?123",
-                modifier = Modifier.weight(1.2f),
-                scheme = scheme,
-                showKeyBorders = showKeyBorders,
-                isActionKey = true,
-                fontSize = 10.sp
-            )
+            // ?123 (Sym key: distinct color and reduced height in flat mode)
+            Box(
+                modifier = Modifier
+                    .weight(1.2f)
+                    .height(pillHeight)
+                    .clip(pillShape)
+                    .background(scheme.actionKeyBackground)
+                    .then(
+                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, pillShape)
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "?123",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = scheme.actionKeyForeground
+                )
+            }
+
+            // Comma (flat in flat mode)
             DemoKeycap(
                 label = ",",
                 modifier = Modifier.weight(0.9f),
                 scheme = scheme,
                 showKeyBorders = showKeyBorders
             )
-            // Spacebar
+
+            // Spacebar (distinct color and reduced height in flat mode)
             Box(
                 modifier = Modifier
                     .weight(4.0f)
-                    .height(34.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(
-                        if (showKeyBorders) scheme.keyBackground else scheme.keyBackground.copy(alpha = 0.5f)
-                    )
+                    .height(pillHeight)
+                    .clip(pillShape)
+                    .background(scheme.keyBackground)
                     .then(
-                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, RoundedCornerShape(6.dp))
+                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, pillShape)
                         else Modifier
                     ),
                 contentAlignment = Alignment.Center
@@ -487,24 +503,27 @@ private fun DemoQwertyKeyboard(
                 Text(
                     text = "English",
                     fontSize = 11.sp,
-                    color = scheme.keyForeground.copy(alpha = 0.6f)
+                    color = scheme.keyForeground.copy(alpha = 0.7f)
                 )
             }
+
+            // Dot (flat in flat mode)
             DemoKeycap(
                 label = ".",
                 modifier = Modifier.weight(0.9f),
                 scheme = scheme,
                 showKeyBorders = showKeyBorders
             )
-            // Enter key
+
+            // Enter key (distinct color and reduced height in flat mode)
             Box(
                 modifier = Modifier
                     .weight(1.2f)
-                    .height(34.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(scheme.actionKeyBackground)
+                    .height(pillHeight)
+                    .clip(pillShape)
+                    .background(scheme.accentColor)
                     .then(
-                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, RoundedCornerShape(6.dp))
+                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, pillShape)
                         else Modifier
                     ),
                 contentAlignment = Alignment.Center
@@ -529,10 +548,10 @@ private fun DemoKeycap(
     isActionKey: Boolean = false,
     fontSize: TextUnit = 13.sp
 ) {
+    // When showKeyBorders is false (flat theme): key color is same as containerBackground
     val bg = when {
-        isActionKey -> scheme.actionKeyBackground
-        showKeyBorders -> scheme.keyBackground
-        else -> Color.Transparent
+        showKeyBorders -> if (isActionKey) scheme.actionKeyBackground else scheme.keyBackground
+        else -> scheme.containerBackground
     }
     val borderMod = if (showKeyBorders) {
         Modifier.border(1.dp, scheme.keyBorder, RoundedCornerShape(6.dp))

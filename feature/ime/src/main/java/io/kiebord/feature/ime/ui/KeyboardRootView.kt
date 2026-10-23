@@ -77,6 +77,9 @@ fun KeyboardRootView(
     initialRowHeight: Dp = 60.dp,
     defaultShowNumberRow: Boolean = false,
     showKeyBorders: Boolean = true,
+    onDeleteSwipeMove: (Float) -> Unit = {},
+    onDeleteSwipeEnd: () -> Unit = {},
+    onDeleteSwipeCancel: () -> Unit = {},
     navBarBottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
@@ -484,6 +487,9 @@ fun KeyboardRootView(
                                     .fillMaxHeight(),
                                 onKeyTap = onKeyTap,
                                 onKeyLongPress = onKeyLongPress,
+                                onDeleteSwipeMove = onDeleteSwipeMove,
+                                onDeleteSwipeEnd = onDeleteSwipeEnd,
+                                onDeleteSwipeCancel = onDeleteSwipeCancel,
                                 onKeyPositioned = { k, coords ->
                                     keyCoordinatesMap[k] = coords
                                 },

@@ -6,6 +6,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.Window
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -170,6 +171,9 @@ class KiebordService : InputMethodService() {
                     initialRowHeight = (60 * preferencesState.keyboardHeightScale).dp,
                     defaultShowNumberRow = preferencesState.showNumberRow,
                     showKeyBorders = preferencesState.showKeyBorders,
+                    onDeleteSwipeMove = ::handleDeleteSwipeMove,
+                    onDeleteSwipeEnd = ::handleDeleteSwipeEnd,
+                    onDeleteSwipeCancel = ::handleDeleteSwipeCancel,
                     onThemeToggle = {
                         val nextThemeId = when (preferencesState.theme) {
                             KiebordPreferences.THEME_DEFAULT_DARK -> KiebordPreferences.THEME_AMOLED_BLACK
@@ -425,6 +429,78 @@ class KiebordService : InputMethodService() {
         updateSuggestions()
     }
 
+    private var isSwipeDeleting = false
+    private var swipeDeleteInitialCursor = -1
+    private var swipeDeleteInitialText = ""
+
+    private fun handleDeleteSwipeMove(deltaX: Float) {
+        val ic = currentInputConnection ?: return
+        if (!isSwipeDeleting) {
+            isSwipeDeleting = true
+            finishComposing()
+            val req = ExtractedTextRequest().apply { token = 0; flags = 0 }
+            val ext = ic.getExtractedText(req, 0)
+            swipeDeleteInitialCursor = ext?.let { it.startOffset + it.selectionEnd } ?: -1
+            swipeDeleteInitialText = ic.getTextBeforeCursor(1024, 0)?.toString() ?: ""
+        }
+
+        val absDistance = (-deltaX).coerceAtLeast(0f)
+        val density = resources.displayMetrics.density
+        val textLen = swipeDeleteInitialText.length
+
+        val charsToSelect = if (preferencesState.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD) {
+            val stepPx = 28f * density
+            val wordsToSelect = (absDistance / stepPx).toInt().coerceAtLeast(0)
+            var idx = textLen
+            var wordsFound = 0
+            while (idx > 0 && wordsFound < wordsToSelect) {
+                while (idx > 0 && swipeDeleteInitialText[idx - 1].isWhitespace()) {
+                    idx--
+                }
+                while (idx > 0 && !swipeDeleteInitialText[idx - 1].isWhitespace()) {
+                    idx--
+                }
+                wordsFound++
+            }
+            textLen - idx
+        } else {
+            val stepPx = 11f * density
+            (absDistance / stepPx).toInt().coerceIn(0, textLen)
+        }
+
+        if (swipeDeleteInitialCursor != -1) {
+            val start = (swipeDeleteInitialCursor - charsToSelect).coerceAtLeast(0)
+            ic.setSelection(start, swipeDeleteInitialCursor)
+        } else {
+            val start = (textLen - charsToSelect).coerceAtLeast(0)
+            ic.setSelection(start, textLen)
+        }
+    }
+
+    private fun handleDeleteSwipeEnd() {
+        val ic = currentInputConnection ?: return
+        if (isSwipeDeleting) {
+            isSwipeDeleting = false
+            val selectedText = ic.getSelectedText(0)
+            if (!selectedText.isNullOrEmpty()) {
+                ic.commitText("", 1)
+            }
+            updateSuggestions()
+        }
+    }
+
+    private fun handleDeleteSwipeCancel() {
+        val ic = currentInputConnection ?: return
+        if (isSwipeDeleting) {
+            isSwipeDeleting = false
+            if (swipeDeleteInitialCursor != -1) {
+                ic.setSelection(swipeDeleteInitialCursor, swipeDeleteInitialCursor)
+            } else {
+                ic.setSelection(swipeDeleteInitialText.length, swipeDeleteInitialText.length)
+            }
+        }
+    }
+
     private fun handleLongPressDelete() {
         if (!preferencesState.longPressDeleteEnabled) {
             handleKeyTap(KeyDef(type = KeyType.DELETE))
@@ -452,60 +528,27 @@ class KiebordService : InputMethodService() {
         if (isTransliterationLayout()) {
             val translitMgr = getTransliterationManager()
             if (translitMgr.isComposing) {
-                if (preferencesState.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD) {
-                    ic.setComposingText("", 1)
-                    ic.finishComposingText()
-                    translitMgr.reset()
-                } else {
-                    translitMgr.handleDelete()
-                }
+                translitMgr.handleDelete()
                 updateSuggestions()
                 return
             }
         }
 
-        // 4. Standard composing buffer (suggestions / autocorrect active)
+        // 4. Standard composing buffer
         if (composingBuffer.isNotEmpty()) {
-            if (preferencesState.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD) {
-                composingBuffer.clear()
+            composingBuffer.deleteCharAt(composingBuffer.length - 1)
+            if (composingBuffer.isEmpty()) {
                 ic.setComposingText("", 1)
                 ic.finishComposingText()
             } else {
-                composingBuffer.deleteCharAt(composingBuffer.length - 1)
-                if (composingBuffer.isEmpty()) {
-                    ic.setComposingText("", 1)
-                    ic.finishComposingText()
-                } else {
-                    ic.setComposingText(composingBuffer.toString(), 1)
-                }
+                ic.setComposingText(composingBuffer.toString(), 1)
             }
             updateSuggestions()
             return
         }
 
-        // 5. Normal text in active editor
-        if (preferencesState.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD) {
-            val textBefore = ic.getTextBeforeCursor(128, 0)
-            if (!textBefore.isNullOrEmpty()) {
-                var idx = textBefore.length
-                while (idx > 0 && textBefore[idx - 1].isWhitespace()) {
-                    idx--
-                }
-                while (idx > 0 && !textBefore[idx - 1].isWhitespace()) {
-                    idx--
-                }
-                val charsToDelete = textBefore.length - idx
-                if (charsToDelete > 0) {
-                    ic.deleteSurroundingText(charsToDelete, 0)
-                } else {
-                    ic.deleteSurroundingText(1, 0)
-                }
-            } else {
-                ic.deleteSurroundingText(1, 0)
-            }
-        } else {
-            ic.deleteSurroundingText(1, 0)
-        }
+        // 5. Normal continuous deletion like Borno Keyboard
+        ic.deleteSurroundingText(1, 0)
         updateSuggestions()
     }
 
