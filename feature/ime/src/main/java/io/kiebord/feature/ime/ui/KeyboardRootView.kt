@@ -1,5 +1,6 @@
 package io.kiebord.feature.ime.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +25,10 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.kiebord.common.model.KeyDef
@@ -55,6 +59,7 @@ fun KeyboardRootView(
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
 
     var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var rootWidthPx by remember { mutableFloatStateOf(0f) }
@@ -95,6 +100,80 @@ fun KeyboardRootView(
         keyCoordinatesMap.clear()
     }
 
+    val context = LocalContext.current
+    val handleToolbarAction: (ToolbarAction) -> Unit = { action ->
+        when (action) {
+            ToolbarAction.TEXT_EDIT -> {
+                isTextEditOpen = true
+                isToolsDrawerOpen = false
+                isEmojiOpen = false
+                isResizerOpen = false
+            }
+            ToolbarAction.EMOJI -> {
+                isEmojiOpen = !isEmojiOpen
+                if (isEmojiOpen) {
+                    isToolsDrawerOpen = false
+                    isResizerOpen = false
+                }
+            }
+            ToolbarAction.RESIZER -> {
+                if (!isResizerOpen) {
+                    savedRowHeight = keyRowHeight
+                    savedChinPadding = chinPadding
+                    savedHorizontalMargin = horizontalMargin
+                    isEmojiOpen = false
+                    isToolsDrawerOpen = false
+                }
+                isResizerOpen = !isResizerOpen
+            }
+            ToolbarAction.NUMBER_ROW_TOGGLE -> {
+                showNumberRow = !showNumberRow
+            }
+            ToolbarAction.THEME_TOGGLE -> {
+                onThemeToggle()
+            }
+            ToolbarAction.SETTINGS -> {
+                isToolsDrawerOpen = false
+                try {
+                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    if (intent != null) context.startActivity(intent)
+                } catch (_: Exception) {}
+            }
+            ToolbarAction.SHARE -> {
+                isToolsDrawerOpen = false
+                try {
+                    val sendIntent = Intent().apply {
+                        this.action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, "Kiebord - Smooth Keyboard for Android")
+                        type = "text/plain"
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    val shareIntent = Intent.createChooser(sendIntent, "Share Borno Keyboard").apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(shareIntent)
+                } catch (_: Exception) {}
+            }
+            ToolbarAction.ONE_HANDED -> {
+                isToolsDrawerOpen = false
+                horizontalMargin = if (horizontalMargin == 0.dp) 36.dp else 0.dp
+            }
+            ToolbarAction.FLOATING -> {
+                isToolsDrawerOpen = false
+                horizontalMargin = if (horizontalMargin == 0.dp) 52.dp else 0.dp
+            }
+            ToolbarAction.TRANSLATE -> {
+                isToolsDrawerOpen = false
+            }
+            ToolbarAction.CLIPBOARD -> {
+                isToolsDrawerOpen = false
+                onTextAction(TextAction.PASTE, false)
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -121,35 +200,7 @@ fun KeyboardRootView(
             } else {
                 // Reorderable Toolbar along the top (46dp height with expand icon on far left)
                 ReorderableToolbar(
-                    onActionClick = { action ->
-                        when (action) {
-                            ToolbarAction.TEXT_EDIT -> {
-                                isTextEditOpen = true
-                                isToolsDrawerOpen = false
-                                isEmojiOpen = false
-                                isResizerOpen = false
-                            }
-                            ToolbarAction.EMOJI -> {
-                                isEmojiOpen = !isEmojiOpen
-                                if (isEmojiOpen) {
-                                    isToolsDrawerOpen = false
-                                    isResizerOpen = false
-                                }
-                            }
-                            ToolbarAction.RESIZER -> {
-                                if (!isResizerOpen) {
-                                    savedRowHeight = keyRowHeight
-                                    savedChinPadding = chinPadding
-                                    savedHorizontalMargin = horizontalMargin
-                                    isEmojiOpen = false
-                                    isToolsDrawerOpen = false
-                                }
-                                isResizerOpen = !isResizerOpen
-                            }
-                            ToolbarAction.NUMBER_ROW_TOGGLE -> showNumberRow = !showNumberRow
-                            ToolbarAction.THEME_TOGGLE -> onThemeToggle()
-                        }
-                    },
+                    onActionClick = handleToolbarAction,
                     onExpandToolsClick = {
                         isToolsDrawerOpen = !isToolsDrawerOpen
                         if (isToolsDrawerOpen) {
@@ -167,31 +218,7 @@ fun KeyboardRootView(
                 // Switch between Tools Drawer, Emoji Panel, and Keyboard Keys
                 if (isToolsDrawerOpen) {
                     ToolsDrawerView(
-                        onToolClick = { action ->
-                            when (action) {
-                                ToolbarAction.TEXT_EDIT -> {
-                                    isToolsDrawerOpen = false
-                                    isTextEditOpen = true
-                                }
-                                ToolbarAction.EMOJI -> {
-                                    isToolsDrawerOpen = false
-                                    isEmojiOpen = true
-                                }
-                                ToolbarAction.RESIZER -> {
-                                    isToolsDrawerOpen = false
-                                    savedRowHeight = keyRowHeight
-                                    savedChinPadding = chinPadding
-                                    savedHorizontalMargin = horizontalMargin
-                                    isResizerOpen = true
-                                }
-                                ToolbarAction.NUMBER_ROW_TOGGLE -> {
-                                    showNumberRow = !showNumberRow
-                                }
-                                ToolbarAction.THEME_TOGGLE -> {
-                                    onThemeToggle()
-                                }
-                            }
-                        },
+                        onToolClick = handleToolbarAction,
                         height = keyRowHeight * 4
                     )
                 } else if (isEmojiOpen) {
@@ -333,6 +360,9 @@ fun KeyboardRootView(
 
                                         if (newIndex != state.selectedIndex) {
                                             moreKeysState = state.copy(selectedIndex = newIndex)
+                                            try {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            } catch (_: Exception) {}
                                         }
                                     }
                                 },

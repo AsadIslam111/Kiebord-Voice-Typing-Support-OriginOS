@@ -1,7 +1,9 @@
 package io.kiebord.feature.ime.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,14 +14,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -99,6 +102,26 @@ fun MoreKeysPopup(
         0.5f
     }
 
+    // 4. Calculate target coordinates for the sliding highlight pill
+    val safeSelectedIndex = state.selectedIndex.coerceIn(0, state.items.lastIndex)
+    val selectedRow = (safeSelectedIndex / itemsPerRow).coerceIn(0, rowCount - 1)
+    val selectedCol = (safeSelectedIndex % itemsPerRow)
+
+    val targetPillX = (itemWidthDp + colGapDp) * selectedCol
+    val targetPillY = (itemHeightDp + rowGapDp) * selectedRow
+
+    // Snappy, silky-smooth sliding highlight indicator (80ms glide, zero lag, no bouncy spring delay)
+    val animatedPillX by animateDpAsState(
+        targetValue = targetPillX,
+        animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
+        label = "pillX"
+    )
+    val animatedPillY by animateDpAsState(
+        targetValue = targetPillY,
+        animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
+        label = "pillY"
+    )
+
     // Outer Box holds the FIXED position so there is ZERO jumping
     Box(
         modifier = modifier
@@ -122,14 +145,24 @@ fun MoreKeysPopup(
             Box(
                 modifier = Modifier
                     .wrapContentSize()
-                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(22.dp))
-                    .clip(RoundedCornerShape(22.dp))
+                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(20.dp))
                     .background(colorScheme.moreKeysBackground)
                     .padding(horizontal = horizontalPaddingDp, vertical = verticalPaddingDp)
             ) {
+                // 1. Sliding Accent Highlight (glides smoothly under the selected key as a full circle)
+                Box(
+                    modifier = Modifier
+                        .offset(x = animatedPillX, y = animatedPillY)
+                        .size(itemWidthDp, itemHeightDp)
+                        .clip(CircleShape)
+                        .background(colorScheme.accentColor)
+                )
+
+                // 2. Keys Grid
                 Column(
                     verticalArrangement = Arrangement.spacedBy(rowGapDp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.Start
                 ) {
                     chunkedRows.forEachIndexed { rowIndex, rowItems ->
                         Row(
@@ -138,23 +171,24 @@ fun MoreKeysPopup(
                         ) {
                             rowItems.forEachIndexed { colIndex, item ->
                                 val flatIndex = rowIndex * itemsPerRow + colIndex
-                                val isSelected = flatIndex == state.selectedIndex
+                                val isSelected = flatIndex == safeSelectedIndex
+
+                                val animatedTextColor by animateColorAsState(
+                                    targetValue = if (isSelected) Color.White else colorScheme.keyForeground,
+                                    animationSpec = tween(durationMillis = 80),
+                                    label = "moreKeyText"
+                                )
 
                                 Box(
                                     modifier = Modifier
-                                        .width(itemWidthDp)
-                                        .height(itemHeightDp)
-                                        .clip(RoundedCornerShape(18.dp))
-                                        .background(
-                                            if (isSelected) colorScheme.accentColor else Color.Transparent
-                                        ),
+                                        .size(itemWidthDp, itemHeightDp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = item,
-                                        color = if (isSelected) Color.White else colorScheme.keyForeground,
+                                        color = animatedTextColor,
                                         fontSize = 19.sp,
-                                        fontWeight = FontWeight.Medium
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
                                     )
                                 }
                             }
