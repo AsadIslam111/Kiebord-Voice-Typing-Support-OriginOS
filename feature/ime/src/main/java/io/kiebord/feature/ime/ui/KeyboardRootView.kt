@@ -38,6 +38,7 @@ import io.kiebord.feature.ime.ui.textedit.TextAction
 import io.kiebord.feature.ime.ui.textedit.TextEditPanelView
 import io.kiebord.feature.ime.ui.toolbar.ReorderableToolbar
 import io.kiebord.feature.ime.ui.toolbar.ToolbarAction
+import io.kiebord.feature.ime.ui.toolbar.ToolsDrawerView
 import io.kiebord.theme.KiebordTheme
 
 @Composable
@@ -65,14 +66,16 @@ fun KeyboardRootView(
     var isSlidingSymbolMode by remember { mutableStateOf(false) }
     var dragStartPosInRoot by remember { mutableStateOf<Offset?>(null) }
 
-    // Phase 5 & 6: Toolbar, Emoji, Resizer, Number row, and TextEdit states
+    // Phase 5 & 6: Toolbar, Emoji, Resizer, Number row, TextEdit, and Tools Drawer states
     var isEmojiOpen by remember { mutableStateOf(false) }
     var isResizerOpen by remember { mutableStateOf(false) }
     var isTextEditOpen by remember { mutableStateOf(false) }
+    var isToolsDrawerOpen by remember { mutableStateOf(false) }
     var showNumberRow by remember { mutableStateOf(false) }
     var keyRowHeight by remember { mutableStateOf(initialRowHeight) }
     var chinPadding by remember { mutableStateOf(8.dp) }
     var horizontalMargin by remember { mutableStateOf(0.dp) }
+    val toolbarHeight = 46.dp
 
     // Snapshot state for Resizer Cancel button
     var savedRowHeight by remember { mutableStateOf(initialRowHeight) }
@@ -108,74 +111,112 @@ fun KeyboardRootView(
             )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Reorderable Toolbar along the top
-            ReorderableToolbar(
-                onActionClick = { action ->
-                    when (action) {
-                        ToolbarAction.EMOJI -> {
-                            isEmojiOpen = !isEmojiOpen
-                            if (isEmojiOpen) {
-                                isTextEditOpen = false
-                                isResizerOpen = false
-                            }
-                        }
-                        ToolbarAction.RESIZER -> {
-                            if (!isResizerOpen) {
-                                savedRowHeight = keyRowHeight
-                                savedChinPadding = chinPadding
-                                savedHorizontalMargin = horizontalMargin
-                                isEmojiOpen = false
-                                isTextEditOpen = false
-                            }
-                            isResizerOpen = !isResizerOpen
-                        }
-                        ToolbarAction.NUMBER_ROW_TOGGLE -> showNumberRow = !showNumberRow
-                        ToolbarAction.THEME_TOGGLE -> onThemeToggle()
-                        ToolbarAction.TEXT_EDIT -> {
-                            isTextEditOpen = !isTextEditOpen
-                            if (isTextEditOpen) {
-                                isEmojiOpen = false
-                                isResizerOpen = false
-                            }
-                        }
-                    }
-                },
-                isEmojiActive = isEmojiOpen,
-                isResizerActive = isResizerOpen,
-                isNumberRowActive = showNumberRow,
-                isTextEditActive = isTextEditOpen
-            )
-
-            // Switch between Emoji Panel, Text Edit Panel, and Keyboard Keys
-            if (isEmojiOpen) {
-                EmojiPanelView(
-                    onEmojiSelected = { emoji ->
-                        onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
-                    },
-                    onDelete = {
-                        onKeyTap(KeyDef(type = KeyType.DELETE))
-                    },
-                    onClose = { isEmojiOpen = false },
-                    height = keyRowHeight * 4
-                )
-            } else if (isTextEditOpen) {
+            if (isTextEditOpen) {
+                // Text Editing panel covers the toolbar and replaces the expand icon with back icon (matching Borno Keyboard)
                 TextEditPanelView(
                     onTextAction = onTextAction,
                     onClose = { isTextEditOpen = false },
-                    height = keyRowHeight * 4
+                    height = toolbarHeight + (keyRowHeight * 4)
                 )
             } else {
-                // Optional 5th Number Row at the top
-                if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
-                    NumberRowBar(
-                        language = displayLayout.language,
-                        onKeyTap = onKeyTap,
-                        onKeyLongPress = onKeyLongPress
-                    )
-                }
+                // Reorderable Toolbar along the top (46dp height with expand icon on far left)
+                ReorderableToolbar(
+                    onActionClick = { action ->
+                        when (action) {
+                            ToolbarAction.TEXT_EDIT -> {
+                                isTextEditOpen = true
+                                isToolsDrawerOpen = false
+                                isEmojiOpen = false
+                                isResizerOpen = false
+                            }
+                            ToolbarAction.EMOJI -> {
+                                isEmojiOpen = !isEmojiOpen
+                                if (isEmojiOpen) {
+                                    isToolsDrawerOpen = false
+                                    isResizerOpen = false
+                                }
+                            }
+                            ToolbarAction.RESIZER -> {
+                                if (!isResizerOpen) {
+                                    savedRowHeight = keyRowHeight
+                                    savedChinPadding = chinPadding
+                                    savedHorizontalMargin = horizontalMargin
+                                    isEmojiOpen = false
+                                    isToolsDrawerOpen = false
+                                }
+                                isResizerOpen = !isResizerOpen
+                            }
+                            ToolbarAction.NUMBER_ROW_TOGGLE -> showNumberRow = !showNumberRow
+                            ToolbarAction.THEME_TOGGLE -> onThemeToggle()
+                        }
+                    },
+                    onExpandToolsClick = {
+                        isToolsDrawerOpen = !isToolsDrawerOpen
+                        if (isToolsDrawerOpen) {
+                            isEmojiOpen = false
+                            isResizerOpen = false
+                        }
+                    },
+                    isExpandActive = isToolsDrawerOpen,
+                    isEmojiActive = isEmojiOpen,
+                    isResizerActive = isResizerOpen,
+                    isNumberRowActive = showNumberRow,
+                    isTextEditActive = false
+                )
 
-                // Keyboard rows (stable layout without recomposition shifts)
-                displayLayout.rows.forEachIndexed { rowIndex, row ->
+                // Switch between Tools Drawer, Emoji Panel, and Keyboard Keys
+                if (isToolsDrawerOpen) {
+                    ToolsDrawerView(
+                        onToolClick = { action ->
+                            when (action) {
+                                ToolbarAction.TEXT_EDIT -> {
+                                    isToolsDrawerOpen = false
+                                    isTextEditOpen = true
+                                }
+                                ToolbarAction.EMOJI -> {
+                                    isToolsDrawerOpen = false
+                                    isEmojiOpen = true
+                                }
+                                ToolbarAction.RESIZER -> {
+                                    isToolsDrawerOpen = false
+                                    savedRowHeight = keyRowHeight
+                                    savedChinPadding = chinPadding
+                                    savedHorizontalMargin = horizontalMargin
+                                    isResizerOpen = true
+                                }
+                                ToolbarAction.NUMBER_ROW_TOGGLE -> {
+                                    showNumberRow = !showNumberRow
+                                }
+                                ToolbarAction.THEME_TOGGLE -> {
+                                    onThemeToggle()
+                                }
+                            }
+                        },
+                        height = keyRowHeight * 4
+                    )
+                } else if (isEmojiOpen) {
+                    EmojiPanelView(
+                        onEmojiSelected = { emoji ->
+                            onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                        },
+                        onDelete = {
+                            onKeyTap(KeyDef(type = KeyType.DELETE))
+                        },
+                        onClose = { isEmojiOpen = false },
+                        height = keyRowHeight * 4
+                    )
+                } else {
+                    // Optional 5th Number Row at the top
+                    if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
+                        NumberRowBar(
+                            language = displayLayout.language,
+                            onKeyTap = onKeyTap,
+                            onKeyLongPress = onKeyLongPress
+                        )
+                    }
+
+                    // Keyboard rows (stable layout without recomposition shifts)
+                    displayLayout.rows.forEachIndexed { rowIndex, row ->
                     val isBottomRow = rowIndex == displayLayout.rows.lastIndex
                     Row(
                         modifier = Modifier
@@ -388,6 +429,7 @@ fun KeyboardRootView(
                 }
             }
         }
+    }
 
         // 1. Neon laser guideline overlay for sliding symbol input (matchParentSize prevents shifting)
         QuickSymbolDragOverlay(

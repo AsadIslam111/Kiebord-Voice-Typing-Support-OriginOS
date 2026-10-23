@@ -6,29 +6,21 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
-import androidx.compose.material.icons.automirrored.outlined.LastPage
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.ContentCut
-import androidx.compose.material.icons.outlined.ContentPaste
-import androidx.compose.material.icons.outlined.FirstPage
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
-import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,302 +48,282 @@ fun TextEditPanelView(
     val accentColor = colorScheme.accentColor
     var isSelecting by remember { mutableStateOf(false) }
 
+    val buttonShape = RoundedCornerShape(12.dp)
+    val navKeyBg = colorScheme.keyBackground
+    val actionKeyBg = colorScheme.actionKeyBackground
+    val buttonFg = colorScheme.keyForeground
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
             .background(colorScheme.containerBackground)
-            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // 1. Header with Back button and "Text editing" title (matching Borno Keyboard)
+        // 1. Header with back arrow circle and "Text editing" title
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp),
+                .height(42.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            IconButton(
-                onClick = onClose,
-                modifier = Modifier.size(36.dp)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x22FFFFFF))
+                    .clickable(onClick = onClose),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Back",
-                    tint = colorScheme.keyForeground,
-                    modifier = Modifier.size(22.dp)
+                    tint = buttonFg,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
             Text(
                 text = "Text editing",
-                color = colorScheme.keyForeground,
-                fontWeight = FontWeight.Medium,
-                fontSize = 16.sp
+                color = buttonFg,
+                fontWeight = FontWeight.Normal,
+                fontSize = 18.sp
             )
         }
 
-        // 2. Main Editing Surface: Left D-Pad + Right Clipboard Actions (matching Borno Keyboard)
+        // 2. Upper Control Deck: 3 rows tall (Rows 1, 2, 3)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .weight(3f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // A. Left Column: Directional Navigation D-Pad with Jump to Start/End and Center SELECT
+            // Column 1: Tall Left Chevron (<) spanning full 3-row height
+            Box(
+                modifier = Modifier
+                    .weight(1.0f)
+                    .fillMaxHeight()
+                    .clip(buttonShape)
+                    .background(navKeyBg)
+                    .clickable { onTextAction(TextAction.MOVE_LEFT, isSelecting) },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                    contentDescription = "Left",
+                    tint = buttonFg,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Column 2: Center 3 buttons (Up ^, Select, Down v)
             Column(
                 modifier = Modifier
-                    .weight(1.2f)
+                    .weight(1.1f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Row 1: [|< Start]  [↑ Up]  [>| End]
-                Row(
+                // Up (^)
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        .weight(1f)
+                        .clip(buttonShape)
+                        .background(navKeyBg)
+                        .clickable { onTextAction(TextAction.MOVE_UP, isSelecting) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        DpadIconKey(
-                            icon = Icons.Outlined.FirstPage,
-                            contentDescription = "Jump to Start",
-                            onClick = { onTextAction(TextAction.LINE_START, isSelecting) }
-                        )
-                    }
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        DpadIconKey(
-                            icon = Icons.Outlined.KeyboardArrowUp,
-                            contentDescription = "Move Up",
-                            onClick = { onTextAction(TextAction.MOVE_UP, isSelecting) }
-                        )
-                    }
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        DpadIconKey(
-                            icon = Icons.AutoMirrored.Outlined.LastPage,
-                            contentDescription = "Jump to End",
-                            onClick = { onTextAction(TextAction.LINE_END, isSelecting) }
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Outlined.KeyboardArrowUp,
+                        contentDescription = "Up",
+                        tint = buttonFg,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
 
-                // Row 2: [← Left]  [SELECT / SELECTING]  [→ Right]
-                Row(
+                // Select
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        .weight(1f)
+                        .clip(buttonShape)
+                        .background(if (isSelecting) accentColor else navKeyBg)
+                        .clickable { isSelecting = !isSelecting },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        DpadIconKey(
-                            icon = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
-                            contentDescription = "Move Left",
-                            onClick = { onTextAction(TextAction.MOVE_LEFT, isSelecting) }
-                        )
-                    }
-
-                    // Center SELECT Toggle Button
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelecting) accentColor else colorScheme.actionKeyBackground)
-                            .clickable { isSelecting = !isSelecting },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (isSelecting) "SELECTING" else "SELECT",
-                            color = if (isSelecting) Color.White else colorScheme.keyForeground,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                    }
-
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        DpadIconKey(
-                            icon = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                            contentDescription = "Move Right",
-                            onClick = { onTextAction(TextAction.MOVE_RIGHT, isSelecting) }
-                        )
-                    }
+                    Text(
+                        text = "Select",
+                        color = if (isSelecting) Color.White else buttonFg,
+                        fontSize = 14.sp,
+                        fontWeight = if (isSelecting) FontWeight.SemiBold else FontWeight.Normal
+                    )
                 }
 
-                // Row 3: [ Spacer ]  [↓ Down]  [ Spacer ]
-                Row(
+                // Down (v)
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        .weight(1f)
+                        .clip(buttonShape)
+                        .background(navKeyBg)
+                        .clickable { onTextAction(TextAction.MOVE_DOWN, isSelecting) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Spacer(modifier = Modifier.weight(1f))
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        DpadIconKey(
-                            icon = Icons.Outlined.KeyboardArrowDown,
-                            contentDescription = "Move Down",
-                            onClick = { onTextAction(TextAction.MOVE_DOWN, isSelecting) }
-                        )
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
+                    Icon(
+                        imageVector = Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = "Down",
+                        tint = buttonFg,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
 
-            // B. Right Column: Clipboard & Editing Operations
+            // Column 3: Tall Right Chevron (>) spanning full 3-row height
+            Box(
+                modifier = Modifier
+                    .weight(1.0f)
+                    .fillMaxHeight()
+                    .clip(buttonShape)
+                    .background(navKeyBg)
+                    .clickable { onTextAction(TextAction.MOVE_RIGHT, isSelecting) },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    contentDescription = "Right",
+                    tint = buttonFg,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Column 4: Right Actions (Select all, Copy, Paste)
             Column(
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(1.1f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Row 1: Select All
-                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                    TextActionTile(
-                        icon = Icons.Outlined.SelectAll,
-                        label = "Select All",
-                        onClick = { onTextAction(TextAction.SELECT_ALL, isSelecting) }
+                // Select all
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clip(buttonShape)
+                        .background(actionKeyBg)
+                        .clickable {
+                            isSelecting = true
+                            onTextAction(TextAction.SELECT_ALL, true)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Select all",
+                        color = buttonFg,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal
                     )
                 }
 
-                // Row 2: Cut & Copy
-                Row(
+                // Copy (dimmed if not selecting, active when selecting)
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        .weight(1f)
+                        .clip(buttonShape)
+                        .background(actionKeyBg)
+                        .clickable { onTextAction(TextAction.COPY, isSelecting) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        TextActionTile(
-                            icon = Icons.Outlined.ContentCut,
-                            label = "Cut",
-                            onClick = { onTextAction(TextAction.CUT, isSelecting) }
-                        )
-                    }
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        TextActionTile(
-                            icon = Icons.Outlined.ContentCopy,
-                            label = "Copy",
-                            onClick = { onTextAction(TextAction.COPY, isSelecting) }
-                        )
-                    }
-                }
-
-                // Row 3: Paste
-                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                    TextActionTile(
-                        icon = Icons.Outlined.ContentPaste,
-                        label = "Paste",
-                        onClick = { onTextAction(TextAction.PASTE, isSelecting) }
+                    Text(
+                        text = "Copy",
+                        color = if (isSelecting) buttonFg else buttonFg.copy(alpha = 0.35f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal
                     )
                 }
 
-                // Row 4: Backspace & Enter
-                Row(
+                // Paste
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        .weight(1f)
+                        .clip(buttonShape)
+                        .background(actionKeyBg)
+                        .clickable { onTextAction(TextAction.PASTE, isSelecting) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Backspace
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(colorScheme.actionKeyBackground)
-                            .clickable { onTextAction(TextAction.DELETE_BACKWARD, isSelecting) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Backspace,
-                            contentDescription = "Backspace",
-                            tint = colorScheme.keyForeground,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-
-                    // Enter
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(accentColor)
-                            .clickable { onTextAction(TextAction.ENTER, isSelecting) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
-                            contentDescription = "Enter",
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
+                    Text(
+                        text = "Paste",
+                        color = buttonFg,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal
+                    )
                 }
             }
         }
-    }
-}
 
-@Composable
-private fun DpadIconKey(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    val colorScheme = KiebordTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(12.dp))
-            .background(colorScheme.actionKeyBackground)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = colorScheme.keyForeground,
-            modifier = Modifier.size(26.dp)
-        )
-    }
-}
-
-@Composable
-private fun TextActionTile(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val colorScheme = KiebordTheme.colorScheme
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(12.dp))
-            .background(colorScheme.actionKeyBackground)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp),
-        contentAlignment = Alignment.Center
-    ) {
+        // 3. Lower Control Row (Row 4): [ |< ]  [ >| ]  [ ⌫ ]
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = colorScheme.keyForeground,
-                modifier = Modifier.size(17.dp)
-            )
-            Text(
-                text = label,
-                color = colorScheme.keyForeground,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            )
+            // Jump to Start (|<) spanning width of Col 1 + half of Col 2
+            Box(
+                modifier = Modifier
+                    .weight(1.55f)
+                    .fillMaxHeight()
+                    .clip(buttonShape)
+                    .background(navKeyBg)
+                    .clickable { onTextAction(TextAction.LINE_START, isSelecting) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "|<",
+                    color = buttonFg,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Jump to End (>|) spanning width of half of Col 2 + Col 3
+            Box(
+                modifier = Modifier
+                    .weight(1.55f)
+                    .fillMaxHeight()
+                    .clip(buttonShape)
+                    .background(navKeyBg)
+                    .clickable { onTextAction(TextAction.LINE_END, isSelecting) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = ">|",
+                    color = buttonFg,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Backspace key spanning width of Col 4
+            Box(
+                modifier = Modifier
+                    .weight(1.1f)
+                    .fillMaxHeight()
+                    .clip(buttonShape)
+                    .background(actionKeyBg)
+                    .clickable { onTextAction(TextAction.DELETE_BACKWARD, isSelecting) },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.Backspace,
+                    contentDescription = "Backspace",
+                    tint = buttonFg,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
     }
 }
