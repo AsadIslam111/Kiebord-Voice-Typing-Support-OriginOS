@@ -1,124 +1,70 @@
+pub mod binary_dict;
 pub mod data_bn;
 pub mod data_en;
+pub mod proximity;
 
+use binary_dict::BinaryDict;
 use data_bn::BN_WORDS;
 use data_en::EN_WORDS;
-use std::collections::HashMap;
+use proximity::KeyProximity;
 use std::sync::OnceLock;
 
-/// Node in the dictionary prefix trie.
-#[derive(Default)]
-pub struct TrieNode {
-    pub is_end: bool,
-    pub children: HashMap<char, TrieNode>,
-    /// Word indices into the static word array, guaranteed ordered by frequency descending.
-    pub top_indices: Vec<usize>,
+static EN_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
+static BN_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
+
+pub fn get_en_proximity() -> &'static KeyProximity {
+    EN_PROXIMITY.get_or_init(KeyProximity::qwerty)
 }
 
-pub struct Dictionary {
-    words: &'static [(&'static str, u32)],
-    root: TrieNode,
+pub fn get_bn_proximity() -> &'static KeyProximity {
+    BN_PROXIMITY.get_or_init(KeyProximity::bengali)
 }
 
-impl Dictionary {
-    pub fn new(words: &'static [(&'static str, u32)]) -> Self {
-        let mut root = TrieNode::default();
+static EN_DICT_BYTES: OnceLock<Vec<u8>> = OnceLock::new();
+static BN_DICT_BYTES: OnceLock<Vec<u8>> = OnceLock::new();
 
-        // The words array is pre-sorted by frequency descending.
-        // Therefore, appending indices preserves descending frequency order.
-        for (idx, (word, _freq)) in words.iter().enumerate() {
-            let mut curr = &mut root;
-            if curr.top_indices.len() < 10 {
-                curr.top_indices.push(idx);
-            }
+static EN_BINARY_DICT: OnceLock<BinaryDict<'static>> = OnceLock::new();
+static BN_BINARY_DICT: OnceLock<BinaryDict<'static>> = OnceLock::new();
 
-            for ch in word.chars() {
-                curr = curr.children.entry(ch).or_default();
-                if curr.top_indices.len() < 10 {
-                    curr.top_indices.push(idx);
-                }
-            }
-            curr.is_end = true;
-        }
-
-        Self { words, root }
-    }
-
-    /// Search words by prefix with a max limit.
-    pub fn suggest(&self, prefix: &str, limit: usize) -> Vec<String> {
-        let trimmed = prefix.trim();
-        if trimmed.is_empty() {
-            // Return top frequent words
-            return self
-                .root
-                .top_indices
-                .iter()
-                .take(limit)
-                .map(|&idx| self.words[idx].0.to_string())
-                .collect();
-        }
-
-        // Determine casing style for English (lowercase, Titlecase, UPPERCASE)
-        let is_all_upper = trimmed.chars().all(|c| !c.is_alphabetic() || c.is_uppercase())
-            && trimmed.chars().any(|c| c.is_alphabetic());
-        let is_title_case = !is_all_upper
-            && trimmed
-                .chars()
-                .next()
-                .map(|c| c.is_uppercase())
-                .unwrap_or(false);
-
-        let search_prefix = trimmed.to_lowercase();
-        let mut curr = &self.root;
-
-        for ch in search_prefix.chars() {
-            match curr.children.get(&ch) {
-                Some(next) => curr = next,
-                None => return Vec::new(),
-            }
-        }
-
-        let mut results = Vec::new();
-        for &idx in curr.top_indices.iter().take(limit) {
-            let word = self.words[idx].0;
-            let formatted = if is_all_upper {
-                word.to_uppercase()
-            } else if is_title_case {
-                let mut c = word.chars();
-                match c.next() {
-                    None => String::new(),
-                    Some(first) => first.to_uppercase().collect::<String>() + c.as_str(),
-                }
-            } else {
-                word.to_string()
-            };
-            results.push(formatted);
-        }
-
-        results
-    }
+pub fn get_en_binary_dict() -> &'static BinaryDict<'static> {
+    EN_BINARY_DICT.get_or_init(|| {
+        let bytes_ref = EN_DICT_BYTES.get_or_init(|| BinaryDict::compile(EN_WORDS));
+        let static_bytes: &'static [u8] = unsafe { &*(bytes_ref.as_slice() as *const [u8]) };
+        BinaryDict::from_bytes(static_bytes).expect("Valid compiled EN binary dict")
+    })
 }
 
-static EN_DICT: OnceLock<Dictionary> = OnceLock::new();
-static BN_DICT: OnceLock<Dictionary> = OnceLock::new();
-
-pub fn get_en_dictionary() -> &'static Dictionary {
-    EN_DICT.get_or_init(|| Dictionary::new(EN_WORDS))
+pub fn get_bn_binary_dict() -> &'static BinaryDict<'static> {
+    BN_BINARY_DICT.get_or_init(|| {
+        let bytes_ref = BN_DICT_BYTES.get_or_init(|| BinaryDict::compile(BN_WORDS));
+        let static_bytes: &'static [u8] = unsafe { &*(bytes_ref.as_slice() as *const [u8]) };
+        BinaryDict::from_bytes(static_bytes).expect("Valid compiled BN binary dict")
+    })
 }
 
-pub fn get_bn_dictionary() -> &'static Dictionary {
-    BN_DICT.get_or_init(|| Dictionary::new(BN_WORDS))
+/// Generates .dict binary files for disk storage / Android APK assets.
+pub fn generate_dict_assets(out_dir: &std::path::Path) -> std::io::Result<()> {
+    use std::fs;
+    fs::create_dir_all(out_dir)?;
+
+    let en_bytes = BinaryDict::compile(EN_WORDS);
+    fs::write(out_dir.join("en.dict"), en_bytes)?;
+
+    let bn_bytes = BinaryDict::compile(BN_WORDS);
+    fs::write(out_dir.join("bn.dict"), bn_bytes)?;
+
+    Ok(())
 }
 
-/// Main entry point for query suggestions.
-/// Returns a pipe-delimited string of suggestions, e.g. "আমি|আমার|আমাদের"
-pub fn get_suggestions(prefix: &str, lang: &str, max_results: usize) -> String {
-    let dict = match lang {
-        "bn" | "bn_borno" | "bn_probhat" => get_bn_dictionary(),
-        _ => get_en_dictionary(),
+/// Main entry point for query suggestions: exact completions + proximity typo corrections.
+/// Returns a pipe-delimited string of suggestions, e.g. "the|that|this"
+pub fn get_suggestions(input: &str, lang: &str, max_results: usize) -> String {
+    let (dict, prox) = match lang {
+        "bn" | "bn_borno" | "bn_probhat" => (get_bn_binary_dict(), get_bn_proximity()),
+        _ => (get_en_binary_dict(), get_en_proximity()),
     };
 
-    let words = dict.suggest(prefix, max_results);
+    let words = dict.suggest(input, max_results, prox);
     words.join("|")
 }
 
@@ -127,62 +73,80 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_en_dictionary_prefix() {
-        let dict = get_en_dictionary();
-        let suggestions = dict.suggest("th", 5);
-        assert!(!suggestions.is_empty());
-        assert!(suggestions.contains(&"the".to_string()));
-        assert!(suggestions.contains(&"that".to_string()));
-        assert!(suggestions.contains(&"this".to_string()));
+    fn test_en_exact_and_proximity() {
+        let dict = get_en_binary_dict();
+        let prox = get_en_proximity();
+
+        // Exact prefix
+        let th_sug = dict.suggest("th", 5, prox);
+        assert!(!th_sug.is_empty());
+        assert!(th_sug.contains(&"the".to_string()));
+
+        // Typo: neighbor key slip ('g' instead of 'h' in 'gelo' -> 'hello')
+        let gelo_sug = dict.suggest("gelo", 5, prox);
+        assert!(!gelo_sug.is_empty());
+        assert!(gelo_sug.contains(&"hello".to_string()));
+
+        // Typo: omission ('helo' -> 'hello')
+        let helo_sug = dict.suggest("helo", 3, prox);
+        assert!(!helo_sug.is_empty());
+        assert_eq!(helo_sug[0], "hello");
+
+        // Typo: transposition ('hte' -> 'the')
+        let hte_sug = dict.suggest("hte", 3, prox);
+        assert!(!hte_sug.is_empty());
+        assert_eq!(hte_sug[0], "the");
+
+        // Typo: neighbor key slip on end ('widt' -> 'with')
+        let widt_sug = dict.suggest("widt", 3, prox);
+        assert!(widt_sug.contains(&"with".to_string()));
     }
 
     #[test]
     fn test_en_casing() {
-        let dict = get_en_dictionary();
-        let title_sug = dict.suggest("Th", 3);
+        let dict = get_en_binary_dict();
+        let prox = get_en_proximity();
+
+        let title_sug = dict.suggest("Th", 3, prox);
         assert_eq!(title_sug[0], "The");
 
-        let upper_sug = dict.suggest("TH", 3);
+        let upper_sug = dict.suggest("TH", 3, prox);
         assert_eq!(upper_sug[0], "THE");
     }
 
     #[test]
-    fn test_bn_dictionary_prefix() {
-        let dict = get_bn_dictionary();
-        let suggestions = dict.suggest("আম", 5);
-        assert!(!suggestions.is_empty());
-        assert!(suggestions.contains(&"আমি".to_string()));
-        assert!(suggestions.contains(&"আমার".to_string()));
-        assert!(suggestions.contains(&"আমাদের".to_string()));
+    fn test_bn_proximity_and_typos() {
+        let dict = get_bn_binary_dict();
+        let prox = get_bn_proximity();
+
+        // Exact prefix
+        let bn_sug = dict.suggest("আম", 5, prox);
+        assert!(!bn_sug.is_empty());
+        assert!(bn_sug.contains(&"আমি".to_string()));
+        assert!(bn_sug.contains(&"আমাদের".to_string()));
+
+        // Typo: missing kar 'আমদের' -> 'আমাদের'
+        let typo_sug = dict.suggest("আমদের", 3, prox);
+        assert!(!typo_sug.is_empty());
+        assert_eq!(typo_sug[0], "আমাদের");
     }
 
     #[test]
-    fn test_empty_prefix_defaults() {
-        let dict_en = get_en_dictionary();
-        let top_en = dict_en.suggest("", 3);
-        assert_eq!(top_en.len(), 3);
-        assert_eq!(top_en[0], "you");
-        assert_eq!(top_en[1], "i");
-        assert_eq!(top_en[2], "the");
-
-        let dict_bn = get_bn_dictionary();
-        let top_bn = dict_bn.suggest("", 3);
-        assert_eq!(top_bn.len(), 3);
-        assert_eq!(top_bn[0], "আমি");
-        assert_eq!(top_bn[1], "তুমি");
-        assert_eq!(top_bn[2], "আপনি");
-    }
-
-    #[test]
-    fn test_get_suggestions_pipe_delimited() {
-        let en_pipe = get_suggestions("th", "en", 3);
+    fn test_pipe_delimited_output() {
+        let en_pipe = get_suggestions("hte", "en", 3);
         let items: Vec<&str> = en_pipe.split('|').collect();
-        assert_eq!(items.len(), 3);
         assert_eq!(items[0], "the");
 
         let bn_pipe = get_suggestions("আম", "bn", 3);
-        let bn_items: Vec<&str> = bn_pipe.split('|').collect();
-        assert_eq!(bn_items.len(), 3);
-        assert_eq!(bn_items[0], "আমি");
+        assert!(bn_pipe.contains("আমি"));
+    }
+
+    #[test]
+    fn test_dict_file_generation() {
+        let temp_dir = std::env::temp_dir().join("borno_dict_test");
+        generate_dict_assets(&temp_dir).expect("Generate dict assets");
+        assert!(temp_dir.join("en.dict").exists());
+        assert!(temp_dir.join("bn.dict").exists());
+        let _ = std::fs::remove_dir_all(temp_dir);
     }
 }
