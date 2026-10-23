@@ -54,10 +54,10 @@ object PredefinedLayouts {
             ),
             KeyRow(
                 listOf(
-                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.5f, slidingInput = true),
-                    KeyDef(",", flickUp = "<", moreKeys = listOf("<", "«"), widthWeight = 1.0f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 5.0f),
-                    KeyDef(".", flickUp = ">", moreKeys = listOf(">", "»", "…"), widthWeight = 1.0f),
+                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.3f, slidingInput = true),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.1f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.8f),
+                    KeyDef(".", flickUp = ">", moreKeys = listOf(">", "»", "…"), widthWeight = 1.3f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )
@@ -99,7 +99,7 @@ object PredefinedLayouts {
             ),
             KeyRow(
                 listOf(
-                    KeyDef(type = KeyType.SHIFT, icon = "shift", widthWeight = 1.5f),
+                    KeyDef(type = KeyType.SHIFT, icon = "shift", widthWeight = 1.4f),
                     KeyDef("্", "ৎ"),
                     KeyDef("ং", "ঙ"),
                     KeyDef("ঃ", "ঢ়"),
@@ -110,15 +110,131 @@ object PredefinedLayouts {
                     KeyDef("ণ", "ণ", moreKeys = listOf("ণ্ট", "ণ্ঠ")),
                     KeyDef("শ", "ষ্", moreKeys = listOf("শ্চ")),
                     KeyDef("য", "্য"),
-                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.5f)
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.4f)
                 )
             ),
             KeyRow(
                 listOf(
-                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.5f, slidingInput = true),
-                    KeyDef("।", "|", widthWeight = 1.0f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 5.0f),
-                    KeyDef(",", "...", widthWeight = 1.0f),
+                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.3f, slidingInput = true),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.1f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.8f),
+                    KeyDef("।", "|", widthWeight = 1.3f),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
+                )
+            )
+        )
+    )
+
+    val Symbols = KeyboardLayoutDef(
+        id = "symbols_1",
+        name = "Symbols",
+        language = "sym",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("1", moreKeys = listOf("1", "১")),
+                    KeyDef("2", moreKeys = listOf("2", "২")),
+                    KeyDef("3", moreKeys = listOf("3", "৩")),
+                    KeyDef("4", moreKeys = listOf("4", "৪")),
+                    KeyDef("5", moreKeys = listOf("5", "৫")),
+                    KeyDef("6", moreKeys = listOf("6", "৬")),
+                    KeyDef("7", moreKeys = listOf("7", "৭")),
+                    KeyDef("8", moreKeys = listOf("8", "৮")),
+                    KeyDef("9", moreKeys = listOf("9", "৯")),
+                    KeyDef("0", moreKeys = listOf("0", "০"))
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("@"),
+                    KeyDef("#"),
+                    KeyDef("$", moreKeys = listOf("$", "৳", "₹", "€", "£", "¥")),
+                    KeyDef("_"),
+                    KeyDef("&"),
+                    KeyDef("-"),
+                    KeyDef("+"),
+                    KeyDef("("),
+                    KeyDef(")"),
+                    KeyDef("/")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("=\\<", type = KeyType.SYMBOLS, widthWeight = 1.4f),
+                    KeyDef("*"),
+                    KeyDef("\""),
+                    KeyDef("'"),
+                    KeyDef(":"),
+                    KeyDef(";"),
+                    KeyDef("!"),
+                    KeyDef("?"),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.6f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.4f),
+                    KeyDef(",", widthWeight = 1.1f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.7f),
+                    KeyDef(".", widthWeight = 1.3f),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
+                )
+            )
+        )
+    )
+
+    val SymbolsMore = KeyboardLayoutDef(
+        id = "symbols_2",
+        name = "More Symbols",
+        language = "sym",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("~"),
+                    KeyDef("`"),
+                    KeyDef("|"),
+                    KeyDef("•"),
+                    KeyDef("√"),
+                    KeyDef("π"),
+                    KeyDef("÷"),
+                    KeyDef("×"),
+                    KeyDef("§"),
+                    KeyDef("Δ")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("£"),
+                    KeyDef("€"),
+                    KeyDef("¥"),
+                    KeyDef("¢"),
+                    KeyDef("^"),
+                    KeyDef("°"),
+                    KeyDef("="),
+                    KeyDef("{"),
+                    KeyDef("}"),
+                    KeyDef("\\")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.4f),
+                    KeyDef("%"),
+                    KeyDef("©"),
+                    KeyDef("®"),
+                    KeyDef("™"),
+                    KeyDef("✓"),
+                    KeyDef("["),
+                    KeyDef("]"),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.6f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.4f),
+                    KeyDef("<", widthWeight = 1.1f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.7f),
+                    KeyDef(">", widthWeight = 1.3f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )

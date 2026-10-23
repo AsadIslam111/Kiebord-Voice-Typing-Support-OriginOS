@@ -3,15 +3,16 @@ package io.kiebord.feature.ime
 import android.inputmethodservice.InputMethodService
 import android.view.KeyEvent
 import android.view.View
+import android.view.Window
 import android.view.inputmethod.EditorInfo
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import android.view.Window
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
+import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
@@ -24,8 +25,10 @@ class KiebordService : InputMethodService() {
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
 
     // Configurable state
+    private var primaryAlphaLayout: KeyboardLayoutDef = PredefinedLayouts.EnglishQwerty
     private var activeLayout by mutableStateOf(PredefinedLayouts.EnglishQwerty)
     private var shiftState by mutableStateOf(ShiftState.UNSHIFTED)
+    private var isSymbolsMode by mutableStateOf(false)
     private var colorScheme by mutableStateOf(KeyboardColorScheme.DefaultDark)
 
     override fun onCreate() {
@@ -65,6 +68,8 @@ class KiebordService : InputMethodService() {
         }
         lifecycleOwner.onStart()
         shiftState = ShiftState.UNSHIFTED
+        isSymbolsMode = false
+        activeLayout = primaryAlphaLayout
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -117,14 +122,44 @@ class KiebordService : InputMethodService() {
                 ic.commitText(" ", 1)
             }
             KeyType.SYMBOLS -> {
-                // Symbols mode toggle
+                when (key.label) {
+                    "?123" -> {
+                        if (!isSymbolsMode) {
+                            primaryAlphaLayout = activeLayout
+                            isSymbolsMode = true
+                        }
+                        activeLayout = PredefinedLayouts.Symbols
+                    }
+                    "=\\<", "=<" -> {
+                        isSymbolsMode = true
+                        activeLayout = PredefinedLayouts.SymbolsMore
+                    }
+                    "ABC" -> {
+                        isSymbolsMode = false
+                        activeLayout = primaryAlphaLayout
+                    }
+                    else -> {
+                        // Fallback toggle
+                        if (isSymbolsMode) {
+                            isSymbolsMode = false
+                            activeLayout = primaryAlphaLayout
+                        } else {
+                            primaryAlphaLayout = activeLayout
+                            isSymbolsMode = true
+                            activeLayout = PredefinedLayouts.Symbols
+                        }
+                    }
+                }
             }
             KeyType.SWITCH_LANGUAGE -> {
                 // Toggle between English QWERTY and Bengali Probhat
-                activeLayout = if (activeLayout.id == "en_qwerty") {
+                primaryAlphaLayout = if (primaryAlphaLayout.id == "en_qwerty") {
                     PredefinedLayouts.BengaliProbhat
                 } else {
                     PredefinedLayouts.EnglishQwerty
+                }
+                if (!isSymbolsMode) {
+                    activeLayout = primaryAlphaLayout
                 }
             }
             KeyType.MORE_KEYS -> {
@@ -134,6 +169,10 @@ class KiebordService : InputMethodService() {
     }
 
     private fun handleKeyLongPress(key: KeyDef) {
+        if (key.type == KeyType.SPACE) {
+            handleKeyTap(KeyDef(type = KeyType.SWITCH_LANGUAGE))
+            return
+        }
         val ic = currentInputConnection ?: return
         if (!key.flickUp.isNullOrEmpty()) {
             ic.commitText(key.flickUp!!, 1)

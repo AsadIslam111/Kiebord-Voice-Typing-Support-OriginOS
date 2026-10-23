@@ -47,7 +47,7 @@ fun KeycapView(
     var isPressed by remember { mutableStateOf(false) }
 
     // Dynamic key background & foreground colors driven by configurable theme
-    val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS
+    val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SWITCH_LANGUAGE
     val baseBackground = when {
         key.type == KeyType.ACTION -> colorScheme.actionKeyBackground
         isActionOrModifier -> colorScheme.actionKeyBackground
@@ -68,7 +68,8 @@ fun KeycapView(
 
     Box(
         modifier = modifier
-            .padding(horizontal = 3.dp, vertical = 4.dp)
+            .fillMaxSize()
+            .padding(horizontal = 3.dp, vertical = 3.dp)
             .shadow(elevation = if (isPressed) 0.dp else 1.5.dp, shape = RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .background(activeBackground)
@@ -90,11 +91,11 @@ fun KeycapView(
             Text(
                 text = key.flickUp!!,
                 color = colorScheme.keyForeground.copy(alpha = 0.5f),
-                fontSize = 9.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Normal,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 2.dp, end = 4.dp)
+                    .padding(top = 3.dp, end = 5.dp)
             )
         }
 
@@ -107,7 +108,7 @@ fun KeycapView(
                             imageVector = Icons.Outlined.ArrowUpward,
                             contentDescription = "Shift",
                             tint = foregroundColor,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                     ShiftState.ONE_SHOT -> {
@@ -115,7 +116,7 @@ fun KeycapView(
                             imageVector = Icons.Filled.ArrowUpward,
                             contentDescription = "Shift One-Shot",
                             tint = colorScheme.shiftActiveColor,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                     ShiftState.CAPS_LOCK -> {
@@ -124,13 +125,13 @@ fun KeycapView(
                                 imageVector = Icons.Filled.ArrowUpward,
                                 contentDescription = "Caps Lock",
                                 tint = colorScheme.shiftActiveColor,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                             // Underline bar for Caps Lock
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .size(width = 16.dp, height = 2.dp)
+                                    .size(width = 18.dp, height = 2.5.dp)
                                     .background(colorScheme.shiftActiveColor)
                             )
                         }
@@ -142,7 +143,7 @@ fun KeycapView(
                     imageVector = Icons.AutoMirrored.Outlined.Backspace,
                     contentDescription = "Backspace",
                     tint = foregroundColor,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             KeyType.ACTION -> {
@@ -150,7 +151,7 @@ fun KeycapView(
                     imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
                     contentDescription = "Enter",
                     tint = foregroundColor,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             KeyType.SWITCH_LANGUAGE -> {
@@ -158,14 +159,14 @@ fun KeycapView(
                     imageVector = Icons.Outlined.Language,
                     contentDescription = "Switch Language",
                     tint = foregroundColor,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
             KeyType.SPACE -> {
                 Text(
                     text = key.displayLabel(shiftState).ifEmpty { "English" },
-                    color = colorScheme.keyForeground.copy(alpha = 0.4f),
-                    fontSize = 13.sp,
+                    color = colorScheme.keyForeground.copy(alpha = 0.45f),
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -173,8 +174,8 @@ fun KeycapView(
                 Text(
                     text = key.displayLabel(shiftState),
                     color = foregroundColor,
-                    fontSize = if (key.type == KeyType.SYMBOLS) 14.sp else 19.sp,
-                    fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.SemiBold else FontWeight.Normal
+                    fontSize = if (key.type == KeyType.SYMBOLS) 15.sp else 22.sp,
+                    fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Medium else FontWeight.Normal
                 )
             }
         }
