@@ -1,11 +1,20 @@
 package io.kiebord.app.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
@@ -17,15 +26,23 @@ import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.ViewCompact
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.kiebord.data.prefs.KiebordPreferences
 
 @Composable
 fun PreferencesScreen(
     preferences: KiebordPreferences,
     onUpdateVibrate: (Boolean) -> Unit,
+    onUpdateVibrationType: (String) -> Unit = {},
     onUpdateVibrationStrength: (Int) -> Unit,
     onUpdateSound: (Boolean) -> Unit,
     onUpdateLongPressDelay: (Int) -> Unit,
@@ -50,30 +67,108 @@ fun PreferencesScreen(
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsToggleItem(
                 title = "Vibrate on Keypress",
-                subtitle = "Subtle tactile haptic feedback on key taps",
+                subtitle = "Subtle tactile feedback on key taps",
                 icon = Icons.Outlined.Vibration,
                 checked = preferences.vibrateOnKeypress,
                 onCheckedChange = onUpdateVibrate
             )
 
             if (preferences.vibrateOnKeypress) {
-                val strength = preferences.vibrationStrength
-                val strengthLabel = when {
-                    strength <= 25 -> "Light ($strength%)"
-                    strength <= 65 -> "Medium ($strength%)"
-                    else -> "Strong ($strength%)"
+                // Feedback Type Selector: Haptic vs Vibration
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val isHaptic = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_HAPTIC
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isHaptic) Color(0xFF233047) else Color(0xFF25272B))
+                            .border(
+                                1.dp,
+                                if (isHaptic) Color(0xFF7AA2F7) else Color(0xFF383A40),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { onUpdateVibrationType(KiebordPreferences.VIBRATION_TYPE_HAPTIC) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.TouchApp,
+                                contentDescription = null,
+                                tint = if (isHaptic) Color(0xFF7AA2F7) else Color(0xFF9499A8),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Haptic",
+                                fontSize = 13.sp,
+                                fontWeight = if (isHaptic) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isHaptic) Color(0xFF7AA2F7) else Color(0xFFE0E2E8)
+                            )
+                        }
+                    }
+
+                    val isVibration = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_VIBRATION
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isVibration) Color(0xFF233047) else Color(0xFF25272B))
+                            .border(
+                                1.dp,
+                                if (isVibration) Color(0xFF7AA2F7) else Color(0xFF383A40),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { onUpdateVibrationType(KiebordPreferences.VIBRATION_TYPE_VIBRATION) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Vibration,
+                                contentDescription = null,
+                                tint = if (isVibration) Color(0xFF7AA2F7) else Color(0xFF9499A8),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Vibration",
+                                fontSize = 13.sp,
+                                fontWeight = if (isVibration) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isVibration) Color(0xFF7AA2F7) else Color(0xFFE0E2E8)
+                            )
+                        }
+                    }
                 }
 
-                SettingsSliderItem(
-                    title = "Vibration Intensity",
-                    subtitle = "Haptic motor pulse amplitude",
-                    icon = Icons.Outlined.Speed,
-                    value = strength.toFloat(),
-                    valueRange = 10f..100f,
-                    steps = 8,
-                    valueLabel = strengthLabel,
-                    onValueChange = { onUpdateVibrationStrength(it.toInt()) }
-                )
+                if (preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_VIBRATION) {
+                    val strength = preferences.vibrationStrength
+                    val strengthLabel = when {
+                        strength <= 25 -> "Light ($strength%)"
+                        strength <= 65 -> "Medium ($strength%)"
+                        else -> "Strong ($strength%)"
+                    }
+
+                    SettingsSliderItem(
+                        title = "Vibration Intensity",
+                        subtitle = "Motor vibration pulse strength",
+                        icon = Icons.Outlined.Speed,
+                        value = strength.toFloat(),
+                        valueRange = 10f..100f,
+                        steps = 8,
+                        valueLabel = strengthLabel,
+                        onValueChange = { onUpdateVibrationStrength(it.toInt()) }
+                    )
+                }
             }
 
             SettingsToggleItem(

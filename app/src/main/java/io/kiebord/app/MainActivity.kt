@@ -257,6 +257,9 @@ fun KiebordSettingsApp(
                             onUpdateVibrate = { enabled ->
                                 scope.launch { preferencesRepo.updateVibrateOnKeypress(enabled) }
                             },
+                            onUpdateVibrationType = { type ->
+                                scope.launch { preferencesRepo.updateVibrationType(type) }
+                            },
                             onUpdateVibrationStrength = { strength ->
                                 scope.launch { preferencesRepo.updateVibrationStrength(strength) }
                             },

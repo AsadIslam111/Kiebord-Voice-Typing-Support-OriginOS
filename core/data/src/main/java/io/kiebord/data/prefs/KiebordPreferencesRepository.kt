@@ -28,6 +28,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val SHOW_KEY_POPUPS = booleanPreferencesKey("pref_show_key_popups")
 
         val VIBRATE_ON_KEYPRESS = booleanPreferencesKey("pref_vibrate_on_keypress")
+        val VIBRATION_TYPE = stringPreferencesKey("pref_vibration_type")
         val VIBRATION_STRENGTH = intPreferencesKey("pref_vibration_strength")
         val SOUND_ON_KEYPRESS = booleanPreferencesKey("pref_sound_on_keypress")
         val LONG_PRESS_DELAY_MS = intPreferencesKey("pref_long_press_delay_ms")
@@ -65,6 +66,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 showKeyPopups = prefs[PreferencesKeys.SHOW_KEY_POPUPS] ?: true,
 
                 vibrateOnKeypress = prefs[PreferencesKeys.VIBRATE_ON_KEYPRESS] ?: true,
+                vibrationType = prefs[PreferencesKeys.VIBRATION_TYPE] ?: KiebordPreferences.VIBRATION_TYPE_HAPTIC,
                 vibrationStrength = prefs[PreferencesKeys.VIBRATION_STRENGTH] ?: 50,
                 soundOnKeypress = prefs[PreferencesKeys.SOUND_ON_KEYPRESS] ?: false,
                 longPressDelayMs = prefs[PreferencesKeys.LONG_PRESS_DELAY_MS] ?: 300,
@@ -114,6 +116,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
     // Preferences & Haptics mutators
     suspend fun updateVibrateOnKeypress(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.VIBRATE_ON_KEYPRESS] = enabled }
+    }
+
+    suspend fun updateVibrationType(type: String) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.VIBRATION_TYPE] = type }
     }
 
     suspend fun updateVibrationStrength(strength: Int) {

@@ -1,7 +1,13 @@
 package io.kiebord.feature.ime
 
+import android.content.Context
 import android.inputmethodservice.InputMethodService
+import android.os.Build
 import android.os.SystemClock
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
 import android.view.Window
@@ -95,12 +101,24 @@ class KiebordService : InputMethodService() {
                     KiebordPreferences.THEME_DEFAULT_LIGHT -> KeyboardColorScheme.DefaultLight
                     else -> KeyboardColorScheme.DefaultDark
                 }
-                val targetPrimary = when (prefs.primaryLayoutId) {
+                val enabledIds = prefs.enabledLayoutIds.toList().filter { id ->
+                    id == KiebordPreferences.LAYOUT_EN_QWERTY ||
+                    id == KiebordPreferences.LAYOUT_BN_BORNO ||
+                    id == KiebordPreferences.LAYOUT_BN_PROBHAT
+                }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) }
+
+                val targetPrimaryId = if (enabledIds.contains(prefs.primaryLayoutId)) {
+                    prefs.primaryLayoutId
+                } else {
+                    enabledIds.first()
+                }
+
+                val targetPrimary = when (targetPrimaryId) {
                     KiebordPreferences.LAYOUT_BN_BORNO -> PredefinedLayouts.BengaliBorno
                     KiebordPreferences.LAYOUT_BN_PROBHAT -> PredefinedLayouts.BengaliProbhat
                     else -> PredefinedLayouts.EnglishQwerty
                 }
-                if (primaryAlphaLayout.id != targetPrimary.id) {
+                if (primaryAlphaLayout.id != targetPrimary.id || !enabledIds.contains(primaryAlphaLayout.id)) {
                     primaryAlphaLayout = targetPrimary
                     if (!isSymbolsMode) {
                         activeLayout = targetPrimary
@@ -243,7 +261,53 @@ class KiebordService : InputMethodService() {
         ic?.finishComposingText()
     }
 
+    private fun performKeyFeedback() {
+        if (!preferencesState.vibrateOnKeypress) return
+        try {
+            if (preferencesState.vibrationType == KiebordPreferences.VIBRATION_TYPE_HAPTIC) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+                    } else {
+                        @Suppress("DEPRECATION")
+                        getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                    }
+                    vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+                } else {
+                    window?.window?.decorView?.performHapticFeedback(
+                        HapticFeedbackConstants.KEYBOARD_TAP,
+                        HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                    )
+                }
+            } else {
+                // Vibration mode: duration and amplitude scaled by vibrationStrength
+                val durationMs = (10L + (preferencesState.vibrationStrength * 30L / 100L)).coerceIn(5L, 60L)
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val amplitude = (preferencesState.vibrationStrength * 255 / 100).coerceIn(1, 255)
+                    vibrator?.vibrate(VibrationEffect.createOneShot(durationMs, amplitude))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator?.vibrate(durationMs)
+                }
+            }
+        } catch (_: Exception) {
+            try {
+                window?.window?.decorView?.performHapticFeedback(
+                    HapticFeedbackConstants.KEYBOARD_TAP,
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                )
+            } catch (_: Exception) {}
+        }
+    }
+
     private fun handleKeyTap(key: KeyDef) {
+        performKeyFeedback()
         val ic = currentInputConnection ?: return
 
         if (key.type != KeyType.DELETE) {
@@ -393,16 +457,26 @@ class KiebordService : InputMethodService() {
             }
             KeyType.SWITCH_LANGUAGE -> {
                 finishComposing()
-                // Cycle between English QWERTY -> Bengali Borno -> Bengali Probhat -> English QWERTY
-                primaryAlphaLayout = when (primaryAlphaLayout.id) {
-                    "en_qwerty" -> PredefinedLayouts.BengaliBorno
-                    "bn_borno" -> PredefinedLayouts.BengaliProbhat
-                    else -> PredefinedLayouts.EnglishQwerty
+                val enabledIds = preferencesState.enabledLayoutIds.toList().filter { id ->
+                    id == KiebordPreferences.LAYOUT_EN_QWERTY ||
+                    id == KiebordPreferences.LAYOUT_BN_BORNO ||
+                    id == KiebordPreferences.LAYOUT_BN_PROBHAT
+                }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) }
+
+                if (enabledIds.size > 1) {
+                    val currentIndex = enabledIds.indexOf(primaryAlphaLayout.id)
+                    val nextIndex = if (currentIndex >= 0) (currentIndex + 1) % enabledIds.size else 0
+                    val nextId = enabledIds[nextIndex]
+                    primaryAlphaLayout = when (nextId) {
+                        KiebordPreferences.LAYOUT_BN_BORNO -> PredefinedLayouts.BengaliBorno
+                        KiebordPreferences.LAYOUT_BN_PROBHAT -> PredefinedLayouts.BengaliProbhat
+                        else -> PredefinedLayouts.EnglishQwerty
+                    }
+                    if (!isSymbolsMode) {
+                        activeLayout = primaryAlphaLayout
+                    }
+                    updateSuggestions()
                 }
-                if (!isSymbolsMode) {
-                    activeLayout = primaryAlphaLayout
-                }
-                updateSuggestions()
             }
             KeyType.MORE_KEYS -> {
                 // Secondary popups
@@ -624,6 +698,7 @@ class KiebordService : InputMethodService() {
     }
 
     private fun handleCandidateSelect(candidate: SuggestionCandidate) {
+        performKeyFeedback()
         val ic = currentInputConnection ?: return
         if (lastGestureCommittedWord.isNotEmpty()) {
             ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)

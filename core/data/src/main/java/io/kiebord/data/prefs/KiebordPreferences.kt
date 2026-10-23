@@ -13,6 +13,7 @@ data class KiebordPreferences(
 
     // Preferences & Haptics
     val vibrateOnKeypress: Boolean = true,
+    val vibrationType: String = VIBRATION_TYPE_HAPTIC,
     val vibrationStrength: Int = 50, // 0 - 100%
     val soundOnKeypress: Boolean = false,
     val longPressDelayMs: Int = 300, // 150 - 600 ms
@@ -51,6 +52,9 @@ data class KiebordPreferences(
 
         const val DELETE_MODE_WORD = "word"
         const val DELETE_MODE_CHARACTER = "character"
+
+        const val VIBRATION_TYPE_HAPTIC = "haptic"
+        const val VIBRATION_TYPE_VIBRATION = "vibration"
 
         const val LAYOUT_EN_QWERTY = "en_qwerty"
         const val LAYOUT_BN_BORNO = "bn_borno"

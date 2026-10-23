@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -291,31 +292,21 @@ private fun ThemePreviewBottomSheetContent(
             .padding(bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = themeOption.name,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFE0E2E8)
-            )
-            Text(
-                text = themeOption.description,
-                fontSize = 12.sp,
-                color = Color(0xFF9499A8),
-                modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
-            )
-        }
+        Text(
+            text = themeOption.name,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFE0E2E8),
+            modifier = Modifier.padding(bottom = 14.dp)
+        )
 
-        // Live Actual Keyboard View preview in selected theme color scheme (exact match to real keyboard dimensions, padding & UI)
+        // Live Actual Keyboard View preview with margins left and right, completely non-touchable
         KiebordTheme(colorScheme = themeOption.scheme) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 14.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(themeOption.scheme.containerBackground)
             ) {
                 KeyboardRootView(
@@ -327,7 +318,19 @@ private fun ThemePreviewBottomSheetContent(
                     defaultShowNumberRow = preferences.showNumberRow,
                     initialRowHeight = (60 * preferences.keyboardHeightScale).dp,
                     applySystemInsets = false,
+                    isInteractive = false,
                     navBarBottomInset = 0.dp
+                )
+
+                // Transparent interceptor layer so the demo keyboard is 100% non-touchable
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        )
                 )
             }
         }
@@ -340,29 +343,23 @@ private fun ThemePreviewBottomSheetContent(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
         ) {
-            // Key Border Toggle (located directly below real keyboard preview)
+            // Key Border Toggle (located directly below real keyboard preview, clean without secondary text)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFF25272B))
                     .clickable { onToggleKeyBorders(!showKeyBorders) }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Key borders",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFFE0E2E8)
-                    )
-                    Text(
-                        text = if (showKeyBorders) "Keyborder mode enabled" else "Flat mode enabled",
-                        fontSize = 12.sp,
-                        color = Color(0xFF9499A8)
-                    )
-                }
+                Text(
+                    text = "Key borders",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFE0E2E8),
+                    modifier = Modifier.weight(1f)
+                )
                 Switch(
                     checked = showKeyBorders,
                     onCheckedChange = onToggleKeyBorders,

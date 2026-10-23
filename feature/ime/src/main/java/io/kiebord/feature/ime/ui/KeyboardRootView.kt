@@ -82,6 +82,7 @@ fun KeyboardRootView(
     onDeleteSwipeCancel: () -> Unit = {},
     navBarBottomInset: Dp = 0.dp,
     applySystemInsets: Boolean = true,
+    isInteractive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -189,7 +190,7 @@ fun KeyboardRootView(
         gestureTrail = emptyList()
     }
 
-    val isKeysInteractive = !isResizerOpen
+    val isKeysInteractive = isInteractive && !isResizerOpen
     val numberRowEffectiveHeight = if (showNumberRow && !displayLayout.id.startsWith("symbols")) 44.dp else 0.dp
     val keyboardContentHeight = (keyRowHeight * 4) + numberRowEffectiveHeight
 
