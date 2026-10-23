@@ -2,6 +2,8 @@ package io.kiebord.feature.ime.ui.resizer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,37 +63,23 @@ fun LiveResizerOverlay(
     val currentMarginState = rememberUpdatedState(currentHorizontalMargin)
     val onMarginChangeState = rememberUpdatedState(onHorizontalMarginChange)
 
-    // Bounding wireframe outline (Borno Keyboard styling, NO fillMaxSize to prevent window expansion)
+    // Bounding wireframe outline with touch consumption (prevents keyboard touches beneath)
     Box(
         modifier = modifier
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        event.changes.forEach { it.consume() }
+                        if (event.changes.all { !it.pressed }) break
+                    }
+                }
+            }
             .border(2.dp, accentColor, RoundedCornerShape(12.dp))
-            .background(Color.Black.copy(alpha = 0.28f))
+            .background(Color.Black.copy(alpha = 0.32f))
     ) {
-        // 1. Four Corner L-Brackets for transform aesthetics
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .size(14.dp)
-                .border(2.5.dp, accentColor, RoundedCornerShape(topStart = 10.dp))
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(14.dp)
-                .border(2.5.dp, accentColor, RoundedCornerShape(topEnd = 10.dp))
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .size(14.dp)
-                .border(2.5.dp, accentColor, RoundedCornerShape(bottomStart = 10.dp))
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .size(14.dp)
-                .border(2.5.dp, accentColor, RoundedCornerShape(bottomEnd = 10.dp))
-        )
 
         // 2. Top Drag Handle (pill centered on top border for smooth height resizing)
         Box(
@@ -204,34 +192,54 @@ fun LiveResizerOverlay(
             )
         }
 
-        // 6. Centered Floating Action Island (fully visible, never cut off)
+        // 6. Centered Floating Action Island matching active keyboard theme
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
                 .shadow(elevation = 14.dp, shape = RoundedCornerShape(26.dp))
                 .clip(RoundedCornerShape(26.dp))
-                .background(Color(0xF01E1F22))
-                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(26.dp))
+                .background(colorScheme.containerBackground)
+                .border(1.dp, colorScheme.keyForeground.copy(alpha = 0.18f), RoundedCornerShape(26.dp))
                 .padding(horizontal = 14.dp, vertical = 6.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Move / Drag Affordance Icon
-                Icon(
-                    imageVector = Icons.Outlined.DragHandle,
-                    contentDescription = "Resize",
-                    tint = colorScheme.keyForeground.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp)
-                )
+                // Move / Drag Handle (Dragging here moves keyboard chin & horizontal margin)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colorScheme.keyForeground.copy(alpha = 0.08f))
+                        .padding(horizontal = 6.dp, vertical = 6.dp)
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val deltaChin = with(density) { (-dragAmount.y).toDp() }
+                                val newChin = (currentChinState.value + deltaChin).coerceIn(0.dp, 48.dp)
+                                onChinChangeState.value(newChin)
+
+                                val deltaMargin = with(density) { (dragAmount.x / 2f).toDp() }
+                                val newMargin = (currentMarginState.value + deltaMargin).coerceIn(0.dp, 48.dp)
+                                onMarginChangeState.value(newMargin)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DragHandle,
+                        contentDescription = "Move Keyboard",
+                        tint = colorScheme.keyForeground.copy(alpha = 0.85f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
 
                 // Divider
                 Box(
                     modifier = Modifier
                         .width(1.dp)
                         .height(20.dp)
-                        .background(Color.White.copy(alpha = 0.15f))
+                        .background(colorScheme.keyForeground.copy(alpha = 0.15f))
                 )
 
                 // Reset Button
@@ -260,7 +268,7 @@ fun LiveResizerOverlay(
                     modifier = Modifier
                         .width(1.dp)
                         .height(20.dp)
-                        .background(Color.White.copy(alpha = 0.15f))
+                        .background(colorScheme.keyForeground.copy(alpha = 0.15f))
                 )
 
                 // Cancel Button
@@ -271,7 +279,7 @@ fun LiveResizerOverlay(
                     Icon(
                         imageVector = Icons.Outlined.Close,
                         contentDescription = "Cancel",
-                        tint = colorScheme.keyForeground.copy(alpha = 0.8f),
+                        tint = colorScheme.keyForeground.copy(alpha = 0.85f),
                         modifier = Modifier.size(20.dp)
                     )
                 }

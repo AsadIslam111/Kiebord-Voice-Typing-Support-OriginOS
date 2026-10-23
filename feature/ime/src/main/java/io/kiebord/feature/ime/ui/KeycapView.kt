@@ -68,7 +68,8 @@ fun KeycapView(
     onDeleteSwipeCancel: () -> Unit = {},
     onGestureStart: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
     onGestureMove: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
-    onGestureEnd: () -> Unit = {}
+    onGestureEnd: () -> Unit = {},
+    isInteractive: Boolean = true
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
@@ -104,10 +105,10 @@ fun KeycapView(
 
     val displaySymbolLabel = key.displayLabel(shiftState)
 
-    // Key shape: stadium pills for bottom row action keys; standard for all others
-    val isPillKey = isBottomRow && (isPillColoredKey || key.type == KeyType.SWITCH_LANGUAGE)
+    // Key shape: When key borders are enabled, all keys including spacebar use standard 8.dp radius.
+    // In flat mode (!showKeyBorders), floating accent pills (space, sym, action) use 20.dp stadium pills.
     val keyShape = when {
-        isPillKey -> RoundedCornerShape(20.dp)
+        !showKeyBorders && isPillColoredKey -> RoundedCornerShape(20.dp)
         else -> RoundedCornerShape(8.dp)
     }
 
@@ -115,7 +116,7 @@ fun KeycapView(
     val isReducedHeightKey = !showKeyBorders && isPillColoredKey
     val verticalPadding = if (isReducedHeightKey) 7.dp else 3.dp
 
-    // Capture latest parameters in updated states to allow pointerInput(Unit) without gesture cancellation
+    // Capture latest parameters in updated states to allow pointerInput without gesture cancellation
     val currentKey = rememberUpdatedState(key)
     val currentOnTap = rememberUpdatedState(onKeyTap)
     val currentOnLongPress = rememberUpdatedState(onKeyLongPress)
@@ -144,7 +145,8 @@ fun KeycapView(
             .padding(horizontal = 3.dp, vertical = verticalPadding)
             .clip(keyShape)
             .background(activeBackground)
-            .pointerInput(Unit) {
+            .pointerInput(isInteractive) {
+                if (!isInteractive) return@pointerInput
                 coroutineScope {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)

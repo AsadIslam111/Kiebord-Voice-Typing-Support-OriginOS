@@ -236,31 +236,31 @@ private fun AbstractThemeCard(
                 }
             }
 
-            // Abstract Swatches: Space key & compact Enter key on solid theme container (reduced height)
+            // Abstract Swatches: Space key & Enter key on solid theme container
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(bottom = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
-                // Space key swatch (reduced height)
+                // Space key swatch
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
+                        .height(13.dp)
+                        .clip(RoundedCornerShape(4.dp))
                         .background(themeOption.scheme.keyBackground)
                 )
 
-                // Compact Enter key swatch (reduced height)
+                // Enter key swatch (accent color)
                 Box(
                     modifier = Modifier
-                        .width(14.dp)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(themeOption.scheme.actionKeyBackground)
+                        .width(22.dp)
+                        .height(13.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(themeOption.scheme.accentColor)
                 )
             }
         }

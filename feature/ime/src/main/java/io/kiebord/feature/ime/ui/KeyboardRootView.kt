@@ -189,6 +189,10 @@ fun KeyboardRootView(
         gestureTrail = emptyList()
     }
 
+    val isKeysInteractive = !isResizerOpen
+    val numberRowEffectiveHeight = if (showNumberRow && !displayLayout.id.startsWith("symbols")) 44.dp else 0.dp
+    val keyboardContentHeight = (keyRowHeight * 4) + numberRowEffectiveHeight
+
     val context = LocalContext.current
     val handleToolbarAction: (ToolbarAction) -> Unit = { action ->
         when (action) {
@@ -272,7 +276,7 @@ fun KeyboardRootView(
                 TextEditPanelView(
                     onTextAction = onTextAction,
                     onClose = { isTextEditOpen = false },
-                    height = toolbarHeight + (keyRowHeight * 4)
+                    height = toolbarHeight + keyboardContentHeight
                 )
             } else {
                 // Single unified Top Bar row (46dp height)
@@ -398,7 +402,7 @@ fun KeyboardRootView(
                             }
                         },
                         onToolClick = handleToolbarAction,
-                        height = keyRowHeight * 4,
+                        height = keyboardContentHeight,
                         rootCoordinates = rootCoordinates,
                         onReportItemBounds = { act, bounds -> drawerItemBounds[act] = bounds },
                         onReportContainerBounds = { bounds -> drawerContainerBounds = bounds },
@@ -421,7 +425,7 @@ fun KeyboardRootView(
                         onDeleteClip = { clip -> clipboardManager?.deleteClip(clip) },
                         onClearAll = { clipboardManager?.clearAllUnpinned() },
                         onClose = { isClipboardOpen = false },
-                        modifier = Modifier.height(keyRowHeight * 4)
+                        modifier = Modifier.height(keyboardContentHeight)
                     )
                 } else if (isEmojiOpen) {
                     EmojiPanelView(
@@ -432,7 +436,7 @@ fun KeyboardRootView(
                             onKeyTap(KeyDef(type = KeyType.DELETE))
                         },
                         onClose = { isEmojiOpen = false },
-                        height = keyRowHeight * 4
+                        height = keyboardContentHeight
                     )
                 } else {
                     // Optional 5th Number Row at the top
@@ -440,6 +444,7 @@ fun KeyboardRootView(
                         NumberRowBar(
                             language = displayLayout.language,
                             showKeyBorders = showKeyBorders,
+                            isInteractive = isKeysInteractive,
                             onKeyTap = onKeyTap,
                             onKeyLongPress = onKeyLongPress
                         )
@@ -487,6 +492,7 @@ fun KeyboardRootView(
                                 isBottomRow = isBottomRow,
                                 isSlidingSymbolMode = isSlidingSymbolMode,
                                 showKeyBorders = showKeyBorders,
+                                isInteractive = isKeysInteractive,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)
                                     .fillMaxHeight(),

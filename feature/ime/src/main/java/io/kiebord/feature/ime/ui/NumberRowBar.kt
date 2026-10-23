@@ -18,6 +18,7 @@ fun NumberRowBar(
     modifier: Modifier = Modifier,
     height: Dp = 44.dp,
     showKeyBorders: Boolean = true,
+    isInteractive: Boolean = true,
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {}
 ) {
@@ -60,6 +61,7 @@ fun NumberRowBar(
                 key = key,
                 shiftState = ShiftState.UNSHIFTED,
                 showKeyBorders = showKeyBorders,
+                isInteractive = isInteractive,
                 modifier = Modifier
                     .weight(1.0f)
                     .fillMaxHeight(),
