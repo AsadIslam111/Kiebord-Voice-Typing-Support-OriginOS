@@ -36,6 +36,7 @@ import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
+import io.kiebord.feature.ime.gesture.KeyCentroid
 import io.kiebord.feature.ime.ui.clipboard.ClipboardPanelView
 import io.kiebord.feature.ime.ui.emoji.EmojiPanelView
 import io.kiebord.feature.ime.ui.resizer.LiveResizerOverlay
@@ -60,6 +61,7 @@ fun KeyboardRootView(
     onCandidateSelect: (SuggestionCandidate) -> Unit = {},
     clipboardManager: SandboxedClipboardManager? = null,
     onPasteClip: (String) -> Unit = {},
+    onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
     initialRowHeight: Dp = 60.dp,
     navBarBottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier
@@ -77,6 +79,7 @@ fun KeyboardRootView(
     var quickDragState by remember { mutableStateOf<QuickSymbolDragState?>(null) }
     var isSlidingSymbolMode by remember { mutableStateOf(false) }
     var dragStartPosInRoot by remember { mutableStateOf<Offset?>(null) }
+    var gestureTrail by remember { mutableStateOf<List<Offset>>(emptyList()) }
 
     // Phase 5, 6 & 8: Toolbar, Emoji, Resizer, Number row, TextEdit, Clipboard, and Tools Drawer states
     var toolOrder by remember {
@@ -118,6 +121,7 @@ fun KeyboardRootView(
     // Clear key coordinate cache whenever active layout changes to prevent stale hits
     LaunchedEffect(isSlidingSymbolMode, displayLayout.id) {
         keyCoordinatesMap.clear()
+        gestureTrail = emptyList()
     }
 
     val context = LocalContext.current
@@ -478,6 +482,52 @@ fun KeyboardRootView(
                                     isSlidingSymbolMode = false
                                     quickDragState = null
                                     dragStartPosInRoot = null
+                                },
+                                onGestureStart = { keyCoords, posInKey ->
+                                    val rCoords = rootCoordinates
+                                    if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                                        val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
+                                        gestureTrail = listOf(rootPos)
+                                    }
+                                },
+                                onGestureMove = { keyCoords, posInKey ->
+                                    val rCoords = rootCoordinates
+                                    if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                                        val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
+                                        val lastPos = gestureTrail.lastOrNull()
+                                        if (lastPos == null || (rootPos - lastPos).getDistance() >= 4f) {
+                                            gestureTrail = gestureTrail + rootPos
+                                        }
+                                    }
+                                },
+                                onGestureEnd = {
+                                    val trail = gestureTrail
+                                    gestureTrail = emptyList()
+                                    if (trail.size >= 2) {
+                                        val rCoords = rootCoordinates
+                                        if (rCoords != null && rCoords.isAttached) {
+                                            val centroids = mutableListOf<KeyCentroid>()
+                                            var totalWidth = 0f
+                                            var count = 0
+                                            for ((k, coords) in keyCoordinatesMap) {
+                                                if (k.type == KeyType.CHARACTER && coords.isAttached) {
+                                                    val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
+                                                    val width = coords.size.width.toFloat()
+                                                    val height = coords.size.height.toFloat()
+                                                    val cx = topLeft.x + width / 2f
+                                                    val cy = topLeft.y + height / 2f
+                                                    val ch = if (k.label.isNotEmpty()) k.label.lowercase() else ""
+                                                    if (ch.isNotEmpty()) {
+                                                        centroids.add(KeyCentroid(ch, cx, cy))
+                                                        totalWidth += width
+                                                        count++
+                                                    }
+                                                }
+                                            }
+                                            val keyWidthPx = if (count > 0) totalWidth / count else 60f
+                                            onGestureCommit(trail, centroids, keyWidthPx)
+                                        }
+                                    }
                                 }
                             )
                         }
@@ -525,5 +575,95 @@ fun KeyboardRootView(
                 modifier = Modifier.matchParentSize()
             )
         }
+
+        // 4. Single-colored Borno Keyboard-style Gesture Trail Overlay
+        GestureTrailOverlay(
+            trail = gestureTrail,
+            accentColor = colorScheme.accentColor,
+            modifier = Modifier.matchParentSize()
+        )
     }
 }
+
+/**
+ * Single-colored, smoothly tapering and fading gesture trail overlay styled like Borno Keyboard.
+ * Renders an ink-ribbon comet trailing the fingertip that dynamically evaporates at the tail.
+ */
+@Composable
+fun GestureTrailOverlay(
+    trail: List<Offset>,
+    accentColor: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier
+) {
+    if (trail.size < 2) return
+
+    val maxTrailDistance = with(LocalDensity.current) { 220.dp.toPx() }
+    val headWidthPx = with(LocalDensity.current) { 9.dp.toPx() }
+    val tailWidthPx = with(LocalDensity.current) { 1.5.dp.toPx() }
+
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        // Collect visible trailing points backwards from current fingertip up to maxTrailDistance
+        val visiblePoints = mutableListOf<Offset>()
+        visiblePoints.add(trail.last())
+        var accumulatedDist = 0f
+
+        for (i in trail.size - 1 downTo 1) {
+            val pHead = trail[i]
+            val pPrev = trail[i - 1]
+            val segDist = (pHead - pPrev).getDistance()
+            if (accumulatedDist + segDist <= maxTrailDistance) {
+                accumulatedDist += segDist
+                visiblePoints.add(pPrev)
+            } else {
+                // Interpolate cutoff point to smoothly terminate the tail
+                val remaining = maxTrailDistance - accumulatedDist
+                if (remaining > 0f && segDist > 0f) {
+                    val ratio = remaining / segDist
+                    val cutoff = Offset(
+                        pHead.x + (pPrev.x - pHead.x) * ratio,
+                        pHead.y + (pPrev.y - pHead.y) * ratio
+                    )
+                    visiblePoints.add(cutoff)
+                }
+                break
+            }
+        }
+
+        if (visiblePoints.size < 2) {
+            visiblePoints.clear()
+            visiblePoints.addAll(trail.takeLast(2))
+        }
+
+        // visiblePoints was collected [head -> tail]. Reverse to draw [tail -> head]
+        val points = visiblePoints.asReversed()
+        val n = points.size
+
+        // Draw single-colored ribbon tapering quadratically from tail to head
+        for (i in 0 until n - 1) {
+            val p0 = points[i]
+            val p1 = points[i + 1]
+            val progress = (i + 1).toFloat() / (n - 1).toFloat()
+            // Quadratic easing gives that iconic slender Borno Keyboard comet tail and rounded fingertip
+            val widthFactor = progress * progress
+            val strokeWidth = tailWidthPx + widthFactor * (headWidthPx - tailWidthPx)
+            val alpha = 0.08f + progress * 0.77f // 0.08 at tail -> 0.85 at head
+
+            drawLine(
+                color = accentColor.copy(alpha = alpha),
+                start = p0,
+                end = p1,
+                strokeWidth = strokeWidth,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+        }
+
+        // Smooth rounded fingertip at the head
+        val headPoint = points.last()
+        drawCircle(
+            color = accentColor.copy(alpha = 0.85f),
+            radius = headWidthPx / 2f,
+            center = headPoint
+        )
+    }
+}
+

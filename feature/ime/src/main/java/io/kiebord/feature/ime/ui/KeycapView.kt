@@ -58,7 +58,10 @@ fun KeycapView(
     onSlidingDragStart: (KeyDef, LayoutCoordinates, Offset) -> Unit = { _, _, _ -> },
     onSlidingDragMove: (Offset) -> Unit = {},
     onSlidingDragEnd: (Offset) -> Unit = {},
-    onSpacebarTrackpad: (Int) -> Unit = {}
+    onSpacebarTrackpad: (Int) -> Unit = {},
+    onGestureStart: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
+    onGestureMove: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
+    onGestureEnd: () -> Unit = {}
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
@@ -105,6 +108,9 @@ fun KeycapView(
     val currentOnSlidingMove = rememberUpdatedState(onSlidingDragMove)
     val currentOnSlidingEnd = rememberUpdatedState(onSlidingDragEnd)
     val currentOnSpacebarTrackpad = rememberUpdatedState(onSpacebarTrackpad)
+    val currentOnGestureStart = rememberUpdatedState(onGestureStart)
+    val currentOnGestureMove = rememberUpdatedState(onGestureMove)
+    val currentOnGestureEnd = rememberUpdatedState(onGestureEnd)
 
     // Flat Material 3 key styling with zero drop shadows
     Box(
@@ -127,6 +133,8 @@ fun KeycapView(
                         var isMoreKeysActive = false
                         var isSlidingDrag = false
                         var isSpacebarTrackpad = false
+                        var isGestureTyping = false
+                        var gestureEnded = false
                         var lastTrackpadX = 0f
                         val trackpadStepPx = with(density) { 14.dp.toPx() }
 
@@ -149,7 +157,14 @@ fun KeycapView(
                                 // Touch released!
                                 longPressJob.cancel()
                                 val delta = change.position - initialDownPos
-                                if (isSlidingDrag) {
+                                if (isGestureTyping) {
+                                    val coords = keyCoordinates
+                                    if (coords != null && coords.isAttached) {
+                                        currentOnGestureMove.value(coords, change.position)
+                                    }
+                                    gestureEnded = true
+                                    currentOnGestureEnd.value()
+                                } else if (isSlidingDrag) {
                                     currentOnSlidingEnd.value(delta)
                                 } else if (isMoreKeysActive) {
                                     currentOnMoreKeysCommit.value()
@@ -196,7 +211,28 @@ fun KeycapView(
                                 }
                             }
 
-                            if (isSlidingDrag) {
+                            // Gesture typing detector on character keys
+                            if (initialKey.type == KeyType.CHARACTER && !isMoreKeysActive && !isSlidingDrag) {
+                                if (!isGestureTyping && distance > 20f) {
+                                    longPressJob.cancel()
+                                    isGestureTyping = true
+                                    isPressed = false
+                                    val coords = keyCoordinates
+                                    if (coords != null && coords.isAttached) {
+                                        currentOnGestureStart.value(coords, initialDownPos)
+                                        currentOnGestureMove.value(coords, currentPos)
+                                    }
+                                } else if (isGestureTyping) {
+                                    val coords = keyCoordinates
+                                    if (coords != null && coords.isAttached) {
+                                        currentOnGestureMove.value(coords, currentPos)
+                                    }
+                                }
+                            }
+
+                            if (isGestureTyping) {
+                                change.consume()
+                            } else if (isSlidingDrag) {
                                 change.consume()
                                 currentOnSlidingMove.value(delta)
                             } else if (isMoreKeysActive) {
@@ -206,6 +242,9 @@ fun KeycapView(
                                     currentOnMoreKeysHover.value(coords, currentPos)
                                 }
                             }
+                        }
+                        if (isGestureTyping && !gestureEnded) {
+                            currentOnGestureEnd.value()
                         }
                         isPressed = false
                     }
@@ -220,6 +259,7 @@ fun KeycapView(
                 color = colorScheme.keyForeground.copy(alpha = 0.5f),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Normal,
+                fontFamily = KiebordTheme.fontFamily,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = 3.dp, end = 5.dp)
@@ -294,7 +334,8 @@ fun KeycapView(
                     text = key.displayLabel(shiftState).ifEmpty { "English" },
                     color = colorScheme.keyForeground.copy(alpha = 0.45f),
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = KiebordTheme.fontFamily
                 )
             }
             else -> {
@@ -304,7 +345,9 @@ fun KeycapView(
                     color = foregroundColor,
                     fontSize = textSize,
                     fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Bold else FontWeight.Medium,
+                    fontFamily = KiebordTheme.fontFamily,
                     style = androidx.compose.ui.text.TextStyle(
+                        fontFamily = KiebordTheme.fontFamily,
                         platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
                         lineHeight = textSize,
                         lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
