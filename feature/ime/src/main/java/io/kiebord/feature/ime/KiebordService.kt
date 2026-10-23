@@ -1,7 +1,6 @@
 package io.kiebord.feature.ime
 
 import android.inputmethodservice.InputMethodService
-import android.view.KeyEvent
 import android.view.View
 import android.view.Window
 import android.view.inputmethod.EditorInfo
@@ -10,12 +9,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.core.view.WindowCompat
 import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
+import io.kiebord.feature.ime.translit.BornoTransliterationManager
 import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
@@ -23,6 +24,7 @@ import io.kiebord.theme.KiebordTheme
 class KiebordService : InputMethodService() {
 
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
+    private val bornoManager = BornoTransliterationManager { currentInputConnection }
 
     // Configurable state
     private var primaryAlphaLayout: KeyboardLayoutDef = PredefinedLayouts.EnglishQwerty
@@ -38,6 +40,8 @@ class KiebordService : InputMethodService() {
 
     override fun onConfigureWindow(win: Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
+        // Enable edge-to-edge windowing so navigation insets can be safely padded in Compose
+        WindowCompat.setDecorFitsSystemWindows(win, false)
         lifecycleOwner.attachToView(win.decorView)
     }
 
@@ -70,10 +74,12 @@ class KiebordService : InputMethodService() {
         shiftState = ShiftState.UNSHIFTED
         isSymbolsMode = false
         activeLayout = primaryAlphaLayout
+        bornoManager.reset()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        bornoManager.finishComposing()
         lifecycleOwner.onStop()
     }
 
@@ -88,7 +94,14 @@ class KiebordService : InputMethodService() {
         when (key.type) {
             KeyType.CHARACTER -> {
                 val text = key.displayLabel(shiftState)
-                ic.commitText(text, 1)
+
+                // If in Borno Phonetic mode and typing letters, stream through transliteration manager
+                if (activeLayout.id == "bn_borno" && isTransliterableChar(text)) {
+                    bornoManager.handleCharacter(text)
+                } else {
+                    bornoManager.finishComposing()
+                    ic.commitText(text, 1)
+                }
 
                 // If in one-shot shift mode, revert to unshifted after one character
                 if (shiftState == ShiftState.ONE_SHOT) {
@@ -103,6 +116,11 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.DELETE -> {
+                // If currently composing in Borno phonetic, delete within the composing buffer first
+                if (bornoManager.handleDelete()) {
+                    return
+                }
+
                 val selectedText = ic.getSelectedText(0)
                 if (selectedText.isNullOrEmpty()) {
                     ic.deleteSurroundingText(1, 0)
@@ -111,6 +129,7 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.ACTION -> {
+                bornoManager.finishComposing()
                 val currentAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
                 if (currentAction != null && currentAction != EditorInfo.IME_ACTION_NONE && currentAction != EditorInfo.IME_ACTION_UNSPECIFIED) {
                     ic.performEditorAction(currentAction)
@@ -119,9 +138,11 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.SPACE -> {
+                bornoManager.finishComposing()
                 ic.commitText(" ", 1)
             }
             KeyType.SYMBOLS -> {
+                bornoManager.finishComposing()
                 when (key.label) {
                     "?123" -> {
                         if (!isSymbolsMode) {
@@ -152,11 +173,12 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.SWITCH_LANGUAGE -> {
-                // Toggle between English QWERTY and Bengali Probhat
-                primaryAlphaLayout = if (primaryAlphaLayout.id == "en_qwerty") {
-                    PredefinedLayouts.BengaliProbhat
-                } else {
-                    PredefinedLayouts.EnglishQwerty
+                bornoManager.finishComposing()
+                // Cycle between English QWERTY -> Bengali Borno -> Bengali Probhat -> English QWERTY
+                primaryAlphaLayout = when (primaryAlphaLayout.id) {
+                    "en_qwerty" -> PredefinedLayouts.BengaliBorno
+                    "bn_borno" -> PredefinedLayouts.BengaliProbhat
+                    else -> PredefinedLayouts.EnglishQwerty
                 }
                 if (!isSymbolsMode) {
                     activeLayout = primaryAlphaLayout
@@ -174,10 +196,17 @@ class KiebordService : InputMethodService() {
             return
         }
         val ic = currentInputConnection ?: return
+        bornoManager.finishComposing()
         if (!key.flickUp.isNullOrEmpty()) {
             ic.commitText(key.flickUp!!, 1)
         } else if (key.moreKeys.isNotEmpty()) {
             ic.commitText(key.moreKeys.first(), 1)
         }
+    }
+
+    private fun isTransliterableChar(text: String): Boolean {
+        if (text.length != 1) return false
+        val c = text[0]
+        return (c in 'a'..'z') || (c in 'A'..'Z')
     }
 }

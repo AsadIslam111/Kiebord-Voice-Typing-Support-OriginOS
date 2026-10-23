@@ -125,6 +125,13 @@ object PredefinedLayouts {
         )
     )
 
+    val BengaliBorno = KeyboardLayoutDef(
+        id = "bn_borno",
+        name = "Bengali (Borno Phonetic)",
+        language = "bn",
+        rows = EnglishQwerty.rows
+    )
+
     val Symbols = KeyboardLayoutDef(
         id = "symbols_1",
         name = "Symbols",

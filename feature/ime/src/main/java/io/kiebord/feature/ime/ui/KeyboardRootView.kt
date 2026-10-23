@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -32,7 +33,8 @@ fun KeyboardRootView(
         modifier = modifier
             .fillMaxWidth()
             .background(colorScheme.containerBackground)
-            .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 8.dp)
+            .navigationBarsPadding()
+            .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)
     ) {
         // Layout key rows
         layout.rows.forEach { row ->
@@ -45,7 +47,8 @@ fun KeyboardRootView(
                     val effectiveKey = if (key.type == KeyType.SPACE && key.label.isBlank()) {
                         val spaceLabel = when {
                             layout.id.startsWith("symbols") -> "Space"
-                            layout.language == "bn" -> "বাংলা"
+                            layout.id == "bn_borno" -> "বাংলা (Borno)"
+                            layout.id == "bn_probhat" -> "বাংলা (Probhat)"
                             else -> "English"
                         }
                         key.copy(label = spaceLabel)
