@@ -1,6 +1,10 @@
 package io.kiebord.feature.ime.ui.toolbar
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -17,27 +21,41 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CropFree
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Pin
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.TextFields
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,13 +73,30 @@ data class DrawerTool(
 
 @Composable
 fun ToolsDrawerView(
-    toolOrder: List<ToolbarAction>,
-    onToolOrderChange: (List<ToolbarAction>) -> Unit,
+    drawerTools: List<ToolbarAction>,
+    onDrawerToolsChange: (List<ToolbarAction>) -> Unit,
+    onInterchangeWithToolbar: (drawerAction: ToolbarAction, toolbarAction: ToolbarAction) -> Unit,
+    onMoveToToolbar: (drawerAction: ToolbarAction) -> Unit,
     onToolClick: (ToolbarAction) -> Unit,
     height: Dp,
-    modifier: Modifier = Modifier
+    rootCoordinates: LayoutCoordinates?,
+    onReportItemBounds: (ToolbarAction, Rect) -> Unit,
+    onReportContainerBounds: (Rect) -> Unit,
+    hoveredDrawerAction: ToolbarAction?,
+    isOverDrawerBlankSpace: Boolean,
+    hoveredToolbarAction: ToolbarAction?,
+    modifier: Modifier = Modifier,
+    onDraggingStateChange: (draggingAction: ToolbarAction?, fingerPosInRoot: Offset?) -> Unit = { _, _ -> }
 ) {
     val colorScheme = KiebordTheme.colorScheme
+    val density = LocalDensity.current
+
+    val currentDrawerTools by rememberUpdatedState(drawerTools)
+    val currentOnOrderChange by rememberUpdatedState(onDrawerToolsChange)
+    val currentOnInterchange by rememberUpdatedState(onInterchangeWithToolbar)
+    val currentOnMoveToToolbar by rememberUpdatedState(onMoveToToolbar)
+    val currentOnDraggingStateChange by rememberUpdatedState(onDraggingStateChange)
+    val currentHoveredToolbarAction by rememberUpdatedState(hoveredToolbarAction)
 
     val allToolsMap = remember {
         mapOf(
@@ -70,60 +105,125 @@ fun ToolsDrawerView(
             ToolbarAction.THEME_TOGGLE to DrawerTool(ToolbarAction.THEME_TOGGLE, Icons.Outlined.Palette, "Theme"),
             ToolbarAction.RESIZER to DrawerTool(ToolbarAction.RESIZER, Icons.Outlined.CropFree, "Resize"),
             ToolbarAction.NUMBER_ROW_TOGGLE to DrawerTool(ToolbarAction.NUMBER_ROW_TOGGLE, Icons.Outlined.Pin, "Number row"),
-            ToolbarAction.EMOJI to DrawerTool(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emoji")
+            ToolbarAction.EMOJI to DrawerTool(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emoji"),
+            ToolbarAction.ONE_HANDED to DrawerTool(ToolbarAction.ONE_HANDED, Icons.Outlined.TouchApp, "One-handed"),
+            ToolbarAction.SETTINGS to DrawerTool(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings")
         )
     }
 
-    // Grid geometry measurement for continuous 2D free dragging
-    var gridWidthPx by remember { mutableFloatStateOf(0f) }
-    var gridHeightPx by remember { mutableFloatStateOf(0f) }
     var draggingAction by remember { mutableStateOf<ToolbarAction?>(null) }
-    var dragOriginIndex by remember { mutableIntStateOf(0) }
-    var currentSlotIndex by remember { mutableIntStateOf(0) }
+    var dragStartIndex by remember { mutableIntStateOf(0) }
     var accumulatedDragX by remember { mutableFloatStateOf(0f) }
     var accumulatedDragY by remember { mutableFloatStateOf(0f) }
+    var itemStartOffsetInRoot by remember { mutableStateOf(Offset.Zero) }
 
     val numColumns = 3
-    val totalRows = (toolOrder.size + numColumns - 1) / numColumns
-    val colWidthPx = if (gridWidthPx > 0f) gridWidthPx / numColumns else 100f
-    val rowHeightPx = if (gridHeightPx > 0f && totalRows > 0) gridHeightPx / totalRows else 80f
+    val addThresholdPx = with(density) { 30.dp.toPx() }
+    val isOverAddThreshold = draggingAction != null && accumulatedDragY < -addThresholdPx
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
             .background(colorScheme.containerBackground)
-            // Generous 32dp horizontal margin so items are never stretched too wide
             .padding(horizontal = 32.dp, vertical = 6.dp)
+            .onGloballyPositioned { coords ->
+                rootCoordinates?.let { root ->
+                    if (coords.isAttached && root.isAttached) {
+                        onReportContainerBounds(root.localBoundingBoxOf(coords))
+                    }
+                }
+            }
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Subtitle centered: "Hold and drag to customize"
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Hold and drag to customize",
-                color = colorScheme.keyForeground.copy(alpha = 0.8f),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Normal
-            )
+        // Subtitle or active drop zone banner
+        if (hoveredDrawerAction != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(
+                        width = 1.5.dp,
+                        color = colorScheme.accentColor,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .background(colorScheme.accentColor.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.SwapHoriz,
+                        contentDescription = null,
+                        tint = colorScheme.accentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Drop to swap with ${allToolsMap[hoveredDrawerAction]?.label ?: "option"}",
+                        color = colorScheme.accentColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        } else if (isOverDrawerBlankSpace) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(
+                        width = 1.5.dp,
+                        color = colorScheme.accentColor,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .background(colorScheme.accentColor.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                        tint = colorScheme.accentColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Drop to move here from toolbar",
+                        color = colorScheme.accentColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Hold and drag to customize",
+                    color = colorScheme.keyForeground.copy(alpha = 0.8f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal
+                )
+            }
         }
 
         // 3-Column Balanced Grid container (exactly 3 items per row, perfectly centered)
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { coords ->
-                    gridWidthPx = coords.size.width.toFloat()
-                    gridHeightPx = coords.size.height.toFloat()
-                },
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val chunkedTools = toolOrder.chunked(numColumns)
+            val chunkedTools = drawerTools.chunked(numColumns)
             chunkedTools.forEachIndexed { rowIndex, rowActions ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -132,89 +232,114 @@ fun ToolsDrawerView(
                 ) {
                     rowActions.forEachIndexed { colIndex, action ->
                         val globalIndex = rowIndex * numColumns + colIndex
-                        val tool = allToolsMap[action] ?: return@forEachIndexed
-                        val isDragging = draggingAction == action
+                        val tool = allToolsMap[action]
+                        if (tool != null) {
+                            key(action) {
+                                val isDraggingThisItem = draggingAction == action
+                                val isHoveredByToolbar = hoveredDrawerAction == action
+                                var itemCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
-                        val originCol = dragOriginIndex % numColumns
-                        val originRow = dragOriginIndex / numColumns
-                        val curCol = currentSlotIndex % numColumns
-                        val curRow = currentSlotIndex / numColumns
-
-                        val visualTranslationX = if (isDragging) {
-                            accumulatedDragX - (curCol - originCol) * colWidthPx
-                        } else {
-                            0f
-                        }
-                        val visualTranslationY = if (isDragging) {
-                            accumulatedDragY - (curRow - originRow) * rowHeightPx
-                        } else {
-                            0f
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .zIndex(if (isDragging) 10f else 1f)
-                                .graphicsLayer {
-                                    translationX = visualTranslationX
-                                    translationY = visualTranslationY
-                                    scaleX = if (isDragging) 1.15f else 1f
-                                    scaleY = if (isDragging) 1.15f else 1f
-                                    shadowElevation = if (isDragging) 16f else 0f
-                                }
-                                .pointerInput(toolOrder) {
-                                    detectDragGesturesAfterLongPress(
-                                        onDragStart = {
-                                            draggingAction = action
-                                            dragOriginIndex = globalIndex
-                                            currentSlotIndex = globalIndex
-                                            accumulatedDragX = 0f
-                                            accumulatedDragY = 0f
-                                        },
-                                        onDrag = { change, dragAmount ->
-                                            change.consume()
-                                            accumulatedDragX += dragAmount.x
-                                            accumulatedDragY += dragAmount.y
-
-                                            val colShift = Math.round(accumulatedDragX / colWidthPx).toInt()
-                                            val rowShift = Math.round(accumulatedDragY / rowHeightPx).toInt()
-
-                                            val targetCol = (originCol + colShift).coerceIn(0, numColumns - 1)
-                                            val targetRow = (originRow + rowShift).coerceIn(0, totalRows - 1)
-                                            val targetIndex = (targetRow * numColumns + targetCol).coerceIn(0, toolOrder.lastIndex)
-
-                                            if (targetIndex != currentSlotIndex && targetIndex in toolOrder.indices) {
-                                                val mutable = toolOrder.toMutableList()
-                                                val moved = mutable.removeAt(currentSlotIndex)
-                                                mutable.add(targetIndex, moved)
-                                                onToolOrderChange(mutable)
-                                                currentSlotIndex = targetIndex
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .zIndex(if (isDraggingThisItem) 100f else 1f)
+                                    .onGloballyPositioned { coords ->
+                                        itemCoordinates = coords
+                                        rootCoordinates?.let { root ->
+                                            if (coords.isAttached && root.isAttached) {
+                                                onReportItemBounds(action, root.localBoundingBoxOf(coords))
                                             }
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .graphicsLayer {
+                                            translationX = if (isDraggingThisItem) accumulatedDragX else 0f
+                                            translationY = if (isDraggingThisItem) accumulatedDragY else 0f
+                                            scaleX = if (isDraggingThisItem || isHoveredByToolbar) 1.15f else 1f
+                                            scaleY = if (isDraggingThisItem || isHoveredByToolbar) 1.15f else 1f
+                                        }
+                                        .then(
+                                            if (isDraggingThisItem) {
+                                                Modifier.shadow(
+                                                    elevation = 12.dp,
+                                                    shape = RoundedCornerShape(16.dp),
+                                                    clip = false,
+                                                    ambientColor = Color.Black.copy(alpha = 0.45f),
+                                                    spotColor = Color.Black.copy(alpha = 0.65f)
+                                                )
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        .pointerInput(action) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = { localOffset ->
+                                                    draggingAction = action
+                                                    dragStartIndex = globalIndex
+                                                    accumulatedDragX = 0f
+                                                    accumulatedDragY = 0f
+                                                    itemCoordinates?.let { coords ->
+                                                        rootCoordinates?.let { root ->
+                                                            if (coords.isAttached && root.isAttached) {
+                                                                val myBox = root.localBoundingBoxOf(coords)
+                                                                itemStartOffsetInRoot = myBox.topLeft + localOffset
+                                                                currentOnDraggingStateChange(action, itemStartOffsetInRoot)
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    accumulatedDragX += dragAmount.x
+                                                    accumulatedDragY += dragAmount.y
+                                                    val currentFinger = itemStartOffsetInRoot + Offset(accumulatedDragX, accumulatedDragY)
+                                                    currentOnDraggingStateChange(action, currentFinger)
+                                                },
+                                                onDragEnd = {
+                                                    val draggedAct = draggingAction
+                                                    if (draggedAct != null) {
+                                                        if (currentHoveredToolbarAction != null) {
+                                                            // Hovered over specific toolbar option -> INTERCHANGE!
+                                                            currentOnInterchange(draggedAct, currentHoveredToolbarAction!!)
+                                                        } else if (accumulatedDragY < -addThresholdPx) {
+                                                            // Hovered over toolbar generally -> MOVE TO TOOLBAR!
+                                                            currentOnMoveToToolbar(draggedAct)
+                                                        }
+                                                    }
+                                                    draggingAction = null
+                                                    accumulatedDragX = 0f
+                                                    accumulatedDragY = 0f
+                                                    currentOnDraggingStateChange(null, null)
+                                                },
+                                                onDragCancel = {
+                                                    draggingAction = null
+                                                    accumulatedDragX = 0f
+                                                    accumulatedDragY = 0f
+                                                    currentOnDraggingStateChange(null, null)
+                                                }
+                                            )
                                         },
-                                        onDragEnd = {
-                                            draggingAction = null
-                                            accumulatedDragX = 0f
-                                            accumulatedDragY = 0f
-                                        },
-                                        onDragCancel = {
-                                            draggingAction = null
-                                            accumulatedDragX = 0f
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    ToolGridItem(
+                                        tool = tool,
+                                        isDragging = isDraggingThisItem,
+                                        isOverAddThreshold = isOverAddThreshold,
+                                        isHoveredByToolbar = isHoveredByToolbar,
+                                        onClick = {
+                                            if (draggingAction == null) {
+                                                onToolClick(tool.action)
+                                            }
                                         }
                                     )
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            ToolGridItem(
-                                tool = tool,
-                                isDragging = isDragging,
-                                onClick = {
-                                    if (draggingAction == null) {
-                                        onToolClick(tool.action)
-                                    }
                                 }
-                            )
+                            }
                         }
                     }
+                }
 
                     // Fill remainder of row to keep columns balanced
                     repeat(numColumns - rowActions.size) {
@@ -230,6 +355,8 @@ fun ToolsDrawerView(
 private fun ToolGridItem(
     tool: DrawerTool,
     isDragging: Boolean,
+    isOverAddThreshold: Boolean,
+    isHoveredByToolbar: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -239,20 +366,34 @@ private fun ToolGridItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.clickable(onClick = onClick)
     ) {
-        // Tile container: Fixed 54dp compact squircle (never stretched out wide)
+        // Tile container: Fixed 54dp compact squircle
         Box(
             modifier = Modifier
                 .size(54.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(
-                    if (isDragging) colorScheme.accentColor.copy(alpha = 0.35f) else colorScheme.actionKeyBackground
+                    if (isHoveredByToolbar) colorScheme.accentColor.copy(alpha = 0.25f) else colorScheme.actionKeyBackground
+                )
+                .border(
+                    width = if (isDragging || isHoveredByToolbar) 1.5.dp else 0.dp,
+                    color = when {
+                        isHoveredByToolbar -> colorScheme.accentColor
+                        isOverAddThreshold -> colorScheme.accentColor
+                        isDragging -> colorScheme.accentColor.copy(alpha = 0.8f)
+                        else -> Color.Transparent
+                    },
+                    shape = RoundedCornerShape(16.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = tool.icon,
+                imageVector = when {
+                    isHoveredByToolbar -> Icons.Outlined.SwapHoriz
+                    isOverAddThreshold -> Icons.Outlined.KeyboardArrowUp
+                    else -> tool.icon
+                },
                 contentDescription = tool.label,
-                tint = if (isDragging) colorScheme.accentColor else colorScheme.keyForeground,
+                tint = if (isDragging || isOverAddThreshold || isHoveredByToolbar) colorScheme.accentColor else colorScheme.keyForeground,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -261,10 +402,14 @@ private fun ToolGridItem(
 
         // Label below the tile
         Text(
-            text = tool.label,
-            color = colorScheme.keyForeground,
+            text = when {
+                isHoveredByToolbar -> "Swap"
+                isOverAddThreshold -> "Add to top"
+                else -> tool.label
+            },
+            color = if (isOverAddThreshold || isHoveredByToolbar) colorScheme.accentColor else colorScheme.keyForeground,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Normal,
+            fontWeight = if (isOverAddThreshold || isHoveredByToolbar) FontWeight.SemiBold else FontWeight.Normal,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

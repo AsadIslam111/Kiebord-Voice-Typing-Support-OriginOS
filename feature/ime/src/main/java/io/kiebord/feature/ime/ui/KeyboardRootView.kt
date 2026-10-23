@@ -1,9 +1,11 @@
 package io.kiebord.feature.ime.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,6 +13,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,19 +94,55 @@ fun KeyboardRootView(
     var gestureTrail by remember { mutableStateOf<List<Offset>>(emptyList()) }
 
     // Phase 5, 6 & 8: Toolbar, Emoji, Resizer, Number row, TextEdit, Clipboard, and Tools Drawer states
-    var toolOrder by remember {
+    var pinnedTools by remember {
         mutableStateOf(
             listOf(
                 ToolbarAction.TEXT_EDIT,
                 ToolbarAction.CLIPBOARD,
                 ToolbarAction.THEME_TOGGLE,
-                ToolbarAction.RESIZER,
-                ToolbarAction.NUMBER_ROW_TOGGLE,
-                ToolbarAction.EMOJI
+                ToolbarAction.RESIZER
             )
         )
     }
+    var drawerTools by remember {
+        mutableStateOf(
+            listOf(
+                ToolbarAction.NUMBER_ROW_TOGGLE,
+                ToolbarAction.EMOJI,
+                ToolbarAction.ONE_HANDED,
+                ToolbarAction.SETTINGS
+            )
+        )
+    }
+    var isToolbarOptionsVisible by remember { mutableStateOf(false) }
+    var oneHandedSide by remember { mutableStateOf("OFF") } // "OFF", "RIGHT", "LEFT"
     var isEmojiOpen by remember { mutableStateOf(false) }
+
+    // Hit-testing bounding boxes in root coordinates
+    val toolbarItemBounds = remember { mutableMapOf<ToolbarAction, Rect>() }
+    val drawerItemBounds = remember { mutableMapOf<ToolbarAction, Rect>() }
+    var drawerContainerBounds by remember { mutableStateOf<Rect?>(null) }
+
+    // Active drag session across toolbar and drawer
+    var activeDraggingFromToolbar by remember { mutableStateOf<ToolbarAction?>(null) }
+    var activeDraggingFromDrawer by remember { mutableStateOf<ToolbarAction?>(null) }
+    var currentFingerInRoot by remember { mutableStateOf<Offset?>(null) }
+
+    val hoveredDrawerAction: ToolbarAction? = if (activeDraggingFromToolbar != null && currentFingerInRoot != null) {
+        drawerItemBounds.entries.firstOrNull { (_, rect) ->
+            rect.contains(currentFingerInRoot!!)
+        }?.key
+    } else null
+
+    val isOverDrawerBlankSpace: Boolean = if (activeDraggingFromToolbar != null && currentFingerInRoot != null && hoveredDrawerAction == null) {
+        drawerContainerBounds?.contains(currentFingerInRoot!!) ?: false
+    } else false
+
+    val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
+        toolbarItemBounds.entries.firstOrNull { (_, rect) ->
+            rect.contains(currentFingerInRoot!!)
+        }?.key
+    } else null
     var isClipboardOpen by remember { mutableStateOf(false) }
     var isResizerOpen by remember { mutableStateOf(false) }
     var isTextEditOpen by remember { mutableStateOf(false) }
@@ -114,6 +162,13 @@ fun KeyboardRootView(
     val composeNavBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val effectiveNavBarBottom = maxOf(navBarBottomInset, composeNavBottom)
     val totalBottomPadding = chinPadding + effectiveNavBarBottom
+
+    // Reset toolbar options visibility when suggestions clear
+    LaunchedEffect(suggestions.isEmpty()) {
+        if (suggestions.isEmpty()) {
+            isToolbarOptionsVisible = false
+        }
+    }
 
     // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
     val displayLayout = if (isSlidingSymbolMode) PredefinedLayouts.Symbols else layout
@@ -165,8 +220,26 @@ fun KeyboardRootView(
                     clipboardManager?.syncFromSystemClipboard()
                 }
             }
+            ToolbarAction.ONE_HANDED -> {
+                oneHandedSide = when (oneHandedSide) {
+                    "OFF" -> "RIGHT"
+                    "RIGHT" -> "LEFT"
+                    else -> "OFF"
+                }
+            }
+            ToolbarAction.SETTINGS -> {
+                try {
+                    val intent = android.content.Intent(context, Class.forName("io.kiebord.app.MainActivity")).apply {
+                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                } catch (_: Exception) {}
+            }
         }
     }
+
+    val oneHandedStart = if (oneHandedSide == "RIGHT") 56.dp else 0.dp
+    val oneHandedEnd = if (oneHandedSide == "LEFT") 56.dp else 0.dp
 
     Box(
         modifier = modifier
@@ -177,8 +250,8 @@ fun KeyboardRootView(
             }
             .background(colorScheme.containerBackground)
             .padding(
-                start = 4.dp + horizontalMargin,
-                end = 4.dp + horizontalMargin,
+                start = 4.dp + horizontalMargin + oneHandedStart,
+                end = 4.dp + horizontalMargin + oneHandedEnd,
                 top = 4.dp,
                 bottom = totalBottomPadding
             )
@@ -192,42 +265,140 @@ fun KeyboardRootView(
                     height = toolbarHeight + (keyRowHeight * 4)
                 )
             } else {
-                // Reorderable Toolbar along the top (46dp height with expand icon on far left)
-                ReorderableToolbar(
-                    toolOrder = toolOrder,
-                    onToolOrderChange = { toolOrder = it },
-                    onActionClick = handleToolbarAction,
-                    onExpandToolsClick = {
-                        isToolsDrawerOpen = !isToolsDrawerOpen
-                        if (isToolsDrawerOpen) {
-                            isEmojiOpen = false
-                            isClipboardOpen = false
-                            isResizerOpen = false
-                        }
-                    },
-                    isExpandActive = isToolsDrawerOpen,
-                    isEmojiActive = isEmojiOpen,
-                    isResizerActive = isResizerOpen,
-                    isNumberRowActive = showNumberRow,
-                    isTextEditActive = false,
-                    isClipboardActive = isClipboardOpen
-                )
+                // Single unified Top Bar row (46dp height)
+                // The suggestion strip is shown INSTEAD OF the togglable toolbar options (never a new row!)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(toolbarHeight)
+                        .background(colorScheme.containerBackground)
+                        .padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible
 
-                // Suggestion Strip (displays transliterated Bengali words, English predictions, and swipe candidates)
-                if (suggestions.isNotEmpty() && !isToolsDrawerOpen && !isEmojiOpen && !isClipboardOpen) {
-                    SuggestionStripView(
-                        candidates = suggestions,
-                        onCandidateClick = onCandidateSelect
-                    )
+                    // 1. Expand / Back / Toggle button on far left
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isToolsExpanded) Color(0x22FFFFFF) else Color.Transparent
+                            )
+                            .clickable {
+                                when {
+                                    isToolsDrawerOpen -> isToolsDrawerOpen = false
+                                    isToolbarOptionsVisible -> isToolbarOptionsVisible = false
+                                    suggestions.isNotEmpty() -> isToolbarOptionsVisible = true
+                                    else -> isToolsDrawerOpen = true
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = when {
+                                isToolsExpanded -> Icons.AutoMirrored.Outlined.ArrowBack
+                                else -> Icons.Outlined.GridView
+                            },
+                            contentDescription = when {
+                                isToolsDrawerOpen -> "Close Tools"
+                                isToolbarOptionsVisible -> "Show Suggestions"
+                                else -> "All Tools"
+                            },
+                            tint = if (isToolsExpanded) colorScheme.keyForeground else colorScheme.keyForeground.copy(alpha = 0.85f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    // 2. Main content: Suggestion Strip INSTEAD OF Toolbar Options in the exact same row
+                    if (suggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
+                        SuggestionStripView(
+                            candidates = suggestions,
+                            onCandidateClick = onCandidateSelect,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    } else {
+                        ReorderableToolbar(
+                            pinnedTools = pinnedTools,
+                            onPinnedToolsChange = { pinnedTools = it },
+                            onInterchangeWithDrawer = { toolbarAct, drawerAct ->
+                                val newPinned = pinnedTools.map { if (it == toolbarAct) drawerAct else it }
+                                val newDrawer = drawerTools.map { if (it == drawerAct) toolbarAct else it }
+                                pinnedTools = newPinned
+                                drawerTools = newDrawer
+                            },
+                            onMoveToDrawer = { toolbarAct ->
+                                if (pinnedTools.size > 1) {
+                                    pinnedTools = pinnedTools - toolbarAct
+                                    if (!drawerTools.contains(toolbarAct)) {
+                                        drawerTools = drawerTools + toolbarAct
+                                    }
+                                }
+                            },
+                            onActionClick = handleToolbarAction,
+                            rootCoordinates = rootCoordinates,
+                            onReportItemBounds = { act, bounds -> toolbarItemBounds[act] = bounds },
+                            hoveredDrawerAction = hoveredDrawerAction,
+                            isOverDrawerBlankSpace = isOverDrawerBlankSpace,
+                            hoveredByDrawerAction = hoveredToolbarAction,
+                            isEmojiActive = isEmojiOpen,
+                            isResizerActive = isResizerOpen,
+                            isNumberRowActive = showNumberRow,
+                            isTextEditActive = false,
+                            isClipboardActive = isClipboardOpen,
+                            isCustomizeMode = isToolsDrawerOpen,
+                            onDraggingStateChange = { action, fingerPos ->
+                                activeDraggingFromToolbar = action
+                                currentFingerInRoot = fingerPos
+                                if (action != null && fingerPos != null && !isToolsDrawerOpen) {
+                                    val drawerRect = drawerContainerBounds
+                                    if (drawerRect != null && fingerPos.y >= drawerRect.top - 20) {
+                                        isToolsDrawerOpen = true
+                                    } else if (fingerPos.y >= toolbarHeight.value * 2) {
+                                        isToolsDrawerOpen = true
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    }
                 }
 
                 // Switch between Tools Drawer, Clipboard Panel, Emoji Panel, and Keyboard Keys
                 if (isToolsDrawerOpen) {
                     ToolsDrawerView(
-                        toolOrder = toolOrder,
-                        onToolOrderChange = { toolOrder = it },
+                        drawerTools = drawerTools,
+                        onDrawerToolsChange = { drawerTools = it },
+                        onInterchangeWithToolbar = { drawerAct, toolbarAct ->
+                            val newPinned = pinnedTools.map { if (it == toolbarAct) drawerAct else it }
+                            val newDrawer = drawerTools.map { if (it == drawerAct) toolbarAct else it }
+                            pinnedTools = newPinned
+                            drawerTools = newDrawer
+                        },
+                        onMoveToToolbar = { drawerAct ->
+                            drawerTools = drawerTools - drawerAct
+                            if (!pinnedTools.contains(drawerAct)) {
+                                pinnedTools = pinnedTools + drawerAct
+                            }
+                        },
                         onToolClick = handleToolbarAction,
-                        height = keyRowHeight * 4
+                        height = keyRowHeight * 4,
+                        rootCoordinates = rootCoordinates,
+                        onReportItemBounds = { act, bounds -> drawerItemBounds[act] = bounds },
+                        onReportContainerBounds = { bounds -> drawerContainerBounds = bounds },
+                        hoveredDrawerAction = hoveredDrawerAction,
+                        isOverDrawerBlankSpace = isOverDrawerBlankSpace,
+                        hoveredToolbarAction = hoveredToolbarAction,
+                        onDraggingStateChange = { action, fingerPos ->
+                            activeDraggingFromDrawer = action
+                            currentFingerInRoot = fingerPos
+                        }
                     )
                 } else if (isClipboardOpen) {
                     ClipboardPanelView(

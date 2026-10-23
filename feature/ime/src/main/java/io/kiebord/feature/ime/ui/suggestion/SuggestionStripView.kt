@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,29 +41,35 @@ fun SuggestionStripView(
 
     Row(
         modifier = modifier
-            .fillMaxWidth()
-            .height(38.dp)
-            .background(colorScheme.containerBackground)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .fillMaxHeight()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        candidates.forEach { candidate ->
+        candidates.forEachIndexed { index, candidate ->
             val isPrimary = candidate.isPrimary
+
+            // Clean vertical divider between candidate slots
+            if (index > 0) {
+                Box(
+                    modifier = Modifier
+                        .height(18.dp)
+                        .width(1.dp)
+                        .background(colorScheme.keyForeground.copy(alpha = 0.15f))
+                )
+            }
+
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (isPrimary) colorScheme.accentColor.copy(alpha = 0.18f) else Color.Transparent
-                    )
+                    .clip(RoundedCornerShape(8.dp))
                     .clickable { onCandidateClick(candidate) },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = candidate.text,
-                    color = if (isPrimary) colorScheme.accentColor else colorScheme.keyForeground,
+                    color = if (isPrimary) colorScheme.keyForeground else colorScheme.keyForeground.copy(alpha = 0.72f),
                     fontSize = if (isPrimary) 15.sp else 14.sp,
                     fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
