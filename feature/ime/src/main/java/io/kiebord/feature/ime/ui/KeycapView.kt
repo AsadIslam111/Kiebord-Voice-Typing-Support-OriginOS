@@ -84,10 +84,10 @@ fun KeycapView(
 
     val displaySymbolLabel = key.displayLabel(shiftState)
 
-    // Key shape: bottom row keys are rounded stadium pills; modifiers are rounded; letters are standard
+    // Key shape: only the bottom row's enter and symkey are rounded stadium pills; all others are standard
+    val isPillKey = isBottomRow && (key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS)
     val keyShape = when {
-        isBottomRow -> RoundedCornerShape(22.dp)
-        key.type == KeyType.SHIFT || key.type == KeyType.DELETE -> RoundedCornerShape(12.dp)
+        isPillKey -> RoundedCornerShape(24.dp)
         else -> RoundedCornerShape(8.dp)
     }
 

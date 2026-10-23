@@ -47,7 +47,6 @@ fun KeyboardRootView(
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit,
     onTextAction: (TextAction, Boolean) -> Unit = { _, _ -> },
-    getSurroundingText: () -> Triple<String, String, String> = { Triple("", "", "") },
     onThemeToggle: () -> Unit = {},
     initialRowHeight: Dp = 60.dp,
     navBarBottomInset: Dp = 0.dp,
@@ -163,7 +162,6 @@ fun KeyboardRootView(
                 TextEditPanelView(
                     onTextAction = onTextAction,
                     onClose = { isTextEditOpen = false },
-                    getSurroundingText = getSurroundingText,
                     height = keyRowHeight * 4
                 )
             } else {

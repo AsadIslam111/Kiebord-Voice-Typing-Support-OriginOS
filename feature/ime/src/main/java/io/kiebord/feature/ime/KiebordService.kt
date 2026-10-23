@@ -94,7 +94,6 @@ class KiebordService : InputMethodService() {
                     onKeyTap = ::handleKeyTap,
                     onKeyLongPress = ::handleKeyLongPress,
                     onTextAction = ::handleTextAction,
-                    getSurroundingText = ::getSurroundingText,
                     onThemeToggle = {
                         colorScheme = when (colorScheme) {
                             KeyboardColorScheme.DefaultDark -> KeyboardColorScheme.AmoledBlack
@@ -322,13 +321,5 @@ class KiebordService : InputMethodService() {
         }
         ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
         ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
-    }
-
-    private fun getSurroundingText(): Triple<String, String, String> {
-        val ic = currentInputConnection ?: return Triple("", "", "")
-        val before = ic.getTextBeforeCursor(35, 0)?.toString() ?: ""
-        val selected = ic.getSelectedText(0)?.toString() ?: ""
-        val after = ic.getTextAfterCursor(35, 0)?.toString() ?: ""
-        return Triple(before, selected, after)
     }
 }
