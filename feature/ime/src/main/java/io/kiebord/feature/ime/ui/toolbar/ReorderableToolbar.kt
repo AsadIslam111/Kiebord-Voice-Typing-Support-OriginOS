@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,6 +62,8 @@ data class ToolbarItem(
 
 @Composable
 fun ReorderableToolbar(
+    toolOrder: List<ToolbarAction>,
+    onToolOrderChange: (List<ToolbarAction>) -> Unit,
     onActionClick: (ToolbarAction) -> Unit,
     onExpandToolsClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -85,20 +88,10 @@ fun ReorderableToolbar(
         )
     }
 
-    var toolOrder by remember {
-        mutableStateOf(
-            listOf(
-                ToolbarAction.TEXT_EDIT,
-                ToolbarAction.EMOJI,
-                ToolbarAction.CLIPBOARD,
-                ToolbarAction.RESIZER,
-                ToolbarAction.THEME_TOGGLE
-            )
-        )
-    }
-
-    var draggingIndex by remember { mutableStateOf<Int?>(null) }
-    var dragOffsetX by remember { mutableFloatStateOf(0f) }
+    var draggingAction by remember { mutableStateOf<ToolbarAction?>(null) }
+    var dragOriginIndex by remember { mutableIntStateOf(0) }
+    var currentSlotIndex by remember { mutableIntStateOf(0) }
+    var accumulatedDragX by remember { mutableFloatStateOf(0f) }
     var toolbarWidthPx by remember { mutableFloatStateOf(0f) }
 
     Row(
@@ -130,7 +123,7 @@ fun ReorderableToolbar(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        // 2. Toolbar items SPREAD across the entire width (evenly distributed, not stacked at left)
+        // 2. Toolbar items SPREAD across the entire width (freely customizable & draggable)
         Row(
             modifier = Modifier
                 .weight(1f)
@@ -156,7 +149,14 @@ fun ReorderableToolbar(
                     ToolbarAction.CLIPBOARD -> isClipboardActive
                     else -> false
                 }
-                val isDragging = draggingIndex == index
+                val isDragging = draggingAction == action
+
+                // Continuous translation: floating tile follows the finger smoothly anywhere
+                val visualTranslationX = if (isDragging) {
+                    accumulatedDragX - (currentSlotIndex - dragOriginIndex) * slotWidthPx
+                } else {
+                    0f
+                }
 
                 Box(
                     modifier = Modifier
@@ -169,10 +169,10 @@ fun ReorderableToolbar(
                             .size(if (isExpandActive) 44.dp else 38.dp, 36.dp)
                             .zIndex(if (isDragging) 10f else 1f)
                             .graphicsLayer {
-                                translationX = if (isDragging) dragOffsetX else 0f
-                                scaleX = if (isDragging) 1.15f else 1f
-                                scaleY = if (isDragging) 1.15f else 1f
-                                shadowElevation = if (isDragging) 12f else 0f
+                                translationX = visualTranslationX
+                                scaleX = if (isDragging) 1.18f else 1f
+                                scaleY = if (isDragging) 1.18f else 1f
+                                shadowElevation = if (isDragging) 14f else 0f
                             }
                             .clip(RoundedCornerShape(12.dp))
                             .background(
@@ -187,40 +187,35 @@ fun ReorderableToolbar(
                             .pointerInput(toolOrder) {
                                 detectDragGesturesAfterLongPress(
                                     onDragStart = {
-                                        draggingIndex = index
-                                        dragOffsetX = 0f
+                                        draggingAction = action
+                                        dragOriginIndex = index
+                                        currentSlotIndex = index
+                                        accumulatedDragX = 0f
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
-                                        dragOffsetX += dragAmount.x
-                                        val cur = draggingIndex ?: return@detectDragGesturesAfterLongPress
+                                        accumulatedDragX += dragAmount.x
 
-                                        // Check swap with right neighbor
-                                        if (dragOffsetX > slotWidthPx * 0.5f && cur < toolOrder.lastIndex) {
-                                            val mutable = toolOrder.toMutableList()
-                                            val moved = mutable.removeAt(cur)
-                                            mutable.add(cur + 1, moved)
-                                            toolOrder = mutable
-                                            draggingIndex = cur + 1
-                                            dragOffsetX -= slotWidthPx
-                                        }
-                                        // Check swap with left neighbor
-                                        else if (dragOffsetX < -slotWidthPx * 0.5f && cur > 0) {
-                                            val mutable = toolOrder.toMutableList()
-                                            val moved = mutable.removeAt(cur)
-                                            mutable.add(cur - 1, moved)
-                                            toolOrder = mutable
-                                            draggingIndex = cur - 1
-                                            dragOffsetX += slotWidthPx
+                                        if (slotWidthPx > 0f) {
+                                            val slotShift = Math.round(accumulatedDragX / slotWidthPx).toInt()
+                                            val targetIndex = (dragOriginIndex + slotShift).coerceIn(0, toolOrder.lastIndex)
+
+                                            if (targetIndex != currentSlotIndex && targetIndex in toolOrder.indices) {
+                                                val mutable = toolOrder.toMutableList()
+                                                val moved = mutable.removeAt(currentSlotIndex)
+                                                mutable.add(targetIndex, moved)
+                                                onToolOrderChange(mutable)
+                                                currentSlotIndex = targetIndex
+                                            }
                                         }
                                     },
                                     onDragEnd = {
-                                        draggingIndex = null
-                                        dragOffsetX = 0f
+                                        draggingAction = null
+                                        accumulatedDragX = 0f
                                     },
                                     onDragCancel = {
-                                        draggingIndex = null
-                                        dragOffsetX = 0f
+                                        draggingAction = null
+                                        accumulatedDragX = 0f
                                     }
                                 )
                             },

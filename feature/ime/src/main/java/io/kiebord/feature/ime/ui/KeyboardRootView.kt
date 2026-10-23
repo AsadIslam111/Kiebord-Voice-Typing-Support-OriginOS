@@ -79,6 +79,18 @@ fun KeyboardRootView(
     var dragStartPosInRoot by remember { mutableStateOf<Offset?>(null) }
 
     // Phase 5, 6 & 8: Toolbar, Emoji, Resizer, Number row, TextEdit, Clipboard, and Tools Drawer states
+    var toolOrder by remember {
+        mutableStateOf(
+            listOf(
+                ToolbarAction.TEXT_EDIT,
+                ToolbarAction.CLIPBOARD,
+                ToolbarAction.THEME_TOGGLE,
+                ToolbarAction.RESIZER,
+                ToolbarAction.NUMBER_ROW_TOGGLE,
+                ToolbarAction.EMOJI
+            )
+        )
+    }
     var isEmojiOpen by remember { mutableStateOf(false) }
     var isClipboardOpen by remember { mutableStateOf(false) }
     var isResizerOpen by remember { mutableStateOf(false) }
@@ -178,6 +190,8 @@ fun KeyboardRootView(
             } else {
                 // Reorderable Toolbar along the top (46dp height with expand icon on far left)
                 ReorderableToolbar(
+                    toolOrder = toolOrder,
+                    onToolOrderChange = { toolOrder = it },
                     onActionClick = handleToolbarAction,
                     onExpandToolsClick = {
                         isToolsDrawerOpen = !isToolsDrawerOpen
@@ -206,6 +220,8 @@ fun KeyboardRootView(
                 // Switch between Tools Drawer, Clipboard Panel, Emoji Panel, and Keyboard Keys
                 if (isToolsDrawerOpen) {
                     ToolsDrawerView(
+                        toolOrder = toolOrder,
+                        onToolOrderChange = { toolOrder = it },
                         onToolClick = handleToolbarAction,
                         height = keyRowHeight * 4
                     )
