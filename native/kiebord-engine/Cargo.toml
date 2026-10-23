@@ -1,0 +1,21 @@
+[package]
+name = "kiebord-engine"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kiebord Authors"]
+description = "High-performance hybrid spatial Borno Keyboard core and Borno phonetic engine in pure Rust"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+jni = { version = "0.21.1", default-features = false }
+memmap2 = "0.9.4"
+parking_lot = "0.12.3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

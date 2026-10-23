@@ -1,0 +1,15 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+native/kiebord-engine/target/
+*.apk
+*.aab
+*.keystore
+*.jks
+*.log
