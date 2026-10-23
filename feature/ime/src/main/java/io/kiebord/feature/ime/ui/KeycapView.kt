@@ -27,9 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,14 +48,17 @@ fun KeycapView(
     modifier: Modifier = Modifier,
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
-    onKeyPositioned: (KeyDef, Rect) -> Unit = { _, _ -> },
-    onSlidingDragStart: (KeyDef, Offset) -> Unit = { _, _ -> },
-    onSlidingDragMove: (Offset) -> Unit = {},
-    onSlidingDragEnd: (Offset) -> Unit = {}
+    onKeyPositioned: (KeyDef, LayoutCoordinates) -> Unit = { _, _ -> },
+    onShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit = { _, _ -> },
+    onMoreKeysHover: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
+    onMoreKeysCommit: () -> Unit = {},
+    onSlidingDragStart: (KeyDef, LayoutCoordinates) -> Unit = { _, _ -> },
+    onSlidingDragMove: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
+    onSlidingDragEnd: (LayoutCoordinates, Offset) -> Unit = { _, _ -> }
 ) {
     val colorScheme = KiebordTheme.colorScheme
     var isPressed by remember { mutableStateOf(false) }
-    var keyBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
+    var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     // Dynamic key background & foreground colors driven by configurable theme
     val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SWITCH_LANGUAGE
@@ -82,9 +84,8 @@ fun KeycapView(
         modifier = modifier
             .fillMaxSize()
             .onGloballyPositioned { coords ->
-                val bounds = coords.boundsInWindow()
-                keyBoundsInWindow = bounds
-                onKeyPositioned(key, bounds)
+                keyCoordinates = coords
+                onKeyPositioned(key, coords)
             }
             .padding(horizontal = 3.dp, vertical = 3.dp)
             .shadow(elevation = if (isPressed) 0.dp else 1.5.dp, shape = RoundedCornerShape(8.dp))
@@ -95,13 +96,16 @@ fun KeycapView(
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         isPressed = true
+                        var isMoreKeysActive = false
                         var isSlidingDrag = false
-                        var isLongPressed = false
 
                         val longPressJob = launch {
-                            delay(260L)
-                            if (!isSlidingDrag) {
-                                isLongPressed = true
+                            delay(240L)
+                            val coords = keyCoordinates
+                            if (key.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
+                                isMoreKeysActive = true
+                                onShowMoreKeys(key, coords)
+                            } else {
                                 onKeyLongPress(key)
                             }
                         }
@@ -111,10 +115,14 @@ fun KeycapView(
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
 
                             if (!change.pressed) {
+                                // Touch released!
                                 longPressJob.cancel()
-                                if (isSlidingDrag) {
-                                    onSlidingDragEnd(keyBoundsInWindow.topLeft + change.position)
-                                } else if (!isLongPressed) {
+                                val coords = keyCoordinates
+                                if (isSlidingDrag && coords != null && coords.isAttached) {
+                                    onSlidingDragEnd(coords, change.position)
+                                } else if (isMoreKeysActive) {
+                                    onMoreKeysCommit()
+                                } else {
                                     onKeyTap(key)
                                 }
                                 break
@@ -123,15 +131,28 @@ fun KeycapView(
                             val currentPos = change.position
                             val distance = (currentPos - down.position).getDistance()
 
-                            if (key.slidingInput && distance > 22f && !isSlidingDrag) {
+                            // Sliding input detector for ?123
+                            if (key.slidingInput && distance > 18f && !isSlidingDrag) {
                                 longPressJob.cancel()
                                 isSlidingDrag = true
-                                onSlidingDragStart(key, keyBoundsInWindow.center)
+                                val coords = keyCoordinates
+                                if (coords != null && coords.isAttached) {
+                                    onSlidingDragStart(key, coords)
+                                }
                             }
 
                             if (isSlidingDrag) {
                                 change.consume()
-                                onSlidingDragMove(keyBoundsInWindow.topLeft + currentPos)
+                                val coords = keyCoordinates
+                                if (coords != null && coords.isAttached) {
+                                    onSlidingDragMove(coords, currentPos)
+                                }
+                            } else if (isMoreKeysActive) {
+                                change.consume()
+                                val coords = keyCoordinates
+                                if (coords != null && coords.isAttached) {
+                                    onMoreKeysHover(coords, currentPos)
+                                }
                             }
                         }
                         isPressed = false

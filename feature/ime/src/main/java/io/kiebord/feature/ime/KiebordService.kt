@@ -38,10 +38,10 @@ class KiebordService : InputMethodService() {
         lifecycleOwner.onCreate()
     }
 
+    override fun onEvaluateFullscreenMode(): Boolean = false
+
     override fun onConfigureWindow(win: Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
-        super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
-        // Enable edge-to-edge windowing so navigation insets can be safely padded in Compose
-        WindowCompat.setDecorFitsSystemWindows(win, false)
+        super.onConfigureWindow(win, false, isCandidatesOnly)
         lifecycleOwner.attachToView(win.decorView)
     }
 

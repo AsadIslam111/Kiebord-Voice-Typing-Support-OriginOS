@@ -1,22 +1,38 @@
 package io.kiebord.feature.ime.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
+import kotlin.math.roundToInt
 
 data class QuickSymbolDragState(
     val startOffset: Offset,
     val currentOffset: Offset,
-    val hoveredKeyBounds: Rect? = null
+    val hoveredKeyBounds: Rect? = null,
+    val hoveredSymbol: String? = null
 )
 
 @Composable
@@ -28,63 +44,81 @@ fun QuickSymbolDragOverlay(
 
     val colorScheme = KiebordTheme.colorScheme
     val accentColor = colorScheme.accentColor
+    val density = LocalDensity.current
 
-    Canvas(modifier = modifier.fillMaxSize()) {
-        val start = state.startOffset
-        val current = state.currentOffset
+    Box(modifier = modifier) {
+        // 1. Neon laser line and key highlight canvas
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val start = state.startOffset
+            val current = state.currentOffset
 
-        // 1. Draw hovered key highlight border (if over a symbol key)
-        state.hoveredKeyBounds?.let { bounds ->
-            drawRoundRect(
-                color = accentColor.copy(alpha = 0.25f),
-                topLeft = bounds.topLeft,
-                size = bounds.size,
-                cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+            // Draw hovered key highlight border (if over a symbol key)
+            state.hoveredKeyBounds?.let { bounds ->
+                drawRoundRect(
+                    color = accentColor.copy(alpha = 0.28f),
+                    topLeft = bounds.topLeft,
+                    size = bounds.size,
+                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                )
+                drawRoundRect(
+                    color = accentColor,
+                    topLeft = bounds.topLeft,
+                    size = bounds.size,
+                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx()),
+                    style = Stroke(width = 2.5.dp.toPx())
+                )
+            }
+
+            // Outer glowing neon line
+            drawLine(
+                color = accentColor.copy(alpha = 0.45f),
+                start = start,
+                end = current,
+                strokeWidth = 10.dp.toPx(),
+                cap = StrokeCap.Round
             )
-            drawRoundRect(
+
+            // Core crisp laser connecting line
+            drawLine(
+                color = Color.White,
+                start = start,
+                end = current,
+                strokeWidth = 3.5.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+
+            // Anchor origin circle at ?123
+            drawCircle(
                 color = accentColor,
-                topLeft = bounds.topLeft,
-                size = bounds.size,
-                cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx()),
-                style = Stroke(width = 2.5.dp.toPx())
+                radius = 8.dp.toPx(),
+                center = start
             )
         }
 
-        // 2. Outer glowing neon line
-        drawLine(
-            color = accentColor.copy(alpha = 0.4f),
-            start = start,
-            end = current,
-            strokeWidth = 9.dp.toPx(),
-            cap = StrokeCap.Round
-        )
+        // 2. Magnified floating symbol badge above finger
+        if (!state.hoveredSymbol.isNullOrEmpty()) {
+            val badgeSizeDp = 48.dp
+            val badgeSizePx = with(density) { badgeSizeDp.toPx() }
+            val badgeLeft = (state.currentOffset.x - badgeSizePx / 2f).coerceAtLeast(4f)
+            val badgeTop = (state.currentOffset.y - badgeSizePx - with(density) { 16.dp.toPx() }).coerceAtLeast(4f)
 
-        // 3. Core crisp laser connecting line
-        drawLine(
-            color = Color.White,
-            start = start,
-            end = current,
-            strokeWidth = 3.5.dp.toPx(),
-            cap = StrokeCap.Round
-        )
-
-        // 4. Anchor origin circle at ?123
-        drawCircle(
-            color = accentColor,
-            radius = 8.dp.toPx(),
-            center = start
-        )
-
-        // 5. Finger cursor glow & core dot
-        drawCircle(
-            color = accentColor.copy(alpha = 0.45f),
-            radius = 16.dp.toPx(),
-            center = current
-        )
-        drawCircle(
-            color = Color.White,
-            radius = 5.dp.toPx(),
-            center = current
-        )
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(badgeLeft.roundToInt(), badgeTop.roundToInt()) }
+                    .size(badgeSizeDp)
+                    .shadow(elevation = 12.dp, shape = CircleShape)
+                    .clip(CircleShape)
+                    .background(accentColor)
+                    .border(2.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = state.hoveredSymbol,
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }

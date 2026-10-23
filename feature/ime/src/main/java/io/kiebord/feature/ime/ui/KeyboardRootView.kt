@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,8 +18,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.kiebord.common.model.KeyDef
@@ -40,14 +42,17 @@ fun KeyboardRootView(
     onKeyLongPress: (KeyDef) -> Unit = {}
 ) {
     val colorScheme = KiebordTheme.colorScheme
+    val density = LocalDensity.current
 
-    var rootWindowBounds by remember { mutableStateOf(Rect.Zero) }
-    val keyBoundsMap = remember { mutableStateMapOf<KeyDef, Rect>() }
+    var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var rootWidthPx by remember { mutableFloatStateOf(0f) }
+
+    val keyCoordinatesMap = remember { mutableStateMapOf<KeyDef, LayoutCoordinates>() }
 
     var moreKeysState by remember { mutableStateOf<MoreKeysPopupState?>(null) }
     var quickDragState by remember { mutableStateOf<QuickSymbolDragState?>(null) }
 
-    // While dragging from ?123, render the Symbols layer under the finger
+    // On sliding input from ?123, switch layout view to Symbols page seamlessly
     val effectiveLayout = if (quickDragState != null) {
         PredefinedLayouts.Symbols
     } else {
@@ -58,11 +63,11 @@ fun KeyboardRootView(
         modifier = modifier
             .fillMaxWidth()
             .onGloballyPositioned { coords ->
-                rootWindowBounds = coords.boundsInWindow()
+                rootCoordinates = coords
+                rootWidthPx = coords.size.width.toFloat()
             }
             .background(colorScheme.containerBackground)
-            .navigationBarsPadding()
-            .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)
+            .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 8.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Optional 5th Number Row at the top
@@ -101,59 +106,138 @@ fun KeyboardRootView(
                                 .weight(effectiveKey.widthWeight)
                                 .fillMaxHeight(),
                             onKeyTap = onKeyTap,
-                            onKeyLongPress = { longPressedKey ->
-                                if (longPressedKey.moreKeys.isNotEmpty()) {
-                                    val localBounds = keyBoundsMap[longPressedKey] ?: Rect.Zero
+                            onKeyLongPress = onKeyLongPress,
+                            onKeyPositioned = { k, coords ->
+                                keyCoordinatesMap[k] = coords
+                            },
+                            onShowMoreKeys = { keyDef, keyCoords ->
+                                val rCoords = rootCoordinates
+                                if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                                    val localTopLeft = rCoords.localPositionOf(keyCoords, Offset.Zero)
+                                    val size = keyCoords.size
+                                    val keyRect = Rect(
+                                        localTopLeft,
+                                        Size(size.width.toFloat(), size.height.toFloat())
+                                    )
+
+                                    val itemWidthPx = with(density) { 44.dp.toPx() }
+                                    val horizontalPaddingPx = with(density) { 8.dp.toPx() }
+                                    val totalWidthPx = keyDef.moreKeys.size * itemWidthPx + horizontalPaddingPx * 2
+                                    val idealLeft = keyRect.center.x - totalWidthPx / 2f
+                                    val clampedLeft = idealLeft.coerceIn(
+                                        8f,
+                                        (rootWidthPx - totalWidthPx - 8f).coerceAtLeast(8f)
+                                    )
+                                    val initialRelativeX = keyRect.center.x - (clampedLeft + horizontalPaddingPx)
+                                    val initialIndex = (initialRelativeX / itemWidthPx).toInt().coerceIn(0, keyDef.moreKeys.lastIndex)
+
                                     moreKeysState = MoreKeysPopupState(
-                                        anchorKey = longPressedKey,
-                                        anchorBounds = localBounds,
-                                        items = longPressedKey.moreKeys,
-                                        selectedIndex = 0
+                                        anchorKey = keyDef,
+                                        anchorRect = keyRect,
+                                        items = keyDef.moreKeys,
+                                        selectedIndex = initialIndex
                                     )
-                                } else {
-                                    onKeyLongPress(longPressedKey)
                                 }
                             },
-                            onKeyPositioned = { k, windowRect ->
-                                if (rootWindowBounds != Rect.Zero) {
-                                    val localRect = Rect(
-                                        windowRect.left - rootWindowBounds.left,
-                                        windowRect.top - rootWindowBounds.top,
-                                        windowRect.right - rootWindowBounds.left,
-                                        windowRect.bottom - rootWindowBounds.top
+                            onMoreKeysHover = { keyCoords, touchPosInKey ->
+                                val state = moreKeysState ?: return@KeycapView
+                                val rCoords = rootCoordinates ?: return@KeycapView
+                                if (rCoords.isAttached && keyCoords.isAttached) {
+                                    val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
+                                    val itemWidthPx = with(density) { 44.dp.toPx() }
+                                    val horizontalPaddingPx = with(density) { 8.dp.toPx() }
+                                    val totalWidthPx = state.items.size * itemWidthPx + horizontalPaddingPx * 2
+                                    val idealLeft = state.anchorRect.center.x - totalWidthPx / 2f
+                                    val clampedLeft = idealLeft.coerceIn(
+                                        8f,
+                                        (rootWidthPx - totalWidthPx - 8f).coerceAtLeast(8f)
                                     )
-                                    keyBoundsMap[k] = localRect
+
+                                    val relativeX = fingerPosInRoot.x - (clampedLeft + horizontalPaddingPx)
+                                    val index = (relativeX / itemWidthPx).toInt().coerceIn(0, state.items.lastIndex)
+
+                                    if (index != state.selectedIndex) {
+                                        moreKeysState = state.copy(selectedIndex = index)
+                                    }
                                 }
                             },
-                            onSlidingDragStart = { _, _ ->
-                                val startLocal = keyBoundsMap[key]?.center ?: Offset.Zero
-                                quickDragState = QuickSymbolDragState(
-                                    startOffset = startLocal,
-                                    currentOffset = startLocal
-                                )
+                            onMoreKeysCommit = {
+                                val state = moreKeysState
+                                if (state != null) {
+                                    val selectedChar = state.items.getOrNull(state.selectedIndex)
+                                        ?: state.items.firstOrNull()
+                                    if (!selectedChar.isNullOrEmpty()) {
+                                        onKeyTap(KeyDef(label = selectedChar, type = KeyType.CHARACTER))
+                                    }
+                                    moreKeysState = null // Dismiss popup immediately on pointer UP!
+                                }
                             },
-                            onSlidingDragMove = { windowPos ->
-                                if (rootWindowBounds != Rect.Zero) {
-                                    val localPos = Offset(
-                                        windowPos.x - rootWindowBounds.left,
-                                        windowPos.y - rootWindowBounds.top
+                            onSlidingDragStart = { _, keyCoords ->
+                                val rCoords = rootCoordinates
+                                if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                                    val localCenter = rCoords.localPositionOf(
+                                        keyCoords,
+                                        Offset(keyCoords.size.width / 2f, keyCoords.size.height / 2f)
                                     )
-                                    val hoveredEntry = keyBoundsMap.entries.firstOrNull { it.value.contains(localPos) }
+                                    quickDragState = QuickSymbolDragState(
+                                        startOffset = localCenter,
+                                        currentOffset = localCenter
+                                    )
+                                }
+                            },
+                            onSlidingDragMove = { keyCoords, touchPosInKey ->
+                                val rCoords = rootCoordinates ?: return@KeycapView
+                                if (rCoords.isAttached && keyCoords.isAttached) {
+                                    val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
+
+                                    // Find hovered key in root
+                                    var hoveredKey: KeyDef? = null
+                                    var hoveredBounds: Rect? = null
+                                    for ((k, coords) in keyCoordinatesMap) {
+                                        if (coords.isAttached) {
+                                            val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
+                                            val rect = Rect(
+                                                topLeft,
+                                                Size(coords.size.width.toFloat(), coords.size.height.toFloat())
+                                            )
+                                            if (rect.contains(fingerPosInRoot)) {
+                                                hoveredKey = k
+                                                hoveredBounds = rect
+                                                break
+                                            }
+                                        }
+                                    }
+
+                                    val symbol = hoveredKey?.let {
+                                        if (it.label.isNotEmpty() && it.type == KeyType.CHARACTER) it.label else if (!it.flickUp.isNullOrEmpty()) it.flickUp else null
+                                    }
+
                                     quickDragState = quickDragState?.copy(
-                                        currentOffset = localPos,
-                                        hoveredKeyBounds = hoveredEntry?.value
+                                        currentOffset = fingerPosInRoot,
+                                        hoveredKeyBounds = hoveredBounds,
+                                        hoveredSymbol = symbol
                                     )
                                 }
                             },
-                            onSlidingDragEnd = { windowPos ->
-                                if (rootWindowBounds != Rect.Zero) {
-                                    val localPos = Offset(
-                                        windowPos.x - rootWindowBounds.left,
-                                        windowPos.y - rootWindowBounds.top
-                                    )
-                                    val hoveredKey = keyBoundsMap.entries.firstOrNull { it.value.contains(localPos) }?.key
-                                    if (hoveredKey != null && hoveredKey.type != KeyType.SYMBOLS) {
-                                        onKeyTap(hoveredKey)
+                            onSlidingDragEnd = { keyCoords, touchPosInKey ->
+                                val rCoords = rootCoordinates
+                                if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                                    val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
+                                    for ((k, coords) in keyCoordinatesMap) {
+                                        if (coords.isAttached) {
+                                            val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
+                                            val rect = Rect(
+                                                topLeft,
+                                                Size(coords.size.width.toFloat(), coords.size.height.toFloat())
+                                            )
+                                            if (rect.contains(fingerPosInRoot)) {
+                                                val symbol = if (k.label.isNotEmpty() && k.type == KeyType.CHARACTER) k.label else if (!k.flickUp.isNullOrEmpty()) k.flickUp!! else ""
+                                                if (symbol.isNotEmpty()) {
+                                                    onKeyTap(KeyDef(label = symbol, type = KeyType.CHARACTER))
+                                                }
+                                                break
+                                            }
+                                        }
                                     }
                                 }
                                 quickDragState = null
@@ -164,15 +248,16 @@ fun KeyboardRootView(
             }
         }
 
-        // MoreKeys floating bubble overlay
-        MoreKeysPopup(
-            state = moreKeysState,
-            modifier = Modifier.fillMaxWidth()
+        // 1. Neon laser guideline overlay for sliding symbol input (matchParentSize prevents shifting to top)
+        QuickSymbolDragOverlay(
+            state = quickDragState,
+            modifier = Modifier.matchParentSize()
         )
 
-        // Neon laser guideline overlay for sliding symbol input
-        QuickSymbolDragOverlay(
-            state = quickDragState
+        // 2. Borno Keyboard-style rounded pill MoreKeys floating popup
+        MoreKeysPopup(
+            state = moreKeysState,
+            keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f
         )
     }
 }
