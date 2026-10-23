@@ -81,6 +81,7 @@ fun KeyboardRootView(
     onDeleteSwipeEnd: () -> Unit = {},
     onDeleteSwipeCancel: () -> Unit = {},
     navBarBottomInset: Dp = 0.dp,
+    applySystemInsets: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -164,7 +165,11 @@ fun KeyboardRootView(
     var savedHorizontalMargin by remember { mutableStateOf(0.dp) }
 
     // Obey navigation bar insets: maximum of Compose WindowInsets and platform WindowInsetsCompat
-    val composeNavBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val composeNavBottom = if (applySystemInsets) {
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    } else {
+        0.dp
+    }
     val effectiveNavBarBottom = maxOf(navBarBottomInset, composeNavBottom)
     val totalBottomPadding = chinPadding + effectiveNavBarBottom
 

@@ -111,16 +111,6 @@ fun KeycapView(
         else -> RoundedCornerShape(8.dp)
     }
 
-    val borderModifier = if (showKeyBorders) {
-        Modifier.border(
-            width = 1.dp,
-            color = colorScheme.keyBorder,
-            shape = keyShape
-        )
-    } else {
-        Modifier
-    }
-
     // In flat theme (!showKeyBorders), reduce height of Space bar, Sym key, and Enter key
     val isReducedHeightKey = !showKeyBorders && isPillColoredKey
     val verticalPadding = if (isReducedHeightKey) 7.dp else 3.dp
@@ -143,7 +133,7 @@ fun KeycapView(
     val currentOnGestureMove = rememberUpdatedState(onGestureMove)
     val currentOnGestureEnd = rememberUpdatedState(onGestureEnd)
 
-    // Key styling: flat or bordered with reduced height on accent pills
+    // Key styling: cleanly toggles between keyborder mode (keycap boxes) and flat mode (no boxes except accent pills)
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -154,7 +144,6 @@ fun KeycapView(
             .padding(horizontal = 3.dp, vertical = verticalPadding)
             .clip(keyShape)
             .background(activeBackground)
-            .then(borderModifier)
             .pointerInput(Unit) {
                 coroutineScope {
                     awaitEachGesture {

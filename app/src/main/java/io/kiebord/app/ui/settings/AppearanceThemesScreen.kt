@@ -42,11 +42,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.kiebord.common.model.ShiftState
+import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.data.prefs.KiebordPreferences
+import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.theme.KeyboardColorScheme
+import io.kiebord.theme.KiebordTheme
 
 private data class ThemeOption(
     val id: String,
@@ -162,7 +165,7 @@ fun AppearanceThemesScreen(
         }
     }
 
-    // Modal Bottom Sheet showing Demo Keyboard with QWERTY layout and Key borders toggle
+    // Modal Bottom Sheet showing real actual KeyboardRootView in theme colors and Key borders toggle
     if (previewThemeOption != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
@@ -173,6 +176,7 @@ fun AppearanceThemesScreen(
         ) {
             ThemePreviewBottomSheetContent(
                 themeOption = previewThemeOption!!,
+                preferences = preferences,
                 showKeyBorders = preferences.showKeyBorders,
                 onToggleKeyBorders = onUpdateShowKeyBorders,
                 onApplyTheme = {
@@ -248,11 +252,6 @@ private fun AbstractThemeCard(
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(themeOption.scheme.keyBackground)
-                        .border(
-                            0.5.dp,
-                            themeOption.scheme.keyBorder.copy(alpha = 0.5f),
-                            RoundedCornerShape(3.dp)
-                        )
                 )
 
                 // Compact Enter key swatch (reduced height)
@@ -281,6 +280,7 @@ private fun AbstractThemeCard(
 @Composable
 private fun ThemePreviewBottomSheetContent(
     themeOption: ThemeOption,
+    preferences: KiebordPreferences,
     showKeyBorders: Boolean,
     onToggleKeyBorders: (Boolean) -> Unit,
     onApplyTheme: () -> Unit
@@ -288,291 +288,112 @@ private fun ThemePreviewBottomSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
+            .padding(bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = themeOption.name,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFFE0E2E8)
-        )
-        Text(
-            text = themeOption.description,
-            fontSize = 12.sp,
-            color = Color(0xFF9499A8),
-            modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
-        )
-
-        // Demo Keyboard with QWERTY layout
-        DemoQwertyKeyboard(
-            scheme = themeOption.scheme,
-            showKeyBorders = showKeyBorders
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Key Border Toggle (moved below demo keyboard preview)
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF25272B))
-                .clickable { onToggleKeyBorders(!showKeyBorders) }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Key borders",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFE0E2E8)
-                )
-                Text(
-                    text = "Toggle flat keycaps (like Borno Keyboard) and default key borders",
-                    fontSize = 12.sp,
-                    color = Color(0xFF9499A8)
-                )
-            }
-            Switch(
-                checked = showKeyBorders,
-                onCheckedChange = onToggleKeyBorders,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFF7AA2F7),
-                    uncheckedThumbColor = Color(0xFF9499A8),
-                    uncheckedTrackColor = Color(0xFF383A40)
-                )
-            )
-        }
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        Button(
-            onClick = onApplyTheme,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF7AA2F7)
-            )
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Apply Theme",
-                fontSize = 15.sp,
+                text = themeOption.name,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F141C)
+                color = Color(0xFFE0E2E8)
             )
-        }
-    }
-}
-
-@Composable
-private fun DemoQwertyKeyboard(
-    scheme: KeyboardColorScheme,
-    showKeyBorders: Boolean
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(scheme.containerBackground)
-            .border(1.dp, Color(0xFF2E3138), RoundedCornerShape(14.dp))
-            .padding(horizontal = 8.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        val row1 = listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p")
-        val row2 = listOf("a", "s", "d", "f", "g", "h", "j", "k", "l")
-        val row3 = listOf("z", "x", "c", "v", "b", "n", "m")
-        val pillHeight = if (showKeyBorders) 34.dp else 26.dp
-        val pillShape = if (showKeyBorders) RoundedCornerShape(6.dp) else RoundedCornerShape(13.dp)
-
-        // Row 1
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            row1.forEach { key ->
-                DemoKeycap(
-                    label = key,
-                    modifier = Modifier.weight(1f),
-                    scheme = scheme,
-                    showKeyBorders = showKeyBorders
-                )
-            }
-        }
-
-        // Row 2 (centered)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            Spacer(modifier = Modifier.weight(0.5f))
-            row2.forEach { key ->
-                DemoKeycap(
-                    label = key,
-                    modifier = Modifier.weight(1f),
-                    scheme = scheme,
-                    showKeyBorders = showKeyBorders
-                )
-            }
-            Spacer(modifier = Modifier.weight(0.5f))
-        }
-
-        // Row 3: Shift, keys, Delete
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            DemoKeycap(
-                label = "⇧",
-                modifier = Modifier.weight(1.3f),
-                scheme = scheme,
-                showKeyBorders = showKeyBorders,
-                isActionKey = true
-            )
-            row3.forEach { key ->
-                DemoKeycap(
-                    label = key,
-                    modifier = Modifier.weight(1f),
-                    scheme = scheme,
-                    showKeyBorders = showKeyBorders
-                )
-            }
-            DemoKeycap(
-                label = "⌫",
-                modifier = Modifier.weight(1.3f),
-                scheme = scheme,
-                showKeyBorders = showKeyBorders,
-                isActionKey = true
+            Text(
+                text = themeOption.description,
+                fontSize = 12.sp,
+                color = Color(0xFF9499A8),
+                modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
             )
         }
 
-        // Row 4: ?123, comma, spacebar, dot, enter
-        // In flat theme (!showKeyBorders): spacebar, sym key and enter have distinct color and reduced height
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // ?123 (Sym key: distinct color and reduced height in flat mode)
+        // Live Actual Keyboard View preview in selected theme color scheme (exact match to real keyboard dimensions, padding & UI)
+        KiebordTheme(colorScheme = themeOption.scheme) {
             Box(
                 modifier = Modifier
-                    .weight(1.2f)
-                    .height(pillHeight)
-                    .clip(pillShape)
-                    .background(scheme.actionKeyBackground)
-                    .then(
-                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, pillShape)
-                        else Modifier
-                    ),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .background(themeOption.scheme.containerBackground)
             ) {
-                Text(
-                    text = "?123",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = scheme.actionKeyForeground
+                KeyboardRootView(
+                    layout = PredefinedLayouts.EnglishQwerty,
+                    shiftState = ShiftState.UNSHIFTED,
+                    onKeyTap = {},
+                    onKeyLongPress = {},
+                    showKeyBorders = showKeyBorders,
+                    defaultShowNumberRow = preferences.showNumberRow,
+                    initialRowHeight = (60 * preferences.keyboardHeightScale).dp,
+                    applySystemInsets = false,
+                    navBarBottomInset = 0.dp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Key Border Toggle & Action buttons with standard margins
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        ) {
+            // Key Border Toggle (located directly below real keyboard preview)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF25272B))
+                    .clickable { onToggleKeyBorders(!showKeyBorders) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Key borders",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFE0E2E8)
+                    )
+                    Text(
+                        text = if (showKeyBorders) "Keyborder mode enabled" else "Flat mode enabled",
+                        fontSize = 12.sp,
+                        color = Color(0xFF9499A8)
+                    )
+                }
+                Switch(
+                    checked = showKeyBorders,
+                    onCheckedChange = onToggleKeyBorders,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = Color(0xFF7AA2F7),
+                        uncheckedThumbColor = Color(0xFF9499A8),
+                        uncheckedTrackColor = Color(0xFF383A40)
+                    )
                 )
             }
 
-            // Comma (flat in flat mode)
-            DemoKeycap(
-                label = ",",
-                modifier = Modifier.weight(0.9f),
-                scheme = scheme,
-                showKeyBorders = showKeyBorders
-            )
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Spacebar (distinct color and reduced height in flat mode)
-            Box(
+            Button(
+                onClick = onApplyTheme,
                 modifier = Modifier
-                    .weight(4.0f)
-                    .height(pillHeight)
-                    .clip(pillShape)
-                    .background(scheme.keyBackground)
-                    .then(
-                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, pillShape)
-                        else Modifier
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "English",
-                    fontSize = 11.sp,
-                    color = scheme.keyForeground.copy(alpha = 0.7f)
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF7AA2F7)
                 )
-            }
-
-            // Dot (flat in flat mode)
-            DemoKeycap(
-                label = ".",
-                modifier = Modifier.weight(0.9f),
-                scheme = scheme,
-                showKeyBorders = showKeyBorders
-            )
-
-            // Enter key (distinct color and reduced height in flat mode)
-            Box(
-                modifier = Modifier
-                    .weight(1.2f)
-                    .height(pillHeight)
-                    .clip(pillShape)
-                    .background(scheme.accentColor)
-                    .then(
-                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, pillShape)
-                        else Modifier
-                    ),
-                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "⏎",
-                    fontSize = 12.sp,
+                    text = "Apply Theme",
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = scheme.actionKeyForeground
+                    color = Color(0xFF0F141C)
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun DemoKeycap(
-    label: String,
-    modifier: Modifier = Modifier,
-    scheme: KeyboardColorScheme,
-    showKeyBorders: Boolean,
-    isActionKey: Boolean = false,
-    fontSize: TextUnit = 13.sp
-) {
-    // When showKeyBorders is false (flat theme): key color is same as containerBackground
-    val bg = when {
-        showKeyBorders -> if (isActionKey) scheme.actionKeyBackground else scheme.keyBackground
-        else -> scheme.containerBackground
-    }
-    val borderMod = if (showKeyBorders) {
-        Modifier.border(1.dp, scheme.keyBorder, RoundedCornerShape(6.dp))
-    } else {
-        Modifier
-    }
-    val textColor = if (isActionKey) scheme.actionKeyForeground else scheme.keyForeground
-
-    Box(
-        modifier = modifier
-            .height(34.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(bg)
-            .then(borderMod),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            fontSize = fontSize,
-            fontWeight = FontWeight.Medium,
-            color = textColor
-        )
     }
 }
