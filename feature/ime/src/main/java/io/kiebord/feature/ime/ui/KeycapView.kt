@@ -104,17 +104,20 @@ fun KeycapView(
 
     val foregroundColor = when {
         key.type == KeyType.SHIFT && shiftState != ShiftState.UNSHIFTED -> colorScheme.shiftActiveColor
-        key.type == KeyType.ACTION -> androidx.compose.ui.graphics.Color.White
+        key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
         else -> colorScheme.keyForeground
     }
 
     val displaySymbolLabel = key.displayLabel(shiftState)
 
-    // Key shape: When key borders are enabled, all keys including spacebar use standard scaled radius.
-    // In flat mode (!showKeyBorders), floating accent pills (space, sym, action) use stadium pills.
-    val keyShape = when {
-        !showKeyBorders && isPillColoredKey -> RoundedCornerShape((20 * scaleFactor).coerceAtLeast(6f).dp)
-        else -> RoundedCornerShape((8 * scaleFactor).coerceAtLeast(3f).dp)
+    // Key shape: Enter key and Sym key (?123) are always rounded stadium pills like Borno Keyboard.
+    // In flat mode (!showKeyBorders), spacebar is also a stadium pill.
+    // When key borders are enabled, spacebar and standard character keys use standard scaled corner radius.
+    val isPillShape = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
+    val keyShape = if (isPillShape) {
+        RoundedCornerShape(percent = 50)
+    } else {
+        RoundedCornerShape((8 * scaleFactor).coerceAtLeast(3f).dp)
     }
 
     // In flat theme (!showKeyBorders), reduce height of Space bar, Sym key, and Enter key
@@ -150,6 +153,19 @@ fun KeycapView(
                 onKeyPositioned(key, coords)
             }
             .padding(horizontal = horizontalPadding, vertical = verticalPadding)
+            .then(
+                if (showKeyBorders && colorScheme.keyShadow.alpha > 0.01f) {
+                    Modifier.shadow(
+                        elevation = (1.5f * scaleFactor).dp,
+                        shape = keyShape,
+                        clip = false,
+                        ambientColor = colorScheme.keyShadow,
+                        spotColor = colorScheme.keyShadow
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .clip(keyShape)
             .background(activeBackground)
             .pointerInput(isInteractive) {

@@ -75,13 +75,13 @@ fun AppearanceThemesScreen(
         ThemeOption(
             id = KiebordPreferences.THEME_DEFAULT_DARK,
             name = "Default Dark",
-            description = "Sleek charcoal with vibrant Tokyo Indigo accents",
+            description = "Material dark charcoal with Google pastel blue accents",
             scheme = KeyboardColorScheme.DefaultDark
         ),
         ThemeOption(
             id = KiebordPreferences.THEME_AMOLED_BLACK,
             name = "AMOLED Black",
-            description = "True pitch black for maximum OLED battery savings",
+            description = "Pitch black with high-contrast keys and blue pill accents",
             scheme = KeyboardColorScheme.AmoledBlack
         ),
         ThemeOption(
@@ -99,7 +99,7 @@ fun AppearanceThemesScreen(
         ThemeOption(
             id = KiebordPreferences.THEME_DEFAULT_LIGHT,
             name = "Default Light",
-            description = "Clean, high-contrast crisp white paper aesthetic",
+            description = "Crisp white floating keycaps on light grey with Google Blue accents",
             scheme = KeyboardColorScheme.DefaultLight
         )
     )
@@ -255,12 +255,12 @@ private fun AbstractThemeCard(
                         .background(themeOption.scheme.keyBackground)
                 )
 
-                // Enter key swatch (accent color)
+                // Enter key swatch (accent color pill)
                 Box(
                     modifier = Modifier
                         .width(22.dp)
                         .height(13.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(percent = 50))
                         .background(themeOption.scheme.accentColor)
                 )
             }
