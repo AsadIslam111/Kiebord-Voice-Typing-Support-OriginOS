@@ -2,6 +2,7 @@
 //! Reference: https://github.com/JayedAhsan/BornoTSF/blob/main/layoutParsers/Transliterators/BornoPhonetic.hpp
 
 use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
 
 const HOSHONTO: &str = "\u{09CD}";
 const ZWJ: &str = "\u{200D}";
@@ -72,17 +73,17 @@ impl BornoPhonetic {
         let mut output = String::with_capacity(corrected.len() * 3);
         let mut last_type = PrevTokenType::StartOfWord;
 
-        let phola_map = Self::build_phola_map();
-        let consonants_map = Self::build_consonants_map();
-        let conjuncts_map = Self::build_conjuncts_map();
-        let symbol_map = Self::build_symbol_map();
-        let diacritics_map = Self::build_diacritics_map();
-        let punctuations_map = Self::build_punctuations_map();
-        let digits_map = Self::build_digits_map();
-        let initial_map = Self::build_initial_map();
-        let vowel_signs_map = Self::build_vowel_signs_map();
-        let after_vowel_map = Self::build_after_vowel_map();
-        let reph_map = Self::build_reph_map();
+        let phola_map = Self::get_phola_map();
+        let consonants_map = Self::get_consonants_map();
+        let conjuncts_map = Self::get_conjuncts_map();
+        let symbol_map = Self::get_symbol_map();
+        let diacritics_map = Self::get_diacritics_map();
+        let punctuations_map = Self::get_punctuations_map();
+        let digits_map = Self::get_digits_map();
+        let initial_map = Self::get_initial_map();
+        let vowel_signs_map = Self::get_vowel_signs_map();
+        let after_vowel_map = Self::get_after_vowel_map();
+        let reph_map = Self::get_reph_map();
 
         let mut i = 0;
         let token_count = tokens.len();
@@ -306,7 +307,13 @@ impl BornoPhonetic {
                 'a' | 'A' | 'o' | 'O' | 'i' | 'I' | 'u' | 'U' | 'd' | 'D' | 'g' | 'G' | 'j' | 'J'
                 | 'n' | 'N' | 'r' | 'R' | 's' | 'S' | 't' | 'T' | 'y' | 'Y' | 'z' | 'Z' | 'h'
                 | 'H' | 'x' | 'X' => result.push(c),
-                other => result.push(other.to_ascii_lowercase()),
+                other => {
+                    if other.is_ascii_uppercase() {
+                        result.push(other.to_ascii_lowercase());
+                    } else {
+                        result.push(other);
+                    }
+                }
             }
         }
         result
@@ -318,7 +325,7 @@ impl BornoPhonetic {
             return tokens;
         }
 
-        let keys_set = Self::build_global_keys_set();
+        let keys_set = Self::get_global_keys_set();
         let max_len = 5;
         let mut i = 0;
         let len = text.len();
@@ -421,6 +428,81 @@ impl BornoPhonetic {
         }
     }
 
+    fn get_symbol_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_symbol_map)
+    }
+
+    fn get_initial_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_initial_map)
+    }
+
+    fn get_after_vowel_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_after_vowel_map)
+    }
+
+    fn get_vowel_signs_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_vowel_signs_map)
+    }
+
+    fn get_consonants_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_consonants_map)
+    }
+
+    fn get_conjuncts_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_conjuncts_map)
+    }
+
+    fn get_phola_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_phola_map)
+    }
+
+    fn get_reph_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_reph_map)
+    }
+
+    fn get_diacritics_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_diacritics_map)
+    }
+
+    fn get_punctuations_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_punctuations_map)
+    }
+
+    fn get_digits_map() -> &'static HashMap<&'static str, &'static str> {
+        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+        MAP.get_or_init(Self::build_digits_map)
+    }
+
+    fn get_global_keys_set() -> &'static HashSet<&'static str> {
+        static KEYS_SET: OnceLock<HashSet<&'static str>> = OnceLock::new();
+        KEYS_SET.get_or_init(|| {
+            let mut set = HashSet::new();
+            for k in Self::get_symbol_map().keys() { set.insert(*k); }
+            for k in Self::get_initial_map().keys() { set.insert(*k); }
+            for k in Self::get_after_vowel_map().keys() { set.insert(*k); }
+            for k in Self::get_vowel_signs_map().keys() { set.insert(*k); }
+            for k in Self::get_consonants_map().keys() { set.insert(*k); }
+            for k in Self::get_conjuncts_map().keys() { set.insert(*k); }
+            for k in Self::get_diacritics_map().keys() { set.insert(*k); }
+            for k in Self::get_punctuations_map().keys() { set.insert(*k); }
+            for k in Self::get_phola_map().keys() { set.insert(*k); }
+            for k in Self::get_reph_map().keys() { set.insert(*k); }
+            for k in Self::get_digits_map().keys() { set.insert(*k); }
+            set.insert("rri");
+            set
+        })
+    }
+
     fn build_symbol_map() -> HashMap<&'static str, &'static str> {
         HashMap::from([
             ("ng", "ং"), ("TH", "ৎ"), ("X", "ৎ"), ("t``", "ৎ"),
@@ -475,12 +557,49 @@ impl BornoPhonetic {
             ("nch", "ঞ্ছ"), ("njh", "ঞ্ঝ"), ("ndh", "ন্ধ"), ("nTh", "ন্ঠ"),
             ("nth", "ন্থ"), ("nj", "ঞ্জ"), ("nn", "ন্ন"), ("nm", "ন্ম"),
             ("nd", "ন্দ"), ("nT", "ন্ট"), ("nD", "ন্ড"), ("nt", "ন্ত"),
-            ("ns", "ন্স"), ("nc", "ঞ্চ"), ("cch", "চ্ছ"), ("cc", "চ্চ"),
-            ("jjh", "জ্ঝ"), ("jNG", "জ্ঞ"), ("jj", "জ্জ"), ("tth", "ত্থ"),
-            ("tn", "ত্ন"), ("tm", "ত্ম"), ("tt", "ত্ত"), ("TT", "ট্ট"),
-            ("ddh", "দ্ধ"), ("dd", "দ্দ"), ("pp", "প্প"), ("pl", "প্ল"),
-            ("bdh", "ব্ধ"), ("bb", "ব্ব"), ("bl", "ব্ল"), ("mm", "ম্ম"),
-            ("ll", "ল্ল"), ("st", "স্ত"), ("sp", "স্প"), ("sk", "স্ক")
+            ("ns", "ন্স"), ("nc", "ঞ্চ"),
+            ("NgkSh", "ঙ্ক্ষ"), ("Ngkkh", "ঙ্ক্ষ"), ("NGch", "ঞ্ছ"), ("Nggh", "ঙ্ঘ"),
+            ("Ngkh", "ঙ্খ"), ("NGjh", "ঞ্ঝ"), ("ngOI", "ঙ্গৈ"), ("ngOU", "ঙ্গৌ"),
+            ("Ngkx", "ঙ্ক্ষ"), ("NGc", "ঞ্চ"), ("ngh", "ঙ্ঘ"), ("ngH", "ংহ"), ("Ngk", "ঙ্ক"),
+            ("Ngx", "ঙ্ক্ষ"), ("Ngg", "ঙ্গ"), ("Ngm", "ঙ্ম"), ("NGj", "ঞ্জ"),
+            ("NTh", "ণ্ঠ"), ("nkh", "ঙ্খ"), ("ngo", "ঙ্গ"), ("nga", "ঙ্গা"),
+            ("ngi", "ঙ্গি"), ("ngI", "ঙ্গী"), ("ngu", "ঙ্গু"), ("ngU", "ঙ্গূ"),
+            ("nge", "ঙ্গে"), ("ngO", "ঙ্গো"), ("NDh", "ণ্ঢ"), ("nsh", "নশ"),
+            ("Ngr", "ঙ্র"), ("NGr", "ঞ্র"), ("Ng", "ঙ"),
+            ("NG", "ঞ"), ("nk", "ঙ্ক"), ("NN", "ণ্ণ"),
+            ("Nn", "ণ্ণ"), ("Nm", "ণ্ম"), ("NT", "ণ্ট"), ("ND", "ণ্ড"),
+            ("cNG", "চ্ঞ"), ("cch", "চ্ছ"), ("cc", "চ্চ"),
+            ("jjh", "জ্ঝ"), ("jNG", "জ্ঞ"), ("jj", "জ্জ"),
+            ("tth", "ত্থ"), ("tn", "ত্ন"), ("tm", "ত্ম"), ("tt", "ত্ত"),
+            ("TT", "ট্ট"), ("Tm", "ট্ম"),
+            ("dhn", "ধ্ন"), ("dhm", "ধ্ম"), ("dgh", "দ্ঘ"), ("ddh", "দ্ধ"),
+            ("dbh", "দ্ভ"), ("dv", "দ্ভ"), ("dm", "দ্ম"), ("dg", "দ্গ"),
+            ("dd", "দ্দ"), ("DD", "ড্ড"),
+            ("phl", "ফ্ল"), ("pT", "প্ট"), ("pt", "প্ত"), ("pn", "প্ন"),
+            ("pp", "প্প"), ("pl", "প্ল"), ("ps", "প্স"), ("fl", "ফ্ল"),
+            ("bdh", "ব্ধ"), ("bhl", "ভ্ল"), ("bj", "ব্জ"), ("bd", "ব্দ"),
+            ("bb", "ব্ব"), ("bl", "ব্ল"), ("vl", "ভ্ল"),
+            ("mth", "ম্থ"), ("mph", "ম্ফ"), ("mbh", "ম্ভ"), ("mpl", "মপ্ল"),
+            ("mn", "ম্ন"), ("mp", "ম্প"), ("mv", "ম্ভ"), ("mm", "ম্ম"),
+            ("ml", "ম্ল"), ("mb", "ম্ব"), ("mf", "ম্ফ"),
+            ("Rg", "ড়্গ"),
+            ("oZ", "অ্য"),
+            ("lbh", "ল্ভ"), ("ldh", "ল্ধ"), ("lkh", "ল্খ"), ("lgh", "ল্ঘ"),
+            ("lph", "ল্ফ"), ("lk", "ল্ক"), ("lg", "ল্গ"), ("lT", "ল্ট"),
+            ("lD", "ল্ড"), ("lp", "ল্প"), ("lv", "ল্ভ"), ("lm", "ল্ম"),
+            ("ll", "ল্ল"), ("lb", "ল্ব"),
+            ("shch", "শ্ছ"), ("Sch", "শ্ছ"), ("skl", "স্ক্ল"), ("skh", "স্খ"),
+            ("sth", "স্থ"), ("sph", "স্ফ"), ("shc", "শ্চ"), ("sht", "শ্ত"),
+            ("shn", "শ্ন"), ("shm", "শ্ম"), ("spl", "স্প্ল"), ("shl", "শ্ল"),
+            ("sk", "স্ক"), ("Sc", "শ্চ"), ("sT", "স্ট"), ("st", "স্ত"),
+            ("sn", "স্ন"), ("sp", "স্প"), ("sf", "স্ফ"), ("sm", "স্ম"),
+            ("sl", "স্ল"),
+            ("ShTh", "ষ্ঠ"), ("Shph", "ষ্ফ"), ("Shk", "ষ্ক"), ("ShT", "ষ্ট"),
+            ("ShN", "ষ্ণ"), ("Shp", "ষ্প"), ("Shf", "ষ্ফ"), ("Shm", "ষ্ম"),
+            ("SHTh", "ষ্ঠ"), ("SHph", "ষ্ফ"), ("SHk", "ষ্ক"), ("SHT", "ষ্ট"),
+            ("SHN", "ষ্ণ"), ("SHp", "ষ্প"), ("SHf", "ষ্ফ"), ("SHm", "ষ্ম"),
+            ("Sn", "শ্ন"), ("Sm", "শ্ম"), ("Sl", "শ্ল"),
+            ("hN", "হ্ণ"), ("hn", "হ্ন"), ("hm", "হ্ম"), ("hl", "হ্ল")
         ])
     }
 
@@ -496,40 +615,27 @@ impl BornoPhonetic {
 
     fn build_diacritics_map() -> HashMap<&'static str, &'static str> {
         HashMap::from([
-            (",,", HOSHONTO),
-            (",.", "\u{09CD}\u{200C}"),
-            (",..", "\u{09CD}\u{200D}"),
-            ("./", "়")
+            ("^`", "^"), (":`", ":"),
+            (",,", HOSHONTO), (",.", "\u{09CD}\u{200C}"), (",..", "\u{09CD}\u{200D}"),
+            ("a`", "া"), ("i`", "ি"), ("I`", "ী"), ("u`", "ু"), ("U`", "ূ"),
+            ("e`", "ে"), ("o`", ""), ("O`", "ো"), ("OI`", "ৈ"), ("OU`", "ৌ"),
+            ("rri`", "ৃ"), ("./", "়")
         ])
     }
 
     fn build_punctuations_map() -> HashMap<&'static str, &'static str> {
         HashMap::from([
-            (".", "।"), ("..", "।।"), ("$", "৳"), ("$%", "₹")
+            ("`", ""), ("``", "`"), (".", "।"), ("..", "।।"), ("...", "..."),
+            ("$$", "$"), (",", ","), ("$", "৳"), ("$%", "₹")
         ])
     }
 
     fn build_digits_map() -> HashMap<&'static str, &'static str> {
         HashMap::from([
-            ("0", "০"), ("1", "১"), ("2", "২"), ("3", "৩"), ("4", "৪"),
-            ("5", "৫"), ("6", "৬"), ("7", "৭"), ("8", "৮"), ("9", "৯")
-        ])
-    }
-
-    fn build_global_keys_set() -> HashSet<&'static str> {
-        HashSet::from([
-            "kkhN", "kShN", "kkhm", "kShm", "kxN", "kxm", "kkh", "kSh", "ksh", "kx",
-            "kk", "kT", "kt", "km", "kl", "ks", "ghn", "Ghn", "gdh", "Gdh", "gN", "GN",
-            "gn", "Gn", "gm", "Gm", "gl", "Gl", "gg", "GG", "Gg", "gG", "nch", "njh",
-            "ndh", "nTh", "nth", "nj", "nn", "nm", "nd", "nT", "nD", "nt", "ns", "nc",
-            "cch", "cc", "jjh", "jNG", "jj", "tth", "tn", "tm", "tt", "TT", "ddh", "dd",
-            "pp", "pl", "bdh", "bb", "bl", "mm", "ll", "st", "sp", "sk", "kh", "gh",
-            "ch", "th", "Th", "dh", "Dh", "ph", "bh", "sh", "Sh", "SH", "Rh", "ng", "TH",
-            "X", "xx", "::", "rri", "OI", "OU", "rr", ",,", ",.", ",..", "./", "..",
-            "$%", "a", "A", "i", "I", "u", "U", "e", "E", "o", "O", "k", "g", "G", "c",
-            "j", "J", "t", "T", "d", "D", "n", "N", "p", "P", "f", "b", "B", "v", "m",
-            "z", "Z", "y", "Y", "r", "R", "l", "s", "S", "h", "H", "q", "x", "w", ".",
-            "$", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+            (".1", ".১"), (".2", ".২"), (".3", ".৩"), (".4", ".৪"), (".5", ".৫"),
+            (".6", ".৬"), (".7", ".৭"), (".8", ".৮"), (".9", ".৯"), (".0", ".০"),
+            ("1", "১"), ("2", "২"), ("3", "৩"), ("4", "৪"), ("5", "৫"),
+            ("6", "৬"), ("7", "৭"), ("8", "৮"), ("9", "৯"), ("0", "০")
         ])
     }
 
@@ -886,6 +992,21 @@ mod tests {
         assert_eq!(BornoPhonetic::convert("shanto"), "শান্ত");
         assert_eq!(BornoPhonetic::convert("kkhoma"), "ক্ষমা");
         assert_eq!(BornoPhonetic::convert("jNGan"), "জ্ঞান");
+        assert_eq!(BornoPhonetic::convert("sth"), "স্থ");
+        assert_eq!(BornoPhonetic::convert("sthan"), "স্থান");
+        assert_eq!(BornoPhonetic::convert("sthiti"), "স্থিতি");
+        assert_eq!(BornoPhonetic::convert("sTeson"), "স্টেসন");
+        assert_eq!(BornoPhonetic::convert("sTeshon"), "স্টেশন");
+        assert_eq!(BornoPhonetic::convert("ShTh"), "ষ্ঠ");
+        assert_eq!(BornoPhonetic::convert("hN"), "হ্ণ");
+        assert_eq!(BornoPhonetic::convert("hn"), "হ্ন");
+        assert_eq!(BornoPhonetic::convert("hm"), "হ্ম");
+        assert_eq!(BornoPhonetic::convert("hl"), "হ্ল");
+        assert_eq!(BornoPhonetic::convert("mth"), "ম্থ");
+        assert_eq!(BornoPhonetic::convert("mbh"), "ম্ভ");
+        assert_eq!(BornoPhonetic::convert("ddh"), "দ্ধ");
+        assert_eq!(BornoPhonetic::convert("sph"), "স্ফ");
+        assert_eq!(BornoPhonetic::convert("skh"), "স্খ");
     }
 
     #[test]
