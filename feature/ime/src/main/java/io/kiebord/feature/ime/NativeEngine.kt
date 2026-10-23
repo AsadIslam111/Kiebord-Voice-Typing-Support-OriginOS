@@ -22,4 +22,17 @@ object NativeEngine {
 
     @JvmStatic
     external fun transliterateBorno(input: String): String
+
+    @JvmStatic
+    external fun getSuggestions(prefix: String, lang: String, maxResults: Int): String
+
+    fun querySuggestions(prefix: String, lang: String, maxResults: Int = 5): List<String> {
+        if (!isLoaded) return emptyList()
+        return try {
+            val raw = getSuggestions(prefix, lang, maxResults)
+            if (raw.isEmpty()) emptyList() else raw.split("|").filter { it.isNotEmpty() }
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
 }

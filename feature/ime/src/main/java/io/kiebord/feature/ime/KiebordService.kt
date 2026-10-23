@@ -15,7 +15,6 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
@@ -35,6 +34,7 @@ class KiebordService : InputMethodService() {
 
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
     private val bornoManager = BornoTransliterationManager { currentInputConnection }
+    private val composingBuffer = StringBuilder()
 
     // Configurable state
     private var primaryAlphaLayout: KeyboardLayoutDef = PredefinedLayouts.EnglishQwerty
@@ -104,9 +104,9 @@ class KiebordService : InputMethodService() {
                     clipboardManager = clipboardManager,
                     onPasteClip = { clipText ->
                         val ic = currentInputConnection
-                        bornoManager.finishComposing()
-                        activeSuggestions = emptyList()
+                        finishComposing()
                         ic?.commitText(clipText, 1)
+                        updateSuggestions()
                     },
                     onThemeToggle = {
                         colorScheme = when (colorScheme) {
@@ -142,12 +142,13 @@ class KiebordService : InputMethodService() {
         isSymbolsMode = false
         activeLayout = primaryAlphaLayout
         bornoManager.reset()
-        activeSuggestions = emptyList()
+        composingBuffer.clear()
+        updateSuggestions()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
-        bornoManager.finishComposing()
+        finishComposing()
         activeSuggestions = emptyList()
         lifecycleOwner.onStop()
     }
@@ -157,6 +158,19 @@ class KiebordService : InputMethodService() {
         lifecycleOwner.onDestroy()
     }
 
+    private fun finishComposing() {
+        val ic = currentInputConnection
+        if (bornoManager.isComposing) {
+            ic?.commitText(bornoManager.currentTransliteration, 1)
+            bornoManager.reset()
+        }
+        if (composingBuffer.isNotEmpty()) {
+            ic?.commitText(composingBuffer.toString(), 1)
+            composingBuffer.clear()
+        }
+        ic?.finishComposingText()
+    }
+
     private fun handleKeyTap(key: KeyDef) {
         val ic = currentInputConnection ?: return
 
@@ -164,13 +178,43 @@ class KiebordService : InputMethodService() {
             KeyType.CHARACTER -> {
                 val text = key.displayLabel(shiftState)
 
-                // If in Borno Phonetic mode and typing letters, stream through transliteration manager
-                if (activeLayout.id == "bn_borno" && isTransliterableChar(text)) {
-                    bornoManager.handleCharacter(text)
-                } else {
-                    bornoManager.finishComposing()
-                    ic.commitText(text, 1)
+                when {
+                    // Borno Phonetic mode
+                    activeLayout.id == "bn_borno" -> {
+                        if (isTransliterableChar(text)) {
+                            bornoManager.handleCharacter(text)
+                        } else {
+                            finishComposing()
+                            ic.commitText(text, 1)
+                        }
+                    }
+                    // English Qwerty mode
+                    activeLayout.id == "en_qwerty" -> {
+                        if (isEnglishLetter(text)) {
+                            composingBuffer.append(text)
+                            ic.setComposingText(composingBuffer.toString(), 1)
+                        } else {
+                            finishComposing()
+                            ic.commitText(text, 1)
+                        }
+                    }
+                    // Bengali Probhat layout
+                    activeLayout.id == "bn_probhat" -> {
+                        if (isBengaliChar(text)) {
+                            composingBuffer.append(text)
+                            ic.setComposingText(composingBuffer.toString(), 1)
+                        } else {
+                            finishComposing()
+                            ic.commitText(text, 1)
+                        }
+                    }
+                    // Other layouts (Symbols, etc.)
+                    else -> {
+                        finishComposing()
+                        ic.commitText(text, 1)
+                    }
                 }
+
                 updateSuggestions()
 
                 // If in one-shot shift mode, revert to unshifted after one character
@@ -191,7 +235,18 @@ class KiebordService : InputMethodService() {
                     updateSuggestions()
                     return
                 }
-                updateSuggestions()
+                // If composing in English or Bengali Probhat
+                if (composingBuffer.isNotEmpty()) {
+                    composingBuffer.deleteCharAt(composingBuffer.length - 1)
+                    if (composingBuffer.isEmpty()) {
+                        ic.setComposingText("", 1)
+                        ic.finishComposingText()
+                    } else {
+                        ic.setComposingText(composingBuffer.toString(), 1)
+                    }
+                    updateSuggestions()
+                    return
+                }
 
                 val selectedText = ic.getSelectedText(0)
                 if (selectedText.isNullOrEmpty()) {
@@ -199,25 +254,32 @@ class KiebordService : InputMethodService() {
                 } else {
                     ic.commitText("", 1)
                 }
+                updateSuggestions()
             }
             KeyType.ACTION -> {
-                bornoManager.finishComposing()
-                activeSuggestions = emptyList()
+                finishComposing()
                 val currentAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
                 if (currentAction != null && currentAction != EditorInfo.IME_ACTION_NONE && currentAction != EditorInfo.IME_ACTION_UNSPECIFIED) {
                     ic.performEditorAction(currentAction)
                 } else {
                     sendKeyChar('\n')
                 }
+                updateSuggestions()
             }
             KeyType.SPACE -> {
-                bornoManager.finishComposing()
-                activeSuggestions = emptyList()
-                ic.commitText(" ", 1)
+                if (bornoManager.isComposing) {
+                    ic.commitText(bornoManager.currentTransliteration + " ", 1)
+                    bornoManager.reset()
+                } else if (composingBuffer.isNotEmpty()) {
+                    ic.commitText(composingBuffer.toString() + " ", 1)
+                    composingBuffer.clear()
+                } else {
+                    ic.commitText(" ", 1)
+                }
+                updateSuggestions()
             }
             KeyType.SYMBOLS -> {
-                bornoManager.finishComposing()
-                activeSuggestions = emptyList()
+                finishComposing()
                 when (key.label) {
                     "?123" -> {
                         if (!isSymbolsMode) {
@@ -235,7 +297,6 @@ class KiebordService : InputMethodService() {
                         activeLayout = primaryAlphaLayout
                     }
                     else -> {
-                        // Fallback toggle
                         if (isSymbolsMode) {
                             isSymbolsMode = false
                             activeLayout = primaryAlphaLayout
@@ -246,9 +307,10 @@ class KiebordService : InputMethodService() {
                         }
                     }
                 }
+                updateSuggestions()
             }
             KeyType.SWITCH_LANGUAGE -> {
-                bornoManager.finishComposing()
+                finishComposing()
                 // Cycle between English QWERTY -> Bengali Borno -> Bengali Probhat -> English QWERTY
                 primaryAlphaLayout = when (primaryAlphaLayout.id) {
                     "en_qwerty" -> PredefinedLayouts.BengaliBorno
@@ -258,6 +320,7 @@ class KiebordService : InputMethodService() {
                 if (!isSymbolsMode) {
                     activeLayout = primaryAlphaLayout
                 }
+                updateSuggestions()
             }
             KeyType.MORE_KEYS -> {
                 // Secondary popups
@@ -271,12 +334,13 @@ class KiebordService : InputMethodService() {
             return
         }
         val ic = currentInputConnection ?: return
-        bornoManager.finishComposing()
+        finishComposing()
         if (!key.flickUp.isNullOrEmpty()) {
             ic.commitText(key.flickUp!!, 1)
         } else if (key.moreKeys.isNotEmpty()) {
             ic.commitText(key.moreKeys.first(), 1)
         }
+        updateSuggestions()
     }
 
     private fun isTransliterableChar(text: String): Boolean {
@@ -285,9 +349,21 @@ class KiebordService : InputMethodService() {
         return (c in 'a'..'z') || (c in 'A'..'Z')
     }
 
+    private fun isEnglishLetter(text: String): Boolean {
+        if (text.length != 1) return false
+        val c = text[0]
+        return (c in 'a'..'z') || (c in 'A'..'Z') || c == '\''
+    }
+
+    private fun isBengaliChar(text: String): Boolean {
+        if (text.isEmpty()) return false
+        val cp = text.codePointAt(0)
+        return cp in 0x0980..0x09FF
+    }
+
     private fun handleTextAction(action: TextAction, isSelecting: Boolean) {
         val ic = currentInputConnection ?: return
-        bornoManager.finishComposing()
+        finishComposing()
 
         when (action) {
             TextAction.MOVE_UP -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_UP, isSelecting)
@@ -327,24 +403,142 @@ class KiebordService : InputMethodService() {
                 }
             }
         }
+        updateSuggestions()
     }
 
     private fun handleCandidateSelect(candidate: SuggestionCandidate) {
         val ic = currentInputConnection ?: return
-        bornoManager.commitCustom(candidate.text)
-        activeSuggestions = emptyList()
+        if (bornoManager.isComposing) {
+            bornoManager.commitCustom(candidate.text + " ")
+        } else if (composingBuffer.isNotEmpty()) {
+            ic.commitText(candidate.text + " ", 1)
+            composingBuffer.clear()
+        } else {
+            ic.commitText(candidate.text + " ", 1)
+        }
+        updateSuggestions()
     }
 
     private fun updateSuggestions() {
-        if (bornoManager.isComposing) {
-            val bengali = bornoManager.currentTransliteration
-            val raw = bornoManager.currentRawInput
-            activeSuggestions = listOf(
-                SuggestionCandidate(text = bengali, isPrimary = true, rawInput = raw),
-                SuggestionCandidate(text = raw, isPrimary = false, rawInput = raw)
-            )
-        } else {
+        if (!NativeEngine.isAvailable() || isSymbolsMode) {
             activeSuggestions = emptyList()
+            return
+        }
+
+        when (activeLayout.id) {
+            "bn_borno" -> {
+                if (bornoManager.isComposing) {
+                    val raw = bornoManager.currentRawInput
+                    val translit = bornoManager.currentTransliteration
+                    val dictMatches = NativeEngine.querySuggestions(translit, "bn", 5)
+                        .filter { it != translit }
+
+                    val list = mutableListOf<SuggestionCandidate>()
+                    val nextMatch = dictMatches.firstOrNull()
+
+                    // Left: raw English input if different from transliteration
+                    if (raw.isNotEmpty() && raw != translit) {
+                        list.add(SuggestionCandidate(text = raw, isPrimary = false, rawInput = raw))
+                    } else if (dictMatches.size > 1) {
+                        list.add(SuggestionCandidate(text = dictMatches[1], isPrimary = false))
+                    }
+
+                    // Center: Transliterated Bengali (primary)
+                    list.add(SuggestionCandidate(text = translit, isPrimary = true, rawInput = raw))
+
+                    // Right: Dictionary completion
+                    if (nextMatch != null) {
+                        list.add(SuggestionCandidate(text = nextMatch, isPrimary = false))
+                    }
+
+                    activeSuggestions = list
+                } else {
+                    // Idle Bengali suggestions (e.g. আমি, তুমি, আপনি)
+                    val defaults = NativeEngine.querySuggestions("", "bn", 3)
+                    if (defaults.size >= 3) {
+                        activeSuggestions = listOf(
+                            SuggestionCandidate(text = defaults[1], isPrimary = false),
+                            SuggestionCandidate(text = defaults[0], isPrimary = true),
+                            SuggestionCandidate(text = defaults[2], isPrimary = false)
+                        )
+                    } else {
+                        activeSuggestions = defaults.mapIndexed { idx, word ->
+                            SuggestionCandidate(text = word, isPrimary = idx == 0)
+                        }
+                    }
+                }
+            }
+            "bn_probhat" -> {
+                val prefix = composingBuffer.toString()
+                if (prefix.isNotEmpty()) {
+                    val matches = NativeEngine.querySuggestions(prefix, "bn", 5)
+                    val list = mutableListOf<SuggestionCandidate>()
+                    if (matches.isNotEmpty()) {
+                        if (matches.size >= 3) {
+                            list.add(SuggestionCandidate(text = matches[1], isPrimary = false))
+                            list.add(SuggestionCandidate(text = matches[0], isPrimary = true))
+                            list.add(SuggestionCandidate(text = matches[2], isPrimary = false))
+                        } else {
+                            matches.forEachIndexed { i, w ->
+                                list.add(SuggestionCandidate(text = w, isPrimary = i == 0))
+                            }
+                        }
+                    } else {
+                        list.add(SuggestionCandidate(text = prefix, isPrimary = true))
+                    }
+                    activeSuggestions = list
+                } else {
+                    val defaults = NativeEngine.querySuggestions("", "bn", 3)
+                    if (defaults.size >= 3) {
+                        activeSuggestions = listOf(
+                            SuggestionCandidate(text = defaults[1], isPrimary = false),
+                            SuggestionCandidate(text = defaults[0], isPrimary = true),
+                            SuggestionCandidate(text = defaults[2], isPrimary = false)
+                        )
+                    } else {
+                        activeSuggestions = defaults.mapIndexed { idx, word ->
+                            SuggestionCandidate(text = word, isPrimary = idx == 0)
+                        }
+                    }
+                }
+            }
+            "en_qwerty" -> {
+                val prefix = composingBuffer.toString()
+                if (prefix.isNotEmpty()) {
+                    val matches = NativeEngine.querySuggestions(prefix, "en", 5)
+                    val list = mutableListOf<SuggestionCandidate>()
+                    if (matches.isNotEmpty()) {
+                        if (matches.size >= 3) {
+                            list.add(SuggestionCandidate(text = matches[1], isPrimary = false))
+                            list.add(SuggestionCandidate(text = matches[0], isPrimary = true))
+                            list.add(SuggestionCandidate(text = matches[2], isPrimary = false))
+                        } else {
+                            matches.forEachIndexed { i, w ->
+                                list.add(SuggestionCandidate(text = w, isPrimary = i == 0))
+                            }
+                        }
+                    } else {
+                        list.add(SuggestionCandidate(text = prefix, isPrimary = true))
+                    }
+                    activeSuggestions = list
+                } else {
+                    val defaults = NativeEngine.querySuggestions("", "en", 3)
+                    if (defaults.size >= 3) {
+                        activeSuggestions = listOf(
+                            SuggestionCandidate(text = defaults[1], isPrimary = false),
+                            SuggestionCandidate(text = defaults[0], isPrimary = true),
+                            SuggestionCandidate(text = defaults[2], isPrimary = false)
+                        )
+                    } else {
+                        activeSuggestions = defaults.mapIndexed { idx, word ->
+                            SuggestionCandidate(text = word, isPrimary = idx == 0)
+                        }
+                    }
+                }
+            }
+            else -> {
+                activeSuggestions = emptyList()
+            }
         }
     }
 
@@ -366,4 +560,3 @@ class KiebordService : InputMethodService() {
         ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
     }
 }
-

@@ -209,8 +209,8 @@ fun KeyboardRootView(
                     isClipboardActive = isClipboardOpen
                 )
 
-                // Suggestion Strip (displays transliterated Bengali words and swipe candidates)
-                if (suggestions.isNotEmpty()) {
+                // Suggestion Strip (displays transliterated Bengali words, English predictions, and swipe candidates)
+                if (suggestions.isNotEmpty() && !isToolsDrawerOpen && !isEmojiOpen && !isClipboardOpen) {
                     SuggestionStripView(
                         candidates = suggestions,
                         onCandidateClick = onCandidateSelect
