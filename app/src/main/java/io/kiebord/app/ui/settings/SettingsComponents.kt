@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,7 +42,102 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.ui.unit.sp
+
+@Composable
+fun SettingsUnifiedTopBar(
+    screen: SettingsScreen,
+    onBack: () -> Unit
+) {
+    val title = when (screen) {
+        is SettingsScreen.Main -> "Kiebord"
+        is SettingsScreen.AppearanceThemes -> "Appearance & Themes"
+        is SettingsScreen.KeyboardLayouts -> "Keyboard Layouts"
+        is SettingsScreen.Preferences -> "Preferences"
+        is SettingsScreen.CorrectionsSuggestions -> "Corrections & Suggestions"
+        is SettingsScreen.About -> "About Kiebord"
+    }
+
+    val subtitle = when (screen) {
+        is SettingsScreen.Main -> "Privacy Focused"
+        is SettingsScreen.AppearanceThemes -> "Themes, scaling & key styling"
+        is SettingsScreen.KeyboardLayouts -> "Active languages & preview"
+        is SettingsScreen.Preferences -> "Haptics, smart gestures & ergonomics"
+        is SettingsScreen.CorrectionsSuggestions -> "Candidate strip, auto-fix & glide typing"
+        is SettingsScreen.About -> "Privacy, engine architecture & diagnostics"
+    }
+
+    val isMain = screen == SettingsScreen.Main
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AnimatedContent(
+            targetState = isMain,
+            transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(180)) },
+            label = "TopBarIconTransition"
+        ) { mainState ->
+            if (mainState) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF2B2D31)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Keyboard,
+                        contentDescription = null,
+                        tint = Color(0xFF7AA2F7),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.size(42.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color(0xFFE0E2E8)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        AnimatedContent(
+            targetState = title to subtitle,
+            transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(180)) },
+            label = "TopBarTitleTransition",
+            modifier = Modifier.weight(1f)
+        ) { (t, s) ->
+            Column {
+                Text(
+                    text = t,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFE0E2E8)
+                )
+                Text(
+                    text = s,
+                    fontSize = 12.sp,
+                    color = Color(0xFF9499A8)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun SettingsTopAppBar(
@@ -185,13 +279,6 @@ fun SettingsNavigationItem(
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = Color(0xFF6B7280),
-                modifier = Modifier.size(16.dp)
-            )
         }
 
         if (showDivider) {

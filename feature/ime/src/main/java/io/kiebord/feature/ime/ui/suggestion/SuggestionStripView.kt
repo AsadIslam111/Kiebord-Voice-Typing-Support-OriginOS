@@ -70,7 +70,7 @@ fun SuggestionStripView(
                 Text(
                     text = candidate.text,
                     color = if (isPrimary) colorScheme.keyForeground else colorScheme.keyForeground.copy(alpha = 0.72f),
-                    fontSize = if (isPrimary) 15.sp else 14.sp,
+                    fontSize = if (isPrimary) 17.sp else 16.sp,
                     fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
                     textAlign = TextAlign.Center,

@@ -99,31 +99,36 @@ fun AppearanceThemesScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
-        SettingsTopAppBar(
-            title = "Appearance & Themes",
-            subtitle = "Custom colors, key styling and ergonomics",
-            onBack = onBack
-        )
-
         SettingsCategoryHeader(title = "Color Themes")
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            themes.forEach { themeOption ->
-                val isSelected = preferences.theme == themeOption.id
-                ThemeCard(
-                    themeOption = themeOption,
-                    isSelected = isSelected,
-                    onSelect = { onUpdateTheme(themeOption.id) }
-                )
+            themes.chunked(3).forEach { rowThemes ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    rowThemes.forEach { themeOption ->
+                        val isSelected = preferences.theme == themeOption.id
+                        AbstractThemeCard(
+                            themeOption = themeOption,
+                            isSelected = isSelected,
+                            modifier = Modifier.weight(1f),
+                            onSelect = { onUpdateTheme(themeOption.id) }
+                        )
+                    }
+                    repeat(3 - rowThemes.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         SettingsCategoryHeader(title = "Keyboard Dimensions & Scaling")
 
         val heightScale = preferences.keyboardHeightScale
@@ -182,9 +187,10 @@ fun AppearanceThemesScreen(
 }
 
 @Composable
-private fun ThemeCard(
+private fun AbstractThemeCard(
     themeOption: ThemeOption,
     isSelected: Boolean,
+    modifier: Modifier = Modifier,
     onSelect: () -> Unit
 ) {
     val borderColor by animateColorAsState(
@@ -193,106 +199,82 @@ private fun ThemeCard(
         label = "themeBorder"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF1E1F22))
-            .border(width = if (isSelected) 2.dp else 1.dp, color = borderColor, shape = RoundedCornerShape(16.dp))
-            .clickable(onClick = onSelect)
-            .padding(16.dp)
+    Column(
+        modifier = modifier.clickable(onClick = onSelect),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = themeOption.name,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFFE0E2E8)
-                    )
-                    Text(
-                        text = themeOption.description,
-                        fontSize = 12.sp,
-                        color = Color(0xFF9499A8),
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(74.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(themeOption.scheme.containerBackground)
+                .border(
+                    width = if (isSelected) 2.5.dp else 1.dp,
+                    color = borderColor,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(8.dp)
+        ) {
+            if (isSelected) {
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(16.dp)
                         .clip(CircleShape)
-                        .background(if (isSelected) Color(0xFF7AA2F7) else Color(0xFF2B2D31)),
+                        .background(Color(0xFF7AA2F7))
+                        .align(Alignment.TopEnd),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isSelected) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Selected",
-                            tint = Color(0xFF0F141C),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = Color(0xFF0F141C),
+                        modifier = Modifier.size(11.dp)
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Mini Interactive Keyboard Palette Preview Strip
-            Box(
+            // Abstract Swatches: Space key color & Enter key color on solid theme container
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(themeOption.scheme.containerBackground)
-                    .padding(8.dp)
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    listOf("Q", "W", "E", "R", "T", "Y").forEach { keyChar ->
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(30.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(themeOption.scheme.keyBackground)
-                                .border(0.5.dp, themeOption.scheme.keyBorder, RoundedCornerShape(4.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = keyChar,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = themeOption.scheme.keyForeground
-                            )
-                        }
-                    }
-
-                    // Mini Action Key preview (Enter/Globe)
-                    Box(
-                        modifier = Modifier
-                            .weight(1.4f)
-                            .height(30.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(themeOption.scheme.actionKeyBackground),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "↵",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = themeOption.scheme.actionKeyForeground
+                // Space key swatch
+                Box(
+                    modifier = Modifier
+                        .weight(3f)
+                        .height(13.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(themeOption.scheme.keyBackground)
+                        .border(
+                            0.5.dp,
+                            themeOption.scheme.keyBorder.copy(alpha = 0.5f),
+                            RoundedCornerShape(3.dp)
                         )
-                    }
-                }
+                )
+
+                // Enter key swatch
+                Box(
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .height(13.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(themeOption.scheme.actionKeyBackground)
+                )
             }
         }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = themeOption.name,
+            fontSize = 12.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) Color(0xFF7AA2F7) else Color(0xFFE0E2E8),
+            maxLines = 1
+        )
     }
 }

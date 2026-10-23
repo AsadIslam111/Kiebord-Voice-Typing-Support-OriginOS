@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material.icons.outlined.ViewCompact
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -27,7 +29,9 @@ fun PreferencesScreen(
     onUpdateLongPressDelay: (Int) -> Unit,
     onUpdateCursorTrackpad: (Boolean) -> Unit,
     onUpdateOneHandedMode: (String) -> Unit,
-    onBack: () -> Unit
+    onUpdateLongPressDelete: (Boolean) -> Unit,
+    onUpdateSelectiveDeleteMode: (String) -> Unit,
+    onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -37,12 +41,6 @@ fun PreferencesScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
-        SettingsTopAppBar(
-            title = "Preferences",
-            subtitle = "Haptics, sounds, gesture timings and ergonomics",
-            onBack = onBack
-        )
-
         SettingsCategoryHeader(title = "Haptic & Acoustic Feedback")
 
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -105,17 +103,47 @@ fun PreferencesScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-        SettingsCategoryHeader(title = "Cursor Navigation & Layout Alignment")
+        SettingsCategoryHeader(title = "Smart Gestures")
 
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SettingsToggleItem(
+                title = "Long-Press Continuous Delete",
+                subtitle = "Holding backspace repeats deletion smoothly",
+                icon = Icons.AutoMirrored.Outlined.Backspace,
+                checked = preferences.longPressDeleteEnabled,
+                onCheckedChange = onUpdateLongPressDelete
+            )
+
+            if (preferences.longPressDeleteEnabled) {
+                SettingsRadioOption(
+                    title = "Selective Delete: By Word",
+                    subtitle = "Repeated deletion deletes word-by-word at whitespace boundaries",
+                    selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD,
+                    onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_WORD) }
+                )
+
+                SettingsRadioOption(
+                    title = "Selective Delete: By Character",
+                    subtitle = "Repeated deletion removes one individual character at a time",
+                    selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_CHARACTER,
+                    onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_CHARACTER) }
+                )
+            }
+
             SettingsToggleItem(
                 title = "Spacebar Cursor Trackpad",
                 subtitle = "Slide thumb horizontally across spacebar to position cursor",
                 icon = Icons.Outlined.TouchApp,
                 checked = preferences.cursorTrackpadEnabled,
+                showDivider = false,
                 onCheckedChange = onUpdateCursorTrackpad
             )
+        }
 
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCategoryHeader(title = "Layout Alignment & Ergonomics")
+
+        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsRadioOption(
                 title = "Standard Centered (Full Width)",
                 subtitle = "Full display width keyboard",

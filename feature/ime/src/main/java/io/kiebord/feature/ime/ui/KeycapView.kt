@@ -40,6 +40,7 @@ import io.kiebord.common.model.ShiftState
 import io.kiebord.theme.KiebordTheme
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @Composable
@@ -138,10 +139,17 @@ fun KeycapView(
                         var lastTrackpadX = 0f
                         val trackpadStepPx = with(density) { 14.dp.toPx() }
 
+                        var isDeleteLongPressActive = false
                         val longPressJob = launch {
                             delay(240L)
                             val coords = keyCoordinates
-                            if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
+                            if (initialKey.type == KeyType.DELETE) {
+                                isDeleteLongPressActive = true
+                                while (isActive) {
+                                    currentOnLongPress.value(initialKey)
+                                    delay(85L)
+                                }
+                            } else if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
                                 isMoreKeysActive = true
                                 currentOnShowMoreKeys.value(initialKey, coords)
                             } else {
@@ -170,6 +178,8 @@ fun KeycapView(
                                     currentOnMoreKeysCommit.value()
                                 } else if (isSpacebarTrackpad) {
                                     // Trackpad gesture completed, don't emit normal space tap
+                                } else if (isDeleteLongPressActive) {
+                                    // Already handled during long-press deletion
                                 } else {
                                     currentOnTap.value(initialKey)
                                 }
@@ -340,12 +350,15 @@ fun KeycapView(
             }
             else -> {
                 val textSize = if (key.type == KeyType.SYMBOLS) 15.sp else 22.sp
+                val isUppercase = displaySymbolLabel.length == 1 && displaySymbolLabel.first().isUpperCase()
+                val verticalOffset = if (isUppercase) 1.5.dp else 0.dp
                 Text(
                     text = displaySymbolLabel,
                     color = foregroundColor,
                     fontSize = textSize,
                     fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Bold else FontWeight.Medium,
                     fontFamily = KiebordTheme.fontFamily,
+                    modifier = if (verticalOffset > 0.dp) Modifier.padding(top = verticalOffset) else Modifier,
                     style = androidx.compose.ui.text.TextStyle(
                         fontFamily = KiebordTheme.fontFamily,
                         platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),

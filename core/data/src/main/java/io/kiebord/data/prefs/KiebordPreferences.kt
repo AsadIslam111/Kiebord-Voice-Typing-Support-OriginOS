@@ -18,6 +18,8 @@ data class KiebordPreferences(
     val longPressDelayMs: Int = 300, // 150 - 600 ms
     val cursorTrackpadEnabled: Boolean = true,
     val oneHandedMode: String = ONE_HANDED_OFF,
+    val longPressDeleteEnabled: Boolean = true,
+    val selectiveDeleteMode: String = DELETE_MODE_WORD,
 
     // Keyboard Layouts
     val primaryLayoutId: String = LAYOUT_EN_QWERTY,
@@ -46,6 +48,9 @@ data class KiebordPreferences(
         const val ONE_HANDED_OFF = "off"
         const val ONE_HANDED_LEFT = "left"
         const val ONE_HANDED_RIGHT = "right"
+
+        const val DELETE_MODE_WORD = "word"
+        const val DELETE_MODE_CHARACTER = "character"
 
         const val LAYOUT_EN_QWERTY = "en_qwerty"
         const val LAYOUT_BN_BORNO = "bn_borno"

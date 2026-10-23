@@ -56,11 +56,11 @@ object PredefinedLayouts {
             ),
             KeyRow(
                 listOf(
-                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.3f, slidingInput = true),
+                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.5f, slidingInput = true),
                     KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
                     KeyDef(",", flickUp = null, moreKeys = listOf("<", ">", "[", "]", "{", "}"), widthWeight = 1.0f),
                     KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
-                    KeyDef(".", flickUp = ">", moreKeys = listOf("?", "!", ",", "-", "/", "@", ":", "'", "\"", "_", ";"), widthWeight = 1.2f),
+                    KeyDef(".", flickUp = ">", moreKeys = listOf("?", "!", ",", "-", "/", "@", ":", "'", "\"", "_", ";"), widthWeight = 1.0f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )
@@ -102,7 +102,7 @@ object PredefinedLayouts {
             ),
             KeyRow(
                 listOf(
-                    KeyDef(type = KeyType.SHIFT, icon = "shift", widthWeight = 1.4f),
+                    KeyDef(type = KeyType.SHIFT, icon = "shift", widthWeight = 1.5f),
                     KeyDef("্", "ৎ"),
                     KeyDef("ং", "ঙ"),
                     KeyDef("ঃ", "ঢ়"),
@@ -113,16 +113,16 @@ object PredefinedLayouts {
                     KeyDef("ণ", "ণ", moreKeys = listOf("ণ্ট", "ণ্ঠ")),
                     KeyDef("শ", "ষ্", moreKeys = listOf("শ্চ")),
                     KeyDef("য", "্য"),
-                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.4f)
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.5f)
                 )
             ),
             KeyRow(
                 listOf(
-                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.3f, slidingInput = true),
+                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.5f, slidingInput = true),
                     KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
                     KeyDef(",", widthWeight = 1.0f, moreKeys = listOf(";", ":", "<", ">")),
                     KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
-                    KeyDef("।", moreKeys = listOf(".", "!", "?", ",", "-", "/", "—"), widthWeight = 1.2f),
+                    KeyDef("।", moreKeys = listOf(".", "!", "?", ",", "-", "/", "—"), widthWeight = 1.0f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )
@@ -171,7 +171,7 @@ object PredefinedLayouts {
             ),
             KeyRow(
                 listOf(
-                    KeyDef("=\\<", type = KeyType.SYMBOLS, widthWeight = 1.4f),
+                    KeyDef("=\\<", type = KeyType.SYMBOLS, widthWeight = 1.5f),
                     KeyDef("*"),
                     KeyDef("\""),
                     KeyDef("'"),
@@ -179,16 +179,16 @@ object PredefinedLayouts {
                     KeyDef(";"),
                     KeyDef("!"),
                     KeyDef("?"),
-                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.6f)
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.5f)
                 )
             ),
             KeyRow(
                 listOf(
-                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.3f),
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.5f),
                     KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
                     KeyDef(",", widthWeight = 1.0f),
                     KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
-                    KeyDef(".", widthWeight = 1.2f),
+                    KeyDef(".", widthWeight = 1.0f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )
@@ -230,7 +230,7 @@ object PredefinedLayouts {
             ),
             KeyRow(
                 listOf(
-                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.4f),
+                    KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.5f),
                     KeyDef("%"),
                     KeyDef("©"),
                     KeyDef("®"),
@@ -238,16 +238,16 @@ object PredefinedLayouts {
                     KeyDef("✓"),
                     KeyDef("["),
                     KeyDef("]"),
-                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.6f)
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.5f)
                 )
             ),
             KeyRow(
                 listOf(
-                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.3f),
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.5f),
                     KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
                     KeyDef("<", widthWeight = 1.0f),
                     KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
-                    KeyDef(">", widthWeight = 1.2f),
+                    KeyDef(">", widthWeight = 1.0f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )

@@ -31,7 +31,7 @@ fun CorrectionsSuggestionsScreen(
     onUpdateShowGestureTrail: (Boolean) -> Unit,
     onUpdateAutoCapitalization: (Boolean) -> Unit,
     onUpdateDoubleSpacePeriod: (Boolean) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -41,12 +41,6 @@ fun CorrectionsSuggestionsScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
-        SettingsTopAppBar(
-            title = "Corrections & Suggestions",
-            subtitle = "Predictive text, gesture typing and input corrections",
-            onBack = onBack
-        )
-
         SettingsCategoryHeader(title = "Suggestion Strip & Intelligence")
 
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {

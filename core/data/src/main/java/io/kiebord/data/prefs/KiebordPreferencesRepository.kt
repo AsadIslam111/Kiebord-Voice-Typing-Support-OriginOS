@@ -33,6 +33,8 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val LONG_PRESS_DELAY_MS = intPreferencesKey("pref_long_press_delay_ms")
         val CURSOR_TRACKPAD_ENABLED = booleanPreferencesKey("pref_cursor_trackpad_enabled")
         val ONE_HANDED_MODE = stringPreferencesKey("pref_one_handed_mode")
+        val LONG_PRESS_DELETE_ENABLED = booleanPreferencesKey("pref_long_press_delete_enabled")
+        val SELECTIVE_DELETE_MODE = stringPreferencesKey("pref_selective_delete_mode")
 
         val PRIMARY_LAYOUT_ID = stringPreferencesKey("pref_primary_layout_id")
         val ENABLED_LAYOUT_IDS = stringSetPreferencesKey("pref_enabled_layout_ids")
@@ -68,6 +70,8 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 longPressDelayMs = prefs[PreferencesKeys.LONG_PRESS_DELAY_MS] ?: 300,
                 cursorTrackpadEnabled = prefs[PreferencesKeys.CURSOR_TRACKPAD_ENABLED] ?: true,
                 oneHandedMode = prefs[PreferencesKeys.ONE_HANDED_MODE] ?: KiebordPreferences.ONE_HANDED_OFF,
+                longPressDeleteEnabled = prefs[PreferencesKeys.LONG_PRESS_DELETE_ENABLED] ?: true,
+                selectiveDeleteMode = prefs[PreferencesKeys.SELECTIVE_DELETE_MODE] ?: KiebordPreferences.DELETE_MODE_WORD,
 
                 primaryLayoutId = prefs[PreferencesKeys.PRIMARY_LAYOUT_ID] ?: KiebordPreferences.LAYOUT_EN_QWERTY,
                 enabledLayoutIds = prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: setOf(
@@ -130,6 +134,14 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateOneHandedMode(mode: String) {
         context.kiebordDataStore.edit { it[PreferencesKeys.ONE_HANDED_MODE] = mode }
+    }
+
+    suspend fun updateLongPressDeleteEnabled(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.LONG_PRESS_DELETE_ENABLED] = enabled }
+    }
+
+    suspend fun updateSelectiveDeleteMode(mode: String) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SELECTIVE_DELETE_MODE] = mode }
     }
 
     // Layout mutators

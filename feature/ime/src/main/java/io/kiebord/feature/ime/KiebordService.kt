@@ -409,12 +409,80 @@ class KiebordService : InputMethodService() {
             handleKeyTap(KeyDef(type = KeyType.SWITCH_LANGUAGE))
             return
         }
+        if (key.type == KeyType.DELETE) {
+            handleLongPressDelete()
+            return
+        }
         val ic = currentInputConnection ?: return
         finishComposing()
         if (!key.flickUp.isNullOrEmpty()) {
             ic.commitText(key.flickUp!!, 1)
         } else if (key.moreKeys.isNotEmpty()) {
             ic.commitText(key.moreKeys.first(), 1)
+        }
+        updateSuggestions()
+    }
+
+    private fun handleLongPressDelete() {
+        if (!preferencesState.longPressDeleteEnabled) {
+            handleKeyTap(KeyDef(type = KeyType.DELETE))
+            return
+        }
+        val ic = currentInputConnection ?: return
+        if (lastGestureCommittedWord.isNotEmpty()) {
+            ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
+            lastGestureCommittedWord = ""
+            updateSuggestions()
+            return
+        }
+        if (isTransliterationLayout() && getTransliterationManager().handleDelete()) {
+            updateSuggestions()
+            return
+        }
+        if (composingBuffer.isNotEmpty()) {
+            if (preferencesState.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD) {
+                composingBuffer.clear()
+                ic.setComposingText("", 1)
+                ic.finishComposingText()
+            } else {
+                composingBuffer.deleteCharAt(composingBuffer.length - 1)
+                if (composingBuffer.isEmpty()) {
+                    ic.setComposingText("", 1)
+                    ic.finishComposingText()
+                } else {
+                    ic.setComposingText(composingBuffer.toString(), 1)
+                }
+            }
+            updateSuggestions()
+            return
+        }
+
+        if (preferencesState.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD) {
+            val textBefore = ic.getTextBeforeCursor(64, 0)
+            if (!textBefore.isNullOrEmpty()) {
+                var idx = textBefore.length
+                while (idx > 0 && textBefore[idx - 1].isWhitespace()) {
+                    idx--
+                }
+                while (idx > 0 && !textBefore[idx - 1].isWhitespace()) {
+                    idx--
+                }
+                val charsToDelete = textBefore.length - idx
+                if (charsToDelete > 0) {
+                    ic.deleteSurroundingText(charsToDelete, 0)
+                } else {
+                    ic.deleteSurroundingText(1, 0)
+                }
+            } else {
+                ic.deleteSurroundingText(1, 0)
+            }
+        } else {
+            val selectedText = ic.getSelectedText(0)
+            if (selectedText.isNullOrEmpty()) {
+                ic.deleteSurroundingText(1, 0)
+            } else {
+                ic.commitText("", 1)
+            }
         }
         updateSuggestions()
     }

@@ -1,7 +1,12 @@
 package io.kiebord.app.ui.settings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,14 +23,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.Icon
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,13 +43,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.data.prefs.KiebordPreferences
 
-private data class LayoutInfo(
+private data class LayoutVariant(
     val id: String,
     val name: String,
-    val language: String,
     val badge: String,
     val description: String,
     val previewKeys: List<List<String>>
@@ -53,41 +58,39 @@ fun KeyboardLayoutsScreen(
     preferences: KiebordPreferences,
     onUpdatePrimaryLayout: (String) -> Unit,
     onToggleLayoutEnabled: (String, Boolean) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
-    val availableLayouts = listOf(
-        LayoutInfo(
-            id = KiebordPreferences.LAYOUT_EN_QWERTY,
-            name = "English (QWERTY)",
-            language = "English",
-            badge = "EN",
-            description = "Standard staggered QWERTY with gesture typing and flick numbers",
-            previewKeys = listOf(
-                listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
-                listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
-                listOf("z", "x", "c", "v", "b", "n", "m")
-            )
-        ),
-        LayoutInfo(
+    val englishLayout = LayoutVariant(
+        id = KiebordPreferences.LAYOUT_EN_QWERTY,
+        name = "English (QWERTY)",
+        badge = "EN",
+        description = "Standard QWERTY layout with numeric flick keys and glide typing",
+        previewKeys = listOf(
+            listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
+            listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
+            listOf("z", "x", "c", "v", "b", "n", "m")
+        )
+    )
+
+    val banglaLayouts = listOf(
+        LayoutVariant(
             id = KiebordPreferences.LAYOUT_BN_BORNO,
             name = "Bengali (Borno Phonetic)",
-            language = "Bangla",
             badge = "বর্ণ",
-            description = "Streamlined English-to-Bangla transliteration (e.g. 'ami' -> 'আমি')",
+            description = "Natural English-to-Bangla phonetic transliteration (e.g. 'ami' -> 'আমি')",
             previewKeys = listOf(
                 listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
                 listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
                 listOf("z", "x", "c", "v", "b", "n", "m")
             )
         ),
-        LayoutInfo(
+        LayoutVariant(
             id = KiebordPreferences.LAYOUT_BN_PROBHAT,
             name = "Bengali (Probhat)",
-            language = "Bangla",
             badge = "প্রভাত",
-            description = "Probhat national standard layout with dual-shift vowel & consonant layers",
+            description = "Probhat national standard dual-shift mapping for direct Bengali input",
             previewKeys = listOf(
                 listOf("দ", "ড", "প", "ট", "চ", "ত", "জ", "ক", "স", "হ"),
                 listOf("ি", "ু", "ী", "ূ", "া", "ে", "ো", "য়", "র", "ল"),
@@ -96,7 +99,18 @@ fun KeyboardLayoutsScreen(
         )
     )
 
-    var previewLayoutId by remember { mutableStateOf(preferences.primaryLayoutId) }
+    // Current active selection in Bangla sub-pager
+    var banglaIndex by remember {
+        mutableIntStateOf(
+            if (preferences.primaryLayoutId == KiebordPreferences.LAYOUT_BN_PROBHAT) 1 else 0
+        )
+    }
+
+    var selectedLanguage by remember {
+        mutableStateOf(
+            if (preferences.primaryLayoutId.startsWith("bn")) "bn" else "en"
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -104,121 +118,230 @@ fun KeyboardLayoutsScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
-        SettingsTopAppBar(
-            title = "Keyboard Layouts",
-            subtitle = "Active languages, primary layout and visual maps",
-            onBack = onBack
-        )
+        SettingsCategoryHeader(title = "Languages & Primary Input")
 
-        SettingsCategoryHeader(title = "Primary Default Layout")
-
+        // 1. English Language Card
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            availableLayouts.forEachIndexed { index, layout ->
-                val isSelected = preferences.primaryLayoutId == layout.id
-                SettingsRadioOption(
-                    title = layout.name,
-                    subtitle = layout.description,
-                    selected = isSelected,
-                    showDivider = index < availableLayouts.size - 1,
-                    onSelect = {
-                        onUpdatePrimaryLayout(layout.id)
-                        previewLayoutId = layout.id
+            val isEnglishSelected = preferences.primaryLayoutId == englishLayout.id
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        selectedLanguage = "en"
+                        onUpdatePrimaryLayout(englishLayout.id)
                     }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF2B2D31)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "EN",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF7AA2F7)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "English",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFE0E2E8)
+                    )
+                    Text(
+                        text = "QWERTY layout",
+                        fontSize = 12.sp,
+                        color = Color(0xFF9499A8)
+                    )
+                }
+
+                RadioButton(
+                    selected = isEnglishSelected,
+                    onClick = {
+                        selectedLanguage = "en"
+                        onUpdatePrimaryLayout(englishLayout.id)
+                    },
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = Color(0xFF7AA2F7),
+                        unselectedColor = Color(0xFF6B7280)
+                    )
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        SettingsCategoryHeader(title = "Enabled Layout Rotation")
+        Spacer(modifier = Modifier.height(10.dp))
 
+        // 2. Bangla Language Card (Groups Borno Phonetic and Probhat)
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            availableLayouts.forEachIndexed { index, layout ->
-                val isEnabled = preferences.enabledLayoutIds.contains(layout.id)
-                val isLastRemaining = preferences.enabledLayoutIds.size == 1 && isEnabled
+            val isBanglaPrimary = preferences.primaryLayoutId.startsWith("bn")
+            val currentBangla = banglaLayouts[banglaIndex]
 
-                SettingsToggleItem(
-                    title = layout.name,
-                    subtitle = if (isLastRemaining) "At least one layout must remain active" else "Include in globe / spacebar language rotation",
-                    icon = Icons.Outlined.Keyboard,
-                    checked = isEnabled,
-                    showDivider = index < availableLayouts.size - 1,
-                    onCheckedChange = { checked ->
-                        if (!isLastRemaining || checked) {
-                            onToggleLayoutEnabled(layout.id, checked)
-                        }
-                    }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        SettingsCategoryHeader(title = "Live Layout Preview")
-
-        val currentPreview = availableLayouts.find { it.id == previewLayoutId } ?: availableLayouts.first()
-
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedLanguage = "bn"
+                            onUpdatePrimaryLayout(currentBangla.id)
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF2E3440))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF2B2D31)),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = currentPreview.badge,
+                            text = "বাং",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF7AA2F7)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
 
-                    Text(
-                        text = currentPreview.name,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFFE0E2E8)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Bangla Language",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFE0E2E8)
+                        )
+                        Text(
+                            text = "Borno Phonetic • Probhat",
+                            fontSize = 12.sp,
+                            color = Color(0xFF9499A8)
+                        )
+                    }
+
+                    RadioButton(
+                        selected = isBanglaPrimary,
+                        onClick = {
+                            selectedLanguage = "bn"
+                            onUpdatePrimaryLayout(currentBangla.id)
+                        },
+                        colors = RadioButtonDefaults.colors(
+                            selectedColor = Color(0xFF7AA2F7),
+                            unselectedColor = Color(0xFF6B7280)
+                        )
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Miniature Keyboard Keycap Matrix
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF131417))
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    currentPreview.previewKeys.forEach { rowKeys ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                // If Bangla is selected/clicked: Show live keyboard preview with radio dot on bottom and layout name
+                if (selectedLanguage == "bn") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF131417))
+                                .padding(12.dp)
                         ) {
-                            rowKeys.forEach { keyStr ->
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(28.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(Color(0xFF25272B))
-                                        .border(0.5.dp, Color(0xFF383A40), RoundedCornerShape(4.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = keyStr,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFFE0E2E8)
-                                    )
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                AnimatedContent(
+                                    targetState = banglaIndex,
+                                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                    label = "banglaKeyPreview"
+                                ) { idx ->
+                                    val layout = banglaLayouts[idx]
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        layout.previewKeys.forEach { rowKeys ->
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                rowKeys.forEach { keyStr ->
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .height(28.dp)
+                                                            .clip(RoundedCornerShape(4.dp))
+                                                            .background(Color(0xFF25272B))
+                                                            .border(0.5.dp, Color(0xFF383A40), RoundedCornerShape(4.dp)),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Text(
+                                                            text = keyStr,
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Medium,
+                                                            color = Color(0xFFE0E2E8)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
+
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                // Radio dots on bottom for selecting Bangla layout variant
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    banglaLayouts.forEachIndexed { idx, layout ->
+                                        val isDotSelected = banglaIndex == idx
+                                        Box(
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .clip(CircleShape)
+                                                .border(
+                                                    width = 2.dp,
+                                                    color = if (isDotSelected) Color(0xFF7AA2F7) else Color(0xFF6B7280),
+                                                    shape = CircleShape
+                                                )
+                                                .clickable {
+                                                    banglaIndex = idx
+                                                    onUpdatePrimaryLayout(layout.id)
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (isDotSelected) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(8.dp)
+                                                        .clip(CircleShape)
+                                                        .background(Color(0xFF7AA2F7))
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Layout Name below the radio dots
+                                Text(
+                                    text = banglaLayouts[banglaIndex].name,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF7AA2F7)
+                                )
+                                Text(
+                                    text = banglaLayouts[banglaIndex].description,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF9499A8),
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
                             }
                         }
                     }
@@ -226,37 +349,26 @@ fun KeyboardLayoutsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        SettingsCategoryHeader(title = "Bengali Phonetic Quick Reference")
+        Spacer(modifier = Modifier.height(12.dp))
+        SettingsCategoryHeader(title = "Language Switcher Rotation")
 
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
-                        contentDescription = null,
-                        tint = Color(0xFF7AA2F7),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Borno Phonetic Transliteration Rules",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFFE0E2E8)
-                    )
-                }
+            val allLayouts = listOf(englishLayout) + banglaLayouts
+            allLayouts.forEachIndexed { index, layout ->
+                val isEnabled = preferences.enabledLayoutIds.contains(layout.id)
+                val isLastRemaining = preferences.enabledLayoutIds.size == 1 && isEnabled
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "• Vowels: a → অ, aa / A → আ, i → ই, ee / I → ঈ, u → উ, oo / U → ঊ, e → এ, o → ও\n" +
-                            "• Consonants: k → ক, kh → খ, g → গ, gh → ঘ, ng → ঙ, ch → চ, cch → ছ, j → জ, jh → ঝ\n" +
-                            "• Conjuncts: kkh → ক্ষ, jyo → জ্ঞ, nch → ঞ্চ, njo → ঞ্জ, tto → ত্ত, bbo → ব্ব\n" +
-                            "• Special: `rri` → ঋ, `h` after consonants adds mahaprana aspiration.",
-                    fontSize = 12.sp,
-                    lineHeight = 18.sp,
-                    color = Color(0xFF9499A8)
+                SettingsToggleItem(
+                    title = layout.name,
+                    subtitle = if (isLastRemaining) "At least one layout must remain active" else "Include in globe switch rotation",
+                    icon = Icons.Outlined.Keyboard,
+                    checked = isEnabled,
+                    showDivider = index < allLayouts.size - 1,
+                    onCheckedChange = { checked ->
+                        if (!isLastRemaining || checked) {
+                            onToggleLayoutEnabled(layout.id, checked)
+                        }
+                    }
                 )
             }
         }
