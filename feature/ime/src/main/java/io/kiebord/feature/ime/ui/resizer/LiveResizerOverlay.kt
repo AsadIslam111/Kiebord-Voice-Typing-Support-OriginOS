@@ -61,13 +61,13 @@ fun LiveResizerOverlay(
     val currentMarginState = rememberUpdatedState(currentHorizontalMargin)
     val onMarginChangeState = rememberUpdatedState(onHorizontalMarginChange)
 
-    // Bounding wireframe outline (Borno Keyboard cyan style, NO fillMaxSize to prevent window expansion)
+    // Bounding wireframe outline (Borno Keyboard styling, NO fillMaxSize to prevent window expansion)
     Box(
         modifier = modifier
             .border(2.dp, accentColor, RoundedCornerShape(12.dp))
             .background(Color.Black.copy(alpha = 0.28f))
     ) {
-        // 1. Four Corner L-Brackets for Borno Keyboard transform aesthetics
+        // 1. Four Corner L-Brackets for transform aesthetics
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -204,7 +204,7 @@ fun LiveResizerOverlay(
             )
         }
 
-        // 6. Borno Keyboard-style Centered Floating Action Island (fully visible, never cut off)
+        // 6. Centered Floating Action Island (fully visible, never cut off)
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -276,7 +276,7 @@ fun LiveResizerOverlay(
                     )
                 }
 
-                // Save / Confirm Button (Borno Keyboard accent blue circle with white checkmark)
+                // Save / Confirm Button (Accent circle with white checkmark)
                 Box(
                     modifier = Modifier
                         .size(34.dp)

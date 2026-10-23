@@ -95,7 +95,7 @@ fun MoreKeysPopup(
     val minTopPx = with(density) { 6.dp.toPx() }
     val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
 
-    // 3. Dynamic transform origin for smooth Borno Keyboard bloom originating right from anchor key
+    // 3. Dynamic transform origin for smooth bloom originating right from anchor key
     val pivotFractionX = if (totalWidthPx > 0f) {
         ((anchorCenterX - clampedLeft) / totalWidthPx).coerceIn(0.08f, 0.92f)
     } else {

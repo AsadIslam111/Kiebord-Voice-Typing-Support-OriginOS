@@ -19,13 +19,8 @@ import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.PictureInPicture
 import androidx.compose.material.icons.outlined.Pin
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.TextFields
-import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,17 +51,12 @@ fun ToolsDrawerView(
     val colorScheme = KiebordTheme.colorScheme
 
     val tools = listOf(
-        DrawerTool(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings"),
         DrawerTool(ToolbarAction.TEXT_EDIT, Icons.Outlined.TextFields, "Text editing"),
-        DrawerTool(ToolbarAction.SHARE, Icons.Outlined.Share, "Share Borno Keyboard"),
-        DrawerTool(ToolbarAction.ONE_HANDED, Icons.Outlined.Smartphone, "One-handed"),
-        DrawerTool(ToolbarAction.FLOATING, Icons.Outlined.PictureInPicture, "Floating"),
-        DrawerTool(ToolbarAction.RESIZER, Icons.Outlined.CropFree, "Resize"),
-        DrawerTool(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emoji"),
-        DrawerTool(ToolbarAction.TRANSLATE, Icons.Outlined.Translate, "Translate"),
+        DrawerTool(ToolbarAction.CLIPBOARD, Icons.AutoMirrored.Outlined.Assignment, "Clipboard"),
         DrawerTool(ToolbarAction.THEME_TOGGLE, Icons.Outlined.Palette, "Theme"),
+        DrawerTool(ToolbarAction.RESIZER, Icons.Outlined.CropFree, "Resize"),
         DrawerTool(ToolbarAction.NUMBER_ROW_TOGGLE, Icons.Outlined.Pin, "Number row"),
-        DrawerTool(ToolbarAction.CLIPBOARD, Icons.AutoMirrored.Outlined.Assignment, "Clipboard")
+        DrawerTool(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emoji")
     )
 
     Column(

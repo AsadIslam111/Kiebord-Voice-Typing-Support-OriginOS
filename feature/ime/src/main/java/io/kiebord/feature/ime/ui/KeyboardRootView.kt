@@ -1,6 +1,5 @@
 package io.kiebord.feature.ime.ui
 
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -140,41 +139,6 @@ fun KeyboardRootView(
             }
             ToolbarAction.THEME_TOGGLE -> {
                 onThemeToggle()
-            }
-            ToolbarAction.SETTINGS -> {
-                isToolsDrawerOpen = false
-                try {
-                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    if (intent != null) context.startActivity(intent)
-                } catch (_: Exception) {}
-            }
-            ToolbarAction.SHARE -> {
-                isToolsDrawerOpen = false
-                try {
-                    val sendIntent = Intent().apply {
-                        this.action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, "Kiebord - Smooth Keyboard for Android")
-                        type = "text/plain"
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    val shareIntent = Intent.createChooser(sendIntent, "Share Borno Keyboard").apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(shareIntent)
-                } catch (_: Exception) {}
-            }
-            ToolbarAction.ONE_HANDED -> {
-                isToolsDrawerOpen = false
-                horizontalMargin = if (horizontalMargin == 0.dp) 36.dp else 0.dp
-            }
-            ToolbarAction.FLOATING -> {
-                isToolsDrawerOpen = false
-                horizontalMargin = if (horizontalMargin == 0.dp) 52.dp else 0.dp
-            }
-            ToolbarAction.TRANSLATE -> {
-                isToolsDrawerOpen = false
             }
             ToolbarAction.CLIPBOARD -> {
                 isToolsDrawerOpen = false
@@ -513,13 +477,13 @@ fun KeyboardRootView(
             modifier = Modifier.matchParentSize()
         )
 
-        // 2. Borno Keyboard-style rounded pill MoreKeys floating popup
+        // 2. Borno Keyboard rounded pill MoreKeys floating popup
         MoreKeysPopup(
             state = moreKeysState,
             keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f
         )
 
-        // 3. Live Keyboard Resizer Overlay (Borno Keyboard style with 4-way drag handles)
+        // 3. Live Keyboard Resizer Overlay (Borno Keyboard 4-way drag handles)
         if (isResizerOpen) {
             LiveResizerOverlay(
                 currentRowHeight = keyRowHeight,
