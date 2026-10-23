@@ -4,9 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +46,7 @@ fun KeyboardRootView(
     onKeyLongPress: (KeyDef) -> Unit,
     onThemeToggle: () -> Unit = {},
     initialRowHeight: Dp = 60.dp,
+    navBarBottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -71,6 +75,11 @@ fun KeyboardRootView(
     var savedChinPadding by remember { mutableStateOf(8.dp) }
     var savedHorizontalMargin by remember { mutableStateOf(0.dp) }
 
+    // Obey navigation bar insets: maximum of Compose WindowInsets and platform WindowInsetsCompat
+    val composeNavBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val effectiveNavBarBottom = maxOf(navBarBottomInset, composeNavBottom)
+    val totalBottomPadding = chinPadding + effectiveNavBarBottom
+
     // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
     val displayLayout = if (isSlidingSymbolMode) PredefinedLayouts.Symbols else layout
 
@@ -91,7 +100,7 @@ fun KeyboardRootView(
                 start = 4.dp + horizontalMargin,
                 end = 4.dp + horizontalMargin,
                 top = 4.dp,
-                bottom = chinPadding
+                bottom = totalBottomPadding
             )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -182,14 +191,22 @@ fun KeyboardRootView(
                                             Size(size.width.toFloat(), size.height.toFloat())
                                         )
 
-                                        val itemWidthPx = with(density) { 44.dp.toPx() }
-                                        val horizontalPaddingPx = with(density) { 8.dp.toPx() }
-                                        val totalWidthPx = keyDef.moreKeys.size * itemWidthPx + horizontalPaddingPx * 2
-                                        val idealLeft = keyRect.center.x - totalWidthPx / 2f
-                                        val clampedLeft = idealLeft.coerceIn(
-                                            8f,
-                                            (rootWidthPx - totalWidthPx - 8f).coerceAtLeast(8f)
-                                        )
+                                        val itemCount = keyDef.moreKeys.size
+                                        val horizontalPaddingPx = with(density) { 6.dp.toPx() }
+                                        val maxAllowedWidthPx = (rootWidthPx - with(density) { 16.dp.toPx() }).coerceAtLeast(with(density) { 180.dp.toPx() })
+                                        val baseItemWidthDp = if (itemCount > 7) 32.dp else 40.dp
+                                        val idealItemWidthPx = with(density) { baseItemWidthDp.toPx() }
+                                        val requiredWidthPx = itemCount * idealItemWidthPx + horizontalPaddingPx * 2
+                                        val itemWidthPx = if (requiredWidthPx > maxAllowedWidthPx) {
+                                            ((maxAllowedWidthPx - horizontalPaddingPx * 2) / itemCount).coerceAtLeast(with(density) { 26.dp.toPx() })
+                                        } else {
+                                            idealItemWidthPx
+                                        }
+                                        val totalWidthPx = itemCount * itemWidthPx + horizontalPaddingPx * 2
+                                        val minLeftPx = with(density) { 8.dp.toPx() }
+                                        val maxLeftPx = (rootWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
+                                        val clampedLeft = (keyRect.center.x - totalWidthPx / 2f).coerceIn(minLeftPx, maxLeftPx)
+
                                         val initialRelativeX = keyRect.center.x - (clampedLeft + horizontalPaddingPx)
                                         val initialIndex = (initialRelativeX / itemWidthPx).toInt().coerceIn(0, keyDef.moreKeys.lastIndex)
 
@@ -206,14 +223,21 @@ fun KeyboardRootView(
                                     val rCoords = rootCoordinates ?: return@KeycapView
                                     if (rCoords.isAttached && keyCoords.isAttached) {
                                         val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
-                                        val itemWidthPx = with(density) { 44.dp.toPx() }
-                                        val horizontalPaddingPx = with(density) { 8.dp.toPx() }
-                                        val totalWidthPx = state.items.size * itemWidthPx + horizontalPaddingPx * 2
-                                        val idealLeft = state.anchorRect.center.x - totalWidthPx / 2f
-                                        val clampedLeft = idealLeft.coerceIn(
-                                            8f,
-                                            (rootWidthPx - totalWidthPx - 8f).coerceAtLeast(8f)
-                                        )
+                                        val itemCount = state.items.size
+                                        val horizontalPaddingPx = with(density) { 6.dp.toPx() }
+                                        val maxAllowedWidthPx = (rootWidthPx - with(density) { 16.dp.toPx() }).coerceAtLeast(with(density) { 180.dp.toPx() })
+                                        val baseItemWidthDp = if (itemCount > 7) 32.dp else 40.dp
+                                        val idealItemWidthPx = with(density) { baseItemWidthDp.toPx() }
+                                        val requiredWidthPx = itemCount * idealItemWidthPx + horizontalPaddingPx * 2
+                                        val itemWidthPx = if (requiredWidthPx > maxAllowedWidthPx) {
+                                            ((maxAllowedWidthPx - horizontalPaddingPx * 2) / itemCount).coerceAtLeast(with(density) { 26.dp.toPx() })
+                                        } else {
+                                            idealItemWidthPx
+                                        }
+                                        val totalWidthPx = itemCount * itemWidthPx + horizontalPaddingPx * 2
+                                        val minLeftPx = with(density) { 8.dp.toPx() }
+                                        val maxLeftPx = (rootWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
+                                        val clampedLeft = (state.anchorRect.center.x - totalWidthPx / 2f).coerceIn(minLeftPx, maxLeftPx)
 
                                         val relativeX = fingerPosInRoot.x - (clampedLeft + horizontalPaddingPx)
                                         val index = (relativeX / itemWidthPx).toInt().coerceIn(0, state.items.lastIndex)

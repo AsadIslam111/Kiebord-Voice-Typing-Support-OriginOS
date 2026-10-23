@@ -64,20 +64,20 @@ fun KeycapView(
     // Dynamic key background & foreground colors driven by configurable theme
     val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SWITCH_LANGUAGE
     val baseBackground = when {
-        key.type == KeyType.ACTION -> colorScheme.actionKeyBackground
+        key.type == KeyType.ACTION -> colorScheme.accentColor
         isActionOrModifier -> colorScheme.actionKeyBackground
         else -> colorScheme.keyBackground
     }
 
     val activeBackground = if (isPressed) {
-        colorScheme.accentColor.copy(alpha = 0.35f)
+        if (key.type == KeyType.ACTION) colorScheme.accentColor.copy(alpha = 0.8f) else colorScheme.accentColor.copy(alpha = 0.28f)
     } else {
         baseBackground
     }
 
     val foregroundColor = when {
         key.type == KeyType.SHIFT && shiftState != ShiftState.UNSHIFTED -> colorScheme.shiftActiveColor
-        key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
+        key.type == KeyType.ACTION -> androidx.compose.ui.graphics.Color.White
         else -> colorScheme.keyForeground
     }
 
@@ -94,6 +94,7 @@ fun KeycapView(
     val currentOnSlidingMove = rememberUpdatedState(onSlidingDragMove)
     val currentOnSlidingEnd = rememberUpdatedState(onSlidingDragEnd)
 
+    // Flat Material 3 key styling with zero drop shadows
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -102,7 +103,6 @@ fun KeycapView(
                 onKeyPositioned(key, coords)
             }
             .padding(horizontal = 3.dp, vertical = 3.dp)
-            .shadow(elevation = if (isPressed) 0.dp else 1.5.dp, shape = RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .background(activeBackground)
             .pointerInput(Unit) {

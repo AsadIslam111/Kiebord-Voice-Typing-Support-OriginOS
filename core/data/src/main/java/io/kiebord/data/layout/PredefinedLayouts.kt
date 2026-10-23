@@ -55,9 +55,10 @@ object PredefinedLayouts {
             KeyRow(
                 listOf(
                     KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.3f, slidingInput = true),
-                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.1f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.8f),
-                    KeyDef(".", flickUp = ">", moreKeys = listOf(">", "»", "…"), widthWeight = 1.3f),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
+                    KeyDef(",", flickUp = null, moreKeys = listOf("<", ">", "[", "]", "{", "}"), widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
+                    KeyDef(".", flickUp = ">", moreKeys = listOf("?", "!", ",", "-", "/", "@", ":", "'", "\"", "_", ";"), widthWeight = 1.2f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )
@@ -116,9 +117,10 @@ object PredefinedLayouts {
             KeyRow(
                 listOf(
                     KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.3f, slidingInput = true),
-                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.1f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.8f),
-                    KeyDef("।", "|", widthWeight = 1.3f),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
+                    KeyDef(",", widthWeight = 1.0f, moreKeys = listOf(";", ":", "<", ">")),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
+                    KeyDef("।", moreKeys = listOf(".", "!", "?", ",", "-", "/", "—"), widthWeight = 1.2f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )
@@ -180,10 +182,11 @@ object PredefinedLayouts {
             ),
             KeyRow(
                 listOf(
-                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.4f),
-                    KeyDef(",", widthWeight = 1.1f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.7f),
-                    KeyDef(".", widthWeight = 1.3f),
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.3f),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
+                    KeyDef(",", widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
+                    KeyDef(".", widthWeight = 1.2f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )
@@ -238,10 +241,11 @@ object PredefinedLayouts {
             ),
             KeyRow(
                 listOf(
-                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.4f),
-                    KeyDef("<", widthWeight = 1.1f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.7f),
-                    KeyDef(">", widthWeight = 1.3f),
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.3f),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
+                    KeyDef("<", widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
+                    KeyDef(">", widthWeight = 1.2f),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
                 )
             )

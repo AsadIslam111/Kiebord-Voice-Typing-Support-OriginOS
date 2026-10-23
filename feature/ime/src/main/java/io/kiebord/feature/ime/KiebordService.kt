@@ -21,6 +21,11 @@ import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
 
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+
 class KiebordService : InputMethodService() {
 
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
@@ -32,6 +37,7 @@ class KiebordService : InputMethodService() {
     private var shiftState by mutableStateOf(ShiftState.UNSHIFTED)
     private var isSymbolsMode by mutableStateOf(false)
     private var colorScheme by mutableStateOf(KeyboardColorScheme.DefaultDark)
+    private var navBarInsetBottomPx by mutableIntStateOf(0)
 
     override fun onCreate() {
         super.onCreate()
@@ -48,34 +54,68 @@ class KiebordService : InputMethodService() {
     override fun onCreateInputView(): View {
         window?.window?.decorView?.let { decorView ->
             lifecycleOwner.attachToView(decorView)
-        }
-        return ComposeView(this).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(lifecycleOwner))
-            lifecycleOwner.attachToView(this)
-            setContent {
-                KiebordTheme(colorScheme = colorScheme) {
-                    KeyboardRootView(
-                        layout = activeLayout,
-                        shiftState = shiftState,
-                        onKeyTap = ::handleKeyTap,
-                        onKeyLongPress = ::handleKeyLongPress,
-                        onThemeToggle = {
-                            colorScheme = when (colorScheme) {
-                                KeyboardColorScheme.DefaultDark -> KeyboardColorScheme.AmoledBlack
-                                KeyboardColorScheme.AmoledBlack -> KeyboardColorScheme.DefaultLight
-                                else -> KeyboardColorScheme.DefaultDark
-                            }
-                        }
-                    )
+            ViewCompat.getRootWindowInsets(decorView)?.let { insets ->
+                val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+                val gestures = insets.getInsets(WindowInsetsCompat.Type.systemGestures())
+                val mandatory = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
+                val bottom = maxOf(nav.bottom, gestures.bottom, mandatory.bottom)
+                if (bottom > 0) {
+                    navBarInsetBottomPx = bottom
                 }
             }
         }
+
+        val composeView = ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(lifecycleOwner))
+            lifecycleOwner.attachToView(this)
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(composeView) { _, insets ->
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val gestures = insets.getInsets(WindowInsetsCompat.Type.systemGestures())
+            val mandatory = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
+            val bottom = maxOf(nav.bottom, gestures.bottom, mandatory.bottom)
+            navBarInsetBottomPx = bottom
+            insets
+        }
+
+        composeView.setContent {
+            val density = LocalDensity.current
+            val navBarBottomDp = with(density) { navBarInsetBottomPx.toDp() }
+
+            KiebordTheme(colorScheme = colorScheme) {
+                KeyboardRootView(
+                    layout = activeLayout,
+                    shiftState = shiftState,
+                    navBarBottomInset = navBarBottomDp,
+                    onKeyTap = ::handleKeyTap,
+                    onKeyLongPress = ::handleKeyLongPress,
+                    onThemeToggle = {
+                        colorScheme = when (colorScheme) {
+                            KeyboardColorScheme.DefaultDark -> KeyboardColorScheme.AmoledBlack
+                            KeyboardColorScheme.AmoledBlack -> KeyboardColorScheme.DefaultLight
+                            else -> KeyboardColorScheme.DefaultDark
+                        }
+                    }
+                )
+            }
+        }
+        return composeView
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         window?.window?.decorView?.let { decorView ->
             lifecycleOwner.attachToView(decorView)
+            ViewCompat.getRootWindowInsets(decorView)?.let { insets ->
+                val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+                val gestures = insets.getInsets(WindowInsetsCompat.Type.systemGestures())
+                val mandatory = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
+                val bottom = maxOf(nav.bottom, gestures.bottom, mandatory.bottom)
+                if (bottom > 0) {
+                    navBarInsetBottomPx = bottom
+                }
+            }
         }
         lifecycleOwner.onStart()
         shiftState = ShiftState.UNSHIFTED
