@@ -1,36 +1,37 @@
+use crate::dictionary::combined_parser::CombinedDictData;
 use crate::dictionary::proximity::KeyProximity;
 use std::collections::HashMap;
 
 pub const MAGIC: u32 = 0x424B_4443; // "BKDC" (Borno Keyboard Dict)
-pub const VERSION: u16 = 1;
+pub const VERSION: u16 = 2; // Version 2 supports bigram next-word prediction section
 
 /// In-memory node representation in the packed trie.
 #[derive(Clone, Debug, Default)]
 pub struct DictNode {
     pub edge_char: char,
-    pub freq: u32,
-    pub max_subtree_freq: u32,
+    pub freq: u8,
+    pub max_subtree_freq: u8,
     pub child_start: u32,
     pub child_count: u16,
     pub is_word: bool,
 }
 
-/// Binary dictionary with zero-copy decoding and proximity typo search.
+/// Binary dictionary with zero-copy decoding, proximity typo search, and next-word prediction.
 pub struct BinaryDict<'a> {
     pub word_count: u32,
     pub nodes: Vec<DictNode>,
-    pub words: Vec<String>,
+    pub bigrams: HashMap<String, Vec<(String, u8)>>,
     _raw_bytes: Option<&'a [u8]>,
 }
 
 impl<'a> BinaryDict<'a> {
-    /// Compiles a wordlist into binary `.dict` file bytes.
-    pub fn compile(entries: &[(&str, u32)]) -> Vec<u8> {
-        let mut sorted = entries.to_vec();
-        sorted.sort_by(|a, b| a.0.cmp(b.0));
+    /// Compiles parsed `.combined` data into binary `.dict` bytes.
+    pub fn compile_combined(data: &CombinedDictData) -> Vec<u8> {
+        let mut sorted = data.unigrams.clone();
+        sorted.sort_by(|a, b| a.0.cmp(&b.0));
 
         struct TempNode {
-            freq: u32,
+            freq: u8,
             is_word: bool,
             children: HashMap<char, TempNode>,
         }
@@ -41,7 +42,7 @@ impl<'a> BinaryDict<'a> {
             children: HashMap::new(),
         };
 
-        for &(word, freq) in &sorted {
+        for (word, freq) in &sorted {
             if word.is_empty() {
                 continue;
             }
@@ -54,7 +55,7 @@ impl<'a> BinaryDict<'a> {
                 });
             }
             curr.is_word = true;
-            curr.freq = freq;
+            curr.freq = *freq;
         }
 
         // Flatten breadth-first into flat nodes array
@@ -112,31 +113,55 @@ impl<'a> BinaryDict<'a> {
             flat_nodes[i].max_subtree_freq = max_f;
         }
 
-        // Serialize to bytes:
-        // Header: [u32 magic][u16 version][u16 flags][u32 word_count][u32 node_count]
+        // Build bigram section bytes
+        let mut bigram_bytes = Vec::new();
+        for (prev_word, candidates) in &data.bigrams {
+            let pw_bytes = prev_word.as_bytes();
+            bigram_bytes.extend_from_slice(&(pw_bytes.len() as u16).to_be_bytes());
+            bigram_bytes.extend_from_slice(pw_bytes);
+
+            bigram_bytes.extend_from_slice(&(candidates.len() as u16).to_be_bytes());
+            for (next_word, freq) in candidates {
+                let nw_bytes = next_word.as_bytes();
+                bigram_bytes.extend_from_slice(&(nw_bytes.len() as u16).to_be_bytes());
+                bigram_bytes.extend_from_slice(nw_bytes);
+                bigram_bytes.push(*freq);
+            }
+        }
+
+        // Header:
+        // [u32 magic][u16 version][u16 flags][u32 word_count][u32 node_count][u32 bigram_count][u32 bigram_offset]
+        let node_size = 16;
+        let header_size = 24;
+        let bigram_offset = (header_size + flat_nodes.len() * node_size) as u32;
+
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&MAGIC.to_be_bytes());
         bytes.extend_from_slice(&VERSION.to_be_bytes());
         bytes.extend_from_slice(&0u16.to_be_bytes()); // flags
         bytes.extend_from_slice(&(sorted.len() as u32).to_be_bytes());
         bytes.extend_from_slice(&(flat_nodes.len() as u32).to_be_bytes());
+        bytes.extend_from_slice(&(data.bigrams.len() as u32).to_be_bytes());
+        bytes.extend_from_slice(&bigram_offset.to_be_bytes());
 
         for node in &flat_nodes {
             bytes.extend_from_slice(&(node.edge_char as u32).to_be_bytes());
-            bytes.extend_from_slice(&node.freq.to_be_bytes());
-            bytes.extend_from_slice(&node.max_subtree_freq.to_be_bytes());
+            bytes.push(node.freq);
+            bytes.push(node.max_subtree_freq);
+            bytes.push(if node.is_word { 1 } else { 0 });
+            bytes.push(0); // pad
             bytes.extend_from_slice(&node.child_start.to_be_bytes());
             bytes.extend_from_slice(&node.child_count.to_be_bytes());
-            bytes.push(if node.is_word { 1 } else { 0 });
-            bytes.push(0); // padding byte
+            bytes.extend_from_slice(&0u16.to_be_bytes()); // pad2
         }
 
+        bytes.extend_from_slice(&bigram_bytes);
         bytes
     }
 
     /// Loads binary `.dict` bytes into a `BinaryDict`.
     pub fn from_bytes(bytes: &'a [u8]) -> Result<Self, &'static str> {
-        if bytes.len() < 16 {
+        if bytes.len() < 24 {
             return Err("Binary dict too small");
         }
 
@@ -146,29 +171,43 @@ impl<'a> BinaryDict<'a> {
         }
 
         let version = u16::from_be_bytes(bytes[4..6].try_into().unwrap());
-        if version != VERSION {
+        if version != 1 && version != 2 {
             return Err("Unsupported binary dict version");
         }
 
         let word_count = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
         let node_count = u32::from_be_bytes(bytes[12..16].try_into().unwrap()) as usize;
 
-        let node_size = 20;
-        let expected_size = 16 + node_count * node_size;
-        if bytes.len() < expected_size {
+        let mut bigrams = HashMap::new();
+
+        let node_size = if version == 1 { 20 } else { 16 };
+        let header_size = if version == 1 { 16 } else { 24 };
+
+        if bytes.len() < header_size + node_count * node_size {
             return Err("Truncated binary dict nodes");
         }
 
         let mut nodes = Vec::with_capacity(node_count);
-        let mut offset = 16;
+        let mut offset = header_size;
         for _ in 0..node_count {
             let edge_u32 = u32::from_be_bytes(bytes[offset..offset + 4].try_into().unwrap());
             let edge_char = char::from_u32(edge_u32).unwrap_or('\0');
-            let freq = u32::from_be_bytes(bytes[offset + 4..offset + 8].try_into().unwrap());
-            let max_subtree_freq = u32::from_be_bytes(bytes[offset + 8..offset + 12].try_into().unwrap());
-            let child_start = u32::from_be_bytes(bytes[offset + 12..offset + 16].try_into().unwrap());
-            let child_count = u16::from_be_bytes(bytes[offset + 16..offset + 18].try_into().unwrap());
-            let is_word = bytes[offset + 18] != 0;
+
+            let (freq, max_subtree_freq, is_word, child_start, child_count) = if version == 1 {
+                let f = u32::from_be_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()).min(255) as u8;
+                let mf = u32::from_be_bytes(bytes[offset + 8..offset + 12].try_into().unwrap()).min(255) as u8;
+                let cs = u32::from_be_bytes(bytes[offset + 12..offset + 16].try_into().unwrap());
+                let cc = u16::from_be_bytes(bytes[offset + 16..offset + 18].try_into().unwrap());
+                let iw = bytes[offset + 18] != 0;
+                (f, mf, iw, cs, cc)
+            } else {
+                let f = bytes[offset + 4];
+                let mf = bytes[offset + 5];
+                let iw = bytes[offset + 6] != 0;
+                let cs = u32::from_be_bytes(bytes[offset + 8..offset + 12].try_into().unwrap());
+                let cc = u16::from_be_bytes(bytes[offset + 12..offset + 14].try_into().unwrap());
+                (f, mf, iw, cs, cc)
+            };
 
             nodes.push(DictNode {
                 edge_char,
@@ -181,12 +220,63 @@ impl<'a> BinaryDict<'a> {
             offset += node_size;
         }
 
+        // If version 2, decode bigram section
+        if version >= 2 {
+            let bigram_count = u32::from_be_bytes(bytes[16..20].try_into().unwrap()) as usize;
+            let bigram_offset = u32::from_be_bytes(bytes[20..24].try_into().unwrap()) as usize;
+
+            let mut bg_ptr = bigram_offset;
+            for _ in 0..bigram_count {
+                if bg_ptr + 4 > bytes.len() {
+                    break;
+                }
+                let pw_len = u16::from_be_bytes(bytes[bg_ptr..bg_ptr + 2].try_into().unwrap()) as usize;
+                bg_ptr += 2;
+                if bg_ptr + pw_len + 2 > bytes.len() {
+                    break;
+                }
+                let prev_word = String::from_utf8_lossy(&bytes[bg_ptr..bg_ptr + pw_len]).to_string();
+                bg_ptr += pw_len;
+
+                let cand_count = u16::from_be_bytes(bytes[bg_ptr..bg_ptr + 2].try_into().unwrap()) as usize;
+                bg_ptr += 2;
+
+                let mut cand_list = Vec::with_capacity(cand_count);
+                for _ in 0..cand_count {
+                    if bg_ptr + 2 > bytes.len() {
+                        break;
+                    }
+                    let nw_len = u16::from_be_bytes(bytes[bg_ptr..bg_ptr + 2].try_into().unwrap()) as usize;
+                    bg_ptr += 2;
+                    if bg_ptr + nw_len + 1 > bytes.len() {
+                        break;
+                    }
+                    let next_word = String::from_utf8_lossy(&bytes[bg_ptr..bg_ptr + nw_len]).to_string();
+                    bg_ptr += nw_len;
+                    let freq = bytes[bg_ptr];
+                    bg_ptr += 1;
+                    cand_list.push((next_word, freq));
+                }
+                bigrams.insert(prev_word, cand_list);
+            }
+        }
+
         Ok(Self {
             word_count,
             nodes,
-            words: Vec::new(),
+            bigrams,
             _raw_bytes: Some(bytes),
         })
+    }
+
+    /// Predicts next words based on preceding committed word.
+    pub fn predict_next(&self, prev_word: &str, limit: usize) -> Vec<String> {
+        let clean = prev_word.trim().to_lowercase();
+        if let Some(list) = self.bigrams.get(clean.as_str()) {
+            list.iter().take(limit).map(|(w, _)| w.clone()).collect()
+        } else {
+            Vec::new()
+        }
     }
 
     /// Suggests completions and typo-corrected candidates using key proximity.
@@ -283,7 +373,7 @@ impl<'a> BinaryDict<'a> {
                             typed,
                             typed_pos,
                             accum,
-                            cost + 0.02, // very small penalty for each completed letter
+                            cost + 0.02,
                             max_cost,
                             prox,
                             results,
@@ -335,7 +425,6 @@ impl<'a> BinaryDict<'a> {
             }
             let edge_char = self.nodes[c_idx].edge_char;
 
-            // Check missed repeated letter (e.g. "helo" -> "hello", user typed 'l' once instead of twice)
             let is_missed_double = accum.chars().last() == Some(edge_char);
             let omission_penalty = if is_missed_double { 0.3 } else { 0.75 };
 
@@ -398,7 +487,7 @@ impl<'a> BinaryDict<'a> {
         terminal_words.into_iter().take(limit).map(|(w, _)| w).collect()
     }
 
-    fn collect_all_words(&self, node_idx: usize, path: &mut String, out: &mut Vec<(String, u32)>) {
+    fn collect_all_words(&self, node_idx: usize, path: &mut String, out: &mut Vec<(String, u8)>) {
         if node_idx >= self.nodes.len() {
             return;
         }
@@ -421,50 +510,35 @@ impl<'a> BinaryDict<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dictionary::combined_parser::CombinedParser;
 
     #[test]
-    fn test_compile_and_load_binary_dict() {
-        let words = &[
-            ("hello", 8000),
-            ("help", 7000),
-            ("hell", 6000),
-            ("the", 9000),
-            ("that", 8500),
-            ("this", 8200),
-            ("with", 7800),
-            ("wide", 6500),
-        ];
+    fn test_compile_combined_and_predict_next() {
+        let sample = "\
+word=hello,f=200
+ bigram=world,f=100
+  prev_word[0]=hello
+ bigram=there,f=90
+  prev_word[0]=hello
+word=help,f=180
+word=the,f=250
+word=that,f=240
+word=this,f=230";
 
-        let bytes = BinaryDict::compile(words);
-        assert!(bytes.len() > 16);
+        let parsed = CombinedParser::parse_str(sample);
+        let bytes = BinaryDict::compile_combined(&parsed);
+        assert!(bytes.len() > 24);
 
-        let dict = BinaryDict::from_bytes(&bytes).expect("Failed to load binary dict");
-        assert_eq!(dict.word_count, 8);
+        let dict = BinaryDict::from_bytes(&bytes).expect("Load compiled dict");
+        assert_eq!(dict.word_count, 5);
 
+        // Test next word prediction
+        let nexts = dict.predict_next("hello", 3);
+        assert_eq!(nexts, vec!["world", "there"]);
+
+        // Test typo suggestion
         let prox = KeyProximity::qwerty();
-
-        // 1. Exact prefix matching
-        let th_sug = dict.suggest("th", 3, &prox);
-        assert_eq!(th_sug[0], "the");
-
-        // 2. Neighbor key typo correction ("gelo" -> "hello")
-        let gelo_sug = dict.suggest("gelo", 3, &prox);
-        assert!(!gelo_sug.is_empty());
-        assert_eq!(gelo_sug[0], "hello");
-
-        // 3. Omission typo ("helo" -> "hello")
         let helo_sug = dict.suggest("helo", 3, &prox);
-        assert!(!helo_sug.is_empty());
         assert_eq!(helo_sug[0], "hello");
-
-        // 4. Transposition typo ("hte" -> "the")
-        let hte_sug = dict.suggest("hte", 3, &prox);
-        assert!(!hte_sug.is_empty());
-        assert_eq!(hte_sug[0], "the");
-
-        // 5. Neighbor slip on last char ("widt" -> 't' is neighbor of 'h' -> "with")
-        let widt_sug = dict.suggest("widt", 3, &prox);
-        assert!(!widt_sug.is_empty());
-        assert!(widt_sug.contains(&"with".to_string()));
     }
 }

@@ -406,6 +406,14 @@ class KiebordService : InputMethodService() {
         updateSuggestions()
     }
 
+    private fun getPrecedingWord(): String {
+        val ic = currentInputConnection ?: return ""
+        val text = ic.getTextBeforeCursor(40, 0)?.toString() ?: return ""
+        val trimmed = text.trimEnd()
+        if (trimmed.isEmpty()) return ""
+        return trimmed.split(Regex("[\\s,.;!?]+")).lastOrNull() ?: ""
+    }
+
     private fun handleCandidateSelect(candidate: SuggestionCandidate) {
         val ic = currentInputConnection ?: return
         if (bornoManager.isComposing) {
@@ -453,16 +461,22 @@ class KiebordService : InputMethodService() {
 
                     activeSuggestions = list
                 } else {
-                    // Idle Bengali suggestions (e.g. আমি, তুমি, আপনি)
-                    val defaults = NativeEngine.querySuggestions("", "bn", 3)
-                    if (defaults.size >= 3) {
+                    val prev = getPrecedingWord()
+                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, "bn", 3) else emptyList()
+                    val candidates = if (predictions.isNotEmpty()) {
+                        predictions
+                    } else {
+                        NativeEngine.querySuggestions("", "bn", 3)
+                    }
+
+                    if (candidates.size >= 3) {
                         activeSuggestions = listOf(
-                            SuggestionCandidate(text = defaults[1], isPrimary = false),
-                            SuggestionCandidate(text = defaults[0], isPrimary = true),
-                            SuggestionCandidate(text = defaults[2], isPrimary = false)
+                            SuggestionCandidate(text = candidates[1], isPrimary = false),
+                            SuggestionCandidate(text = candidates[0], isPrimary = true),
+                            SuggestionCandidate(text = candidates[2], isPrimary = false)
                         )
                     } else {
-                        activeSuggestions = defaults.mapIndexed { idx, word ->
+                        activeSuggestions = candidates.mapIndexed { idx, word ->
                             SuggestionCandidate(text = word, isPrimary = idx == 0)
                         }
                     }
@@ -488,15 +502,22 @@ class KiebordService : InputMethodService() {
                     }
                     activeSuggestions = list
                 } else {
-                    val defaults = NativeEngine.querySuggestions("", "bn", 3)
-                    if (defaults.size >= 3) {
+                    val prev = getPrecedingWord()
+                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, "bn", 3) else emptyList()
+                    val candidates = if (predictions.isNotEmpty()) {
+                        predictions
+                    } else {
+                        NativeEngine.querySuggestions("", "bn", 3)
+                    }
+
+                    if (candidates.size >= 3) {
                         activeSuggestions = listOf(
-                            SuggestionCandidate(text = defaults[1], isPrimary = false),
-                            SuggestionCandidate(text = defaults[0], isPrimary = true),
-                            SuggestionCandidate(text = defaults[2], isPrimary = false)
+                            SuggestionCandidate(text = candidates[1], isPrimary = false),
+                            SuggestionCandidate(text = candidates[0], isPrimary = true),
+                            SuggestionCandidate(text = candidates[2], isPrimary = false)
                         )
                     } else {
-                        activeSuggestions = defaults.mapIndexed { idx, word ->
+                        activeSuggestions = candidates.mapIndexed { idx, word ->
                             SuggestionCandidate(text = word, isPrimary = idx == 0)
                         }
                     }
@@ -522,15 +543,22 @@ class KiebordService : InputMethodService() {
                     }
                     activeSuggestions = list
                 } else {
-                    val defaults = NativeEngine.querySuggestions("", "en", 3)
-                    if (defaults.size >= 3) {
+                    val prev = getPrecedingWord()
+                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, "en", 3) else emptyList()
+                    val candidates = if (predictions.isNotEmpty()) {
+                        predictions
+                    } else {
+                        NativeEngine.querySuggestions("", "en", 3)
+                    }
+
+                    if (candidates.size >= 3) {
                         activeSuggestions = listOf(
-                            SuggestionCandidate(text = defaults[1], isPrimary = false),
-                            SuggestionCandidate(text = defaults[0], isPrimary = true),
-                            SuggestionCandidate(text = defaults[2], isPrimary = false)
+                            SuggestionCandidate(text = candidates[1], isPrimary = false),
+                            SuggestionCandidate(text = candidates[0], isPrimary = true),
+                            SuggestionCandidate(text = candidates[2], isPrimary = false)
                         )
                     } else {
-                        activeSuggestions = defaults.mapIndexed { idx, word ->
+                        activeSuggestions = candidates.mapIndexed { idx, word ->
                             SuggestionCandidate(text = word, isPrimary = idx == 0)
                         }
                     }

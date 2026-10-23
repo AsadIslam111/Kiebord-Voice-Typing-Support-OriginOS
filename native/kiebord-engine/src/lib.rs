@@ -47,6 +47,28 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_getSuggestions(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_predictNextWords(
+    mut env: JNIEnv,
+    _class: JClass,
+    prev_word: JString,
+    lang: JString,
+    max_results: jint,
+) -> jstring {
+    let prev_str: String = match env.get_string(&prev_word) {
+        Ok(s) => s.into(),
+        Err(_) => String::new(),
+    };
+    let lang_str: String = match env.get_string(&lang) {
+        Ok(s) => s.into(),
+        Err(_) => String::new(),
+    };
+
+    let limit = if max_results <= 0 { 3 } else { max_results as usize };
+    let result = dictionary::predict_next_words(&prev_str, &lang_str, limit);
+    env.new_string(result).unwrap().into_raw()
+}
+
+#[no_mangle]
 pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_ping(
     _env: JNIEnv,
     _class: JClass,

@@ -26,10 +26,23 @@ object NativeEngine {
     @JvmStatic
     external fun getSuggestions(prefix: String, lang: String, maxResults: Int): String
 
+    @JvmStatic
+    external fun predictNextWords(prevWord: String, lang: String, maxResults: Int): String
+
     fun querySuggestions(prefix: String, lang: String, maxResults: Int = 5): List<String> {
         if (!isLoaded) return emptyList()
         return try {
             val raw = getSuggestions(prefix, lang, maxResults)
+            if (raw.isEmpty()) emptyList() else raw.split("|").filter { it.isNotEmpty() }
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    fun queryNextWords(prevWord: String, lang: String, maxResults: Int = 3): List<String> {
+        if (!isLoaded || prevWord.isBlank()) return emptyList()
+        return try {
+            val raw = predictNextWords(prevWord.trim(), lang, maxResults)
             if (raw.isEmpty()) emptyList() else raw.split("|").filter { it.isNotEmpty() }
         } catch (_: Throwable) {
             emptyList()
