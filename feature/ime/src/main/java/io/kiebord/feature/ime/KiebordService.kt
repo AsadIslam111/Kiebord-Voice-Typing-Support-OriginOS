@@ -58,7 +58,14 @@ class KiebordService : InputMethodService() {
                         layout = activeLayout,
                         shiftState = shiftState,
                         onKeyTap = ::handleKeyTap,
-                        onKeyLongPress = ::handleKeyLongPress
+                        onKeyLongPress = ::handleKeyLongPress,
+                        onThemeToggle = {
+                            colorScheme = when (colorScheme) {
+                                KeyboardColorScheme.DefaultDark -> KeyboardColorScheme.AmoledBlack
+                                KeyboardColorScheme.AmoledBlack -> KeyboardColorScheme.DefaultLight
+                                else -> KeyboardColorScheme.DefaultDark
+                            }
+                        }
                     )
                 }
             }
