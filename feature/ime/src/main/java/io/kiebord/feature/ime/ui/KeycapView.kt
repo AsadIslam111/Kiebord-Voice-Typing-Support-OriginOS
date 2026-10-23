@@ -53,6 +53,7 @@ fun KeycapView(
     isBottomRow: Boolean = false,
     isSlidingSymbolMode: Boolean = false,
     showKeyBorders: Boolean = true,
+    onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
     onKeyPositioned: (KeyDef, LayoutCoordinates) -> Unit = { _, _ -> },
@@ -118,6 +119,7 @@ fun KeycapView(
 
     // Capture latest parameters in updated states to allow pointerInput without gesture cancellation
     val currentKey = rememberUpdatedState(key)
+    val currentOnKeyPress = rememberUpdatedState(onKeyPress)
     val currentOnTap = rememberUpdatedState(onKeyTap)
     val currentOnLongPress = rememberUpdatedState(onKeyLongPress)
     val currentOnDeleteSwipeMove = rememberUpdatedState(onDeleteSwipeMove)
@@ -153,6 +155,7 @@ fun KeycapView(
                         val initialKey = currentKey.value
                         val initialDownPos = down.position
                         isPressed = true
+                        currentOnKeyPress.value(initialKey)
                         var isMoreKeysActive = false
                         var isSlidingDrag = false
                         var isSpacebarTrackpad = false

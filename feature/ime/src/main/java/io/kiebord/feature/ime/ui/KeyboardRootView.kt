@@ -77,12 +77,16 @@ fun KeyboardRootView(
     initialRowHeight: Dp = 60.dp,
     defaultShowNumberRow: Boolean = false,
     showKeyBorders: Boolean = true,
+    onKeyPress: (KeyDef) -> Unit = {},
     onDeleteSwipeMove: (Float) -> Unit = {},
     onDeleteSwipeEnd: () -> Unit = {},
     onDeleteSwipeCancel: () -> Unit = {},
     navBarBottomInset: Dp = 0.dp,
     applySystemInsets: Boolean = true,
     isInteractive: Boolean = true,
+    initialPinnedTools: List<ToolbarAction>? = null,
+    initialDrawerTools: List<ToolbarAction>? = null,
+    onToolbarToolsChange: ((List<ToolbarAction>, List<ToolbarAction>) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -101,26 +105,31 @@ fun KeyboardRootView(
     var gestureTrail by remember { mutableStateOf<List<Offset>>(emptyList()) }
 
     // Phase 5, 6 & 8: Toolbar, Emoji, Resizer, Number row, TextEdit, Clipboard, and Tools Drawer states
-    var pinnedTools by remember {
-        mutableStateOf(
-            listOf(
-                ToolbarAction.TEXT_EDIT,
-                ToolbarAction.CLIPBOARD,
-                ToolbarAction.THEME_TOGGLE,
-                ToolbarAction.RESIZER
-            )
-        )
+    val defaultPinned = listOf(
+        ToolbarAction.TEXT_EDIT,
+        ToolbarAction.CLIPBOARD,
+        ToolbarAction.THEME_TOGGLE,
+        ToolbarAction.RESIZER
+    )
+    val defaultDrawer = listOf(
+        ToolbarAction.NUMBER_ROW_TOGGLE,
+        ToolbarAction.EMOJI,
+        ToolbarAction.ONE_HANDED,
+        ToolbarAction.SETTINGS
+    )
+    var pinnedTools by remember(initialPinnedTools) {
+        mutableStateOf(initialPinnedTools ?: defaultPinned)
     }
-    var drawerTools by remember {
-        mutableStateOf(
-            listOf(
-                ToolbarAction.NUMBER_ROW_TOGGLE,
-                ToolbarAction.EMOJI,
-                ToolbarAction.ONE_HANDED,
-                ToolbarAction.SETTINGS
-            )
-        )
+    var drawerTools by remember(initialDrawerTools) {
+        mutableStateOf(initialDrawerTools ?: defaultDrawer)
     }
+
+    val updateTools: (List<ToolbarAction>, List<ToolbarAction>) -> Unit = { newPinned, newDrawer ->
+        pinnedTools = newPinned
+        drawerTools = newDrawer
+        onToolbarToolsChange?.invoke(newPinned, newDrawer)
+    }
+
     var isToolbarOptionsVisible by remember { mutableStateOf(false) }
     var oneHandedSide by remember { mutableStateOf("OFF") } // "OFF", "RIGHT", "LEFT"
     var isEmojiOpen by remember { mutableStateOf(false) }
@@ -136,19 +145,31 @@ fun KeyboardRootView(
     var currentFingerInRoot by remember { mutableStateOf<Offset?>(null) }
 
     val hoveredDrawerAction: ToolbarAction? = if (activeDraggingFromToolbar != null && currentFingerInRoot != null) {
+        val finger = currentFingerInRoot!!
         drawerItemBounds.entries.firstOrNull { (_, rect) ->
-            rect.contains(currentFingerInRoot!!)
-        }?.key
+            rect.inflate(24f).contains(finger)
+        }?.key ?: drawerItemBounds.minByOrNull { (_, rect) ->
+            (rect.center - finger).getDistance()
+        }?.takeIf { (_, rect) -> (rect.center - finger).getDistance() < 200f }?.key
     } else null
 
     val isOverDrawerBlankSpace: Boolean = if (activeDraggingFromToolbar != null && currentFingerInRoot != null && hoveredDrawerAction == null) {
         drawerContainerBounds?.contains(currentFingerInRoot!!) ?: false
     } else false
 
+    val toolbarHeight = 46.dp
+
     val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
-        toolbarItemBounds.entries.firstOrNull { (_, rect) ->
-            rect.contains(currentFingerInRoot!!)
-        }?.key
+        val finger = currentFingerInRoot!!
+        if (finger.y <= toolbarHeight.value * 3f && pinnedTools.isNotEmpty() && rootWidthPx > 0f) {
+            val slotWidth = rootWidthPx / pinnedTools.size
+            val slotIndex = (finger.x / slotWidth).toInt().coerceIn(0, pinnedTools.lastIndex)
+            pinnedTools.getOrNull(slotIndex)
+        } else {
+            toolbarItemBounds.entries.firstOrNull { (_, rect) ->
+                rect.inflate(24f).contains(finger)
+            }?.key
+        }
     } else null
     var isClipboardOpen by remember { mutableStateOf(false) }
     var isResizerOpen by remember { mutableStateOf(false) }
@@ -158,7 +179,6 @@ fun KeyboardRootView(
     var keyRowHeight by remember(initialRowHeight) { mutableStateOf(initialRowHeight) }
     var chinPadding by remember { mutableStateOf(8.dp) }
     var horizontalMargin by remember { mutableStateOf(0.dp) }
-    val toolbarHeight = 46.dp
 
     // Snapshot state for Resizer Cancel button
     var savedRowHeight by remember { mutableStateOf(initialRowHeight) }
@@ -302,10 +322,14 @@ fun KeyboardRootView(
                             )
                             .clickable {
                                 when {
-                                    isToolsDrawerOpen -> isToolsDrawerOpen = false
-                                    isToolbarOptionsVisible -> isToolbarOptionsVisible = false
-                                    suggestions.isNotEmpty() -> isToolbarOptionsVisible = true
-                                    else -> isToolsDrawerOpen = true
+                                    isToolsDrawerOpen || isToolbarOptionsVisible -> {
+                                        isToolsDrawerOpen = false
+                                        isToolbarOptionsVisible = false
+                                    }
+                                    else -> {
+                                        isToolsDrawerOpen = true
+                                        isToolbarOptionsVisible = true
+                                    }
                                 }
                             },
                         contentAlignment = Alignment.Center
@@ -339,19 +363,17 @@ fun KeyboardRootView(
                     } else {
                         ReorderableToolbar(
                             pinnedTools = pinnedTools,
-                            onPinnedToolsChange = { pinnedTools = it },
+                            onPinnedToolsChange = { updateTools(it, drawerTools) },
                             onInterchangeWithDrawer = { toolbarAct, drawerAct ->
                                 val newPinned = pinnedTools.map { if (it == toolbarAct) drawerAct else it }
                                 val newDrawer = drawerTools.map { if (it == drawerAct) toolbarAct else it }
-                                pinnedTools = newPinned
-                                drawerTools = newDrawer
+                                updateTools(newPinned, newDrawer)
                             },
                             onMoveToDrawer = { toolbarAct ->
                                 if (pinnedTools.size > 1) {
-                                    pinnedTools = pinnedTools - toolbarAct
-                                    if (!drawerTools.contains(toolbarAct)) {
-                                        drawerTools = drawerTools + toolbarAct
-                                    }
+                                    val newPinned = pinnedTools - toolbarAct
+                                    val newDrawer = if (!drawerTools.contains(toolbarAct)) drawerTools + toolbarAct else drawerTools
+                                    updateTools(newPinned, newDrawer)
                                 }
                             },
                             onActionClick = handleToolbarAction,
@@ -389,18 +411,16 @@ fun KeyboardRootView(
                 if (isToolsDrawerOpen) {
                     ToolsDrawerView(
                         drawerTools = drawerTools,
-                        onDrawerToolsChange = { drawerTools = it },
+                        onDrawerToolsChange = { updateTools(pinnedTools, it) },
                         onInterchangeWithToolbar = { drawerAct, toolbarAct ->
                             val newPinned = pinnedTools.map { if (it == toolbarAct) drawerAct else it }
                             val newDrawer = drawerTools.map { if (it == drawerAct) toolbarAct else it }
-                            pinnedTools = newPinned
-                            drawerTools = newDrawer
+                            updateTools(newPinned, newDrawer)
                         },
                         onMoveToToolbar = { drawerAct ->
-                            drawerTools = drawerTools - drawerAct
-                            if (!pinnedTools.contains(drawerAct)) {
-                                pinnedTools = pinnedTools + drawerAct
-                            }
+                            val newDrawer = drawerTools - drawerAct
+                            val newPinned = if (!pinnedTools.contains(drawerAct)) pinnedTools + drawerAct else pinnedTools
+                            updateTools(newPinned, newDrawer)
                         },
                         onToolClick = handleToolbarAction,
                         height = keyboardContentHeight,
@@ -446,6 +466,7 @@ fun KeyboardRootView(
                             language = displayLayout.language,
                             showKeyBorders = showKeyBorders,
                             isInteractive = isKeysInteractive,
+                            onKeyPress = onKeyPress,
                             onKeyTap = onKeyTap,
                             onKeyLongPress = onKeyLongPress
                         )
@@ -497,6 +518,7 @@ fun KeyboardRootView(
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)
                                     .fillMaxHeight(),
+                                onKeyPress = onKeyPress,
                                 onKeyTap = onKeyTap,
                                 onKeyLongPress = onKeyLongPress,
                                 onDeleteSwipeMove = onDeleteSwipeMove,

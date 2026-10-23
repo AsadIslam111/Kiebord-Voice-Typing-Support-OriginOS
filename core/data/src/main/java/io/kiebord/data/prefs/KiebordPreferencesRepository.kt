@@ -47,6 +47,9 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val SHOW_GESTURE_TRAIL = booleanPreferencesKey("pref_show_gesture_trail")
         val AUTO_CAPITALIZATION = booleanPreferencesKey("pref_auto_capitalization")
         val DOUBLE_SPACE_PERIOD = booleanPreferencesKey("pref_double_space_period")
+
+        val PINNED_TOOLS = stringPreferencesKey("pref_pinned_tools")
+        val DRAWER_TOOLS = stringPreferencesKey("pref_drawer_tools")
     }
 
     val preferencesFlow: Flow<KiebordPreferences> = context.kiebordDataStore.data
@@ -88,7 +91,14 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 gestureTypingEnabled = prefs[PreferencesKeys.GESTURE_TYPING_ENABLED] ?: true,
                 showGestureTrail = prefs[PreferencesKeys.SHOW_GESTURE_TRAIL] ?: true,
                 autoCapitalization = prefs[PreferencesKeys.AUTO_CAPITALIZATION] ?: true,
-                doubleSpacePeriod = prefs[PreferencesKeys.DOUBLE_SPACE_PERIOD] ?: true
+                doubleSpacePeriod = prefs[PreferencesKeys.DOUBLE_SPACE_PERIOD] ?: true,
+
+                pinnedTools = prefs[PreferencesKeys.PINNED_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: listOf(
+                    "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"
+                ),
+                drawerTools = prefs[PreferencesKeys.DRAWER_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: listOf(
+                    "NUMBER_ROW_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+                )
             )
         }
 
@@ -217,6 +227,13 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateDoubleSpacePeriod(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.DOUBLE_SPACE_PERIOD] = enabled }
+    }
+
+    suspend fun updateToolbarTools(pinned: List<String>, drawer: List<String>) {
+        context.kiebordDataStore.edit {
+            it[PreferencesKeys.PINNED_TOOLS] = pinned.joinToString(",")
+            it[PreferencesKeys.DRAWER_TOOLS] = drawer.joinToString(",")
+        }
     }
 
     // Reset

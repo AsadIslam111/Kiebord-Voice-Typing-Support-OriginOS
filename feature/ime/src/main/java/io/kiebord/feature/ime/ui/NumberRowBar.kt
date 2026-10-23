@@ -19,6 +19,7 @@ fun NumberRowBar(
     height: Dp = 44.dp,
     showKeyBorders: Boolean = true,
     isInteractive: Boolean = true,
+    onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {}
 ) {
@@ -65,6 +66,7 @@ fun NumberRowBar(
                 modifier = Modifier
                     .weight(1.0f)
                     .fillMaxHeight(),
+                onKeyPress = onKeyPress,
                 onKeyTap = onKeyTap,
                 onKeyLongPress = onKeyLongPress
             )

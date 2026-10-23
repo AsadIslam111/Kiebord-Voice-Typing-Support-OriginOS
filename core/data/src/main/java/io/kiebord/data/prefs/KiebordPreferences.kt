@@ -37,7 +37,11 @@ data class KiebordPreferences(
     val gestureTypingEnabled: Boolean = true,
     val showGestureTrail: Boolean = true,
     val autoCapitalization: Boolean = true,
-    val doubleSpacePeriod: Boolean = true
+    val doubleSpacePeriod: Boolean = true,
+
+    // Toolbar rearrangement persistence
+    val pinnedTools: List<String> = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"),
+    val drawerTools: List<String> = listOf("NUMBER_ROW_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS")
 ) {
     companion object {
         const val THEME_DEFAULT_DARK = "default_dark"

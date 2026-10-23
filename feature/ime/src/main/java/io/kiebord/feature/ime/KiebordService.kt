@@ -41,6 +41,7 @@ import io.kiebord.feature.ime.translit.TransliterationManagerFactory
 import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
 import io.kiebord.feature.ime.ui.textedit.TextAction
+import io.kiebord.feature.ime.ui.toolbar.ToolbarAction
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
 import kotlinx.coroutines.CoroutineScope
@@ -167,11 +168,23 @@ class KiebordService : InputMethodService() {
             val density = LocalDensity.current
             val navBarBottomDp = with(density) { navBarInsetBottomPx.toDp() }
 
+            val pinnedToolbarActions = preferencesState.pinnedTools.mapNotNull { name ->
+                try { ToolbarAction.valueOf(name) } catch (_: Exception) { null }
+            }.ifEmpty {
+                listOf(ToolbarAction.TEXT_EDIT, ToolbarAction.CLIPBOARD, ToolbarAction.THEME_TOGGLE, ToolbarAction.RESIZER)
+            }
+            val drawerToolbarActions = preferencesState.drawerTools.mapNotNull { name ->
+                try { ToolbarAction.valueOf(name) } catch (_: Exception) { null }
+            }.ifEmpty {
+                listOf(ToolbarAction.NUMBER_ROW_TOGGLE, ToolbarAction.EMOJI, ToolbarAction.ONE_HANDED, ToolbarAction.SETTINGS)
+            }
+
             KiebordTheme(colorScheme = colorScheme) {
                 KeyboardRootView(
                     layout = activeLayout,
                     shiftState = shiftState,
                     navBarBottomInset = navBarBottomDp,
+                    onKeyPress = { performKeyFeedback() },
                     onKeyTap = ::handleKeyTap,
                     onKeyLongPress = ::handleKeyLongPress,
                     onTextAction = ::handleTextAction,
@@ -189,6 +202,16 @@ class KiebordService : InputMethodService() {
                     initialRowHeight = (60 * preferencesState.keyboardHeightScale).dp,
                     defaultShowNumberRow = preferencesState.showNumberRow,
                     showKeyBorders = preferencesState.showKeyBorders,
+                    initialPinnedTools = pinnedToolbarActions,
+                    initialDrawerTools = drawerToolbarActions,
+                    onToolbarToolsChange = { newPinned, newDrawer ->
+                        serviceScope.launch {
+                            preferencesRepo.updateToolbarTools(
+                                newPinned.map { it.name },
+                                newDrawer.map { it.name }
+                            )
+                        }
+                    },
                     onDeleteSwipeMove = ::handleDeleteSwipeMove,
                     onDeleteSwipeEnd = ::handleDeleteSwipeEnd,
                     onDeleteSwipeCancel = ::handleDeleteSwipeCancel,
@@ -307,7 +330,6 @@ class KiebordService : InputMethodService() {
     }
 
     private fun handleKeyTap(key: KeyDef) {
-        performKeyFeedback()
         val ic = currentInputConnection ?: return
 
         if (key.type != KeyType.DELETE) {
