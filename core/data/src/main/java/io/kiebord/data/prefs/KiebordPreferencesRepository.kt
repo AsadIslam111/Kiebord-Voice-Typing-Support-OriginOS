@@ -101,8 +101,9 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                         "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
                         "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
                     )
-                    val rawPinned = prefs[PreferencesKeys.PINNED_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: defaultPinned
-                    rawPinned.filter { it in allActionNames }.distinct().ifEmpty { defaultPinned }
+                    prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
+                        raw.split(",").filter { it in allActionNames }.distinct()
+                    } ?: defaultPinned
                 },
                 drawerTools = run {
                     val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
@@ -111,10 +112,12 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                         "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
                         "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
                     )
-                    val rawPinned = prefs[PreferencesKeys.PINNED_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: defaultPinned
-                    val pinnedSet = rawPinned.filter { it in allActionNames }.distinct().ifEmpty { defaultPinned }.toSet()
-                    val rawDrawer = prefs[PreferencesKeys.DRAWER_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: defaultDrawer
-                    (rawDrawer.filter { it in allActionNames && it !in pinnedSet } +
+                    val pinnedList = prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
+                        raw.split(",").filter { it in allActionNames }.distinct()
+                    } ?: defaultPinned
+                    val pinnedSet = pinnedList.toSet()
+                    val rawDrawer = prefs[PreferencesKeys.DRAWER_TOOLS]?.split(",")?.filter { it in allActionNames } ?: defaultDrawer
+                    (rawDrawer.filter { it !in pinnedSet } +
                         allActionNames.filter { it !in pinnedSet }).distinct()
                 }
             )
@@ -257,7 +260,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
             "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
             "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
         )
-        val sanitizedPinned = pinned.filter { it in allActionNames }.distinct().ifEmpty { defaultPinned }
+        val sanitizedPinned = pinned.filter { it in allActionNames }.distinct()
         val pinnedSet = sanitizedPinned.toSet()
         val sanitizedDrawer = (drawer.filter { it in allActionNames && it !in pinnedSet } +
             allActionNames.filter { it !in pinnedSet }).distinct()

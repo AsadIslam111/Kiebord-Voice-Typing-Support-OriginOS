@@ -139,7 +139,7 @@ fun KeyboardRootView(
     var drawerContainerBounds by remember { mutableStateOf<Rect?>(null) }
 
     val updateTools: (List<ToolbarAction>, List<ToolbarAction>) -> Unit = { newPinned, newDrawer ->
-        val sanitizedPinned = newPinned.distinct().ifEmpty { defaultPinned }
+        val sanitizedPinned = newPinned.distinct()
         val pinnedSet = sanitizedPinned.toSet()
         val allActions = ToolbarAction.values().toList()
         val sanitizedDrawer = (newDrawer.filter { it !in pinnedSet } +
@@ -178,17 +178,17 @@ fun KeyboardRootView(
     }
 
     val moveToolbarToDrawer: (ToolbarAction) -> Unit = { toolbarAct ->
-        if (pinnedTools.size > 1 && pinnedTools.contains(toolbarAct)) {
-            val newPinned = pinnedTools - toolbarAct
-            val newDrawer = drawerTools + toolbarAct
+        if (pinnedTools.contains(toolbarAct)) {
+            val newPinned = (pinnedTools - toolbarAct).distinct()
+            val newDrawer = (drawerTools + toolbarAct).distinct()
             updateTools(newPinned, newDrawer)
         }
     }
 
     val moveDrawerToToolbar: (ToolbarAction) -> Unit = { drawerAct ->
         if (drawerTools.contains(drawerAct)) {
-            val newDrawer = drawerTools - drawerAct
-            val newPinned = pinnedTools + drawerAct
+            val newDrawer = (drawerTools - drawerAct).distinct()
+            val newPinned = (pinnedTools + drawerAct).distinct()
             updateTools(newPinned, newDrawer)
         }
     }
@@ -208,10 +208,8 @@ fun KeyboardRootView(
         if (activeDrag != null) {
             val validDrawerBounds = drawerItemBounds.filterKeys { it in drawerTools && it != activeDrag }
             validDrawerBounds.entries.firstOrNull { (_, rect) ->
-                rect.inflate(24f).contains(finger)
-            }?.key ?: validDrawerBounds.minByOrNull { (_, rect) ->
-                (rect.center - finger).getDistance()
-            }?.takeIf { (_, rect) -> (rect.center - finger).getDistance() < 180f }?.key
+                rect.inflate(16f).contains(finger)
+            }?.key
         } else null
     } else null
 
