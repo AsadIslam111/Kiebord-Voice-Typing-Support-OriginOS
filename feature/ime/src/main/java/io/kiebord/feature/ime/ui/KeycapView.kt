@@ -269,11 +269,21 @@ fun KeycapView(
                 )
             }
             else -> {
+                val textSize = if (key.type == KeyType.SYMBOLS) 15.sp else 22.sp
                 Text(
                     text = displaySymbolLabel,
                     color = foregroundColor,
-                    fontSize = if (key.type == KeyType.SYMBOLS) 15.sp else 22.sp,
-                    fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Bold else FontWeight.Medium
+                    fontSize = textSize,
+                    fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Bold else FontWeight.Medium,
+                    style = androidx.compose.ui.text.TextStyle(
+                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                        lineHeight = textSize,
+                        lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                            alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                            trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+                        ),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
                 )
             }
         }

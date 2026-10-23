@@ -47,7 +47,8 @@ fun ReorderableToolbar(
     modifier: Modifier = Modifier,
     isEmojiActive: Boolean = false,
     isResizerActive: Boolean = false,
-    isNumberRowActive: Boolean = false
+    isNumberRowActive: Boolean = false,
+    isTextEditActive: Boolean = false
 ) {
     val colorScheme = KiebordTheme.colorScheme
 
@@ -74,6 +75,7 @@ fun ReorderableToolbar(
                 ToolbarAction.EMOJI -> isEmojiActive
                 ToolbarAction.RESIZER -> isResizerActive
                 ToolbarAction.NUMBER_ROW_TOGGLE -> isNumberRowActive
+                ToolbarAction.TEXT_EDIT -> isTextEditActive
                 else -> false
             }
 

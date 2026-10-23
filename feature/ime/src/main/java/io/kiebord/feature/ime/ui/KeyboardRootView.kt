@@ -34,6 +34,8 @@ import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.ui.emoji.EmojiPanelView
 import io.kiebord.feature.ime.ui.resizer.LiveResizerOverlay
+import io.kiebord.feature.ime.ui.textedit.TextAction
+import io.kiebord.feature.ime.ui.textedit.TextEditPanelView
 import io.kiebord.feature.ime.ui.toolbar.ReorderableToolbar
 import io.kiebord.feature.ime.ui.toolbar.ToolbarAction
 import io.kiebord.theme.KiebordTheme
@@ -44,6 +46,8 @@ fun KeyboardRootView(
     shiftState: ShiftState,
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit,
+    onTextAction: (TextAction, Boolean) -> Unit = { _, _ -> },
+    getSurroundingText: () -> Triple<String, String, String> = { Triple("", "", "") },
     onThemeToggle: () -> Unit = {},
     initialRowHeight: Dp = 60.dp,
     navBarBottomInset: Dp = 0.dp,
@@ -62,9 +66,10 @@ fun KeyboardRootView(
     var isSlidingSymbolMode by remember { mutableStateOf(false) }
     var dragStartPosInRoot by remember { mutableStateOf<Offset?>(null) }
 
-    // Phase 5: Toolbar, Emoji, Number row, and Live Resizer states
+    // Phase 5 & 6: Toolbar, Emoji, Resizer, Number row, and TextEdit states
     var isEmojiOpen by remember { mutableStateOf(false) }
     var isResizerOpen by remember { mutableStateOf(false) }
+    var isTextEditOpen by remember { mutableStateOf(false) }
     var showNumberRow by remember { mutableStateOf(false) }
     var keyRowHeight by remember { mutableStateOf(initialRowHeight) }
     var chinPadding by remember { mutableStateOf(8.dp) }
@@ -108,26 +113,41 @@ fun KeyboardRootView(
             ReorderableToolbar(
                 onActionClick = { action ->
                     when (action) {
-                        ToolbarAction.EMOJI -> isEmojiOpen = !isEmojiOpen
+                        ToolbarAction.EMOJI -> {
+                            isEmojiOpen = !isEmojiOpen
+                            if (isEmojiOpen) {
+                                isTextEditOpen = false
+                                isResizerOpen = false
+                            }
+                        }
                         ToolbarAction.RESIZER -> {
                             if (!isResizerOpen) {
                                 savedRowHeight = keyRowHeight
                                 savedChinPadding = chinPadding
                                 savedHorizontalMargin = horizontalMargin
+                                isEmojiOpen = false
+                                isTextEditOpen = false
                             }
                             isResizerOpen = !isResizerOpen
                         }
                         ToolbarAction.NUMBER_ROW_TOGGLE -> showNumberRow = !showNumberRow
                         ToolbarAction.THEME_TOGGLE -> onThemeToggle()
-                        ToolbarAction.TEXT_EDIT -> {}
+                        ToolbarAction.TEXT_EDIT -> {
+                            isTextEditOpen = !isTextEditOpen
+                            if (isTextEditOpen) {
+                                isEmojiOpen = false
+                                isResizerOpen = false
+                            }
+                        }
                     }
                 },
                 isEmojiActive = isEmojiOpen,
                 isResizerActive = isResizerOpen,
-                isNumberRowActive = showNumberRow
+                isNumberRowActive = showNumberRow,
+                isTextEditActive = isTextEditOpen
             )
 
-            // Switch between Emoji Panel and Keyboard Keys
+            // Switch between Emoji Panel, Text Edit Panel, and Keyboard Keys
             if (isEmojiOpen) {
                 EmojiPanelView(
                     onEmojiSelected = { emoji ->
@@ -137,6 +157,13 @@ fun KeyboardRootView(
                         onKeyTap(KeyDef(type = KeyType.DELETE))
                     },
                     onClose = { isEmojiOpen = false },
+                    height = keyRowHeight * 4
+                )
+            } else if (isTextEditOpen) {
+                TextEditPanelView(
+                    onTextAction = onTextAction,
+                    onClose = { isTextEditOpen = false },
+                    getSurroundingText = getSurroundingText,
                     height = keyRowHeight * 4
                 )
             } else {

@@ -153,8 +153,8 @@ fun MoreKeysPopup(
                                     Text(
                                         text = item,
                                         color = if (isSelected) Color.White else colorScheme.keyForeground,
-                                        fontSize = if (isSelected) 20.sp else 18.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        fontSize = 19.sp,
+                                        fontWeight = FontWeight.Medium
                                     )
                                 }
                             }

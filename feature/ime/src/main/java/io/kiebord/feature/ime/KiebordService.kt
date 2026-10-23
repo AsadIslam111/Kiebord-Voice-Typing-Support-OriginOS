@@ -1,15 +1,22 @@
 package io.kiebord.feature.ime
 
 import android.inputmethodservice.InputMethodService
+import android.os.SystemClock
+import android.view.KeyEvent
 import android.view.View
 import android.view.Window
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
@@ -18,13 +25,9 @@ import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
 import io.kiebord.feature.ime.translit.BornoTransliterationManager
 import io.kiebord.feature.ime.ui.KeyboardRootView
+import io.kiebord.feature.ime.ui.textedit.TextAction
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
-
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.platform.LocalDensity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 
 class KiebordService : InputMethodService() {
 
@@ -90,6 +93,8 @@ class KiebordService : InputMethodService() {
                     navBarBottomInset = navBarBottomDp,
                     onKeyTap = ::handleKeyTap,
                     onKeyLongPress = ::handleKeyLongPress,
+                    onTextAction = ::handleTextAction,
+                    getSurroundingText = ::getSurroundingText,
                     onThemeToggle = {
                         colorScheme = when (colorScheme) {
                             KeyboardColorScheme.DefaultDark -> KeyboardColorScheme.AmoledBlack
@@ -255,5 +260,75 @@ class KiebordService : InputMethodService() {
         if (text.length != 1) return false
         val c = text[0]
         return (c in 'a'..'z') || (c in 'A'..'Z')
+    }
+
+    private fun handleTextAction(action: TextAction, isSelecting: Boolean) {
+        val ic = currentInputConnection ?: return
+        bornoManager.finishComposing()
+
+        when (action) {
+            TextAction.MOVE_UP -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_UP, isSelecting)
+            TextAction.MOVE_DOWN -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_DOWN, isSelecting)
+            TextAction.MOVE_LEFT -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_LEFT, isSelecting)
+            TextAction.MOVE_RIGHT -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_RIGHT, isSelecting)
+            TextAction.WORD_LEFT -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_LEFT, isSelecting, isWord = true)
+            TextAction.WORD_RIGHT -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_RIGHT, isSelecting, isWord = true)
+            TextAction.LINE_START -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_MOVE_HOME, isSelecting)
+            TextAction.LINE_END -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_MOVE_END, isSelecting)
+            TextAction.SELECT_ALL -> ic.performContextMenuAction(android.R.id.selectAll)
+            TextAction.CUT -> ic.performContextMenuAction(android.R.id.cut)
+            TextAction.COPY -> ic.performContextMenuAction(android.R.id.copy)
+            TextAction.PASTE -> ic.performContextMenuAction(android.R.id.paste)
+            TextAction.DELETE_BACKWARD -> {
+                val selected = ic.getSelectedText(0)
+                if (!selected.isNullOrEmpty()) {
+                    ic.commitText("", 1)
+                } else {
+                    ic.deleteSurroundingText(1, 0)
+                }
+            }
+            TextAction.DELETE_FORWARD -> {
+                val selected = ic.getSelectedText(0)
+                if (!selected.isNullOrEmpty()) {
+                    ic.commitText("", 1)
+                } else {
+                    ic.deleteSurroundingText(0, 1)
+                }
+            }
+            TextAction.ENTER -> {
+                val currentAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
+                if (currentAction != null && currentAction != EditorInfo.IME_ACTION_NONE && currentAction != EditorInfo.IME_ACTION_UNSPECIFIED) {
+                    ic.performEditorAction(currentAction)
+                } else {
+                    sendKeyChar('\n')
+                }
+            }
+        }
+    }
+
+    private fun sendNavKeyEvent(
+        ic: InputConnection,
+        keyCode: Int,
+        isSelecting: Boolean,
+        isWord: Boolean = false
+    ) {
+        val now = SystemClock.uptimeMillis()
+        var meta = 0
+        if (isSelecting) {
+            meta = meta or KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+        }
+        if (isWord) {
+            meta = meta or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        }
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
+    }
+
+    private fun getSurroundingText(): Triple<String, String, String> {
+        val ic = currentInputConnection ?: return Triple("", "", "")
+        val before = ic.getTextBeforeCursor(35, 0)?.toString() ?: ""
+        val selected = ic.getSelectedText(0)?.toString() ?: ""
+        val after = ic.getTextAfterCursor(35, 0)?.toString() ?: ""
+        return Triple(before, selected, after)
     }
 }
