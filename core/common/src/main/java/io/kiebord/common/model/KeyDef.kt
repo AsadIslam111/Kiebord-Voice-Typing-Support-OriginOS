@@ -19,8 +19,21 @@ data class KeyDef(
 }
 
 data class KeyRow(
-    val keys: List<KeyDef>
-)
+    val keys: List<KeyDef>,
+    val startPaddingWeight: Float = 0f,
+    val endPaddingWeight: Float = 0f,
+    val startPaddingDp: Float = 0f,
+    val endPaddingDp: Float = 0f
+) {
+    constructor(
+        keys: List<KeyDef>,
+        sidePaddingWeight: Float
+    ) : this(
+        keys = keys,
+        startPaddingWeight = sidePaddingWeight,
+        endPaddingWeight = sidePaddingWeight
+    )
+}
 
 data class KeyboardLayoutDef(
     val id: String,

@@ -442,6 +442,21 @@ fun KeyboardRootView(
                             .fillMaxWidth()
                             .height(keyRowHeight)
                     ) {
+                        if (row.startPaddingDp > 0f) {
+                            Spacer(
+                                modifier = Modifier
+                                    .width(row.startPaddingDp.dp)
+                                    .fillMaxHeight()
+                            )
+                        }
+                        if (row.startPaddingWeight > 0f) {
+                            Spacer(
+                                modifier = Modifier
+                                    .weight(row.startPaddingWeight)
+                                    .fillMaxHeight()
+                            )
+                        }
+
                         row.keys.forEach { key ->
                             val effectiveKey = if (key.type == KeyType.SPACE && key.label.isBlank()) {
                                 val spaceLabel = when {
@@ -700,6 +715,21 @@ fun KeyboardRootView(
                                         }
                                     }
                                 }
+                            )
+                        }
+
+                        if (row.endPaddingWeight > 0f) {
+                            Spacer(
+                                modifier = Modifier
+                                    .weight(row.endPaddingWeight)
+                                    .fillMaxHeight()
+                            )
+                        }
+                        if (row.endPaddingDp > 0f) {
+                            Spacer(
+                                modifier = Modifier
+                                    .width(row.endPaddingDp.dp)
+                                    .fillMaxHeight()
                             )
                         }
                     }

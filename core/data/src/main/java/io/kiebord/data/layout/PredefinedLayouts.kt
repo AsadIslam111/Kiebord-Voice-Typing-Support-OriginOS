@@ -27,7 +27,7 @@ object PredefinedLayouts {
                 )
             ),
             KeyRow(
-                listOf(
+                keys = listOf(
                     KeyDef("a", "A", flickUp = "@", moreKeys = listOf("@", "á", "à", "â", "ä")),
                     KeyDef("s", "S", flickUp = "#", moreKeys = listOf("#", "ß", "š", "ś", "$")),
                     KeyDef("d", "D", flickUp = "$", moreKeys = listOf("&", "ð", "ď")),
@@ -37,7 +37,9 @@ object PredefinedLayouts {
                     KeyDef("j", "J", flickUp = "-", moreKeys = listOf("=", "ĵ")),
                     KeyDef("k", "K", flickUp = "+", moreKeys = listOf("(", "ķ")),
                     KeyDef("l", "L", flickUp = "=", moreKeys = listOf(")", "ł", "ľ"))
-                )
+                ),
+                startPaddingWeight = 0.5f,
+                endPaddingWeight = 0.5f
             ),
             KeyRow(
                 listOf(
