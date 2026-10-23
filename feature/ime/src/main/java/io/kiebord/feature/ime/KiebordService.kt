@@ -7,7 +7,9 @@ import android.view.inputmethod.EditorInfo
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import android.view.Window
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.ShiftState
@@ -31,8 +33,17 @@ class KiebordService : InputMethodService() {
         lifecycleOwner.onCreate()
     }
 
+    override fun onConfigureWindow(win: Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
+        super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
+        lifecycleOwner.attachToView(win.decorView)
+    }
+
     override fun onCreateInputView(): View {
+        window?.window?.decorView?.let { decorView ->
+            lifecycleOwner.attachToView(decorView)
+        }
         return ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(lifecycleOwner))
             lifecycleOwner.attachToView(this)
             setContent {
                 KiebordTheme(colorScheme = colorScheme) {
@@ -49,6 +60,9 @@ class KiebordService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        window?.window?.decorView?.let { decorView ->
+            lifecycleOwner.attachToView(decorView)
+        }
         lifecycleOwner.onStart()
         shiftState = ShiftState.UNSHIFTED
     }

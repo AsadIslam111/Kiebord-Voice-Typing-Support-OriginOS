@@ -12,7 +12,7 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import androidx.compose.ui.platform.ComposeView
+import android.view.View
 
 class KeyboardViewLifecycleOwner : LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
 
@@ -49,7 +49,7 @@ class KeyboardViewLifecycleOwner : LifecycleOwner, ViewModelStoreOwner, SavedSta
         store.clear()
     }
 
-    fun attachToView(view: ComposeView) {
+    fun attachToView(view: View) {
         view.setViewTreeLifecycleOwner(this)
         view.setViewTreeViewModelStoreOwner(this)
         view.setViewTreeSavedStateRegistryOwner(this)
