@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,11 +39,11 @@ import io.kiebord.theme.KiebordTheme
 fun KeyboardRootView(
     layout: KeyboardLayoutDef,
     shiftState: ShiftState,
-    modifier: Modifier = Modifier,
-    initialRowHeight: Dp = 60.dp,
     onKeyTap: (KeyDef) -> Unit,
-    onKeyLongPress: (KeyDef) -> Unit = {},
-    onThemeToggle: () -> Unit = {}
+    onKeyLongPress: (KeyDef) -> Unit,
+    onThemeToggle: () -> Unit = {},
+    initialRowHeight: Dp = 60.dp,
+    modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
@@ -51,10 +51,12 @@ fun KeyboardRootView(
     var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var rootWidthPx by remember { mutableFloatStateOf(0f) }
 
-    val keyCoordinatesMap = remember { mutableStateMapOf<KeyDef, LayoutCoordinates>() }
+    val keyCoordinatesMap = remember { mutableMapOf<KeyDef, LayoutCoordinates>() }
 
     var moreKeysState by remember { mutableStateOf<MoreKeysPopupState?>(null) }
     var quickDragState by remember { mutableStateOf<QuickSymbolDragState?>(null) }
+    var isSlidingSymbolMode by remember { mutableStateOf(false) }
+    var dragStartPosInRoot by remember { mutableStateOf<Offset?>(null) }
 
     // Phase 5: Toolbar, Emoji, Number row, and Live Resizer states
     var isEmojiOpen by remember { mutableStateOf(false) }
@@ -62,12 +64,19 @@ fun KeyboardRootView(
     var showNumberRow by remember { mutableStateOf(false) }
     var keyRowHeight by remember { mutableStateOf(initialRowHeight) }
     var chinPadding by remember { mutableStateOf(8.dp) }
+    var horizontalMargin by remember { mutableStateOf(0.dp) }
 
-    // On sliding input from ?123, switch layout view to Symbols page seamlessly
-    val effectiveLayout = if (quickDragState != null) {
-        PredefinedLayouts.Symbols
-    } else {
-        layout
+    // Snapshot state for Resizer Cancel button
+    var savedRowHeight by remember { mutableStateOf(initialRowHeight) }
+    var savedChinPadding by remember { mutableStateOf(8.dp) }
+    var savedHorizontalMargin by remember { mutableStateOf(0.dp) }
+
+    // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
+    val displayLayout = if (isSlidingSymbolMode) PredefinedLayouts.Symbols else layout
+
+    // Clear key coordinate cache whenever active layout changes to prevent stale hits
+    LaunchedEffect(isSlidingSymbolMode, displayLayout.id) {
+        keyCoordinatesMap.clear()
     }
 
     Box(
@@ -78,7 +87,12 @@ fun KeyboardRootView(
                 rootWidthPx = coords.size.width.toFloat()
             }
             .background(colorScheme.containerBackground)
-            .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = chinPadding)
+            .padding(
+                start = 4.dp + horizontalMargin,
+                end = 4.dp + horizontalMargin,
+                top = 4.dp,
+                bottom = chinPadding
+            )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Reorderable Toolbar along the top
@@ -86,7 +100,14 @@ fun KeyboardRootView(
                 onActionClick = { action ->
                     when (action) {
                         ToolbarAction.EMOJI -> isEmojiOpen = !isEmojiOpen
-                        ToolbarAction.RESIZER -> isResizerOpen = !isResizerOpen
+                        ToolbarAction.RESIZER -> {
+                            if (!isResizerOpen) {
+                                savedRowHeight = keyRowHeight
+                                savedChinPadding = chinPadding
+                                savedHorizontalMargin = horizontalMargin
+                            }
+                            isResizerOpen = !isResizerOpen
+                        }
                         ToolbarAction.NUMBER_ROW_TOGGLE -> showNumberRow = !showNumberRow
                         ToolbarAction.THEME_TOGGLE -> onThemeToggle()
                         ToolbarAction.TEXT_EDIT -> {}
@@ -111,16 +132,16 @@ fun KeyboardRootView(
                 )
             } else {
                 // Optional 5th Number Row at the top
-                if (showNumberRow && !effectiveLayout.id.startsWith("symbols")) {
+                if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
                     NumberRowBar(
-                        language = effectiveLayout.language,
+                        language = displayLayout.language,
                         onKeyTap = onKeyTap,
                         onKeyLongPress = onKeyLongPress
                     )
                 }
 
-                // Keyboard rows
-                effectiveLayout.rows.forEach { row ->
+                // Keyboard rows (stable layout without recomposition shifts)
+                displayLayout.rows.forEach { row ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -129,9 +150,9 @@ fun KeyboardRootView(
                         row.keys.forEach { key ->
                             val effectiveKey = if (key.type == KeyType.SPACE && key.label.isBlank()) {
                                 val spaceLabel = when {
-                                    effectiveLayout.id.startsWith("symbols") -> "Space"
-                                    effectiveLayout.id == "bn_borno" -> "বাংলা (Borno)"
-                                    effectiveLayout.id == "bn_probhat" -> "বাংলা (Probhat)"
+                                    displayLayout.id.startsWith("symbols") -> "Space"
+                                    displayLayout.id == "bn_borno" -> "বাংলা (Borno)"
+                                    displayLayout.id == "bn_probhat" -> "বাংলা (Probhat)"
                                     else -> "English"
                                 }
                                 key.copy(label = spaceLabel)
@@ -142,6 +163,7 @@ fun KeyboardRootView(
                             KeycapView(
                                 key = effectiveKey,
                                 shiftState = shiftState,
+                                isSlidingSymbolMode = isSlidingSymbolMode,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)
                                     .fillMaxHeight(),
@@ -212,57 +234,62 @@ fun KeyboardRootView(
                                         moreKeysState = null
                                     }
                                 },
-                                onSlidingDragStart = { _, keyCoords ->
+                                onSlidingDragStart = { _, keyCoords, initialDownPos ->
                                     val rCoords = rootCoordinates
                                     if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
-                                        val localCenter = rCoords.localPositionOf(
+                                        isSlidingSymbolMode = true
+                                        val downInRoot = rCoords.localPositionOf(keyCoords, initialDownPos)
+                                        val keyCenterInRoot = rCoords.localPositionOf(
                                             keyCoords,
                                             Offset(keyCoords.size.width / 2f, keyCoords.size.height / 2f)
                                         )
+                                        dragStartPosInRoot = downInRoot
                                         quickDragState = QuickSymbolDragState(
-                                            startOffset = localCenter,
-                                            currentOffset = localCenter
+                                            startOffset = keyCenterInRoot,
+                                            currentOffset = downInRoot
                                         )
                                     }
                                 },
-                                onSlidingDragMove = { keyCoords, touchPosInKey ->
+                                onSlidingDragMove = { deltaFromDown ->
                                     val rCoords = rootCoordinates ?: return@KeycapView
-                                    if (rCoords.isAttached && keyCoords.isAttached) {
-                                        val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
+                                    val startPos = dragStartPosInRoot ?: return@KeycapView
+                                    val currentFingerInRoot = startPos + deltaFromDown
 
-                                        // Find hovered key in root
-                                        var hoveredKey: KeyDef? = null
-                                        var hoveredBounds: Rect? = null
-                                        for ((k, coords) in keyCoordinatesMap) {
-                                            if (coords.isAttached) {
-                                                val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
-                                                val rect = Rect(
-                                                    topLeft,
-                                                    Size(coords.size.width.toFloat(), coords.size.height.toFloat())
-                                                )
-                                                if (rect.contains(fingerPosInRoot)) {
-                                                    hoveredKey = k
-                                                    hoveredBounds = rect
-                                                    break
-                                                }
+                                    // Find hovered key in root
+                                    var hoveredKey: KeyDef? = null
+                                    var hoveredBounds: Rect? = null
+                                    for ((k, coords) in keyCoordinatesMap) {
+                                        if (coords.isAttached) {
+                                            val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
+                                            val rect = Rect(
+                                                topLeft,
+                                                Size(coords.size.width.toFloat(), coords.size.height.toFloat())
+                                            )
+                                            if (rect.contains(currentFingerInRoot)) {
+                                                hoveredKey = k
+                                                hoveredBounds = rect
+                                                break
                                             }
                                         }
-
-                                        val symbol = hoveredKey?.let {
-                                            if (it.label.isNotEmpty() && it.type == KeyType.CHARACTER) it.label else if (!it.flickUp.isNullOrEmpty()) it.flickUp else null
-                                        }
-
-                                        quickDragState = quickDragState?.copy(
-                                            currentOffset = fingerPosInRoot,
-                                            hoveredKeyBounds = hoveredBounds,
-                                            hoveredSymbol = symbol
-                                        )
                                     }
+
+                                    val symbol = if (hoveredKey != null && hoveredKey.type == KeyType.CHARACTER) {
+                                        hoveredKey.label
+                                    } else {
+                                        null
+                                    }
+
+                                    quickDragState = quickDragState?.copy(
+                                        currentOffset = currentFingerInRoot,
+                                        hoveredKeyBounds = hoveredBounds,
+                                        hoveredSymbol = symbol
+                                    )
                                 },
-                                onSlidingDragEnd = { keyCoords, touchPosInKey ->
+                                onSlidingDragEnd = { deltaFromDown ->
                                     val rCoords = rootCoordinates
-                                    if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
-                                        val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
+                                    val startPos = dragStartPosInRoot
+                                    if (rCoords != null && startPos != null) {
+                                        val finalFingerInRoot = startPos + deltaFromDown
                                         for ((k, coords) in keyCoordinatesMap) {
                                             if (coords.isAttached) {
                                                 val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
@@ -270,17 +297,18 @@ fun KeyboardRootView(
                                                     topLeft,
                                                     Size(coords.size.width.toFloat(), coords.size.height.toFloat())
                                                 )
-                                                if (rect.contains(fingerPosInRoot)) {
-                                                    val symbol = if (k.label.isNotEmpty() && k.type == KeyType.CHARACTER) k.label else if (!k.flickUp.isNullOrEmpty()) k.flickUp!! else ""
-                                                    if (symbol.isNotEmpty()) {
-                                                        onKeyTap(KeyDef(label = symbol, type = KeyType.CHARACTER))
+                                                if (rect.contains(finalFingerInRoot)) {
+                                                    if (k.type == KeyType.CHARACTER && k.label.isNotEmpty()) {
+                                                        onKeyTap(k)
                                                     }
                                                     break
                                                 }
                                             }
                                         }
                                     }
+                                    isSlidingSymbolMode = false
                                     quickDragState = null
+                                    dragStartPosInRoot = null
                                 }
                             )
                         }
@@ -301,14 +329,29 @@ fun KeyboardRootView(
             keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f
         )
 
-        // 3. Live Keyboard Resizer Overlay
+        // 3. Live Keyboard Resizer Overlay (Borno Keyboard style with 4-way drag handles)
         if (isResizerOpen) {
             LiveResizerOverlay(
                 currentRowHeight = keyRowHeight,
                 currentChinPadding = chinPadding,
+                currentHorizontalMargin = horizontalMargin,
                 onRowHeightChange = { keyRowHeight = it },
                 onChinPaddingChange = { chinPadding = it },
-                onDone = { isResizerOpen = false },
+                onHorizontalMarginChange = { horizontalMargin = it },
+                onReset = {
+                    keyRowHeight = 60.dp
+                    chinPadding = 8.dp
+                    horizontalMargin = 0.dp
+                },
+                onDone = {
+                    isResizerOpen = false
+                },
+                onCancel = {
+                    keyRowHeight = savedRowHeight
+                    chinPadding = savedChinPadding
+                    horizontalMargin = savedHorizontalMargin
+                    isResizerOpen = false
+                },
                 modifier = Modifier.matchParentSize()
             )
         }

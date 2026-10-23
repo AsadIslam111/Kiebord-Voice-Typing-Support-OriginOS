@@ -5,30 +5,30 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DragHandle
 import androidx.compose.material.icons.outlined.RestartAlt
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -39,135 +39,263 @@ import io.kiebord.theme.KiebordTheme
 fun LiveResizerOverlay(
     currentRowHeight: Dp,
     currentChinPadding: Dp,
+    currentHorizontalMargin: Dp,
     onRowHeightChange: (Dp) -> Unit,
     onChinPaddingChange: (Dp) -> Unit,
+    onHorizontalMarginChange: (Dp) -> Unit,
+    onReset: () -> Unit,
     onDone: () -> Unit,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val accentColor = colorScheme.accentColor
+    val density = LocalDensity.current
 
+    val currentHeightState = rememberUpdatedState(currentRowHeight)
+    val onHeightChangeState = rememberUpdatedState(onRowHeightChange)
+
+    val currentChinState = rememberUpdatedState(currentChinPadding)
+    val onChinChangeState = rememberUpdatedState(onChinPaddingChange)
+
+    val currentMarginState = rememberUpdatedState(currentHorizontalMargin)
+    val onMarginChangeState = rememberUpdatedState(onHorizontalMarginChange)
+
+    // Bounding wireframe outline (Borno Keyboard cyan style, NO fillMaxSize to prevent window expansion)
     Box(
         modifier = modifier
-            .background(Color.Black.copy(alpha = 0.45f))
-            .border(2.dp, accentColor, RoundedCornerShape(8.dp))
+            .border(2.dp, accentColor, RoundedCornerShape(12.dp))
+            .background(Color.Black.copy(alpha = 0.28f))
     ) {
-        Column(
+        // 1. Four Corner L-Brackets for Borno Keyboard transform aesthetics
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .align(Alignment.TopStart)
+                .size(14.dp)
+                .border(2.5.dp, accentColor, RoundedCornerShape(topStart = 10.dp))
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(14.dp)
+                .border(2.5.dp, accentColor, RoundedCornerShape(topEnd = 10.dp))
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .size(14.dp)
+                .border(2.5.dp, accentColor, RoundedCornerShape(bottomStart = 10.dp))
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(14.dp)
+                .border(2.5.dp, accentColor, RoundedCornerShape(bottomEnd = 10.dp))
+        )
+
+        // 2. Top Drag Handle (pill centered on top border for smooth height resizing)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .width(56.dp)
+                .height(10.dp)
+                .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
+                .clip(RoundedCornerShape(5.dp))
+                .background(accentColor)
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        // Keyboard has 4 rows; delta per row is total delta / 4 for smooth 1:1 finger tracking
+                        val deltaRowDp = with(density) { (-dragAmount.y / 4f).toDp() }
+                        val newHeight = (currentHeightState.value + deltaRowDp).coerceIn(46.dp, 78.dp)
+                        onHeightChangeState.value(newHeight)
+                    }
+                },
+            contentAlignment = Alignment.Center
         ) {
-            // 1. Top Drag Handle
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(accentColor)
-                    .pointerInput(currentRowHeight) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            // Dragging up increases height, dragging down decreases height
-                            val deltaDp = (-dragAmount.y / 2f).dp
-                            val newHeight = (currentRowHeight + deltaDp).coerceIn(48.dp, 76.dp)
-                            onRowHeightChange(newHeight)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.DragHandle,
-                        contentDescription = "Resize Height",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = "Drag to Resize Height (${currentRowHeight.value.toInt()} dp)",
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+                    .width(18.dp)
+                    .height(2.dp)
+                    .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(1.dp))
+            )
+        }
 
-            // 2. Middle Control Strip: Done and Reset
-            Row(
+        // 3. Left Drag Handle (pill centered on left edge for horizontal width / margin)
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .width(10.dp)
+                .height(48.dp)
+                .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
+                .clip(RoundedCornerShape(5.dp))
+                .background(accentColor)
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        // Dragging right (inward) narrows keyboard, left (outward) widens
+                        val deltaMarginDp = with(density) { (dragAmount.x / 2f).toDp() }
+                        val newMargin = (currentMarginState.value + deltaMarginDp).coerceIn(0.dp, 48.dp)
+                        onMarginChangeState.value(newMargin)
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .width(2.dp)
+                    .height(16.dp)
+                    .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(1.dp))
+            )
+        }
+
+        // 4. Right Drag Handle (pill centered on right edge for horizontal width / margin)
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .width(10.dp)
+                .height(48.dp)
+                .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
+                .clip(RoundedCornerShape(5.dp))
+                .background(accentColor)
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        // Dragging left (inward) narrows keyboard, right (outward) widens
+                        val deltaMarginDp = with(density) { (-dragAmount.x / 2f).toDp() }
+                        val newMargin = (currentMarginState.value + deltaMarginDp).coerceIn(0.dp, 48.dp)
+                        onMarginChangeState.value(newMargin)
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(16.dp)
+                    .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(1.dp))
+            )
+        }
+
+        // 5. Bottom Drag Handle (pill centered on bottom edge for bottom chin / margin)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .width(56.dp)
+                .height(10.dp)
+                .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
+                .clip(RoundedCornerShape(5.dp))
+                .background(accentColor)
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        val deltaChin = with(density) { (-dragAmount.y).toDp() }
+                        val newChin = (currentChinState.value + deltaChin).coerceIn(0.dp, 36.dp)
+                        onChinChangeState.value(newChin)
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(18.dp)
+                    .height(2.dp)
+                    .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(1.dp))
+            )
+        }
+
+        // 6. Borno Keyboard-style Centered Floating Action Island (fully visible, never cut off)
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .shadow(elevation = 14.dp, shape = RoundedCornerShape(26.dp))
+                .clip(RoundedCornerShape(26.dp))
+                .background(Color(0xF01E1F22))
+                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(26.dp))
+                .padding(horizontal = 14.dp, vertical = 6.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Move / Drag Affordance Icon
+                Icon(
+                    imageVector = Icons.Outlined.DragHandle,
+                    contentDescription = "Resize",
+                    tint = colorScheme.keyForeground.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
+                )
+
+                // Divider
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(20.dp)
+                        .background(Color.White.copy(alpha = 0.15f))
+                )
+
                 // Reset Button
                 IconButton(
-                    onClick = {
-                        onRowHeightChange(60.dp)
-                        onChinPaddingChange(8.dp)
-                    },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(colorScheme.actionKeyBackground)
+                    onClick = onReset,
+                    modifier = Modifier.size(34.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.RestartAlt,
-                        contentDescription = "Reset Default Height",
-                        tint = colorScheme.keyForeground
+                        contentDescription = "Reset",
+                        tint = colorScheme.keyForeground,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
-                // Done Button
-                Button(
-                    onClick = onDone,
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                // Scale / Height readout percentage
+                Text(
+                    text = "${(currentRowHeight.value / 60f * 100).toInt()}%",
+                    color = colorScheme.keyForeground,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+
+                // Divider
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(20.dp)
+                        .background(Color.White.copy(alpha = 0.15f))
+                )
+
+                // Cancel Button
+                IconButton(
+                    onClick = onCancel,
+                    modifier = Modifier.size(34.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Check,
-                        contentDescription = "Done",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = " Save Size",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Cancel",
+                        tint = colorScheme.keyForeground.copy(alpha = 0.8f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-            }
 
-            // 3. Bottom Chin Padding Handle
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(28.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(colorScheme.actionKeyBackground)
-                    .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
-                    .pointerInput(currentChinPadding) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            val deltaDp = (-dragAmount.y / 2f).dp
-                            val newPadding = (currentChinPadding + deltaDp).coerceIn(0.dp, 36.dp)
-                            onChinPaddingChange(newPadding)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Bottom Margin: ${currentChinPadding.value.toInt()} dp",
-                    color = colorScheme.keyForeground.copy(alpha = 0.8f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                // Save / Confirm Button (Borno Keyboard accent blue circle with white checkmark)
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(accentColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    IconButton(
+                        onClick = onDone,
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = "Save",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
     }

@@ -9,11 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.automirrored.outlined.Backspace
+import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.outlined.ArrowUpward
-import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -21,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,15 +46,16 @@ fun KeycapView(
     key: KeyDef,
     shiftState: ShiftState,
     modifier: Modifier = Modifier,
+    isSlidingSymbolMode: Boolean = false,
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
     onKeyPositioned: (KeyDef, LayoutCoordinates) -> Unit = { _, _ -> },
     onShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit = { _, _ -> },
     onMoreKeysHover: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
     onMoreKeysCommit: () -> Unit = {},
-    onSlidingDragStart: (KeyDef, LayoutCoordinates) -> Unit = { _, _ -> },
-    onSlidingDragMove: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
-    onSlidingDragEnd: (LayoutCoordinates, Offset) -> Unit = { _, _ -> }
+    onSlidingDragStart: (KeyDef, LayoutCoordinates, Offset) -> Unit = { _, _, _ -> },
+    onSlidingDragMove: (Offset) -> Unit = {},
+    onSlidingDragEnd: (Offset) -> Unit = {}
 ) {
     val colorScheme = KiebordTheme.colorScheme
     var isPressed by remember { mutableStateOf(false) }
@@ -80,6 +81,19 @@ fun KeycapView(
         else -> colorScheme.keyForeground
     }
 
+    val displaySymbolLabel = key.displayLabel(shiftState)
+
+    // Capture latest parameters in updated states to allow pointerInput(Unit) without gesture cancellation
+    val currentKey = rememberUpdatedState(key)
+    val currentOnTap = rememberUpdatedState(onKeyTap)
+    val currentOnLongPress = rememberUpdatedState(onKeyLongPress)
+    val currentOnShowMoreKeys = rememberUpdatedState(onShowMoreKeys)
+    val currentOnMoreKeysHover = rememberUpdatedState(onMoreKeysHover)
+    val currentOnMoreKeysCommit = rememberUpdatedState(onMoreKeysCommit)
+    val currentOnSlidingStart = rememberUpdatedState(onSlidingDragStart)
+    val currentOnSlidingMove = rememberUpdatedState(onSlidingDragMove)
+    val currentOnSlidingEnd = rememberUpdatedState(onSlidingDragEnd)
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -91,10 +105,12 @@ fun KeycapView(
             .shadow(elevation = if (isPressed) 0.dp else 1.5.dp, shape = RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .background(activeBackground)
-            .pointerInput(key, shiftState) {
+            .pointerInput(Unit) {
                 coroutineScope {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
+                        val initialKey = currentKey.value
+                        val initialDownPos = down.position
                         isPressed = true
                         var isMoreKeysActive = false
                         var isSlidingDrag = false
@@ -102,11 +118,11 @@ fun KeycapView(
                         val longPressJob = launch {
                             delay(240L)
                             val coords = keyCoordinates
-                            if (key.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
+                            if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
                                 isMoreKeysActive = true
-                                onShowMoreKeys(key, coords)
+                                currentOnShowMoreKeys.value(initialKey, coords)
                             } else {
-                                onKeyLongPress(key)
+                                currentOnLongPress.value(initialKey)
                             }
                         }
 
@@ -117,41 +133,40 @@ fun KeycapView(
                             if (!change.pressed) {
                                 // Touch released!
                                 longPressJob.cancel()
-                                val coords = keyCoordinates
-                                if (isSlidingDrag && coords != null && coords.isAttached) {
-                                    onSlidingDragEnd(coords, change.position)
+                                val delta = change.position - initialDownPos
+                                if (isSlidingDrag) {
+                                    currentOnSlidingEnd.value(delta)
                                 } else if (isMoreKeysActive) {
-                                    onMoreKeysCommit()
+                                    currentOnMoreKeysCommit.value()
                                 } else {
-                                    onKeyTap(key)
+                                    currentOnTap.value(initialKey)
                                 }
                                 break
                             }
 
                             val currentPos = change.position
-                            val distance = (currentPos - down.position).getDistance()
+                            val delta = currentPos - initialDownPos
+                            val distance = delta.getDistance()
 
                             // Sliding input detector for ?123
-                            if (key.slidingInput && distance > 18f && !isSlidingDrag) {
+                            if (initialKey.slidingInput && distance > 18f && !isSlidingDrag) {
                                 longPressJob.cancel()
                                 isSlidingDrag = true
+                                isPressed = false
                                 val coords = keyCoordinates
                                 if (coords != null && coords.isAttached) {
-                                    onSlidingDragStart(key, coords)
+                                    currentOnSlidingStart.value(initialKey, coords, initialDownPos)
                                 }
                             }
 
                             if (isSlidingDrag) {
                                 change.consume()
-                                val coords = keyCoordinates
-                                if (coords != null && coords.isAttached) {
-                                    onSlidingDragMove(coords, currentPos)
-                                }
+                                currentOnSlidingMove.value(delta)
                             } else if (isMoreKeysActive) {
                                 change.consume()
                                 val coords = keyCoordinates
                                 if (coords != null && coords.isAttached) {
-                                    onMoreKeysHover(coords, currentPos)
+                                    currentOnMoreKeysHover.value(coords, currentPos)
                                 }
                             }
                         }
@@ -161,8 +176,8 @@ fun KeycapView(
             },
         contentAlignment = Alignment.Center
     ) {
-        // Flick up preview badge in top right corner (if present)
-        if (!key.flickUp.isNullOrEmpty() && key.type == KeyType.CHARACTER) {
+        // Flick up preview badge in top right corner (hidden when sliding symbol mode is active)
+        if (!key.flickUp.isNullOrEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode) {
             Text(
                 text = key.flickUp!!,
                 color = colorScheme.keyForeground.copy(alpha = 0.5f),
@@ -247,10 +262,10 @@ fun KeycapView(
             }
             else -> {
                 Text(
-                    text = key.displayLabel(shiftState),
+                    text = displaySymbolLabel,
                     color = foregroundColor,
                     fontSize = if (key.type == KeyType.SYMBOLS) 15.sp else 22.sp,
-                    fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Medium else FontWeight.Normal
+                    fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Bold else FontWeight.Medium
                 )
             }
         }
