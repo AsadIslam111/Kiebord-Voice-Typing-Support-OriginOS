@@ -36,6 +36,8 @@ import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
+import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
+import io.kiebord.feature.ime.ui.clipboard.ClipboardPanelView
 import io.kiebord.feature.ime.ui.emoji.EmojiPanelView
 import io.kiebord.feature.ime.ui.resizer.LiveResizerOverlay
 import io.kiebord.feature.ime.ui.textedit.TextAction
@@ -57,6 +59,8 @@ fun KeyboardRootView(
     onThemeToggle: () -> Unit = {},
     suggestions: List<SuggestionCandidate> = emptyList(),
     onCandidateSelect: (SuggestionCandidate) -> Unit = {},
+    clipboardManager: SandboxedClipboardManager? = null,
+    onPasteClip: (String) -> Unit = {},
     initialRowHeight: Dp = 60.dp,
     navBarBottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier
@@ -75,8 +79,9 @@ fun KeyboardRootView(
     var isSlidingSymbolMode by remember { mutableStateOf(false) }
     var dragStartPosInRoot by remember { mutableStateOf<Offset?>(null) }
 
-    // Phase 5 & 6: Toolbar, Emoji, Resizer, Number row, TextEdit, and Tools Drawer states
+    // Phase 5, 6 & 8: Toolbar, Emoji, Resizer, Number row, TextEdit, Clipboard, and Tools Drawer states
     var isEmojiOpen by remember { mutableStateOf(false) }
+    var isClipboardOpen by remember { mutableStateOf(false) }
     var isResizerOpen by remember { mutableStateOf(false) }
     var isTextEditOpen by remember { mutableStateOf(false) }
     var isToolsDrawerOpen by remember { mutableStateOf(false) }
@@ -173,7 +178,12 @@ fun KeyboardRootView(
             }
             ToolbarAction.CLIPBOARD -> {
                 isToolsDrawerOpen = false
-                onTextAction(TextAction.PASTE, false)
+                isEmojiOpen = false
+                isResizerOpen = false
+                isClipboardOpen = !isClipboardOpen
+                if (isClipboardOpen) {
+                    clipboardManager?.syncFromSystemClipboard()
+                }
             }
         }
     }
@@ -209,6 +219,7 @@ fun KeyboardRootView(
                         isToolsDrawerOpen = !isToolsDrawerOpen
                         if (isToolsDrawerOpen) {
                             isEmojiOpen = false
+                            isClipboardOpen = false
                             isResizerOpen = false
                         }
                     },
@@ -216,7 +227,8 @@ fun KeyboardRootView(
                     isEmojiActive = isEmojiOpen,
                     isResizerActive = isResizerOpen,
                     isNumberRowActive = showNumberRow,
-                    isTextEditActive = false
+                    isTextEditActive = false,
+                    isClipboardActive = isClipboardOpen
                 )
 
                 // Suggestion Strip (displays transliterated Bengali words and swipe candidates)
@@ -227,11 +239,24 @@ fun KeyboardRootView(
                     )
                 }
 
-                // Switch between Tools Drawer, Emoji Panel, and Keyboard Keys
+                // Switch between Tools Drawer, Clipboard Panel, Emoji Panel, and Keyboard Keys
                 if (isToolsDrawerOpen) {
                     ToolsDrawerView(
                         onToolClick = handleToolbarAction,
                         height = keyRowHeight * 4
+                    )
+                } else if (isClipboardOpen) {
+                    ClipboardPanelView(
+                        clips = clipboardManager?.clips ?: emptyList(),
+                        onClipClick = { clip ->
+                            onPasteClip(clip.text)
+                            isClipboardOpen = false
+                        },
+                        onTogglePin = { clip -> clipboardManager?.togglePin(clip) },
+                        onDeleteClip = { clip -> clipboardManager?.deleteClip(clip) },
+                        onClearAll = { clipboardManager?.clearAllUnpinned() },
+                        onClose = { isClipboardOpen = false },
+                        modifier = Modifier.height(keyRowHeight * 4)
                     )
                 } else if (isEmojiOpen) {
                     EmojiPanelView(

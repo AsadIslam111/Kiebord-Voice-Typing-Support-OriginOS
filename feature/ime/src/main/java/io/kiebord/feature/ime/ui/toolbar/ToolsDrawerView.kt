@@ -15,7 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Assignment
+import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
@@ -66,7 +66,7 @@ fun ToolsDrawerView(
         DrawerTool(ToolbarAction.TRANSLATE, Icons.Outlined.Translate, "Translate"),
         DrawerTool(ToolbarAction.THEME_TOGGLE, Icons.Outlined.Palette, "Theme"),
         DrawerTool(ToolbarAction.NUMBER_ROW_TOGGLE, Icons.Outlined.Pin, "Number row"),
-        DrawerTool(ToolbarAction.CLIPBOARD, Icons.Outlined.Assignment, "Clipboard")
+        DrawerTool(ToolbarAction.CLIPBOARD, Icons.AutoMirrored.Outlined.Assignment, "Clipboard")
     )
 
     Column(

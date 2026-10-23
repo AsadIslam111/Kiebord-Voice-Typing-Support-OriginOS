@@ -22,6 +22,7 @@ import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
+import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
 import io.kiebord.feature.ime.translit.BornoTransliterationManager
 import io.kiebord.feature.ime.ui.KeyboardRootView
@@ -43,9 +44,11 @@ class KiebordService : InputMethodService() {
     private var colorScheme by mutableStateOf(KeyboardColorScheme.DefaultDark)
     private var navBarInsetBottomPx by mutableIntStateOf(0)
     private var activeSuggestions by mutableStateOf<List<SuggestionCandidate>>(emptyList())
+    private lateinit var clipboardManager: SandboxedClipboardManager
 
     override fun onCreate() {
         super.onCreate()
+        clipboardManager = SandboxedClipboardManager(this)
         lifecycleOwner.onCreate()
     }
 
@@ -98,10 +101,19 @@ class KiebordService : InputMethodService() {
                     onTextAction = ::handleTextAction,
                     suggestions = activeSuggestions,
                     onCandidateSelect = ::handleCandidateSelect,
+                    clipboardManager = clipboardManager,
+                    onPasteClip = { clipText ->
+                        val ic = currentInputConnection
+                        bornoManager.finishComposing()
+                        activeSuggestions = emptyList()
+                        ic?.commitText(clipText, 1)
+                    },
                     onThemeToggle = {
                         colorScheme = when (colorScheme) {
                             KeyboardColorScheme.DefaultDark -> KeyboardColorScheme.AmoledBlack
-                            KeyboardColorScheme.AmoledBlack -> KeyboardColorScheme.DefaultLight
+                            KeyboardColorScheme.AmoledBlack -> KeyboardColorScheme.TokyoNight
+                            KeyboardColorScheme.TokyoNight -> KeyboardColorScheme.Nord
+                            KeyboardColorScheme.Nord -> KeyboardColorScheme.DefaultLight
                             else -> KeyboardColorScheme.DefaultDark
                         }
                     }

@@ -17,7 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Assignment
+import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Mood
@@ -74,7 +74,8 @@ fun ReorderableToolbar(
     isEmojiActive: Boolean = false,
     isResizerActive: Boolean = false,
     isNumberRowActive: Boolean = false,
-    isTextEditActive: Boolean = false
+    isTextEditActive: Boolean = false,
+    isClipboardActive: Boolean = false
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
@@ -87,7 +88,7 @@ fun ReorderableToolbar(
             ToolbarAction.NUMBER_ROW_TOGGLE to ToolbarItem(ToolbarAction.NUMBER_ROW_TOGGLE, Icons.Outlined.Pin, "Number Row"),
             ToolbarAction.THEME_TOGGLE to ToolbarItem(ToolbarAction.THEME_TOGGLE, Icons.Outlined.Palette, "Toggle Theme"),
             ToolbarAction.SETTINGS to ToolbarItem(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings"),
-            ToolbarAction.CLIPBOARD to ToolbarItem(ToolbarAction.CLIPBOARD, Icons.Outlined.Assignment, "Clipboard")
+            ToolbarAction.CLIPBOARD to ToolbarItem(ToolbarAction.CLIPBOARD, Icons.AutoMirrored.Outlined.Assignment, "Clipboard")
         )
     }
 
@@ -96,8 +97,8 @@ fun ReorderableToolbar(
             listOf(
                 ToolbarAction.TEXT_EDIT,
                 ToolbarAction.EMOJI,
+                ToolbarAction.CLIPBOARD,
                 ToolbarAction.RESIZER,
-                ToolbarAction.NUMBER_ROW_TOGGLE,
                 ToolbarAction.THEME_TOGGLE
             )
         )
@@ -159,6 +160,7 @@ fun ReorderableToolbar(
                     ToolbarAction.RESIZER -> isResizerActive
                     ToolbarAction.NUMBER_ROW_TOGGLE -> isNumberRowActive
                     ToolbarAction.TEXT_EDIT -> isTextEditActive
+                    ToolbarAction.CLIPBOARD -> isClipboardActive
                     else -> false
                 }
                 val isDragging = draggingIndex == index

@@ -67,5 +67,38 @@ data class KeyboardColorScheme(
             suggestionBackground = Color(0xFFECEFF1),
             suggestionForeground = Color(0xFF263238)
         )
+
+        val TokyoNight = KeyboardColorScheme(
+            containerBackground = Color(0xFF1A1B26),
+            keyBackground = Color(0xFF24283B),
+            keyForeground = Color(0xFFC0CAF5),
+            keyBorder = Color(0xFF292E42),
+            keyShadow = Color(0x22000000),
+            actionKeyBackground = Color(0xFF292E42),
+            actionKeyForeground = Color(0xFF7AA2F7),
+            shiftActiveColor = Color(0xFF7AA2F7),
+            accentColor = Color(0xFF7AA2F7),
+            moreKeysBackground = Color(0xFF1F2335),
+            guidelineColor = Color(0xFF7AA2F7),
+            suggestionBackground = Color(0xFF1A1B26),
+            suggestionForeground = Color(0xFFC0CAF5)
+        )
+
+        val Nord = KeyboardColorScheme(
+            containerBackground = Color(0xFF2E3440),
+            keyBackground = Color(0xFF3B4252),
+            keyForeground = Color(0xFFECEFF4),
+            keyBorder = Color(0xFF434C5E),
+            keyShadow = Color(0x22000000),
+            actionKeyBackground = Color(0xFF434C5E),
+            actionKeyForeground = Color(0xFF88C0D0),
+            shiftActiveColor = Color(0xFF88C0D0),
+            accentColor = Color(0xFF88C0D0),
+            moreKeysBackground = Color(0xFF2E3440),
+            guidelineColor = Color(0xFF88C0D0),
+            suggestionBackground = Color(0xFF2E3440),
+            suggestionForeground = Color(0xFFECEFF4)
+        )
     }
 }
+
