@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -54,39 +55,37 @@ fun MoreKeysPopup(
     val colorScheme = KiebordTheme.colorScheme
 
     val itemCount = state.items.size
+    // Multi-row support: split into 2 rows if > 6 items
+    val rowCount = if (itemCount > 6) 2 else 1
+    val itemsPerRow = (itemCount + rowCount - 1) / rowCount
+    val chunkedRows = state.items.chunked(itemsPerRow)
+    val maxCols = itemsPerRow
+
     val horizontalPaddingDp = 6.dp
-    val verticalPaddingDp = 5.dp
+    val verticalPaddingDp = 6.dp
+    val colGapDp = 3.dp
+    val rowGapDp = 4.dp
+    val itemWidthDp = 42.dp
+    val itemHeightDp = 42.dp
+
     val horizontalPaddingPx = with(density) { horizontalPaddingDp.toPx() }
     val verticalPaddingPx = with(density) { verticalPaddingDp.toPx() }
-
-    // Safe maximum width so popup never extends off screen
-    val maxAllowedWidthPx = (keyboardWidthPx - with(density) { 16.dp.toPx() }).coerceAtLeast(with(density) { 180.dp.toPx() })
-
-    // Adaptive item width: 40dp for standard popups, down to ~28-32dp for rich punctuation popups
-    val baseItemWidthDp = if (itemCount > 7) 32.dp else 40.dp
-    val idealItemWidthPx = with(density) { baseItemWidthDp.toPx() }
-    val requiredWidthPx = itemCount * idealItemWidthPx + horizontalPaddingPx * 2
-
-    val itemWidthPx = if (requiredWidthPx > maxAllowedWidthPx) {
-        ((maxAllowedWidthPx - horizontalPaddingPx * 2) / itemCount).coerceAtLeast(with(density) { 26.dp.toPx() })
-    } else {
-        idealItemWidthPx
-    }
-    val itemWidthDp = with(density) { itemWidthPx.toDp() }
-    val itemHeightDp = 44.dp
+    val colGapPx = with(density) { colGapDp.toPx() }
+    val rowGapPx = with(density) { rowGapDp.toPx() }
+    val itemWidthPx = with(density) { itemWidthDp.toPx() }
     val itemHeightPx = with(density) { itemHeightDp.toPx() }
 
-    val totalWidthPx = itemCount * itemWidthPx + horizontalPaddingPx * 2
-    val totalHeightPx = itemHeightPx + verticalPaddingPx * 2
+    val totalWidthPx = maxCols * itemWidthPx + (maxCols - 1) * colGapPx + horizontalPaddingPx * 2
+    val totalHeightPx = rowCount * itemHeightPx + (rowCount - 1) * rowGapPx + verticalPaddingPx * 2
 
-    // 1. Safe horizontal clamping: at least 8dp from left and right edges so it never goes off-screen
+    // 1. Safe horizontal clamping: at least 8dp from screen edges
     val anchorCenterX = state.anchorRect.center.x
     val idealLeft = anchorCenterX - totalWidthPx / 2f
     val minLeftPx = with(density) { 8.dp.toPx() }
     val maxLeftPx = (keyboardWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
     val clampedLeft = idealLeft.coerceIn(minLeftPx, maxLeftPx)
 
-    // 2. Safe vertical clamping: above anchor keycap, but never negative (off screen)
+    // 2. Safe vertical clamping: above anchor keycap, never off top of screen
     val anchorTop = state.anchorRect.top
     val gapPx = with(density) { 6.dp.toPx() }
     val idealTop = anchorTop - totalHeightPx - gapPx
@@ -123,34 +122,42 @@ fun MoreKeysPopup(
             Box(
                 modifier = Modifier
                     .wrapContentSize()
-                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
+                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(22.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(colorScheme.moreKeysBackground)
                     .padding(horizontal = horizontalPaddingDp, vertical = verticalPaddingDp)
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(rowGapDp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    state.items.forEachIndexed { index, item ->
-                        val isSelected = index == state.selectedIndex
-
-                        Box(
-                            modifier = Modifier
-                                .width(itemWidthDp)
-                                .height(itemHeightDp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(
-                                    if (isSelected) colorScheme.accentColor else Color.Transparent
-                                ),
-                            contentAlignment = Alignment.Center
+                    chunkedRows.forEachIndexed { rowIndex, rowItems ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(colGapDp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = item,
-                                color = if (isSelected) Color.White else colorScheme.keyForeground,
-                                fontSize = if (isSelected) 20.sp else 18.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                            )
+                            rowItems.forEachIndexed { colIndex, item ->
+                                val flatIndex = rowIndex * itemsPerRow + colIndex
+                                val isSelected = flatIndex == state.selectedIndex
+
+                                Box(
+                                    modifier = Modifier
+                                        .width(itemWidthDp)
+                                        .height(itemHeightDp)
+                                        .clip(RoundedCornerShape(18.dp))
+                                        .background(
+                                            if (isSelected) colorScheme.accentColor else Color.Transparent
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = item,
+                                        color = if (isSelected) Color.White else colorScheme.keyForeground,
+                                        fontSize = if (isSelected) 20.sp else 18.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                }
+                            }
                         }
                     }
                 }

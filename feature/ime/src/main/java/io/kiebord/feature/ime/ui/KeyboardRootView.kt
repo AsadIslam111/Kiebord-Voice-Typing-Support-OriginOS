@@ -150,7 +150,8 @@ fun KeyboardRootView(
                 }
 
                 // Keyboard rows (stable layout without recomposition shifts)
-                displayLayout.rows.forEach { row ->
+                displayLayout.rows.forEachIndexed { rowIndex, row ->
+                    val isBottomRow = rowIndex == displayLayout.rows.lastIndex
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -172,6 +173,7 @@ fun KeyboardRootView(
                             KeycapView(
                                 key = effectiveKey,
                                 shiftState = shiftState,
+                                isBottomRow = isBottomRow,
                                 isSlidingSymbolMode = isSlidingSymbolMode,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)
@@ -192,23 +194,25 @@ fun KeyboardRootView(
                                         )
 
                                         val itemCount = keyDef.moreKeys.size
+                                        val rowCount = if (itemCount > 6) 2 else 1
+                                        val itemsPerRow = (itemCount + rowCount - 1) / rowCount
+                                        val chunkedRows = keyDef.moreKeys.chunked(itemsPerRow)
+                                        val maxCols = itemsPerRow
+
                                         val horizontalPaddingPx = with(density) { 6.dp.toPx() }
-                                        val maxAllowedWidthPx = (rootWidthPx - with(density) { 16.dp.toPx() }).coerceAtLeast(with(density) { 180.dp.toPx() })
-                                        val baseItemWidthDp = if (itemCount > 7) 32.dp else 40.dp
-                                        val idealItemWidthPx = with(density) { baseItemWidthDp.toPx() }
-                                        val requiredWidthPx = itemCount * idealItemWidthPx + horizontalPaddingPx * 2
-                                        val itemWidthPx = if (requiredWidthPx > maxAllowedWidthPx) {
-                                            ((maxAllowedWidthPx - horizontalPaddingPx * 2) / itemCount).coerceAtLeast(with(density) { 26.dp.toPx() })
-                                        } else {
-                                            idealItemWidthPx
-                                        }
-                                        val totalWidthPx = itemCount * itemWidthPx + horizontalPaddingPx * 2
+                                        val colGapPx = with(density) { 3.dp.toPx() }
+                                        val itemWidthPx = with(density) { 42.dp.toPx() }
+                                        val totalWidthPx = maxCols * itemWidthPx + (maxCols - 1) * colGapPx + horizontalPaddingPx * 2
+
                                         val minLeftPx = with(density) { 8.dp.toPx() }
                                         val maxLeftPx = (rootWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
                                         val clampedLeft = (keyRect.center.x - totalWidthPx / 2f).coerceIn(minLeftPx, maxLeftPx)
 
-                                        val initialRelativeX = keyRect.center.x - (clampedLeft + horizontalPaddingPx)
-                                        val initialIndex = (initialRelativeX / itemWidthPx).toInt().coerceIn(0, keyDef.moreKeys.lastIndex)
+                                        val bottomRowIndex = if (rowCount > 1) rowCount - 1 else 0
+                                        val bottomRowItems = chunkedRows[bottomRowIndex]
+                                        val relX = keyRect.center.x - (clampedLeft + horizontalPaddingPx)
+                                        val initialCol = (relX / (itemWidthPx + colGapPx)).toInt().coerceIn(0, bottomRowItems.lastIndex)
+                                        val initialIndex = (bottomRowIndex * itemsPerRow + initialCol).coerceIn(0, keyDef.moreKeys.lastIndex)
 
                                         moreKeysState = MoreKeysPopupState(
                                             anchorKey = keyDef,
@@ -224,26 +228,45 @@ fun KeyboardRootView(
                                     if (rCoords.isAttached && keyCoords.isAttached) {
                                         val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
                                         val itemCount = state.items.size
+                                        val rowCount = if (itemCount > 6) 2 else 1
+                                        val itemsPerRow = (itemCount + rowCount - 1) / rowCount
+                                        val chunkedRows = state.items.chunked(itemsPerRow)
+                                        val maxCols = itemsPerRow
+
                                         val horizontalPaddingPx = with(density) { 6.dp.toPx() }
-                                        val maxAllowedWidthPx = (rootWidthPx - with(density) { 16.dp.toPx() }).coerceAtLeast(with(density) { 180.dp.toPx() })
-                                        val baseItemWidthDp = if (itemCount > 7) 32.dp else 40.dp
-                                        val idealItemWidthPx = with(density) { baseItemWidthDp.toPx() }
-                                        val requiredWidthPx = itemCount * idealItemWidthPx + horizontalPaddingPx * 2
-                                        val itemWidthPx = if (requiredWidthPx > maxAllowedWidthPx) {
-                                            ((maxAllowedWidthPx - horizontalPaddingPx * 2) / itemCount).coerceAtLeast(with(density) { 26.dp.toPx() })
-                                        } else {
-                                            idealItemWidthPx
-                                        }
-                                        val totalWidthPx = itemCount * itemWidthPx + horizontalPaddingPx * 2
+                                        val verticalPaddingPx = with(density) { 6.dp.toPx() }
+                                        val colGapPx = with(density) { 3.dp.toPx() }
+                                        val rowGapPx = with(density) { 4.dp.toPx() }
+                                        val itemWidthPx = with(density) { 42.dp.toPx() }
+                                        val itemHeightPx = with(density) { 42.dp.toPx() }
+
+                                        val totalWidthPx = maxCols * itemWidthPx + (maxCols - 1) * colGapPx + horizontalPaddingPx * 2
+                                        val totalHeightPx = rowCount * itemHeightPx + (rowCount - 1) * rowGapPx + verticalPaddingPx * 2
+
                                         val minLeftPx = with(density) { 8.dp.toPx() }
                                         val maxLeftPx = (rootWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
                                         val clampedLeft = (state.anchorRect.center.x - totalWidthPx / 2f).coerceIn(minLeftPx, maxLeftPx)
 
-                                        val relativeX = fingerPosInRoot.x - (clampedLeft + horizontalPaddingPx)
-                                        val index = (relativeX / itemWidthPx).toInt().coerceIn(0, state.items.lastIndex)
+                                        val gapPx = with(density) { 6.dp.toPx() }
+                                        val idealTop = state.anchorRect.top - totalHeightPx - gapPx
+                                        val minTopPx = with(density) { 6.dp.toPx() }
+                                        val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
 
-                                        if (index != state.selectedIndex) {
-                                            moreKeysState = state.copy(selectedIndex = index)
+                                        val relX = fingerPosInRoot.x - (clampedLeft + horizontalPaddingPx)
+                                        val relY = fingerPosInRoot.y - (popupTop + verticalPaddingPx)
+
+                                        val hoveredRow = if (rowCount > 1) {
+                                            (relY / (itemHeightPx + rowGapPx)).toInt().coerceIn(0, rowCount - 1)
+                                        } else {
+                                            0
+                                        }
+
+                                        val rowItems = chunkedRows[hoveredRow]
+                                        val hoveredCol = (relX / (itemWidthPx + colGapPx)).toInt().coerceIn(0, rowItems.lastIndex)
+                                        val newIndex = (hoveredRow * itemsPerRow + hoveredCol).coerceIn(0, state.items.lastIndex)
+
+                                        if (newIndex != state.selectedIndex) {
+                                            moreKeysState = state.copy(selectedIndex = newIndex)
                                         }
                                     }
                                 },

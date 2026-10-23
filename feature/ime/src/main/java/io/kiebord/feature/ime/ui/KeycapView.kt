@@ -46,6 +46,7 @@ fun KeycapView(
     key: KeyDef,
     shiftState: ShiftState,
     modifier: Modifier = Modifier,
+    isBottomRow: Boolean = false,
     isSlidingSymbolMode: Boolean = false,
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
@@ -83,6 +84,13 @@ fun KeycapView(
 
     val displaySymbolLabel = key.displayLabel(shiftState)
 
+    // Key shape: bottom row keys are rounded stadium pills; modifiers are rounded; letters are standard
+    val keyShape = when {
+        isBottomRow -> RoundedCornerShape(22.dp)
+        key.type == KeyType.SHIFT || key.type == KeyType.DELETE -> RoundedCornerShape(12.dp)
+        else -> RoundedCornerShape(8.dp)
+    }
+
     // Capture latest parameters in updated states to allow pointerInput(Unit) without gesture cancellation
     val currentKey = rememberUpdatedState(key)
     val currentOnTap = rememberUpdatedState(onKeyTap)
@@ -103,7 +111,7 @@ fun KeycapView(
                 onKeyPositioned(key, coords)
             }
             .padding(horizontal = 3.dp, vertical = 3.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(keyShape)
             .background(activeBackground)
             .pointerInput(Unit) {
                 coroutineScope {
