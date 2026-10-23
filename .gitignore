@@ -14,3 +14,4 @@ native/kiebord-engine/target/
 *.keystore
 *.jks
 *.log
+.kotlin/
