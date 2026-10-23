@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.HourglassBottom
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Numbers
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Vibration
@@ -27,6 +29,8 @@ fun PreferencesScreen(
     onUpdateVibrationStrength: (Int) -> Unit,
     onUpdateSound: (Boolean) -> Unit,
     onUpdateLongPressDelay: (Int) -> Unit,
+    onUpdateShowNumberRow: (Boolean) -> Unit,
+    onUpdateShowKeyPopups: (Boolean) -> Unit,
     onUpdateCursorTrackpad: (Boolean) -> Unit,
     onUpdateOneHandedMode: (String) -> Unit,
     onUpdateLongPressDelete: (Boolean) -> Unit,
@@ -79,6 +83,28 @@ fun PreferencesScreen(
                 checked = preferences.soundOnKeypress,
                 showDivider = false,
                 onCheckedChange = onUpdateSound
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCategoryHeader(title = "Key Display & Popups")
+
+        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SettingsToggleItem(
+                title = "Dedicated Number Row",
+                subtitle = "Display persistent 5th row of digits above letter keys",
+                icon = Icons.Outlined.Numbers,
+                checked = preferences.showNumberRow,
+                onCheckedChange = onUpdateShowNumberRow
+            )
+
+            SettingsToggleItem(
+                title = "Popup on Keypress",
+                subtitle = "Show magnified character pill when touching keys",
+                icon = Icons.Outlined.Layers,
+                checked = preferences.showKeyPopups,
+                showDivider = false,
+                onCheckedChange = onUpdateShowKeyPopups
             )
         }
 

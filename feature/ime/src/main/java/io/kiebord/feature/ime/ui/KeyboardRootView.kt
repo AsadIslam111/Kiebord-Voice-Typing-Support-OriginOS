@@ -76,6 +76,7 @@ fun KeyboardRootView(
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
     initialRowHeight: Dp = 60.dp,
     defaultShowNumberRow: Boolean = false,
+    showKeyBorders: Boolean = true,
     navBarBottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
@@ -430,6 +431,7 @@ fun KeyboardRootView(
                     if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
                         NumberRowBar(
                             language = displayLayout.language,
+                            showKeyBorders = showKeyBorders,
                             onKeyTap = onKeyTap,
                             onKeyLongPress = onKeyLongPress
                         )
@@ -476,6 +478,7 @@ fun KeyboardRootView(
                                 shiftState = shiftState,
                                 isBottomRow = isBottomRow,
                                 isSlidingSymbolMode = isSlidingSymbolMode,
+                                showKeyBorders = showKeyBorders,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)
                                     .fillMaxHeight(),

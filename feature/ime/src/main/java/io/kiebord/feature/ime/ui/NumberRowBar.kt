@@ -17,6 +17,7 @@ fun NumberRowBar(
     language: String,
     modifier: Modifier = Modifier,
     height: Dp = 44.dp,
+    showKeyBorders: Boolean = true,
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {}
 ) {
@@ -58,6 +59,7 @@ fun NumberRowBar(
             KeycapView(
                 key = key,
                 shiftState = ShiftState.UNSHIFTED,
+                showKeyBorders = showKeyBorders,
                 modifier = Modifier
                     .weight(1.0f)
                     .fillMaxHeight(),

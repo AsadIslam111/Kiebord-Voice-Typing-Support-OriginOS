@@ -231,14 +231,8 @@ fun KiebordSettingsApp(
                             onUpdateHeightScale = { scale ->
                                 scope.launch { preferencesRepo.updateKeyboardHeightScale(scale) }
                             },
-                            onUpdateShowNumberRow = { enabled ->
-                                scope.launch { preferencesRepo.updateShowNumberRow(enabled) }
-                            },
                             onUpdateShowKeyBorders = { enabled ->
                                 scope.launch { preferencesRepo.updateShowKeyBorders(enabled) }
-                            },
-                            onUpdateShowKeyPopups = { enabled ->
-                                scope.launch { preferencesRepo.updateShowKeyPopups(enabled) }
                             },
                             onBack = navigateBack
                         )
@@ -271,6 +265,12 @@ fun KiebordSettingsApp(
                             },
                             onUpdateLongPressDelay = { delayMs ->
                                 scope.launch { preferencesRepo.updateLongPressDelayMs(delayMs) }
+                            },
+                            onUpdateShowNumberRow = { enabled ->
+                                scope.launch { preferencesRepo.updateShowNumberRow(enabled) }
+                            },
+                            onUpdateShowKeyPopups = { enabled ->
+                                scope.launch { preferencesRepo.updateShowKeyPopups(enabled) }
                             },
                             onUpdateCursorTrackpad = { enabled ->
                                 scope.launch { preferencesRepo.updateCursorTrackpadEnabled(enabled) }

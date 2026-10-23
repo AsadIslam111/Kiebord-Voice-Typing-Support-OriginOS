@@ -169,6 +169,7 @@ class KiebordService : InputMethodService() {
                     onGestureCommit = ::handleGestureCommit,
                     initialRowHeight = (60 * preferencesState.keyboardHeightScale).dp,
                     defaultShowNumberRow = preferencesState.showNumberRow,
+                    showKeyBorders = preferencesState.showKeyBorders,
                     onThemeToggle = {
                         val nextThemeId = when (preferencesState.theme) {
                             KiebordPreferences.THEME_DEFAULT_DARK -> KiebordPreferences.THEME_AMOLED_BLACK
@@ -300,6 +301,12 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.DELETE -> {
+                val selectedText = ic.getSelectedText(0)
+                if (!selectedText.isNullOrEmpty()) {
+                    ic.commitText("", 1)
+                    updateSuggestions()
+                    return
+                }
                 if (lastGestureCommittedWord.isNotEmpty()) {
                     ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
                     lastGestureCommittedWord = ""
@@ -323,12 +330,7 @@ class KiebordService : InputMethodService() {
                     return
                 }
 
-                val selectedText = ic.getSelectedText(0)
-                if (selectedText.isNullOrEmpty()) {
-                    ic.deleteSurroundingText(1, 0)
-                } else {
-                    ic.commitText("", 1)
-                }
+                ic.deleteSurroundingText(1, 0)
                 updateSuggestions()
             }
             KeyType.ACTION -> {
@@ -429,16 +431,40 @@ class KiebordService : InputMethodService() {
             return
         }
         val ic = currentInputConnection ?: return
+
+        // 1. If text is highlighted / selected, delete the whole selection first
+        val selectedText = ic.getSelectedText(0)
+        if (!selectedText.isNullOrEmpty()) {
+            ic.commitText("", 1)
+            updateSuggestions()
+            return
+        }
+
+        // 2. Gesture-committed word
         if (lastGestureCommittedWord.isNotEmpty()) {
             ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
             lastGestureCommittedWord = ""
             updateSuggestions()
             return
         }
-        if (isTransliterationLayout() && getTransliterationManager().handleDelete()) {
-            updateSuggestions()
-            return
+
+        // 3. Active transliteration composing
+        if (isTransliterationLayout()) {
+            val translitMgr = getTransliterationManager()
+            if (translitMgr.isComposing) {
+                if (preferencesState.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD) {
+                    ic.setComposingText("", 1)
+                    ic.finishComposingText()
+                    translitMgr.reset()
+                } else {
+                    translitMgr.handleDelete()
+                }
+                updateSuggestions()
+                return
+            }
         }
+
+        // 4. Standard composing buffer (suggestions / autocorrect active)
         if (composingBuffer.isNotEmpty()) {
             if (preferencesState.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD) {
                 composingBuffer.clear()
@@ -457,8 +483,9 @@ class KiebordService : InputMethodService() {
             return
         }
 
+        // 5. Normal text in active editor
         if (preferencesState.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD) {
-            val textBefore = ic.getTextBeforeCursor(64, 0)
+            val textBefore = ic.getTextBeforeCursor(128, 0)
             if (!textBefore.isNullOrEmpty()) {
                 var idx = textBefore.length
                 while (idx > 0 && textBefore[idx - 1].isWhitespace()) {
@@ -477,12 +504,7 @@ class KiebordService : InputMethodService() {
                 ic.deleteSurroundingText(1, 0)
             }
         } else {
-            val selectedText = ic.getSelectedText(0)
-            if (selectedText.isNullOrEmpty()) {
-                ic.deleteSurroundingText(1, 0)
-            } else {
-                ic.commitText("", 1)
-            }
+            ic.deleteSurroundingText(1, 0)
         }
         updateSuggestions()
     }

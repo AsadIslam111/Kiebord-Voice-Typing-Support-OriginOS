@@ -53,10 +53,8 @@ fun AppearanceThemesScreen(
     preferences: KiebordPreferences,
     onUpdateTheme: (String) -> Unit,
     onUpdateHeightScale: (Float) -> Unit,
-    onUpdateShowNumberRow: (Boolean) -> Unit,
     onUpdateShowKeyBorders: (Boolean) -> Unit,
-    onUpdateShowKeyPopups: (Boolean) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -69,7 +67,7 @@ fun AppearanceThemesScreen(
         ),
         ThemeOption(
             id = KiebordPreferences.THEME_AMOLED_BLACK,
-            name = "AMOLED Pure Black",
+            name = "AMOLED Black",
             description = "True pitch black for maximum OLED battery savings",
             scheme = KeyboardColorScheme.AmoledBlack
         ),
@@ -104,13 +102,13 @@ fun AppearanceThemesScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 28.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             themes.chunked(3).forEach { rowThemes ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     rowThemes.forEach { themeOption ->
                         val isSelected = preferences.theme == themeOption.id
@@ -128,7 +126,7 @@ fun AppearanceThemesScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         SettingsCategoryHeader(title = "Keyboard Dimensions & Scaling")
 
         val heightScale = preferences.keyboardHeightScale
@@ -155,32 +153,16 @@ fun AppearanceThemesScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-        SettingsCategoryHeader(title = "Keycap Styling & Rows")
+        SettingsCategoryHeader(title = "Keycap Styling")
 
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            SettingsToggleItem(
-                title = "Dedicated Number Row",
-                subtitle = "Display persistent 5th row of digits above letter keys",
-                icon = Icons.Outlined.Numbers,
-                checked = preferences.showNumberRow,
-                onCheckedChange = onUpdateShowNumberRow
-            )
-
             SettingsToggleItem(
                 title = "Keycap Outlines",
                 subtitle = "Draw crisp separation borders around individual keys",
                 icon = Icons.Outlined.BorderStyle,
                 checked = preferences.showKeyBorders,
-                onCheckedChange = onUpdateShowKeyBorders
-            )
-
-            SettingsToggleItem(
-                title = "Popup on Keypress",
-                subtitle = "Show magnified character pill when touching keys",
-                icon = Icons.Outlined.Layers,
-                checked = preferences.showKeyPopups,
                 showDivider = false,
-                onCheckedChange = onUpdateShowKeyPopups
+                onCheckedChange = onUpdateShowKeyBorders
             )
         }
     }
@@ -206,15 +188,15 @@ private fun AbstractThemeCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(74.dp)
+                .height(56.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(themeOption.scheme.containerBackground)
                 .border(
-                    width = if (isSelected) 2.5.dp else 1.dp,
+                    width = if (isSelected) 2.dp else 1.dp,
                     color = borderColor,
                     shape = RoundedCornerShape(12.dp)
                 )
-                .padding(8.dp)
+                .padding(horizontal = 10.dp, vertical = 8.dp)
         ) {
             if (isSelected) {
                 Box(
@@ -234,19 +216,20 @@ private fun AbstractThemeCard(
                 }
             }
 
-            // Abstract Swatches: Space key color & Enter key color on solid theme container
+            // Abstract Swatches: Proportional Space key & compact Enter key on solid theme container
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.Bottom
             ) {
                 // Space key swatch
                 Box(
                     modifier = Modifier
-                        .weight(3f)
-                        .height(13.dp)
+                        .weight(1f)
+                        .height(9.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(themeOption.scheme.keyBackground)
                         .border(
@@ -256,11 +239,11 @@ private fun AbstractThemeCard(
                         )
                 )
 
-                // Enter key swatch
+                // Compact Enter key swatch
                 Box(
                     modifier = Modifier
-                        .weight(1.2f)
-                        .height(13.dp)
+                        .width(14.dp)
+                        .height(9.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(themeOption.scheme.actionKeyBackground)
                 )
@@ -271,7 +254,7 @@ private fun AbstractThemeCard(
 
         Text(
             text = themeOption.name,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = if (isSelected) Color(0xFF7AA2F7) else Color(0xFFE0E2E8),
             maxLines = 1

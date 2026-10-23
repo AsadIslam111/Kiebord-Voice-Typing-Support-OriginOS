@@ -1,6 +1,7 @@
 package io.kiebord.feature.ime.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,7 @@ fun KeycapView(
     modifier: Modifier = Modifier,
     isBottomRow: Boolean = false,
     isSlidingSymbolMode: Boolean = false,
+    showKeyBorders: Boolean = true,
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
     onKeyPositioned: (KeyDef, LayoutCoordinates) -> Unit = { _, _ -> },
@@ -98,6 +100,16 @@ fun KeycapView(
         else -> RoundedCornerShape(8.dp)
     }
 
+    val borderModifier = if (showKeyBorders) {
+        Modifier.border(
+            width = 1.dp,
+            color = colorScheme.keyBorder,
+            shape = keyShape
+        )
+    } else {
+        Modifier
+    }
+
     // Capture latest parameters in updated states to allow pointerInput(Unit) without gesture cancellation
     val currentKey = rememberUpdatedState(key)
     val currentOnTap = rememberUpdatedState(onKeyTap)
@@ -113,7 +125,7 @@ fun KeycapView(
     val currentOnGestureMove = rememberUpdatedState(onGestureMove)
     val currentOnGestureEnd = rememberUpdatedState(onGestureEnd)
 
-    // Flat Material 3 key styling with zero drop shadows
+    // Flat Material 3 key styling with configurable outlines
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -124,6 +136,7 @@ fun KeycapView(
             .padding(horizontal = 3.dp, vertical = 3.dp)
             .clip(keyShape)
             .background(activeBackground)
+            .then(borderModifier)
             .pointerInput(Unit) {
                 coroutineScope {
                     awaitEachGesture {
@@ -147,7 +160,7 @@ fun KeycapView(
                                 isDeleteLongPressActive = true
                                 while (isActive) {
                                     currentOnLongPress.value(initialKey)
-                                    delay(85L)
+                                    delay(110L)
                                 }
                             } else if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
                                 isMoreKeysActive = true
