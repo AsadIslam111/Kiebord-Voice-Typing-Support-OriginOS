@@ -25,6 +25,7 @@ import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
 import io.kiebord.feature.ime.translit.BornoTransliterationManager
 import io.kiebord.feature.ime.ui.KeyboardRootView
+import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
 import io.kiebord.feature.ime.ui.textedit.TextAction
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
@@ -41,6 +42,7 @@ class KiebordService : InputMethodService() {
     private var isSymbolsMode by mutableStateOf(false)
     private var colorScheme by mutableStateOf(KeyboardColorScheme.DefaultDark)
     private var navBarInsetBottomPx by mutableIntStateOf(0)
+    private var activeSuggestions by mutableStateOf<List<SuggestionCandidate>>(emptyList())
 
     override fun onCreate() {
         super.onCreate()
@@ -94,6 +96,8 @@ class KiebordService : InputMethodService() {
                     onKeyTap = ::handleKeyTap,
                     onKeyLongPress = ::handleKeyLongPress,
                     onTextAction = ::handleTextAction,
+                    suggestions = activeSuggestions,
+                    onCandidateSelect = ::handleCandidateSelect,
                     onThemeToggle = {
                         colorScheme = when (colorScheme) {
                             KeyboardColorScheme.DefaultDark -> KeyboardColorScheme.AmoledBlack
@@ -126,11 +130,13 @@ class KiebordService : InputMethodService() {
         isSymbolsMode = false
         activeLayout = primaryAlphaLayout
         bornoManager.reset()
+        activeSuggestions = emptyList()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         bornoManager.finishComposing()
+        activeSuggestions = emptyList()
         lifecycleOwner.onStop()
     }
 
@@ -153,6 +159,7 @@ class KiebordService : InputMethodService() {
                     bornoManager.finishComposing()
                     ic.commitText(text, 1)
                 }
+                updateSuggestions()
 
                 // If in one-shot shift mode, revert to unshifted after one character
                 if (shiftState == ShiftState.ONE_SHOT) {
@@ -169,8 +176,10 @@ class KiebordService : InputMethodService() {
             KeyType.DELETE -> {
                 // If currently composing in Borno phonetic, delete within the composing buffer first
                 if (bornoManager.handleDelete()) {
+                    updateSuggestions()
                     return
                 }
+                updateSuggestions()
 
                 val selectedText = ic.getSelectedText(0)
                 if (selectedText.isNullOrEmpty()) {
@@ -181,6 +190,7 @@ class KiebordService : InputMethodService() {
             }
             KeyType.ACTION -> {
                 bornoManager.finishComposing()
+                activeSuggestions = emptyList()
                 val currentAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
                 if (currentAction != null && currentAction != EditorInfo.IME_ACTION_NONE && currentAction != EditorInfo.IME_ACTION_UNSPECIFIED) {
                     ic.performEditorAction(currentAction)
@@ -190,10 +200,12 @@ class KiebordService : InputMethodService() {
             }
             KeyType.SPACE -> {
                 bornoManager.finishComposing()
+                activeSuggestions = emptyList()
                 ic.commitText(" ", 1)
             }
             KeyType.SYMBOLS -> {
                 bornoManager.finishComposing()
+                activeSuggestions = emptyList()
                 when (key.label) {
                     "?123" -> {
                         if (!isSymbolsMode) {
@@ -305,6 +317,25 @@ class KiebordService : InputMethodService() {
         }
     }
 
+    private fun handleCandidateSelect(candidate: SuggestionCandidate) {
+        val ic = currentInputConnection ?: return
+        bornoManager.commitCustom(candidate.text)
+        activeSuggestions = emptyList()
+    }
+
+    private fun updateSuggestions() {
+        if (bornoManager.isComposing) {
+            val bengali = bornoManager.currentTransliteration
+            val raw = bornoManager.currentRawInput
+            activeSuggestions = listOf(
+                SuggestionCandidate(text = bengali, isPrimary = true, rawInput = raw),
+                SuggestionCandidate(text = raw, isPrimary = false, rawInput = raw)
+            )
+        } else {
+            activeSuggestions = emptyList()
+        }
+    }
+
     private fun sendNavKeyEvent(
         ic: InputConnection,
         keyCode: Int,
@@ -323,3 +354,4 @@ class KiebordService : InputMethodService() {
         ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
     }
 }
+

@@ -38,12 +38,22 @@ android {
 val buildRustCore = tasks.register<Exec>("buildRustCore") {
     val rustProjectDir = file("${rootDir}/native/kiebord-engine")
     val jniLibsDir = file("${projectDir}/src/main/jniLibs")
+    val cargoExecutable = run {
+        val userHome = System.getProperty("user.home")
+        val winCargo = file("$userHome/.cargo/bin/cargo.exe")
+        val unixCargo = file("$userHome/.cargo/bin/cargo")
+        when {
+            winCargo.exists() -> winCargo.absolutePath
+            unixCargo.exists() -> unixCargo.absolutePath
+            else -> "cargo"
+        }
+    }
 
     workingDir = rustProjectDir
 
     // Use cargo-ndk to compile for 64-bit and 32-bit ARM & x86_64
     commandLine(
-        "cargo", "ndk",
+        cargoExecutable, "ndk",
         "-t", "arm64-v8a",
         "-t", "armeabi-v7a",
         "-t", "x86_64",

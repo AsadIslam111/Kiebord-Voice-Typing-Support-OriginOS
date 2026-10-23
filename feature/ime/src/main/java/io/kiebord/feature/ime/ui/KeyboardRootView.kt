@@ -40,6 +40,8 @@ import io.kiebord.feature.ime.ui.emoji.EmojiPanelView
 import io.kiebord.feature.ime.ui.resizer.LiveResizerOverlay
 import io.kiebord.feature.ime.ui.textedit.TextAction
 import io.kiebord.feature.ime.ui.textedit.TextEditPanelView
+import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
+import io.kiebord.feature.ime.ui.suggestion.SuggestionStripView
 import io.kiebord.feature.ime.ui.toolbar.ReorderableToolbar
 import io.kiebord.feature.ime.ui.toolbar.ToolbarAction
 import io.kiebord.feature.ime.ui.toolbar.ToolsDrawerView
@@ -53,6 +55,8 @@ fun KeyboardRootView(
     onKeyLongPress: (KeyDef) -> Unit,
     onTextAction: (TextAction, Boolean) -> Unit = { _, _ -> },
     onThemeToggle: () -> Unit = {},
+    suggestions: List<SuggestionCandidate> = emptyList(),
+    onCandidateSelect: (SuggestionCandidate) -> Unit = {},
     initialRowHeight: Dp = 60.dp,
     navBarBottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier
@@ -215,6 +219,14 @@ fun KeyboardRootView(
                     isTextEditActive = false
                 )
 
+                // Suggestion Strip (displays transliterated Bengali words and swipe candidates)
+                if (suggestions.isNotEmpty()) {
+                    SuggestionStripView(
+                        candidates = suggestions,
+                        onCandidateClick = onCandidateSelect
+                    )
+                }
+
                 // Switch between Tools Drawer, Emoji Panel, and Keyboard Keys
                 if (isToolsDrawerOpen) {
                     ToolsDrawerView(
@@ -275,6 +287,15 @@ fun KeyboardRootView(
                                 onKeyLongPress = onKeyLongPress,
                                 onKeyPositioned = { k, coords ->
                                     keyCoordinatesMap[k] = coords
+                                },
+                                onSpacebarTrackpad = { direction ->
+                                    onTextAction(
+                                        if (direction > 0) TextAction.MOVE_RIGHT else TextAction.MOVE_LEFT,
+                                        false
+                                    )
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    } catch (_: Exception) {}
                                 },
                                 onShowMoreKeys = { keyDef, keyCoords ->
                                     val rCoords = rootCoordinates

@@ -42,6 +42,22 @@ class BornoTransliterationManager(
         return true
     }
 
+    val currentRawInput: String
+        get() = buffer.toString()
+
+    val currentTransliteration: String
+        get() = if (buffer.isNotEmpty() && NativeEngine.isAvailable()) {
+            NativeEngine.transliterateBorno(buffer.toString())
+        } else {
+            buffer.toString()
+        }
+
+    fun commitCustom(text: String) {
+        val ic = inputConnectionProvider()
+        ic?.commitText(text, 1)
+        buffer.clear()
+    }
+
     fun finishComposing() {
         if (!isComposing) return
         val ic = inputConnectionProvider()

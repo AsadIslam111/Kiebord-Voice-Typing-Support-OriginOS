@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,9 +57,11 @@ fun KeycapView(
     onMoreKeysCommit: () -> Unit = {},
     onSlidingDragStart: (KeyDef, LayoutCoordinates, Offset) -> Unit = { _, _, _ -> },
     onSlidingDragMove: (Offset) -> Unit = {},
-    onSlidingDragEnd: (Offset) -> Unit = {}
+    onSlidingDragEnd: (Offset) -> Unit = {},
+    onSpacebarTrackpad: (Int) -> Unit = {}
 ) {
     val colorScheme = KiebordTheme.colorScheme
+    val density = LocalDensity.current
     var isPressed by remember { mutableStateOf(false) }
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
@@ -101,6 +104,7 @@ fun KeycapView(
     val currentOnSlidingStart = rememberUpdatedState(onSlidingDragStart)
     val currentOnSlidingMove = rememberUpdatedState(onSlidingDragMove)
     val currentOnSlidingEnd = rememberUpdatedState(onSlidingDragEnd)
+    val currentOnSpacebarTrackpad = rememberUpdatedState(onSpacebarTrackpad)
 
     // Flat Material 3 key styling with zero drop shadows
     Box(
@@ -122,6 +126,9 @@ fun KeycapView(
                         isPressed = true
                         var isMoreKeysActive = false
                         var isSlidingDrag = false
+                        var isSpacebarTrackpad = false
+                        var lastTrackpadX = 0f
+                        val trackpadStepPx = with(density) { 14.dp.toPx() }
 
                         val longPressJob = launch {
                             delay(240L)
@@ -146,6 +153,8 @@ fun KeycapView(
                                     currentOnSlidingEnd.value(delta)
                                 } else if (isMoreKeysActive) {
                                     currentOnMoreKeysCommit.value()
+                                } else if (isSpacebarTrackpad) {
+                                    // Trackpad gesture completed, don't emit normal space tap
                                 } else {
                                     currentOnTap.value(initialKey)
                                 }
@@ -155,6 +164,26 @@ fun KeycapView(
                             val currentPos = change.position
                             val delta = currentPos - initialDownPos
                             val distance = delta.getDistance()
+
+                            // Spacebar cursor trackpad gesture: horizontal slide moves caret
+                            if (initialKey.type == KeyType.SPACE && Math.abs(delta.x) > 16f) {
+                                longPressJob.cancel()
+                                isSpacebarTrackpad = true
+                                val diffFromLast = delta.x - lastTrackpadX
+                                if (diffFromLast > trackpadStepPx) {
+                                    val steps = (diffFromLast / trackpadStepPx).toInt()
+                                    lastTrackpadX += steps * trackpadStepPx
+                                    repeat(steps) {
+                                        currentOnSpacebarTrackpad.value(1)
+                                    }
+                                } else if (diffFromLast < -trackpadStepPx) {
+                                    val steps = ((lastTrackpadX - delta.x) / trackpadStepPx).toInt()
+                                    lastTrackpadX -= steps * trackpadStepPx
+                                    repeat(steps) {
+                                        currentOnSpacebarTrackpad.value(-1)
+                                    }
+                                }
+                            }
 
                             // Sliding input detector for ?123
                             if (initialKey.slidingInput && distance > 18f && !isSlidingDrag) {

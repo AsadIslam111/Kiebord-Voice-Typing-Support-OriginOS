@@ -2,6 +2,8 @@ use jni::objects::{JClass, JString};
 use jni::sys::{jboolean, jstring};
 use jni::JNIEnv;
 
+pub mod gesture;
+pub mod spatial;
 pub mod translit;
 
 use translit::borno_phonetic::BornoPhonetic;
