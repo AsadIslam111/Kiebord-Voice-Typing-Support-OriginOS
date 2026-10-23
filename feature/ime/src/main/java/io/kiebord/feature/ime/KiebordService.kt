@@ -27,14 +27,26 @@ import io.kiebord.feature.ime.gesture.KeyCentroid
 import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
 import io.kiebord.feature.ime.translit.BornoTransliterationManager
 import io.kiebord.feature.ime.translit.TransliterationManager
+import androidx.compose.ui.unit.dp
+import io.kiebord.data.prefs.KiebordPreferences
+import io.kiebord.data.prefs.KiebordPreferencesRepository
 import io.kiebord.feature.ime.translit.TransliterationManagerFactory
 import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
 import io.kiebord.feature.ime.ui.textedit.TextAction
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class KiebordService : InputMethodService() {
+
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private lateinit var preferencesRepo: KiebordPreferencesRepository
+    private var preferencesState by mutableStateOf(KiebordPreferences())
 
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
     private var transliterationManager: TransliterationManager =
@@ -66,10 +78,35 @@ class KiebordService : InputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
+        preferencesRepo = KiebordPreferencesRepository.getInstance(this)
         clipboardManager = SandboxedClipboardManager(this)
         lifecycleOwner.onCreate()
         NativeEngine.ensureInitialized(this, "en")
         NativeEngine.ensureInitialized(this, "bn")
+
+        serviceScope.launch {
+            preferencesRepo.preferencesFlow.collect { prefs ->
+                preferencesState = prefs
+                colorScheme = when (prefs.theme) {
+                    KiebordPreferences.THEME_AMOLED_BLACK -> KeyboardColorScheme.AmoledBlack
+                    KiebordPreferences.THEME_TOKYO_NIGHT -> KeyboardColorScheme.TokyoNight
+                    KiebordPreferences.THEME_NORD -> KeyboardColorScheme.Nord
+                    KiebordPreferences.THEME_DEFAULT_LIGHT -> KeyboardColorScheme.DefaultLight
+                    else -> KeyboardColorScheme.DefaultDark
+                }
+                val targetPrimary = when (prefs.primaryLayoutId) {
+                    KiebordPreferences.LAYOUT_BN_BORNO -> PredefinedLayouts.BengaliBorno
+                    KiebordPreferences.LAYOUT_BN_PROBHAT -> PredefinedLayouts.BengaliProbhat
+                    else -> PredefinedLayouts.EnglishQwerty
+                }
+                if (primaryAlphaLayout.id != targetPrimary.id) {
+                    primaryAlphaLayout = targetPrimary
+                    if (!isSymbolsMode) {
+                        activeLayout = targetPrimary
+                    }
+                }
+            }
+        }
     }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
@@ -130,13 +167,18 @@ class KiebordService : InputMethodService() {
                         updateSuggestions()
                     },
                     onGestureCommit = ::handleGestureCommit,
+                    initialRowHeight = (60 * preferencesState.keyboardHeightScale).dp,
+                    defaultShowNumberRow = preferencesState.showNumberRow,
                     onThemeToggle = {
-                        colorScheme = when (colorScheme) {
-                            KeyboardColorScheme.DefaultDark -> KeyboardColorScheme.AmoledBlack
-                            KeyboardColorScheme.AmoledBlack -> KeyboardColorScheme.TokyoNight
-                            KeyboardColorScheme.TokyoNight -> KeyboardColorScheme.Nord
-                            KeyboardColorScheme.Nord -> KeyboardColorScheme.DefaultLight
-                            else -> KeyboardColorScheme.DefaultDark
+                        val nextThemeId = when (preferencesState.theme) {
+                            KiebordPreferences.THEME_DEFAULT_DARK -> KiebordPreferences.THEME_AMOLED_BLACK
+                            KiebordPreferences.THEME_AMOLED_BLACK -> KiebordPreferences.THEME_TOKYO_NIGHT
+                            KiebordPreferences.THEME_TOKYO_NIGHT -> KiebordPreferences.THEME_NORD
+                            KiebordPreferences.THEME_NORD -> KiebordPreferences.THEME_DEFAULT_LIGHT
+                            else -> KiebordPreferences.THEME_DEFAULT_DARK
+                        }
+                        serviceScope.launch {
+                            preferencesRepo.updateTheme(nextThemeId)
                         }
                     }
                 )
@@ -178,6 +220,7 @@ class KiebordService : InputMethodService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceScope.cancel()
         lifecycleOwner.onDestroy()
     }
 

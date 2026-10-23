@@ -75,6 +75,7 @@ fun KeyboardRootView(
     onPasteClip: (String) -> Unit = {},
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
     initialRowHeight: Dp = 60.dp,
+    defaultShowNumberRow: Boolean = false,
     navBarBottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
@@ -147,8 +148,8 @@ fun KeyboardRootView(
     var isResizerOpen by remember { mutableStateOf(false) }
     var isTextEditOpen by remember { mutableStateOf(false) }
     var isToolsDrawerOpen by remember { mutableStateOf(false) }
-    var showNumberRow by remember { mutableStateOf(false) }
-    var keyRowHeight by remember { mutableStateOf(initialRowHeight) }
+    var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
+    var keyRowHeight by remember(initialRowHeight) { mutableStateOf(initialRowHeight) }
     var chinPadding by remember { mutableStateOf(8.dp) }
     var horizontalMargin by remember { mutableStateOf(0.dp) }
     val toolbarHeight = 46.dp
