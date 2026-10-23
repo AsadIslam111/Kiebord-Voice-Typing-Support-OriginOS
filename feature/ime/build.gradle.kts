@@ -70,6 +70,31 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders"
     dependsOn(buildRustCore)
 }
 
+// Compile .combined dictionaries into binary .dict assets
+val compileDictionaries = tasks.register<Exec>("compileDictionaries") {
+    val rustProjectDir = file("${rootDir}/native/kiebord-engine")
+    val cargoExecutable = run {
+        val userHome = System.getProperty("user.home")
+        val winCargo = file("$userHome/.cargo/bin/cargo.exe")
+        val unixCargo = file("$userHome/.cargo/bin/cargo")
+        when {
+            winCargo.exists() -> winCargo.absolutePath
+            unixCargo.exists() -> unixCargo.absolutePath
+            else -> "cargo"
+        }
+    }
+
+    workingDir = rustProjectDir
+    commandLine(cargoExecutable, "run", "--bin", "compile_dict")
+
+    inputs.dir(file("${rootDir}/assets-src/dictionaries"))
+    outputs.dir(file("${projectDir}/src/main/assets/dictionaries"))
+}
+
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn(compileDictionaries)
+}
+
 dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:data"))
