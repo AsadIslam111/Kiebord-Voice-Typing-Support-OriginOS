@@ -14,16 +14,39 @@ data class KeyCentroid(
 class CrossLanguageGestureDecoder {
 
     /**
-     * Scores a raw touch trajectory against keyboard key centroids using distance heuristics,
-     * generates a primary Latin candidate, and transliterates into Borno Bengali candidate.
+     * Decodes a raw touch trajectory against keyboard key centroids using native dictionary shape matching.
+     * When typing in Borno Bengali mode with Latin keys, transliterates decoded candidates into Borno Bengali.
      */
     fun decodeGesture(
         points: List<Offset>,
-        keyCentroids: List<KeyCentroid>
+        keyCentroids: List<KeyCentroid>,
+        keyWidthPx: Float = 60f,
+        lang: String = "en"
     ): List<SuggestionCandidate> {
         if (points.size < 2 || keyCentroids.isEmpty()) return emptyList()
 
-        // 1. Sample key sequence along trajectory (start key, inflection points, end key)
+        val decodedWords = if (NativeEngine.isAvailable()) {
+            NativeEngine.queryGesture(points, keyCentroids, keyWidthPx, lang, 5)
+        } else {
+            emptyList()
+        }
+
+        if (decodedWords.isNotEmpty()) {
+            val candidates = mutableListOf<SuggestionCandidate>()
+            for (i in decodedWords.indices) {
+                val word = decodedWords[i]
+                candidates.add(
+                    SuggestionCandidate(
+                        text = word,
+                        isPrimary = (i == 0),
+                        rawInput = word
+                    )
+                )
+            }
+            return candidates
+        }
+
+        // Fallback: heuristic key sequence along trajectory
         val candidateChars = mutableListOf<String>()
         val startPoint = points.first()
         val endPoint = points.last()
@@ -31,11 +54,10 @@ class CrossLanguageGestureDecoder {
         val startKey = keyCentroids.minByOrNull { hypot(it.centerX - startPoint.x, it.centerY - startPoint.y) }
         val endKey = keyCentroids.minByOrNull { hypot(it.centerX - endPoint.x, it.centerY - endPoint.y) }
 
-        if (startKey != null) {
+        if (startKey != null && startKey.character.isNotBlank()) {
             candidateChars.add(startKey.character.lowercase())
         }
 
-        // Sample intermediate path points
         val step = (points.size / 6).coerceAtLeast(1)
         for (i in step until points.size - step step step) {
             val pt = points[i]
@@ -48,34 +70,48 @@ class CrossLanguageGestureDecoder {
             }
         }
 
-        if (endKey != null) {
+        if (endKey != null && endKey.character.isNotBlank()) {
             val endCh = endKey.character.lowercase()
             if (candidateChars.isEmpty() || candidateChars.last() != endCh) {
                 candidateChars.add(endCh)
             }
         }
 
-        val latinWord = candidateChars.joinToString("")
-        if (latinWord.isBlank()) return emptyList()
+        val rawWord = candidateChars.joinToString("")
+        if (rawWord.isBlank()) return emptyList()
 
-        // 2. Transliterate Latin sequence into Borno Bengali candidate
-        val bengaliWord = if (NativeEngine.isAvailable()) {
-            NativeEngine.transliterateBorno(latinWord)
+        val isPhonetic = if (NativeEngine.isAvailable()) {
+            NativeEngine.isPhoneticLayout(lang)
         } else {
-            latinWord
+            lang == "bn_borno"
         }
 
-        return listOf(
-            SuggestionCandidate(
-                text = bengaliWord,
-                isPrimary = true,
-                rawInput = latinWord
-            ),
-            SuggestionCandidate(
-                text = latinWord,
-                isPrimary = false,
-                rawInput = latinWord
+        if (isPhonetic) {
+            val transliterated = if (NativeEngine.isAvailable()) {
+                NativeEngine.transliterate(lang, rawWord)
+            } else {
+                rawWord
+            }
+            return listOf(
+                SuggestionCandidate(
+                    text = transliterated,
+                    isPrimary = true,
+                    rawInput = rawWord
+                ),
+                SuggestionCandidate(
+                    text = rawWord,
+                    isPrimary = false,
+                    rawInput = rawWord
+                )
             )
-        )
+        } else {
+            return listOf(
+                SuggestionCandidate(
+                    text = rawWord,
+                    isPrimary = true,
+                    rawInput = rawWord
+                )
+            )
+        }
     }
 }

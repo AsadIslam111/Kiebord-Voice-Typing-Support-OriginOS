@@ -532,6 +532,277 @@ impl BornoPhonetic {
             "$", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
         ])
     }
+
+    pub fn is_bengali_consonant(c: char) -> bool {
+        let code = c as u32;
+        (0x0995..=0x09B9).contains(&code) || (0x09DC..=0x09DF).contains(&code) || code == 0x09CE
+    }
+
+    fn independent_vowel_to_keys(c: char) -> Option<Vec<char>> {
+        match c as u32 {
+            0x0985 => Some(vec!['o']),                // অ
+            0x0986 => Some(vec!['a']),                // আ
+            0x0987 | 0x0988 => Some(vec!['i']),       // ই, ঈ
+            0x0989 | 0x098A => Some(vec!['u']),       // উ, ঊ
+            0x098B => Some(vec!['r', 'i']),           // ঋ
+            0x098F => Some(vec!['e']),                // এ
+            0x0990 => Some(vec!['o', 'i']),           // ঐ
+            0x0993 => Some(vec!['o']),                // ও
+            0x0994 => Some(vec!['o', 'u']),           // ঔ
+            _ => None,
+        }
+    }
+
+    fn consonant_to_keys(c: char) -> Option<Vec<Vec<char>>> {
+        match c {
+            'ক' => Some(vec![vec!['k']]),
+            'খ' => Some(vec![vec!['k', 'h']]),
+            'গ' => Some(vec![vec!['g']]),
+            'ঘ' => Some(vec![vec!['g', 'h']]),
+            'ঙ' => Some(vec![vec!['n', 'g']]),
+            'চ' => Some(vec![vec!['c']]),
+            'ছ' => Some(vec![vec!['c', 'h']]),
+            'জ' => Some(vec![vec!['j']]),
+            'ঝ' => Some(vec![vec!['j', 'h']]),
+            'ঞ' => Some(vec![vec!['n', 'g'], vec!['n']]),
+            'ট' => Some(vec![vec!['t']]),
+            'ঠ' => Some(vec![vec!['t', 'h']]),
+            'ড' => Some(vec![vec!['d']]),
+            'ঢ' => Some(vec![vec!['d', 'h']]),
+            'ণ' => Some(vec![vec!['n']]),
+            'ত' => Some(vec![vec!['t']]),
+            'থ' => Some(vec![vec!['t', 'h']]),
+            'দ' => Some(vec![vec!['d']]),
+            'ধ' => Some(vec![vec!['d', 'h']]),
+            'ন' => Some(vec![vec!['n']]),
+            'প' => Some(vec![vec!['p']]),
+            'ফ' => Some(vec![vec!['f'], vec!['p', 'h']]),
+            'ব' => Some(vec![vec!['b']]),
+            'ভ' => Some(vec![vec!['b', 'h'], vec!['v']]),
+            'ম' => Some(vec![vec!['m']]),
+            'য' => Some(vec![vec!['z'], vec!['j']]),
+            'র' => Some(vec![vec!['r']]),
+            'ল' => Some(vec![vec!['l']]),
+            'শ' => Some(vec![vec!['s', 'h'], vec!['s']]),
+            'ষ' => Some(vec![vec!['s', 'h'], vec!['s']]),
+            'স' => Some(vec![vec!['s']]),
+            'হ' => Some(vec![vec!['h']]),
+            'ড়' => Some(vec![vec!['r']]),
+            'ঢ়' => Some(vec![vec!['r', 'h']]),
+            'য়' => Some(vec![vec!['y']]),
+            'ৎ' => Some(vec![vec!['t']]),
+            _ => None,
+        }
+    }
+
+    /// Decomposes a target Bengali word into its canonical Latin phonetic key sequences on QWERTY.
+    pub fn to_phonetic_keys(word: &str) -> Vec<Vec<char>> {
+        let chars: Vec<char> = word.chars().collect();
+        if chars.is_empty() {
+            return Vec::new();
+        }
+
+        let mut paths: Vec<Vec<char>> = vec![Vec::new()];
+        let len = chars.len();
+        let mut i = 0;
+
+        while i < len {
+            let c = chars[i];
+            let next = chars.get(i + 1).copied();
+
+            if Self::is_kar_sign(c) {
+                let kar_keys = match c as u32 {
+                    0x09BE => vec!['a'],
+                    0x09BF | 0x09C0 => vec!['i'],
+                    0x09C1 | 0x09C2 => vec!['u'],
+                    0x09C3 => vec!['r', 'i'],
+                    0x09C7 => vec!['e'],
+                    0x09C8 => vec!['o', 'i'],
+                    0x09CB => vec!['o'],
+                    0x09CC | 0x09D7 => vec!['o', 'u'],
+                    _ => vec!['a'],
+                };
+                for path in &mut paths {
+                    path.extend(&kar_keys);
+                }
+                i += 1;
+                continue;
+            }
+
+            if let Some(v_keys) = Self::independent_vowel_to_keys(c) {
+                if c == 'অ' && i == 0 {
+                    let mut alt_paths = Vec::with_capacity(paths.len() * 2);
+                    for p in &paths {
+                        let mut p1 = p.clone();
+                        p1.push('o');
+                        alt_paths.push(p1);
+                        let mut p2 = p.clone();
+                        p2.push('a');
+                        alt_paths.push(p2);
+                    }
+                    paths = alt_paths;
+                } else {
+                    for path in &mut paths {
+                        path.extend(&v_keys);
+                    }
+                }
+                i += 1;
+                continue;
+            }
+
+            if let Some(c_variants) = Self::consonant_to_keys(c) {
+                if next == Some('\u{09CD}') {
+                    let next2 = chars.get(i + 2).copied();
+                    if next2 == Some('য') {
+                        for path in &mut paths {
+                            path.extend(&c_variants[0]);
+                            path.push('y');
+                        }
+                        i += 3;
+                        continue;
+                    } else if next2 == Some('র') {
+                        for path in &mut paths {
+                            path.extend(&c_variants[0]);
+                            path.push('r');
+                        }
+                        i += 3;
+                        continue;
+                    } else if next2 == Some('ব') {
+                        for path in &mut paths {
+                            path.extend(&c_variants[0]);
+                            path.push('b');
+                        }
+                        i += 3;
+                        continue;
+                    } else if let Some(n2) = next2 {
+                        if c == 'ক' && n2 == 'ষ' {
+                            for path in &mut paths {
+                                path.extend(&['k', 's', 'h']);
+                            }
+                            i += 3;
+                            continue;
+                        } else if c == 'জ' && n2 == 'ঞ' {
+                            for path in &mut paths {
+                                path.extend(&['g', 'g']);
+                            }
+                            i += 3;
+                            continue;
+                        } else {
+                            for path in &mut paths {
+                                path.extend(&c_variants[0]);
+                            }
+                            i += 2;
+                            continue;
+                        }
+                    } else {
+                        for path in &mut paths {
+                            path.extend(&c_variants[0]);
+                        }
+                        i += 2;
+                        continue;
+                    }
+                }
+
+                if let Some(n) = next {
+                    if Self::is_kar_sign(n) {
+                        if c_variants.len() > 1 && paths.len() <= 2 {
+                            let mut alt_paths = Vec::with_capacity(paths.len() * c_variants.len());
+                            for p in &paths {
+                                for v in &c_variants {
+                                    let mut p_copy = p.clone();
+                                    p_copy.extend(v);
+                                    alt_paths.push(p_copy);
+                                }
+                            }
+                            paths = alt_paths;
+                        } else {
+                            for path in &mut paths {
+                                path.extend(&c_variants[0]);
+                            }
+                        }
+                        i += 1;
+                        continue;
+                    }
+                }
+
+                let is_followed_by_consonant = next.map_or(false, |nc| Self::is_bengali_consonant(nc));
+                if is_followed_by_consonant && paths.len() < 4 {
+                    let mut alt_paths = Vec::with_capacity(paths.len() * 2);
+                    for p in &paths {
+                        let mut p1 = p.clone();
+                        p1.extend(&c_variants[0]);
+                        p1.push('o');
+                        alt_paths.push(p1);
+
+                        let mut p2 = p.clone();
+                        p2.extend(&c_variants[0]);
+                        alt_paths.push(p2);
+                    }
+                    paths = alt_paths;
+                } else {
+                    for path in &mut paths {
+                        path.extend(&c_variants[0]);
+                    }
+                }
+                i += 1;
+                continue;
+            }
+
+            match c {
+                'ং' => {
+                    for path in &mut paths {
+                        path.extend(&['n', 'g']);
+                    }
+                }
+                'ঃ' => {
+                    for path in &mut paths {
+                        path.push('h');
+                    }
+                }
+                'ৎ' => {
+                    for path in &mut paths {
+                        path.push('t');
+                    }
+                }
+                _ => {}
+            }
+            i += 1;
+        }
+
+        let mut unique: Vec<Vec<char>> = Vec::new();
+        for p in paths {
+            if p.len() >= 2 && !unique.contains(&p) {
+                unique.push(p);
+            }
+        }
+        unique
+    }
+}
+
+pub struct BornoPhoneticTransliterator;
+
+static BORNO_TRANSLITERATOR_INSTANCE: BornoPhoneticTransliterator = BornoPhoneticTransliterator;
+
+pub fn get_borno_transliterator() -> &'static BornoPhoneticTransliterator {
+    &BORNO_TRANSLITERATOR_INSTANCE
+}
+
+impl crate::translit::traits::PhoneticTransliterator for BornoPhoneticTransliterator {
+    fn id(&self) -> &'static str {
+        "bn_borno"
+    }
+
+    fn target_dict_lang(&self) -> &'static str {
+        "bn"
+    }
+
+    fn transliterate(&self, input: &str) -> String {
+        BornoPhonetic::convert(input)
+    }
+
+    fn to_phonetic_keys(&self, word: &str) -> Vec<Vec<char>> {
+        BornoPhonetic::to_phonetic_keys(word)
+    }
 }
 
 #[cfg(test)]
@@ -556,5 +827,32 @@ mod tests {
         assert_eq!(BornoPhonetic::convert("shanto"), "শান্ত");
         assert_eq!(BornoPhonetic::convert("kkhoma"), "ক্ষমা");
         assert_eq!(BornoPhonetic::convert("jNGan"), "জ্ঞান");
+    }
+
+    #[test]
+    fn test_to_phonetic_keys() {
+        let ami_keys = BornoPhonetic::to_phonetic_keys("আমি");
+        assert_eq!(ami_keys, vec![vec!['a', 'm', 'i']]);
+
+        let amader_keys = BornoPhonetic::to_phonetic_keys("আমাদের");
+        assert_eq!(amader_keys, vec![vec!['a', 'm', 'a', 'd', 'e', 'r']]);
+
+        let tumi_keys = BornoPhonetic::to_phonetic_keys("তুমি");
+        assert_eq!(tumi_keys, vec![vec!['t', 'u', 'm', 'i']]);
+
+        let bhalo_keys = BornoPhonetic::to_phonetic_keys("ভালো");
+        assert!(bhalo_keys.contains(&vec!['b', 'h', 'a', 'l', 'o']));
+        assert!(bhalo_keys.contains(&vec!['v', 'a', 'l', 'o']));
+
+        let kemon_keys = BornoPhonetic::to_phonetic_keys("কেমন");
+        assert!(kemon_keys.contains(&vec!['k', 'e', 'm', 'o', 'n']));
+
+        let dhonyobad_keys = BornoPhonetic::to_phonetic_keys("ধন্যবাদ");
+        assert!(dhonyobad_keys.contains(&vec!['d', 'h', 'o', 'n', 'y', 'b', 'a', 'd'])
+            || dhonyobad_keys.contains(&vec!['d', 'h', 'o', 'n', 'y', 'o', 'b', 'a', 'd'])
+            || dhonyobad_keys.contains(&vec!['d', 'h', 'n', 'y', 'b', 'a', 'd']));
+
+        let bangla_keys = BornoPhonetic::to_phonetic_keys("বাংলা");
+        assert_eq!(bangla_keys, vec![vec!['b', 'a', 'n', 'g', 'l', 'a']]);
     }
 }

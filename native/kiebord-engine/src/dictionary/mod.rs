@@ -162,7 +162,7 @@ mod tests {
         // Exact prefix
         let th_sug = dict.suggest("th", 5, prox);
         assert!(!th_sug.is_empty());
-        assert!(th_sug.contains(&"the".to_string()));
+        assert_eq!(th_sug[0], "the");
 
         // Typo: neighbor key slip ('g' instead of 'h' in 'gelo' -> 'hello')
         let gelo_sug = dict.suggest("gelo", 10, prox);
@@ -178,6 +178,20 @@ mod tests {
         let hte_sug = dict.suggest("hte", 3, prox);
         assert!(!hte_sug.is_empty());
         assert_eq!(hte_sug[0], "the");
+    }
+
+    #[test]
+    fn test_suggestions_ranked_by_frequency() {
+        let dict = get_en_binary_dict().expect("en dict loaded");
+        let prox = get_en_proximity();
+
+        // If nothing is typed (empty input), suggest returns empty
+        let empty_sug = dict.suggest("", 5, prox);
+        assert!(empty_sug.is_empty());
+
+        // Exact prefix suggestions for "th" must be sorted with highest frequency first
+        let th_sug = dict.suggest("th", 5, prox);
+        assert_eq!(th_sug[0], "the"); // "the" has max frequency 255
     }
 
     #[test]

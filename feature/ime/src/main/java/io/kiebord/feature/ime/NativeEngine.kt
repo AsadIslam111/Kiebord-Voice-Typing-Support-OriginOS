@@ -27,10 +27,55 @@ object NativeEngine {
     external fun transliterateBorno(input: String): String
 
     @JvmStatic
+    external fun transliterate(layoutId: String, input: String): String
+
+    @JvmStatic
+    external fun isPhoneticLayout(layoutId: String): Boolean
+
+    @JvmStatic
     external fun getSuggestions(prefix: String, lang: String, maxResults: Int): String
 
     @JvmStatic
     external fun predictNextWords(prevWord: String, lang: String, maxResults: Int): String
+
+    @JvmStatic
+    external fun decodeGesture(
+        pointsX: FloatArray,
+        pointsY: FloatArray,
+        keysChars: String,
+        keysX: FloatArray,
+        keysY: FloatArray,
+        keyWidth: Float,
+        lang: String,
+        maxResults: Int
+    ): String
+
+    fun queryGesture(
+        points: List<androidx.compose.ui.geometry.Offset>,
+        keyCentroids: List<io.kiebord.feature.ime.gesture.KeyCentroid>,
+        keyWidth: Float,
+        lang: String,
+        maxResults: Int = 5
+    ): List<String> {
+        if (!isLoaded || points.size < 2 || keyCentroids.isEmpty()) return emptyList()
+        val xs = FloatArray(points.size) { points[it].x }
+        val ys = FloatArray(points.size) { points[it].y }
+        val chars = StringBuilder()
+        val kxs = FloatArray(keyCentroids.size)
+        val kys = FloatArray(keyCentroids.size)
+        for (i in keyCentroids.indices) {
+            val c = keyCentroids[i].character
+            chars.append(if (c.isNotEmpty()) c[0] else ' ')
+            kxs[i] = keyCentroids[i].centerX
+            kys[i] = keyCentroids[i].centerY
+        }
+        return try {
+            val raw = decodeGesture(xs, ys, chars.toString(), kxs, kys, keyWidth, lang, maxResults)
+            if (raw.isEmpty()) emptyList() else raw.split("|").filter { it.isNotEmpty() }
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
 
     private val initializedLangs = mutableSetOf<String>()
 

@@ -1,8 +1,91 @@
+use crate::dictionary::binary_dict::BinaryDict;
+use crate::translit::traits::PhoneticTransliterator;
+use parking_lot::RwLock;
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, OnceLock};
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct GesturePoint {
     pub x: f32,
     pub y: f32,
     pub timestamp_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct KeyCenter {
+    pub char_code: char,
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct GestureCandidate {
+    pub word: String,
+    pub score: f32,
+}
+
+#[derive(Clone)]
+pub struct PhoneticWordEntry {
+    pub word_id: u32,
+    pub freq: u8,
+    pub keys: Vec<char>,
+}
+
+pub struct PhoneticIndex {
+    pub buckets: HashMap<(char, char), Vec<PhoneticWordEntry>>,
+}
+
+impl PhoneticIndex {
+    pub fn build(dict: &BinaryDict, transliterator: &dyn PhoneticTransliterator) -> Self {
+        let mut buckets: HashMap<(char, char), Vec<PhoneticWordEntry>> = HashMap::with_capacity(700);
+        let word_count = dict.word_count();
+
+        for id in 0..word_count {
+            if let Some(word) = dict.word_at(id) {
+                let freq = dict.word_freq(word);
+                let variants = transliterator.to_phonetic_keys(word);
+                for v in variants {
+                    if v.len() >= 2 {
+                        let first = v[0];
+                        let last = *v.last().unwrap();
+                        buckets.entry((first, last)).or_default().push(PhoneticWordEntry {
+                            word_id: id,
+                            freq,
+                            keys: v,
+                        });
+                    }
+                }
+            }
+        }
+
+        PhoneticIndex { buckets }
+    }
+}
+
+static PHONETIC_CACHE: OnceLock<RwLock<HashMap<String, Arc<PhoneticIndex>>>> = OnceLock::new();
+
+pub fn get_or_build_phonetic_index(
+    dict: &BinaryDict,
+    transliterator: &dyn PhoneticTransliterator,
+) -> Arc<PhoneticIndex> {
+    let cache_lock = PHONETIC_CACHE.get_or_init(|| RwLock::new(HashMap::new()));
+    let id = transliterator.id();
+
+    {
+        let r = cache_lock.read();
+        if let Some(idx) = r.get(id) {
+            return Arc::clone(idx);
+        }
+    }
+
+    let mut w = cache_lock.write();
+    if let Some(idx) = w.get(id) {
+        return Arc::clone(idx);
+    }
+
+    let index = Arc::new(PhoneticIndex::build(dict, transliterator));
+    w.insert(id.to_string(), Arc::clone(&index));
+    index
 }
 
 pub struct GestureDecoder;
@@ -65,11 +148,305 @@ impl GestureDecoder {
 
         resampled
     }
+
+    /// Decodes a touch trajectory against keyboard key centroids and binary dictionary.
+    pub fn decode(
+        points: &[GesturePoint],
+        keys: &[KeyCenter],
+        key_width: f32,
+        dict: &BinaryDict,
+        limit: usize,
+    ) -> Vec<GestureCandidate> {
+        if points.len() < 2 || keys.is_empty() || key_width <= 0.0 {
+            return Vec::new();
+        }
+
+        let kw = key_width.max(10.0);
+        let sample_count = 30;
+        let user_path = Self::resample_polyline(points, sample_count);
+        let start_pt = &user_path[0];
+        let end_pt = &user_path[sample_count - 1];
+
+        let mut key_map: HashMap<char, (f32, f32)> = HashMap::with_capacity(keys.len());
+        for k in keys {
+            key_map.insert(k.char_code.to_ascii_lowercase(), (k.x, k.y));
+        }
+
+        let start_radius = 2.4 * kw;
+        let end_radius = 2.4 * kw;
+
+        let start_keys: Vec<char> = keys
+            .iter()
+            .filter(|k| {
+                let dx = k.x - start_pt.x;
+                let dy = k.y - start_pt.y;
+                dx * dx + dy * dy <= start_radius * start_radius
+            })
+            .map(|k| k.char_code.to_ascii_lowercase())
+            .collect();
+
+        let end_keys: HashSet<char> = keys
+            .iter()
+            .filter(|k| {
+                let dx = k.x - end_pt.x;
+                let dy = k.y - end_pt.y;
+                dx * dx + dy * dy <= end_radius * end_radius
+            })
+            .map(|k| k.char_code.to_ascii_lowercase())
+            .collect();
+
+        if start_keys.is_empty() || end_keys.is_empty() {
+            return Vec::new();
+        }
+
+        let mut candidates: Vec<GestureCandidate> = Vec::new();
+
+        for &start_ch in &start_keys {
+            if let Some(start_node) = dict.child(0, start_ch as u16) {
+                let mut word_buffer = vec![start_ch as u16];
+                Self::collect_words(
+                    dict,
+                    start_node,
+                    &mut word_buffer,
+                    &end_keys,
+                    &key_map,
+                    &user_path,
+                    kw,
+                    &mut candidates,
+                );
+            }
+        }
+
+        candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        candidates.truncate(limit);
+        candidates
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn collect_words(
+        dict: &BinaryDict,
+        node: u32,
+        buffer: &mut Vec<u16>,
+        end_keys: &HashSet<char>,
+        key_map: &HashMap<char, (f32, f32)>,
+        user_path: &[GesturePoint],
+        kw: f32,
+        results: &mut Vec<GestureCandidate>,
+    ) {
+        if buffer.len() > 24 {
+            return;
+        }
+
+        if dict.is_word(node) && buffer.len() >= 2 {
+            let last_u16 = *buffer.last().unwrap();
+            if let Some(last_ch) = char::from_u32(last_u16 as u32) {
+                if end_keys.contains(&last_ch.to_ascii_lowercase()) {
+                    let freq = dict.freq(node);
+                    if freq >= 1 {
+                        let mut valid = true;
+                        let mut ideal_pts = Vec::with_capacity(buffer.len());
+                        for &u in buffer.iter() {
+                            if let Some(ch) = char::from_u32(u as u32) {
+                                if let Some(&pos) = key_map.get(&ch.to_ascii_lowercase()) {
+                                    ideal_pts.push(GesturePoint {
+                                        x: pos.0,
+                                        y: pos.1,
+                                        timestamp_ms: 0,
+                                    });
+                                } else {
+                                    valid = false;
+                                    break;
+                                }
+                            } else {
+                                valid = false;
+                                break;
+                            }
+                        }
+
+                        if valid && ideal_pts.len() >= 2 {
+                            let resampled_ideal = Self::resample_polyline(&ideal_pts, user_path.len());
+                            let mut shape_dist = 0.0f32;
+                            for (u_pt, i_pt) in user_path.iter().zip(resampled_ideal.iter()) {
+                                let dx = u_pt.x - i_pt.x;
+                                let dy = u_pt.y - i_pt.y;
+                                shape_dist += (dx * dx + dy * dy).sqrt();
+                            }
+                            let avg_dist = shape_dist / user_path.len() as f32;
+
+                            let d_start = {
+                                let dx = user_path[0].x - ideal_pts[0].x;
+                                let dy = user_path[0].y - ideal_pts[0].y;
+                                (dx * dx + dy * dy).sqrt()
+                            };
+                            let d_end = {
+                                let dx = user_path.last().unwrap().x - ideal_pts.last().unwrap().x;
+                                let dy = user_path.last().unwrap().y - ideal_pts.last().unwrap().y;
+                                (dx * dx + dy * dy).sqrt()
+                            };
+
+                            let cost = (avg_dist / kw) + 0.6 * (d_start / kw) + 0.6 * (d_end / kw);
+                            if cost < 3.2 {
+                                let score = (freq as f32) - 50.0 * cost;
+                                let word_str = String::from_utf16_lossy(buffer);
+                                results.push(GestureCandidate {
+                                    word: word_str,
+                                    score,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let start = dict.child_start(node as usize);
+        let count = dict.child_count(node as usize);
+        for e in start..start + count {
+            let child_node = (e + 1) as u32;
+            let label = dict.edge_label(e);
+            buffer.push(label);
+            Self::collect_words(
+                dict,
+                child_node,
+                buffer,
+                end_keys,
+                key_map,
+                user_path,
+                kw,
+                results,
+            );
+            buffer.pop();
+        }
+    }
+
+    /// Decodes a touch trajectory against keyboard key centroids for a phonetic / transliteration layout.
+    /// The keys on screen are Latin QWERTY, but the target vocabulary comes from the target language dictionary.
+    pub fn decode_phonetic(
+        points: &[GesturePoint],
+        keys: &[KeyCenter],
+        key_width: f32,
+        dict: &BinaryDict,
+        transliterator: &dyn PhoneticTransliterator,
+        limit: usize,
+    ) -> Vec<GestureCandidate> {
+        if points.len() < 2 || keys.is_empty() || key_width <= 0.0 {
+            return Vec::new();
+        }
+
+        let kw = key_width.max(10.0);
+        let sample_count = 30;
+        let user_path = Self::resample_polyline(points, sample_count);
+        let start_pt = &user_path[0];
+        let end_pt = &user_path[sample_count - 1];
+
+        let mut key_map: HashMap<char, (f32, f32)> = HashMap::with_capacity(keys.len());
+        for k in keys {
+            key_map.insert(k.char_code.to_ascii_lowercase(), (k.x, k.y));
+        }
+
+        let start_radius = 2.4 * kw;
+        let end_radius = 2.4 * kw;
+
+        let start_keys: Vec<char> = keys
+            .iter()
+            .filter(|k| {
+                let dx = k.x - start_pt.x;
+                let dy = k.y - start_pt.y;
+                dx * dx + dy * dy <= start_radius * start_radius
+            })
+            .map(|k| k.char_code.to_ascii_lowercase())
+            .collect();
+
+        let end_keys: HashSet<char> = keys
+            .iter()
+            .filter(|k| {
+                let dx = k.x - end_pt.x;
+                let dy = k.y - end_pt.y;
+                dx * dx + dy * dy <= end_radius * end_radius
+            })
+            .map(|k| k.char_code.to_ascii_lowercase())
+            .collect();
+
+        if start_keys.is_empty() || end_keys.is_empty() {
+            return Vec::new();
+        }
+
+        let index = get_or_build_phonetic_index(dict, transliterator);
+
+        let mut candidates: Vec<GestureCandidate> = Vec::new();
+        let mut seen_words: HashSet<String> = HashSet::new();
+
+        for &s in &start_keys {
+            for &e in &end_keys {
+                if let Some(entries) = index.buckets.get(&(s, e)) {
+                    for entry in entries {
+                        let mut valid = true;
+                        let mut ideal_pts = Vec::with_capacity(entry.keys.len());
+                        for &c in &entry.keys {
+                            if let Some(&pos) = key_map.get(&c) {
+                                ideal_pts.push(GesturePoint {
+                                    x: pos.0,
+                                    y: pos.1,
+                                    timestamp_ms: 0,
+                                });
+                            } else {
+                                valid = false;
+                                break;
+                            }
+                        }
+
+                        if valid && ideal_pts.len() >= 2 {
+                            let resampled_ideal = Self::resample_polyline(&ideal_pts, sample_count);
+                            let mut shape_dist = 0.0f32;
+                            for (u_pt, i_pt) in user_path.iter().zip(resampled_ideal.iter()) {
+                                let dx = u_pt.x - i_pt.x;
+                                let dy = u_pt.y - i_pt.y;
+                                shape_dist += (dx * dx + dy * dy).sqrt();
+                            }
+                            let avg_dist = shape_dist / sample_count as f32;
+
+                            let d_start = {
+                                let dx = user_path[0].x - ideal_pts[0].x;
+                                let dy = user_path[0].y - ideal_pts[0].y;
+                                (dx * dx + dy * dy).sqrt()
+                            };
+                            let d_end = {
+                                let dx = user_path.last().unwrap().x - ideal_pts.last().unwrap().x;
+                                let dy = user_path.last().unwrap().y - ideal_pts.last().unwrap().y;
+                                (dx * dx + dy * dy).sqrt()
+                            };
+
+                            let cost = (avg_dist / kw) + 0.6 * (d_start / kw) + 0.6 * (d_end / kw);
+                            if cost < 3.2 {
+                                let score = (entry.freq as f32) - 50.0 * cost;
+                                if let Some(word_str) = dict.word_at(entry.word_id) {
+                                    let norm_word = word_str.replace("\u{0985}\u{09BE}", "আ");
+                                    if !seen_words.contains(&norm_word) {
+                                        seen_words.insert(norm_word.clone());
+                                        candidates.push(GestureCandidate {
+                                            word: norm_word,
+                                            score,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        candidates.truncate(limit);
+        candidates
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dictionary::{get_bn_binary_dict, get_en_binary_dict};
+    use crate::translit::borno_phonetic::BornoPhoneticTransliterator;
 
     #[test]
     fn test_resample_polyline() {
@@ -84,5 +461,111 @@ mod tests {
         assert!((resampled[2].x - 50.0).abs() < 1e-3);
         assert!((resampled[3].x - 75.0).abs() < 1e-3);
         assert!((resampled[4].x - 100.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn test_decode_the_gesture() {
+        let dict = get_en_binary_dict().expect("en dict");
+
+        // Mock QWERTY key centers: 't' -> 'h' -> 'e'
+        let keys = vec![
+            KeyCenter { char_code: 'q', x: 20.0, y: 50.0 },
+            KeyCenter { char_code: 'w', x: 60.0, y: 50.0 },
+            KeyCenter { char_code: 'e', x: 100.0, y: 50.0 },
+            KeyCenter { char_code: 'r', x: 140.0, y: 50.0 },
+            KeyCenter { char_code: 't', x: 180.0, y: 50.0 },
+            KeyCenter { char_code: 'y', x: 220.0, y: 50.0 },
+            KeyCenter { char_code: 'u', x: 260.0, y: 50.0 },
+            KeyCenter { char_code: 'i', x: 300.0, y: 50.0 },
+            KeyCenter { char_code: 'o', x: 340.0, y: 50.0 },
+            KeyCenter { char_code: 'p', x: 380.0, y: 50.0 },
+            KeyCenter { char_code: 'a', x: 40.0, y: 120.0 },
+            KeyCenter { char_code: 's', x: 80.0, y: 120.0 },
+            KeyCenter { char_code: 'd', x: 120.0, y: 120.0 },
+            KeyCenter { char_code: 'f', x: 160.0, y: 120.0 },
+            KeyCenter { char_code: 'g', x: 200.0, y: 120.0 },
+            KeyCenter { char_code: 'h', x: 240.0, y: 120.0 },
+            KeyCenter { char_code: 'j', x: 280.0, y: 120.0 },
+            KeyCenter { char_code: 'k', x: 320.0, y: 120.0 },
+            KeyCenter { char_code: 'l', x: 360.0, y: 120.0 },
+        ];
+
+        // Swipe points for "the": (180, 50) -> (240, 120) -> (100, 50)
+        let stroke = vec![
+            GesturePoint { x: 180.0, y: 50.0, timestamp_ms: 0 },
+            GesturePoint { x: 210.0, y: 85.0, timestamp_ms: 50 },
+            GesturePoint { x: 240.0, y: 120.0, timestamp_ms: 100 },
+            GesturePoint { x: 170.0, y: 85.0, timestamp_ms: 150 },
+            GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 200 },
+        ];
+
+        let results = GestureDecoder::decode(&stroke, &keys, 40.0, dict, 5);
+        assert!(!results.is_empty());
+        assert_eq!(results[0].word, "the");
+    }
+
+    #[test]
+    fn test_decode_borno_phonetic_gesture() {
+        let dict = match get_bn_binary_dict() {
+            Some(d) => d,
+            None => return, // In test environments where bn.dict is not deployed
+        };
+        let translit = BornoPhoneticTransliterator;
+
+        let keys = vec![
+            KeyCenter { char_code: 'q', x: 20.0, y: 50.0 },
+            KeyCenter { char_code: 'w', x: 60.0, y: 50.0 },
+            KeyCenter { char_code: 'e', x: 100.0, y: 50.0 },
+            KeyCenter { char_code: 'r', x: 140.0, y: 50.0 },
+            KeyCenter { char_code: 't', x: 180.0, y: 50.0 },
+            KeyCenter { char_code: 'y', x: 220.0, y: 50.0 },
+            KeyCenter { char_code: 'u', x: 260.0, y: 50.0 },
+            KeyCenter { char_code: 'i', x: 300.0, y: 50.0 },
+            KeyCenter { char_code: 'o', x: 340.0, y: 50.0 },
+            KeyCenter { char_code: 'p', x: 380.0, y: 50.0 },
+            KeyCenter { char_code: 'a', x: 40.0, y: 120.0 },
+            KeyCenter { char_code: 's', x: 80.0, y: 120.0 },
+            KeyCenter { char_code: 'd', x: 120.0, y: 120.0 },
+            KeyCenter { char_code: 'f', x: 160.0, y: 120.0 },
+            KeyCenter { char_code: 'g', x: 200.0, y: 120.0 },
+            KeyCenter { char_code: 'h', x: 240.0, y: 120.0 },
+            KeyCenter { char_code: 'j', x: 280.0, y: 120.0 },
+            KeyCenter { char_code: 'k', x: 320.0, y: 120.0 },
+            KeyCenter { char_code: 'l', x: 360.0, y: 120.0 },
+            KeyCenter { char_code: 'z', x: 60.0, y: 190.0 },
+            KeyCenter { char_code: 'x', x: 100.0, y: 190.0 },
+            KeyCenter { char_code: 'c', x: 140.0, y: 190.0 },
+            KeyCenter { char_code: 'v', x: 180.0, y: 190.0 },
+            KeyCenter { char_code: 'b', x: 220.0, y: 190.0 },
+            KeyCenter { char_code: 'n', x: 260.0, y: 190.0 },
+            KeyCenter { char_code: 'm', x: 300.0, y: 190.0 },
+        ];
+
+        // Gesture: 'a' (40, 120) -> 'm' (300, 190) -> 'i' (300, 50) for "আমি"
+        let stroke_ami = vec![
+            GesturePoint { x: 40.0, y: 120.0, timestamp_ms: 0 },
+            GesturePoint { x: 170.0, y: 155.0, timestamp_ms: 50 },
+            GesturePoint { x: 300.0, y: 190.0, timestamp_ms: 100 },
+            GesturePoint { x: 300.0, y: 120.0, timestamp_ms: 150 },
+            GesturePoint { x: 300.0, y: 50.0, timestamp_ms: 200 },
+        ];
+
+        let results_ami = GestureDecoder::decode_phonetic(&stroke_ami, &keys, 40.0, dict, &translit, 5);
+        assert!(!results_ami.is_empty(), "Expected results for 'ami'");
+        assert_eq!(results_ami[0].word, "আমি");
+
+        // Gesture: 'a' -> 'm' -> 'a' -> 'd' -> 'e' -> 'r' for "আমাদের"
+        let stroke_amader = vec![
+            GesturePoint { x: 40.0, y: 120.0, timestamp_ms: 0 },    // a
+            GesturePoint { x: 300.0, y: 190.0, timestamp_ms: 50 },  // m
+            GesturePoint { x: 40.0, y: 120.0, timestamp_ms: 100 },  // a
+            GesturePoint { x: 120.0, y: 120.0, timestamp_ms: 150 }, // d
+            GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 200 },  // e
+            GesturePoint { x: 140.0, y: 50.0, timestamp_ms: 250 },  // r
+        ];
+
+        let results_amader = GestureDecoder::decode_phonetic(&stroke_amader, &keys, 40.0, dict, &translit, 5);
+        assert!(!results_amader.is_empty(), "Expected results for 'amader'");
+        assert_eq!(results_amader[0].word, "আমাদের");
     }
 }

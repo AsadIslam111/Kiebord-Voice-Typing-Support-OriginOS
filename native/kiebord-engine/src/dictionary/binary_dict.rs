@@ -408,7 +408,7 @@ impl<'a> BinaryDict<'a> {
     }
 
     #[inline]
-    fn child_start(&self, node: usize) -> usize {
+    pub fn child_start(&self, node: usize) -> usize {
         let cp_idx = node >> CHECKPOINT_SHIFT;
         let cp_val = u32::from_be_bytes(self.bytes[self.checkpoints_off + cp_idx * 4..self.checkpoints_off + cp_idx * 4 + 4].try_into().unwrap()) as usize;
         let start_node = node & !(CHECKPOINT_STRIDE - 1);
@@ -420,12 +420,12 @@ impl<'a> BinaryDict<'a> {
     }
 
     #[inline]
-    fn child_count(&self, node: usize) -> usize {
+    pub fn child_count(&self, node: usize) -> usize {
         self.bytes[self.child_count_off + node] as usize
     }
 
     #[inline]
-    fn edge_label(&self, edge: usize) -> u16 {
+    pub fn edge_label(&self, edge: usize) -> u16 {
         if self.labels_are_u8 {
             let sym_idx = self.bytes[self.edge_label_off + edge] as usize;
             self.symbols_table[sym_idx]
@@ -435,12 +435,12 @@ impl<'a> BinaryDict<'a> {
     }
 
     #[inline]
-    fn edge_child(edge: usize) -> u32 {
+    pub fn edge_child(edge: usize) -> u32 {
         (edge + 1) as u32
     }
 
     #[inline]
-    fn child(&self, node: u32, unit: u16) -> Option<u32> {
+    pub fn child(&self, node: u32, unit: u16) -> Option<u32> {
         let node_idx = node as usize;
         let start = self.child_start(node_idx);
         let count = self.child_count(node_idx);
@@ -462,19 +462,34 @@ impl<'a> BinaryDict<'a> {
     }
 
     #[inline]
-    fn is_word(&self, node: u32) -> bool {
+    pub fn is_word(&self, node: u32) -> bool {
         let n = node as usize;
         (self.bytes[self.is_word_off + (n >> 3)] >> (n & 7)) & 1 != 0
     }
 
     #[inline]
-    fn freq(&self, node: u32) -> u8 {
+    pub fn freq(&self, node: u32) -> u8 {
         self.bytes[self.freq_off + node as usize]
     }
 
     #[inline]
-    fn max_subtree_freq(&self, node: u32) -> u8 {
+    pub fn max_subtree_freq(&self, node: u32) -> u8 {
         self.bytes[self.max_subtree_off + node as usize]
+    }
+
+    pub fn find_node(&self, word: &str) -> Option<u32> {
+        let mut curr = 0u32;
+        for u in word.encode_utf16() {
+            curr = self.child(curr, u)?;
+        }
+        Some(curr)
+    }
+
+    pub fn word_freq(&self, word: &str) -> u8 {
+        match self.find_node(word) {
+            Some(node) if self.is_word(node) => self.freq(node),
+            _ => 1,
+        }
     }
 
     pub fn word_at(&self, id: u32) -> Option<&'a str> {
@@ -530,7 +545,7 @@ impl<'a> BinaryDict<'a> {
     pub fn suggest(&self, input: &str, limit: usize, prox: &KeyProximity) -> Vec<String> {
         let trimmed = input.trim();
         if trimmed.is_empty() {
-            return self.top_idle_words(limit);
+            return Vec::new();
         }
 
         let is_all_upper = trimmed.chars().all(|c| !c.is_alphabetic() || c.is_uppercase())
@@ -567,21 +582,25 @@ impl<'a> BinaryDict<'a> {
             }
         }
 
-        let max_cost = 1.8f32;
+        let max_cost = match typed.len() {
+            0..=2 => 0.45f32,
+            3..=4 => 0.75f32,
+            _ => 1.1f32,
+        };
         let mut heap: BinaryHeap<State> = BinaryHeap::new();
         let mut candidates: HashMap<String, (f32, u8)> = HashMap::new();
 
-        let root_bound = (self.max_subtree_freq(0) as f32 + 1.0).ln();
+        let root_mf = self.max_subtree_freq(0) as f32;
         heap.push(State {
             node: 0,
             typed_pos: 0,
             accum: Vec::new(),
             cost: 0.0,
-            bound: root_bound,
+            bound: root_mf + 50.0,
         });
 
         let mut expansions = 0;
-        let max_expansions = 450;
+        let max_expansions = 1500;
 
         while let Some(state) = heap.pop() {
             expansions += 1;
@@ -594,9 +613,9 @@ impl<'a> BinaryDict<'a> {
             }
 
             // Pruning: if we have enough candidates and state cannot beat the worst
-            if candidates.len() >= limit {
+            if candidates.len() >= limit * 3 {
                 let worst_score = candidates.values().map(|(s, _)| *s).fold(f32::INFINITY, f32::min);
-                if state.bound < worst_score - 0.2 {
+                if state.bound < worst_score {
                     continue;
                 }
             }
@@ -606,7 +625,19 @@ impl<'a> BinaryDict<'a> {
                 if self.is_word(state.node) {
                     let freq = self.freq(state.node);
                     let word_str = String::from_utf16_lossy(&state.accum);
-                    let score = (freq as f32 + 1.0).ln() - (2.5 * state.cost);
+                    let is_full_exact = state.cost == 0.0 && state.accum.len() == typed.len();
+                    let extra_len = (state.accum.len() as f32 - typed.len() as f32).max(0.0);
+                    // Frequency-first scoring:
+                    // For exact matches (cost == 0), frequency dominates completely.
+                    // Full exact match gets a bonus so exact typed word stays on top.
+                    // Slight length penalty (-0.001 * extra_len) only breaks ties among equal-frequency words.
+                    // Typos (cost > 0) are penalized so common words with minor typos can surface,
+                    // but will not outrank valid high-frequency exact prefix completions.
+                    let score = (freq as f32)
+                        + if is_full_exact { 50.0 } else { 0.0 }
+                        - (state.cost * 80.0)
+                        - (0.001 * extra_len);
+
                     let entry = candidates.entry(word_str).or_insert((f32::NEG_INFINITY, 0));
                     if score > entry.0 {
                         *entry = (score, freq);
@@ -614,7 +645,9 @@ impl<'a> BinaryDict<'a> {
                 }
 
                 // Prefix completions (descend deeper)
-                let max_extra = if state.cost == 0.0 { 6 } else { 3 };
+                // For exact matches, descend up to 10 extra characters.
+                // For typo corrections, only allow at most 1 extra character (e.g. plural 's') to avoid explosive branching.
+                let max_extra = if state.cost == 0.0 { 10 } else { 1 };
                 if state.accum.len() < typed.len() + max_extra {
                     let start = self.child_start(state.node as usize);
                     let count = self.child_count(state.node as usize);
@@ -624,8 +657,9 @@ impl<'a> BinaryDict<'a> {
                         let mut next_accum = state.accum.clone();
                         next_accum.push(label);
                         let child_mf = self.max_subtree_freq(child_node) as f32;
-                        let child_cost = state.cost + 0.04;
-                        let child_bound = (child_mf + 1.0).ln() - child_cost;
+                        let child_cost = state.cost;
+                        let extra = (next_accum.len() as f32 - typed.len() as f32).max(0.0);
+                        let child_bound = child_mf - (child_cost * 80.0) - (0.001 * extra);
                         heap.push(State {
                             node: child_node,
                             typed_pos: state.typed_pos,
@@ -645,12 +679,18 @@ impl<'a> BinaryDict<'a> {
                 let mut next_accum = state.accum.clone();
                 next_accum.push(target);
                 let child_mf = self.max_subtree_freq(child_node) as f32;
+                let extra = (next_accum.len() as f32 - (state.typed_pos + 1) as f32).max(0.0);
+                let is_exact = state.cost == 0.0;
+                let bound = child_mf
+                    + if is_exact { 50.0 } else { 0.0 }
+                    - (state.cost * 80.0)
+                    - (0.001 * extra);
                 heap.push(State {
                     node: child_node,
                     typed_pos: state.typed_pos + 1,
                     accum: next_accum,
                     cost: state.cost,
-                    bound: (child_mf + 1.0).ln() - state.cost,
+                    bound,
                 });
             }
 
@@ -670,7 +710,7 @@ impl<'a> BinaryDict<'a> {
                                     typed_pos: state.typed_pos + 1,
                                     accum: next_accum,
                                     cost: child_cost,
-                                    bound: (child_mf + 1.0).ln() - child_cost,
+                                    bound: child_mf - (child_cost * 80.0),
                                 });
                             }
                         }
@@ -693,7 +733,7 @@ impl<'a> BinaryDict<'a> {
                             typed_pos: state.typed_pos + 2,
                             accum: next_accum,
                             cost: child_cost,
-                            bound: (child_mf + 1.0).ln() - child_cost,
+                            bound: child_mf - (child_cost * 80.0),
                         });
                     }
                 }
@@ -701,25 +741,25 @@ impl<'a> BinaryDict<'a> {
 
             // 4. Repeated letter in dictionary word omitted by user ('helo' -> 'hello', 'gelo' -> 'hello')
             if let Some(&last_unit) = state.accum.last() {
-                if state.cost + 0.30 <= max_cost {
+                if state.cost + 0.15 <= max_cost {
                     if let Some(repeat_node) = self.child(state.node, last_unit) {
                         let mut next_accum = state.accum.clone();
                         next_accum.push(last_unit);
                         let child_mf = self.max_subtree_freq(repeat_node) as f32;
-                        let child_cost = state.cost + 0.30;
+                        let child_cost = state.cost + 0.15;
                         heap.push(State {
                             node: repeat_node,
                             typed_pos: state.typed_pos,
                             accum: next_accum,
                             cost: child_cost,
-                            bound: (child_mf + 1.0).ln() - child_cost,
+                            bound: child_mf - (child_cost * 80.0),
                         });
                     }
                 }
             }
 
-            // 5. Letter omission / deletion ('আমদের' -> 'আমাদের')
-            if state.cost + 0.60 <= max_cost {
+            // 5. Letter omission / deletion in typed input ('আমদের' -> 'আমাদের')
+            if state.cost == 0.0 && !state.accum.is_empty() && state.cost + 0.60 <= max_cost {
                 let start = self.child_start(state.node as usize);
                 let count = self.child_count(state.node as usize);
                 for e in start..start + count {
@@ -738,26 +778,28 @@ impl<'a> BinaryDict<'a> {
                                 typed_pos: state.typed_pos + 1,
                                 accum: next_accum,
                                 cost: child_cost,
-                                bound: (child_mf + 1.0).ln() - child_cost,
+                                bound: child_mf - (child_cost * 80.0),
                             });
                         }
                     }
                 }
             }
 
-            // 6. Insertion (user typed an extra letter)
-            if state.cost + 0.65 <= max_cost {
+            // 6. Insertion (user typed an extra letter inside word)
+            if state.cost == 0.0 && state.accum.len() >= 2 && state.cost + 0.65 <= max_cost {
+                let child_cost = state.cost + 0.65;
+                let bound = state.bound - (0.65 * 80.0);
                 heap.push(State {
                     node: state.node,
                     typed_pos: state.typed_pos + 1,
                     accum: state.accum.clone(),
-                    cost: state.cost + 0.65,
-                    bound: state.bound - 0.65,
+                    cost: child_cost,
+                    bound,
                 });
             }
         }
 
-        // Rank candidates by score descending
+        // Rank candidates strictly by score descending, breaking ties with frequency descending
         let mut ranked: Vec<(String, f32, u8)> = candidates.into_iter().map(|(w, (s, f))| (w, s, f)).collect();
         ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal).then_with(|| b.2.cmp(&a.2)));
 
@@ -780,13 +822,45 @@ impl<'a> BinaryDict<'a> {
         final_suggestions
     }
 
-    fn top_idle_words(&self, limit: usize) -> Vec<String> {
-        let mut words = Vec::new();
-        for i in 0..self.word_count.min(limit as u32) {
-            if let Some(w) = self.word_at(i) {
-                words.push(w.to_string());
+    #[allow(dead_code)]
+    pub fn top_idle_words(&self, limit: usize) -> Vec<String> {
+        let mut heap: BinaryHeap<(u8, u32, Vec<u16>)> = BinaryHeap::new();
+        heap.push((self.max_subtree_freq(0), 0, Vec::new()));
+        let mut best_words: Vec<(u8, String)> = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+
+        while let Some((mf, node, accum)) = heap.pop() {
+            if best_words.len() >= limit {
+                let min_freq = best_words.last().map(|(f, _)| *f).unwrap_or(0);
+                if mf < min_freq {
+                    break;
+                }
+            }
+
+            if self.is_word(node) && !accum.is_empty() {
+                let w = String::from_utf16_lossy(&accum);
+                if seen.insert(w.clone()) {
+                    let freq = self.freq(node);
+                    best_words.push((freq, w));
+                    best_words.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.len().cmp(&b.1.len())));
+                    if best_words.len() > limit * 2 {
+                        best_words.truncate(limit * 2);
+                    }
+                }
+            }
+
+            let start = self.child_start(node as usize);
+            let count = self.child_count(node as usize);
+            for e in start..start + count {
+                let child = Self::edge_child(e);
+                let label = self.edge_label(e);
+                let mut next_accum = accum.clone();
+                next_accum.push(label);
+                let child_mf = self.max_subtree_freq(child);
+                heap.push((child_mf, child, next_accum));
             }
         }
-        words
+
+        best_words.into_iter().take(limit).map(|(_, w)| w).collect()
     }
 }

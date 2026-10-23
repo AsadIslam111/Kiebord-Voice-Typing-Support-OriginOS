@@ -22,8 +22,12 @@ import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
+import io.kiebord.feature.ime.gesture.CrossLanguageGestureDecoder
+import io.kiebord.feature.ime.gesture.KeyCentroid
 import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
 import io.kiebord.feature.ime.translit.BornoTransliterationManager
+import io.kiebord.feature.ime.translit.TransliterationManager
+import io.kiebord.feature.ime.translit.TransliterationManagerFactory
 import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
 import io.kiebord.feature.ime.ui.textedit.TextAction
@@ -33,8 +37,22 @@ import io.kiebord.theme.KiebordTheme
 class KiebordService : InputMethodService() {
 
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
-    private val bornoManager = BornoTransliterationManager { currentInputConnection }
+    private var transliterationManager: TransliterationManager =
+        TransliterationManagerFactory.create("bn_borno") { currentInputConnection }
     private val composingBuffer = StringBuilder()
+    private val gestureDecoder = CrossLanguageGestureDecoder()
+    private var lastGestureCommittedWord: String = ""
+
+    private fun isTransliterationLayout(): Boolean {
+        return TransliterationManagerFactory.isTransliterationLayout(activeLayout.id)
+    }
+
+    private fun getTransliterationManager(): TransliterationManager {
+        if (transliterationManager.layoutId != activeLayout.id) {
+            transliterationManager = TransliterationManagerFactory.create(activeLayout.id) { currentInputConnection }
+        }
+        return transliterationManager
+    }
 
     // Configurable state
     private var primaryAlphaLayout: KeyboardLayoutDef = PredefinedLayouts.EnglishQwerty
@@ -107,9 +125,11 @@ class KiebordService : InputMethodService() {
                     onPasteClip = { clipText ->
                         val ic = currentInputConnection
                         finishComposing()
+                        lastGestureCommittedWord = ""
                         ic?.commitText(clipText, 1)
                         updateSuggestions()
                     },
+                    onGestureCommit = ::handleGestureCommit,
                     onThemeToggle = {
                         colorScheme = when (colorScheme) {
                             KeyboardColorScheme.DefaultDark -> KeyboardColorScheme.AmoledBlack
@@ -143,8 +163,9 @@ class KiebordService : InputMethodService() {
         shiftState = ShiftState.UNSHIFTED
         isSymbolsMode = false
         activeLayout = primaryAlphaLayout
-        bornoManager.reset()
+        getTransliterationManager().reset()
         composingBuffer.clear()
+        lastGestureCommittedWord = ""
         updateSuggestions()
     }
 
@@ -162,9 +183,10 @@ class KiebordService : InputMethodService() {
 
     private fun finishComposing() {
         val ic = currentInputConnection
-        if (bornoManager.isComposing) {
-            ic?.commitText(bornoManager.currentTransliteration, 1)
-            bornoManager.reset()
+        val translitMgr = getTransliterationManager()
+        if (translitMgr.isComposing) {
+            ic?.commitText(translitMgr.currentTransliteration, 1)
+            translitMgr.reset()
         }
         if (composingBuffer.isNotEmpty()) {
             ic?.commitText(composingBuffer.toString(), 1)
@@ -176,15 +198,18 @@ class KiebordService : InputMethodService() {
     private fun handleKeyTap(key: KeyDef) {
         val ic = currentInputConnection ?: return
 
+        if (key.type != KeyType.DELETE) {
+            lastGestureCommittedWord = ""
+        }
+
         when (key.type) {
             KeyType.CHARACTER -> {
                 val text = key.displayLabel(shiftState)
 
                 when {
-                    // Borno Phonetic mode
-                    activeLayout.id == "bn_borno" -> {
+                    isTransliterationLayout() -> {
                         if (isTransliterableChar(text)) {
-                            bornoManager.handleCharacter(text)
+                            getTransliterationManager().handleCharacter(text)
                         } else {
                             finishComposing()
                             ic.commitText(text, 1)
@@ -232,8 +257,13 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.DELETE -> {
-                // If currently composing in Borno phonetic, delete within the composing buffer first
-                if (bornoManager.handleDelete()) {
+                if (lastGestureCommittedWord.isNotEmpty()) {
+                    ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
+                    lastGestureCommittedWord = ""
+                    updateSuggestions()
+                    return
+                }
+                if (isTransliterationLayout() && getTransliterationManager().handleDelete()) {
                     updateSuggestions()
                     return
                 }
@@ -269,9 +299,10 @@ class KiebordService : InputMethodService() {
                 updateSuggestions()
             }
             KeyType.SPACE -> {
-                if (bornoManager.isComposing) {
-                    ic.commitText(bornoManager.currentTransliteration + " ", 1)
-                    bornoManager.reset()
+                val translitMgr = getTransliterationManager()
+                if (translitMgr.isComposing) {
+                    ic.commitText(translitMgr.currentTransliteration + " ", 1)
+                    translitMgr.reset()
                 } else if (composingBuffer.isNotEmpty()) {
                     ic.commitText(composingBuffer.toString() + " ", 1)
                     composingBuffer.clear()
@@ -418,8 +449,16 @@ class KiebordService : InputMethodService() {
 
     private fun handleCandidateSelect(candidate: SuggestionCandidate) {
         val ic = currentInputConnection ?: return
-        if (bornoManager.isComposing) {
-            bornoManager.commitCustom(candidate.text + " ")
+        if (lastGestureCommittedWord.isNotEmpty()) {
+            ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
+            lastGestureCommittedWord = ""
+            ic.commitText(candidate.text + " ", 1)
+            updateSuggestions()
+            return
+        }
+        val translitMgr = getTransliterationManager()
+        if (translitMgr.isComposing) {
+            translitMgr.commitCustom(candidate.text + " ")
         } else if (composingBuffer.isNotEmpty()) {
             ic.commitText(candidate.text + " ", 1)
             composingBuffer.clear()
@@ -429,99 +468,89 @@ class KiebordService : InputMethodService() {
         updateSuggestions()
     }
 
+    private fun handleGestureCommit(
+        trail: List<androidx.compose.ui.geometry.Offset>,
+        centroids: List<KeyCentroid>,
+        keyWidthPx: Float
+    ) {
+        if (trail.size < 2 || centroids.isEmpty()) return
+
+        val lang = activeLayout.id
+
+        val candidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang)
+        if (candidates.isNotEmpty()) {
+            val primary = candidates.first()
+            val textToCommit = primary.text + " "
+            val ic = currentInputConnection
+            finishComposing()
+            ic?.commitText(textToCommit, 1)
+            lastGestureCommittedWord = textToCommit
+
+            activeSuggestions = candidates.take(3).mapIndexed { idx, cand ->
+                cand.copy(isPrimary = idx == 0)
+            }
+        }
+    }
+
     private fun updateSuggestions() {
         if (!NativeEngine.isAvailable() || isSymbolsMode) {
             activeSuggestions = emptyList()
             return
         }
 
-        when (activeLayout.id) {
-            "bn_borno" -> {
-                if (bornoManager.isComposing) {
-                    val raw = bornoManager.currentRawInput
-                    val translit = bornoManager.currentTransliteration
-                    val dictMatches = NativeEngine.querySuggestions(translit, "bn", 5)
-                        .filter { it != translit }
+        if (isTransliterationLayout()) {
+            val translitMgr = getTransliterationManager()
+            if (translitMgr.isComposing) {
+                val raw = translitMgr.currentRawInput
+                val translit = translitMgr.currentTransliteration
+                val dictLang = if (activeLayout.id.startsWith("bn")) "bn" else "en"
+                val dictMatches = NativeEngine.querySuggestions(translit, dictLang, 5)
+                    .filter { it != translit }
 
-                    val list = mutableListOf<SuggestionCandidate>()
-                    val nextMatch = dictMatches.firstOrNull()
+                val list = mutableListOf<SuggestionCandidate>()
+                // Primary transliterated word
+                list.add(SuggestionCandidate(text = translit, isPrimary = true, rawInput = raw))
 
-                    // Left: raw English input if different from transliteration
-                    if (raw.isNotEmpty() && raw != translit) {
-                        list.add(SuggestionCandidate(text = raw, isPrimary = false, rawInput = raw))
-                    } else if (dictMatches.size > 1) {
-                        list.add(SuggestionCandidate(text = dictMatches[1], isPrimary = false))
-                    }
+                // Dictionary matches in descending frequency order
+                for (match in dictMatches) {
+                    if (list.size >= 3) break
+                    list.add(SuggestionCandidate(text = match, isPrimary = false))
+                }
 
-                    // Center: Transliterated Bengali (primary)
-                    list.add(SuggestionCandidate(text = translit, isPrimary = true, rawInput = raw))
+                // Fallback to raw English input if room remains and differs
+                if (list.size < 3 && raw.isNotEmpty() && raw != translit && list.none { it.text == raw }) {
+                    list.add(SuggestionCandidate(text = raw, isPrimary = false, rawInput = raw))
+                }
 
-                    // Right: Dictionary completion
-                    if (nextMatch != null) {
-                        list.add(SuggestionCandidate(text = nextMatch, isPrimary = false))
-                    }
-
-                    activeSuggestions = list
-                } else {
-                    val prev = getPrecedingWord()
-                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, "bn", 3) else emptyList()
-                    val candidates = if (predictions.isNotEmpty()) {
-                        predictions
-                    } else {
-                        NativeEngine.querySuggestions("", "bn", 3)
-                    }
-
-                    if (candidates.size >= 3) {
-                        activeSuggestions = listOf(
-                            SuggestionCandidate(text = candidates[1], isPrimary = false),
-                            SuggestionCandidate(text = candidates[0], isPrimary = true),
-                            SuggestionCandidate(text = candidates[2], isPrimary = false)
-                        )
-                    } else {
-                        activeSuggestions = candidates.mapIndexed { idx, word ->
-                            SuggestionCandidate(text = word, isPrimary = idx == 0)
-                        }
-                    }
+                activeSuggestions = list
+            } else {
+                val prev = getPrecedingWord()
+                val dictLang = if (activeLayout.id.startsWith("bn")) "bn" else "en"
+                val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, dictLang, 3) else emptyList()
+                activeSuggestions = predictions.take(3).mapIndexed { idx, word ->
+                    SuggestionCandidate(text = word, isPrimary = idx == 0)
                 }
             }
+            return
+        }
+
+        when (activeLayout.id) {
             "bn_probhat" -> {
                 val prefix = composingBuffer.toString()
                 if (prefix.isNotEmpty()) {
                     val matches = NativeEngine.querySuggestions(prefix, "bn", 5)
-                    val list = mutableListOf<SuggestionCandidate>()
-                    if (matches.isNotEmpty()) {
-                        if (matches.size >= 3) {
-                            list.add(SuggestionCandidate(text = matches[1], isPrimary = false))
-                            list.add(SuggestionCandidate(text = matches[0], isPrimary = true))
-                            list.add(SuggestionCandidate(text = matches[2], isPrimary = false))
-                        } else {
-                            matches.forEachIndexed { i, w ->
-                                list.add(SuggestionCandidate(text = w, isPrimary = i == 0))
-                            }
+                    activeSuggestions = if (matches.isNotEmpty()) {
+                        matches.take(3).mapIndexed { i, w ->
+                            SuggestionCandidate(text = w, isPrimary = i == 0)
                         }
                     } else {
-                        list.add(SuggestionCandidate(text = prefix, isPrimary = true))
+                        listOf(SuggestionCandidate(text = prefix, isPrimary = true))
                     }
-                    activeSuggestions = list
                 } else {
                     val prev = getPrecedingWord()
                     val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, "bn", 3) else emptyList()
-                    val candidates = if (predictions.isNotEmpty()) {
-                        predictions
-                    } else {
-                        NativeEngine.querySuggestions("", "bn", 3)
-                    }
-
-                    if (candidates.size >= 3) {
-                        activeSuggestions = listOf(
-                            SuggestionCandidate(text = candidates[1], isPrimary = false),
-                            SuggestionCandidate(text = candidates[0], isPrimary = true),
-                            SuggestionCandidate(text = candidates[2], isPrimary = false)
-                        )
-                    } else {
-                        activeSuggestions = candidates.mapIndexed { idx, word ->
-                            SuggestionCandidate(text = word, isPrimary = idx == 0)
-                        }
+                    activeSuggestions = predictions.take(3).mapIndexed { idx, word ->
+                        SuggestionCandidate(text = word, isPrimary = idx == 0)
                     }
                 }
             }
@@ -529,40 +558,18 @@ class KiebordService : InputMethodService() {
                 val prefix = composingBuffer.toString()
                 if (prefix.isNotEmpty()) {
                     val matches = NativeEngine.querySuggestions(prefix, "en", 5)
-                    val list = mutableListOf<SuggestionCandidate>()
-                    if (matches.isNotEmpty()) {
-                        if (matches.size >= 3) {
-                            list.add(SuggestionCandidate(text = matches[1], isPrimary = false))
-                            list.add(SuggestionCandidate(text = matches[0], isPrimary = true))
-                            list.add(SuggestionCandidate(text = matches[2], isPrimary = false))
-                        } else {
-                            matches.forEachIndexed { i, w ->
-                                list.add(SuggestionCandidate(text = w, isPrimary = i == 0))
-                            }
+                    activeSuggestions = if (matches.isNotEmpty()) {
+                        matches.take(3).mapIndexed { i, w ->
+                            SuggestionCandidate(text = w, isPrimary = i == 0)
                         }
                     } else {
-                        list.add(SuggestionCandidate(text = prefix, isPrimary = true))
+                        listOf(SuggestionCandidate(text = prefix, isPrimary = true))
                     }
-                    activeSuggestions = list
                 } else {
                     val prev = getPrecedingWord()
                     val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, "en", 3) else emptyList()
-                    val candidates = if (predictions.isNotEmpty()) {
-                        predictions
-                    } else {
-                        NativeEngine.querySuggestions("", "en", 3)
-                    }
-
-                    if (candidates.size >= 3) {
-                        activeSuggestions = listOf(
-                            SuggestionCandidate(text = candidates[1], isPrimary = false),
-                            SuggestionCandidate(text = candidates[0], isPrimary = true),
-                            SuggestionCandidate(text = candidates[2], isPrimary = false)
-                        )
-                    } else {
-                        activeSuggestions = candidates.mapIndexed { idx, word ->
-                            SuggestionCandidate(text = word, isPrimary = idx == 0)
-                        }
+                    activeSuggestions = predictions.take(3).mapIndexed { idx, word ->
+                        SuggestionCandidate(text = word, isPrimary = idx == 0)
                     }
                 }
             }
