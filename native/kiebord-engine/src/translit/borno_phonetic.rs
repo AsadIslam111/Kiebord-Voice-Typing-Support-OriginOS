@@ -777,6 +777,61 @@ impl BornoPhonetic {
         }
         unique
     }
+
+    /// Suggests phonetic transliteration alternatives by exploring common
+    /// lowercase/uppercase and phonetic confusion points:
+    /// ত|ট (t<->T), ে|া (e<->a), জ|য (j<->z), ন|ণ (n<->N), etc.
+    pub fn suggest_transliterations(input: &str) -> Vec<String> {
+        if input.is_empty() {
+            return Vec::new();
+        }
+
+        let canonical = Self::convert(input);
+        let mut results = Vec::new();
+        if !canonical.is_empty() {
+            results.push(canonical.clone());
+        }
+
+        let chars: Vec<char> = input.chars().collect();
+        let len = chars.len();
+
+        for i in 0..len {
+            let c = chars[i];
+            let flipped: &[char] = match c {
+                't' => &['T'],
+                'T' => &['t'],
+                'e' => &['a'],
+                'a' => &['e'],
+                'j' => &['z'],
+                'z' => &['j'],
+                'n' => &['N'],
+                'N' => &['n'],
+                'd' => &['D'],
+                'D' => &['d'],
+                's' => &['S'],
+                'S' => &['s'],
+                'r' => &['R'],
+                'R' => &['r'],
+                'i' => &['I'],
+                'I' => &['i'],
+                'u' => &['U'],
+                'U' => &['u'],
+                _ => &[],
+            };
+
+            for &f in flipped {
+                let mut alt = chars.clone();
+                alt[i] = f;
+                let alt_str: String = alt.into_iter().collect();
+                let translit = Self::convert(&alt_str);
+                if !translit.is_empty() && !results.contains(&translit) {
+                    results.push(translit);
+                }
+            }
+        }
+
+        results
+    }
 }
 
 pub struct BornoPhoneticTransliterator;
@@ -802,6 +857,10 @@ impl crate::translit::traits::PhoneticTransliterator for BornoPhoneticTransliter
 
     fn to_phonetic_keys(&self, word: &str) -> Vec<Vec<char>> {
         BornoPhonetic::to_phonetic_keys(word)
+    }
+
+    fn proximity(&self) -> Option<&'static crate::dictionary::proximity::KeyProximity> {
+        Some(crate::dictionary::proximity::KeyProximity::borno_phonetic_cached())
     }
 }
 
@@ -854,5 +913,28 @@ mod tests {
 
         let bangla_keys = BornoPhonetic::to_phonetic_keys("বাংলা");
         assert_eq!(bangla_keys, vec![vec!['b', 'a', 'n', 'g', 'l', 'a']]);
+    }
+
+    #[test]
+    fn test_suggest_transliterations() {
+        // Tumi (uppercase T) should suggest "তুমি" (lowercase t)
+        let tumi_sugs = BornoPhonetic::suggest_transliterations("Tumi");
+        assert!(tumi_sugs.contains(&"টুমি".to_string()));
+        assert!(tumi_sugs.contains(&"তুমি".to_string()));
+
+        // jabO should suggest "যাবো" (zabO)
+        let jabo_sugs = BornoPhonetic::suggest_transliterations("jabO");
+        assert!(jabo_sugs.contains(&"জাবো".to_string()));
+        assert!(jabo_sugs.contains(&"যাবো".to_string()));
+
+        // karon should suggest "কারণ" (karoN)
+        let karon_sugs = BornoPhonetic::suggest_transliterations("karon");
+        assert!(karon_sugs.contains(&"কারন".to_string()));
+        assert!(karon_sugs.contains(&"কারণ".to_string()));
+
+        // dekha should suggest "দাখা" (dakha)
+        let dekha_sugs = BornoPhonetic::suggest_transliterations("dekha");
+        assert!(dekha_sugs.contains(&"দেখা".to_string()));
+        assert!(dekha_sugs.contains(&"দাখা".to_string()));
     }
 }

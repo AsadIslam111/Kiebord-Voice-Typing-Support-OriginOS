@@ -733,7 +733,13 @@ fun KeyboardRootView(
                                 onGestureEnd = {
                                     val trail = gestureTrail
                                     gestureTrail = emptyList()
-                                    if (trail.size >= 2) {
+                                    // Require intentional swipe path: at least 4 points and minimum length of 48.dp
+                                    var totalDist = 0f
+                                    for (i in 1 until trail.size) {
+                                        totalDist += (trail[i] - trail[i - 1]).getDistance()
+                                    }
+                                    val minGestureDistPx = with(density) { 48.dp.toPx() }
+                                    if (trail.size >= 4 && totalDist >= minGestureDistPx) {
                                         val rCoords = rootCoordinates
                                         if (rCoords != null && rCoords.isAttached) {
                                             val centroids = mutableListOf<KeyCentroid>()

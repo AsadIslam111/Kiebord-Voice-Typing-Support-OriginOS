@@ -39,6 +39,9 @@ object NativeEngine {
     external fun predictNextWords(prevWord: String, lang: String, maxResults: Int): String
 
     @JvmStatic
+    external fun registerLayoutProximityRows(layoutId: String, rows: Array<String>): Boolean
+
+    @JvmStatic
     external fun decodeGesture(
         pointsX: FloatArray,
         pointsY: FloatArray,

@@ -11,6 +11,11 @@ pub trait PhoneticTransliterator: Send + Sync {
     /// Converts a word in target script (e.g. "আমাদের")
     /// to its expected Latin phonetic key sequences on a QWERTY layout.
     fn to_phonetic_keys(&self, word: &str) -> Vec<Vec<char>>;
+
+    /// Returns the KeyProximity tied to this phonetic layout, if defined.
+    fn proximity(&self) -> Option<&'static crate::dictionary::proximity::KeyProximity> {
+        None
+    }
 }
 
 pub fn get_phonetic_transliterator(layout_id: &str) -> Option<&'static (dyn PhoneticTransliterator + 'static)> {

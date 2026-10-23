@@ -92,6 +92,40 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_loadDictionary(
 }
 
 #[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_registerLayoutProximityRows(
+    mut env: JNIEnv,
+    _class: JClass,
+    layout_id: JString,
+    rows: jni::objects::JObjectArray,
+) -> jboolean {
+    let id_str: String = match env.get_string(&layout_id) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    let rows_len = match env.get_array_length(&rows) {
+        Ok(l) => l as usize,
+        Err(_) => return 0,
+    };
+    let mut row_strings: Vec<String> = Vec::with_capacity(rows_len);
+    for i in 0..rows_len {
+        if let Ok(obj) = env.get_object_array_element(&rows, i as jni::sys::jsize) {
+            let jstr: JString = obj.into();
+            let str_val = match env.get_string(&jstr) {
+                Ok(js) => Some(String::from(js)),
+                Err(_) => None,
+            };
+            if let Some(s) = str_val {
+                row_strings.push(s);
+            }
+        }
+    }
+    let row_refs: Vec<&str> = row_strings.iter().map(|s| s.as_str()).collect();
+    let prox = dictionary::proximity::KeyProximity::of_rows(&row_refs);
+    dictionary::proximity::KeyProximity::register_layout(&id_str, prox);
+    1
+}
+
+#[no_mangle]
 pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
     mut env: JNIEnv,
     _class: JClass,

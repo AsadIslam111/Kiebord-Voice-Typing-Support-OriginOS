@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::{OnceLock, RwLock};
 
 /// Physical key adjacency and phonetic confusion matrix for typo weighting.
 #[derive(Clone, Debug, Default)]
@@ -6,7 +7,35 @@ pub struct KeyProximity {
     neighbors: HashMap<char, HashSet<char>>,
 }
 
+static QWERTY_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
+static PROBHAT_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
+static BORNO_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
+static DYNAMIC_LAYOUT_PROXIMITIES: OnceLock<RwLock<HashMap<String, &'static KeyProximity>>> = OnceLock::new();
+
 impl KeyProximity {
+    pub fn new() -> Self {
+        Self {
+            neighbors: HashMap::new(),
+        }
+    }
+
+    pub fn add_neighbor_bidirectional(&mut self, a: char, b: char) {
+        if a != b {
+            self.neighbors.entry(a).or_default().insert(b);
+            self.neighbors.entry(b).or_default().insert(a);
+        }
+    }
+
+    pub fn add_confusion_group(&mut self, group: &[char]) {
+        for &c1 in group {
+            for &c2 in group {
+                if c1 != c2 {
+                    self.neighbors.entry(c1).or_default().insert(c2);
+                }
+            }
+        }
+    }
+
     /// Builds proximity from keyboard row strings.
     pub fn of_rows(rows: &[&str]) -> Self {
         let mut neighbors: HashMap<char, HashSet<char>> = HashMap::new();
@@ -55,14 +84,13 @@ impl KeyProximity {
     }
 
     /// Bengali Probhat key proximity and phonetically confusable pairs.
-    pub fn bengali() -> Self {
+    pub fn probhat() -> Self {
         let mut prox = Self::of_rows(&[
             "দধপফবভতমযয",
             "আঅেসহকখগঘ",
             "য়ড়ঢ়ণতথদধ",
         ]);
 
-        // Add common Bengali phonetic/orthographic confusion clusters
         let confusion_groups: &[&[char]] = &[
             &['শ', 'ষ', 'স'],
             &['র', 'ড়', 'ঢ়'],
@@ -81,16 +109,163 @@ impl KeyProximity {
         ];
 
         for &group in confusion_groups {
-            for &c1 in group {
-                for &c2 in group {
-                    if c1 != c2 {
-                        prox.neighbors.entry(c1).or_default().insert(c2);
+            prox.add_confusion_group(group);
+        }
+
+        prox
+    }
+
+    /// Backwards compatibility alias for probhat.
+    pub fn bengali() -> Self {
+        Self::probhat()
+    }
+
+    /// Borno Phonetic key proximity model:
+    /// 1. Lowercase / Uppercase phonetic pairs (e.g. ত|ট, থ|ঠ, দ|ড, ধ|ঢ, ন|ণ, শ|ষ|স, র|ড়|ঢ়, etc.)
+    /// 2. Phonetic vowel / kar confusions (e.g. ে|া, এ|আ, অ|ও, etc.)
+    /// 3. Phonetic consonant confusions (e.g. জ|য, য|য়, ব|ভ, প|ফ, ক|খ, গ|ঘ, ত|ৎ, ং|ঙ)
+    /// 4. QWERTY physical key proximity projected onto Borno transliterated characters for finger slip typos.
+    pub fn borno_phonetic() -> Self {
+        let mut prox = Self::new();
+
+        // 1. Lowercase vs Uppercase phonetic pairs and primary confusions
+        let phonetic_pairs: &[(char, char)] = &[
+            ('ত', 'ট'), // t vs T
+            ('থ', 'ঠ'), // th vs Th
+            ('দ', 'ড'), // d vs D
+            ('ধ', 'ঢ'), // dh vs Dh
+            ('ন', 'ণ'), // n vs N
+            ('ি', 'ী'), // i vs I
+            ('ু', 'ূ'), // u vs U
+            ('ই', 'ঈ'), // i vs I initial
+            ('উ', 'ঊ'), // u vs U initial
+            ('ব', 'ভ'), // b vs v / bh
+            ('প', 'ফ'), // p vs f / ph
+            ('ক', 'খ'), // k vs kh
+            ('গ', 'ঘ'), // g vs gh
+            ('চ', 'ছ'), // c vs ch / Ch
+            ('জ', 'ঝ'), // j vs jh / J
+            ('য', 'য়'), // z vs y
+            ('জ', 'য'), // j vs z (phonetic confusion)
+            ('জ', 'য়'), // j vs y
+            ('ে', 'া'), // e vs a vowel sign confusion
+            ('এ', 'আ'), // e vs a initial vowel confusion
+            ('অ', 'আ'), // o vs a initial
+            ('অ', 'ও'), // o inherent vs O
+            ('ো', 'ৌ'), // o vs ou
+            ('এ', 'ঐ'), // e vs oi / O
+            ('ও', 'ঔ'), // o vs ou initial
+            ('ৈ', 'ৌ'), // oi vs ou
+            ('ত', 'ৎ'), // t vs t` / TH
+            ('ং', 'ঙ'), // ng vs Ng
+            ('ঁ', 'ং'), // xx vs ng
+            ('হ', 'ঃ'), // h vs ::
+        ];
+
+        for &(c1, c2) in phonetic_pairs {
+            prox.add_neighbor_bidirectional(c1, c2);
+        }
+
+        // Triplet clusters
+        prox.add_confusion_group(&['শ', 'ষ', 'স']); // S vs Sh vs s
+        prox.add_confusion_group(&['র', 'ড়', 'ঢ়']); // r vs R vs Rh
+
+        // 2. QWERTY physical key proximity projected onto Borno transliterated characters
+        let qwerty = Self::qwerty();
+        let key_mappings: &[(char, &[char])] = &[
+            ('w', &['ও', 'ব']),
+            ('e', &['ে', 'এ']),
+            ('r', &['র', 'ড়', 'ঢ়']),
+            ('t', &['ত', 'ট', 'থ', 'ঠ']),
+            ('y', &['য', 'য়']),
+            ('u', &['ু', 'উ', 'ূ', 'ঊ']),
+            ('i', &['ি', 'ই', 'ী', 'ঈ']),
+            ('o', &['ও', 'অ', 'ো', 'ঐ', 'ঔ']),
+            ('p', &['প', 'ফ']),
+            ('a', &['া', 'আ']),
+            ('s', &['স', 'শ', 'ষ']),
+            ('d', &['দ', 'ড', 'ধ', 'ঢ']),
+            ('f', &['ফ', 'প']),
+            ('g', &['গ', 'ঘ']),
+            ('h', &['হ']),
+            ('j', &['জ', 'ঝ']),
+            ('k', &['ক', 'খ']),
+            ('l', &['ল']),
+            ('z', &['য', 'জ']),
+            ('x', &['ক', 'স']),
+            ('c', &['চ', 'ছ']),
+            ('v', &['ভ', 'ব']),
+            ('b', &['ব', 'ভ']),
+            ('n', &['ন', 'ণ']),
+            ('m', &['ম']),
+        ];
+
+        let map: HashMap<char, &[char]> = key_mappings.iter().copied().collect();
+
+        for (&k1, &k1_chars) in &map {
+            if let Some(neighbors) = qwerty.neighbors.get(&k1) {
+                for &k2 in neighbors {
+                    if let Some(&k2_chars) = map.get(&k2) {
+                        for &b1 in k1_chars {
+                            for &b2 in k2_chars {
+                                prox.add_neighbor_bidirectional(b1, b2);
+                            }
+                        }
                     }
                 }
             }
         }
 
         prox
+    }
+
+    pub fn borno_phonetic_cached() -> &'static KeyProximity {
+        BORNO_PROXIMITY.get_or_init(Self::borno_phonetic)
+    }
+
+    /// Registers a custom layout proximity at runtime for future layouts.
+    pub fn register_layout(layout_id: &str, prox: KeyProximity) {
+        let registry = DYNAMIC_LAYOUT_PROXIMITIES.get_or_init(|| RwLock::new(HashMap::new()));
+        let leaked_ref: &'static KeyProximity = Box::leak(Box::new(prox));
+        if let Ok(mut map) = registry.write() {
+            map.insert(layout_id.to_string(), leaked_ref);
+        }
+    }
+
+    /// Retrieves the KeyProximity tied to a given layout identifier.
+    /// Supports "bn_borno", "bn_probhat", "en_qwerty", registered custom layouts,
+    /// or layouts implementing PhoneticTransliterator::proximity.
+    pub fn for_layout(layout_id: &str) -> &'static KeyProximity {
+        // 1. Check custom dynamically registered layout proximities first
+        if let Some(registry) = DYNAMIC_LAYOUT_PROXIMITIES.get() {
+            if let Ok(guard) = registry.read() {
+                if let Some(&custom) = guard.get(layout_id) {
+                    return custom;
+                }
+            }
+        }
+
+        // 2. Check if a PhoneticTransliterator defines layout proximity
+        if let Some(translit) = crate::translit::get_phonetic_transliterator(layout_id) {
+            if let Some(prox) = translit.proximity() {
+                return prox;
+            }
+        }
+
+        // 3. Fallback to predefined layout proximities
+        match layout_id {
+            "bn_borno" => BORNO_PROXIMITY.get_or_init(Self::borno_phonetic),
+            "bn_probhat" => PROBHAT_PROXIMITY.get_or_init(Self::probhat),
+            "bn" => BORNO_PROXIMITY.get_or_init(Self::borno_phonetic),
+            "en_qwerty" | "en" => QWERTY_PROXIMITY.get_or_init(Self::qwerty),
+            _ => {
+                if layout_id.starts_with("bn") {
+                    BORNO_PROXIMITY.get_or_init(Self::borno_phonetic)
+                } else {
+                    QWERTY_PROXIMITY.get_or_init(Self::qwerty)
+                }
+            }
+        }
     }
 
     /// Checks if two characters are physical keyboard neighbors or confusable.
@@ -145,11 +320,75 @@ mod tests {
     }
 
     #[test]
-    fn test_bengali_confusion() {
-        let b = KeyProximity::bengali();
+    fn test_probhat_confusion() {
+        let b = KeyProximity::probhat();
         assert!(b.are_neighbors('শ', 'ষ'));
         assert!(b.are_neighbors('র', 'ড়'));
         assert!(b.are_neighbors('ন', 'ণ'));
         assert_eq!(b.penalty('শ', 'ষ'), 0.4);
+    }
+
+    #[test]
+    fn test_borno_phonetic_proximity() {
+        let bp = KeyProximity::borno_phonetic();
+
+        // 1. Specifically requested phonetic pairs
+        // ত | ট (t vs T)
+        assert!(bp.are_neighbors('ত', 'ট'));
+        assert!(bp.are_neighbors('ট', 'ত'));
+
+        // ে | া (e vs a)
+        assert!(bp.are_neighbors('ে', 'া'));
+        assert!(bp.are_neighbors('া', 'ে'));
+
+        // জ | য (j vs z)
+        assert!(bp.are_neighbors('জ', 'য'));
+        assert!(bp.are_neighbors('য', 'জ'));
+
+        // ন | ণ (n vs N)
+        assert!(bp.are_neighbors('ন', 'ণ'));
+        assert!(bp.are_neighbors('ণ', 'ন'));
+
+        // Other lowercase/uppercase pairs
+        assert!(bp.are_neighbors('থ', 'ঠ')); // th vs Th
+        assert!(bp.are_neighbors('দ', 'ড')); // d vs D
+        assert!(bp.are_neighbors('ধ', 'ঢ')); // dh vs Dh
+        assert!(bp.are_neighbors('শ', 'ষ')); // S vs Sh
+        assert!(bp.are_neighbors('স', 'শ')); // s vs S
+        assert!(bp.are_neighbors('র', 'ড়')); // r vs R
+
+        // 2. QWERTY proximity typos projected into Borno Phonetic
+        // 't' (ত/ট) is adjacent to 'r' (র) on QWERTY
+        assert!(bp.are_neighbors('ত', 'র'));
+        assert!(bp.are_neighbors('ট', 'র'));
+
+        // 'e' (ে) is adjacent to 'r' (র) on QWERTY
+        assert!(bp.are_neighbors('ে', 'র'));
+
+        // 'j' (জ) is adjacent to 'h' (হ) on QWERTY
+        assert!(bp.are_neighbors('জ', 'হ'));
+
+        // 'n' (ন) is adjacent to 'b' (ব) on QWERTY
+        assert!(bp.are_neighbors('ন', 'ব'));
+    }
+
+    #[test]
+    fn test_for_layout_dispatch() {
+        let borno = KeyProximity::for_layout("bn_borno");
+        assert!(borno.are_neighbors('ত', 'ট'));
+
+        let probhat = KeyProximity::for_layout("bn_probhat");
+        assert!(probhat.are_neighbors('শ', 'ষ'));
+
+        let qwerty = KeyProximity::for_layout("en_qwerty");
+        assert!(qwerty.are_neighbors('q', 'w'));
+
+        // Test dynamic registration for future layouts
+        let mut custom = KeyProximity::new();
+        custom.add_neighbor_bidirectional('x', 'y');
+        KeyProximity::register_layout("future_custom_layout", custom);
+
+        let resolved = KeyProximity::for_layout("future_custom_layout");
+        assert!(resolved.are_neighbors('x', 'y'));
     }
 }

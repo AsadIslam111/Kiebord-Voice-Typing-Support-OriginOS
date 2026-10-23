@@ -492,6 +492,14 @@ impl<'a> BinaryDict<'a> {
         }
     }
 
+    #[inline]
+    pub fn contains_word(&self, word: &str) -> bool {
+        match self.find_node(word) {
+            Some(node) => self.is_word(node),
+            None => false,
+        }
+    }
+
     pub fn word_at(&self, id: u32) -> Option<&'a str> {
         if id >= self.word_count {
             return None;

@@ -271,7 +271,8 @@ fun KeycapView(
 
                             // Gesture typing detector on character keys
                             if (initialKey.type == KeyType.CHARACTER && !isMoreKeysActive && !isSlidingDrag) {
-                                if (!isGestureTyping && distance > 20f) {
+                                val gestureThresholdPx = with(density) { 28.dp.toPx() }
+                                if (!isGestureTyping && distance > gestureThresholdPx) {
                                     longPressJob.cancel()
                                     isGestureTyping = true
                                     isPressed = false

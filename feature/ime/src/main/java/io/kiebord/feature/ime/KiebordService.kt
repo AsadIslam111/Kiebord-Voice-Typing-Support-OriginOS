@@ -776,8 +776,7 @@ class KiebordService : InputMethodService() {
             if (translitMgr.isComposing) {
                 val raw = translitMgr.currentRawInput
                 val translit = translitMgr.currentTransliteration
-                val dictLang = if (activeLayout.id.startsWith("bn")) "bn" else "en"
-                val dictMatches = NativeEngine.querySuggestions(translit, dictLang, 5)
+                val dictMatches = NativeEngine.querySuggestions(translit, activeLayout.id, 5)
                     .filter { it != translit }
 
                 val list = mutableListOf<SuggestionCandidate>()
@@ -798,8 +797,7 @@ class KiebordService : InputMethodService() {
                 activeSuggestions = list
             } else {
                 val prev = getPrecedingWord()
-                val dictLang = if (activeLayout.id.startsWith("bn")) "bn" else "en"
-                val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, dictLang, 3) else emptyList()
+                val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 3) else emptyList()
                 activeSuggestions = predictions.take(3).mapIndexed { idx, word ->
                     SuggestionCandidate(text = word, isPrimary = idx == 0)
                 }
@@ -811,7 +809,7 @@ class KiebordService : InputMethodService() {
             "bn_probhat" -> {
                 val prefix = composingBuffer.toString()
                 if (prefix.isNotEmpty()) {
-                    val matches = NativeEngine.querySuggestions(prefix, "bn", 5)
+                    val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 5)
                     activeSuggestions = if (matches.isNotEmpty()) {
                         matches.take(3).mapIndexed { i, w ->
                             SuggestionCandidate(text = w, isPrimary = i == 0)
@@ -821,7 +819,7 @@ class KiebordService : InputMethodService() {
                     }
                 } else {
                     val prev = getPrecedingWord()
-                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, "bn", 3) else emptyList()
+                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 3) else emptyList()
                     activeSuggestions = predictions.take(3).mapIndexed { idx, word ->
                         SuggestionCandidate(text = word, isPrimary = idx == 0)
                     }
@@ -830,7 +828,7 @@ class KiebordService : InputMethodService() {
             "en_qwerty" -> {
                 val prefix = composingBuffer.toString()
                 if (prefix.isNotEmpty()) {
-                    val matches = NativeEngine.querySuggestions(prefix, "en", 5)
+                    val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 5)
                     activeSuggestions = if (matches.isNotEmpty()) {
                         matches.take(3).mapIndexed { i, w ->
                             SuggestionCandidate(text = w, isPrimary = i == 0)
@@ -840,7 +838,7 @@ class KiebordService : InputMethodService() {
                     }
                 } else {
                     val prev = getPrecedingWord()
-                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, "en", 3) else emptyList()
+                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 3) else emptyList()
                     activeSuggestions = predictions.take(3).mapIndexed { idx, word ->
                         SuggestionCandidate(text = word, isPrimary = idx == 0)
                     }

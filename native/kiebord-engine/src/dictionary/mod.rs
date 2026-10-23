@@ -120,14 +120,30 @@ pub fn generate_dict_assets(combined_dir: &Path, out_dir: &Path) -> std::io::Res
 
 /// Main entry point for query suggestions: exact completions + proximity typo corrections.
 /// Returns a pipe-delimited string of suggestions, e.g. "the|that|this"
-pub fn get_suggestions(input: &str, lang: &str, max_results: usize) -> String {
-    let (dict_opt, prox) = match lang {
-        "bn" | "bn_borno" | "bn_probhat" => (get_bn_binary_dict(), get_bn_proximity()),
-        _ => (get_en_binary_dict(), get_en_proximity()),
+pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) -> String {
+    let dict_opt = if lang_or_layout.starts_with("bn") {
+        get_bn_binary_dict()
+    } else {
+        get_en_binary_dict()
     };
+    let prox = KeyProximity::for_layout(lang_or_layout);
 
     if let Some(dict) = dict_opt {
-        let words = dict.suggest(input, max_results, prox);
+        let mut words = dict.suggest(input, max_results, prox);
+
+        // If Borno Phonetic layout and room remains, also evaluate phonetic transliteration alternatives
+        if words.len() < max_results && lang_or_layout == "bn_borno" {
+            let alts = crate::translit::borno_phonetic::BornoPhonetic::suggest_transliterations(input);
+            for alt in alts {
+                if alt != input && !words.contains(&alt) && dict.contains_word(&alt) {
+                    words.push(alt);
+                    if words.len() >= max_results {
+                        break;
+                    }
+                }
+            }
+        }
+
         words.join("|")
     } else {
         String::new()
@@ -136,10 +152,11 @@ pub fn get_suggestions(input: &str, lang: &str, max_results: usize) -> String {
 
 /// Main entry point for next-word prediction based on previous committed word.
 /// Returns a pipe-delimited string of predicted words, e.g. "are|is|do"
-pub fn predict_next_words(prev_word: &str, lang: &str, max_results: usize) -> String {
-    let dict_opt = match lang {
-        "bn" | "bn_borno" | "bn_probhat" => get_bn_binary_dict(),
-        _ => get_en_binary_dict(),
+pub fn predict_next_words(prev_word: &str, lang_or_layout: &str, max_results: usize) -> String {
+    let dict_opt = if lang_or_layout.starts_with("bn") {
+        get_bn_binary_dict()
+    } else {
+        get_en_binary_dict()
     };
 
     if let Some(dict) = dict_opt {
@@ -248,5 +265,18 @@ mod tests {
         assert!(!bn_pipe.is_empty());
         let bn_items: Vec<&str> = bn_pipe.split('|').collect();
         assert!(bn_items.contains(&"আমি") || bn_items.contains(&"আম"));
+    }
+
+    #[test]
+    fn test_borno_phonetic_layout_suggestions() {
+        // 'টুমি' (typed with uppercase T) should suggest 'তুমি' (with lowercase t) in Borno Phonetic layout
+        let tumi_sugs = get_suggestions("টুমি", "bn_borno", 5);
+        let items: Vec<&str> = tumi_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(items.contains(&"তুমি"), "Expected 'তুমি' in suggestions for 'টুমি': {:?}", items);
+
+        // 'কারন' (typed with lowercase n) should suggest 'কারণ' (with uppercase N) in Borno Phonetic layout
+        let karon_sugs = get_suggestions("কারন", "bn_borno", 5);
+        let k_items: Vec<&str> = karon_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(k_items.contains(&"কারণ"), "Expected 'কারণ' in suggestions for 'কারন': {:?}", k_items);
     }
 }

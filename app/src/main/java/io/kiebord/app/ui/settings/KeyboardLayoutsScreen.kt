@@ -73,7 +73,7 @@ fun KeyboardLayoutsScreen(
         id = KiebordPreferences.LAYOUT_EN_QWERTY,
         name = "English (QWERTY)",
         badge = "EN",
-        description = "Standard QWERTY layout with secondary accents",
+        description = "Standard QWERTY layout",
         layoutDef = PredefinedLayouts.EnglishQwerty
     )
 
@@ -82,14 +82,14 @@ fun KeyboardLayoutsScreen(
             id = KiebordPreferences.LAYOUT_BN_BORNO,
             name = "Borno Phonetic",
             badge = "বর্ণ",
-            description = "Natural English-to-Bangla transliteration (ami → আমি)",
+            description = "ami → আমি",
             layoutDef = PredefinedLayouts.BengaliBorno
         ),
         LayoutCardData(
             id = KiebordPreferences.LAYOUT_BN_PROBHAT,
             name = "Probhat",
             badge = "প্রভাত",
-            description = "Probhat national standard layout for Bengali typing",
+            description = "",
             layoutDef = PredefinedLayouts.BengaliProbhat
         )
     )
