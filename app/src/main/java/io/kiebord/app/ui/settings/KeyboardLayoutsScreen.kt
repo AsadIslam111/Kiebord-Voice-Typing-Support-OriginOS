@@ -23,10 +23,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Keyboard
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -62,9 +60,9 @@ fun KeyboardLayoutsScreen(
 ) {
     val scrollState = rememberScrollState()
 
-    val isBanglaPrimary = preferences.primaryLayoutId.startsWith("bn")
+    val isAnyBanglaEnabled = preferences.enabledLayoutIds.any { it.startsWith("bn") }
     var isBanglaExpanded by remember {
-        mutableStateOf(isBanglaPrimary)
+        mutableStateOf(isAnyBanglaEnabled)
     }
 
     val englishLayoutId = KiebordPreferences.LAYOUT_EN_QWERTY
@@ -104,17 +102,20 @@ fun KeyboardLayoutsScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
-        SettingsCategoryHeader(title = "Languages & Primary Input")
+        SettingsCategoryHeader(title = "Available Keyboard Layouts")
 
-        // 1. English (QWERTY) Card
+        // 1. English (QWERTY) Card with Checkbox
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            val isEnglishSelected = preferences.primaryLayoutId == englishLayoutId
+            val isEnglishEnabled = preferences.enabledLayoutIds.contains(englishLayoutId)
+            val isLastRemaining = preferences.enabledLayoutIds.size == 1 && isEnglishEnabled
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        onUpdatePrimaryLayout(englishLayoutId)
+                        if (!isLastRemaining || !isEnglishEnabled) {
+                            onToggleLayoutEnabled(englishLayoutId, !isEnglishEnabled)
+                        }
                     }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -144,18 +145,23 @@ fun KeyboardLayoutsScreen(
                         color = Color(0xFFE0E2E8)
                     )
                     Text(
-                        text = "QWERTY layout",
+                        text = if (isLastRemaining) "Active (at least one layout required)" else "QWERTY layout",
                         fontSize = 12.sp,
                         color = Color(0xFF9499A8)
                     )
                 }
 
-                RadioButton(
-                    selected = isEnglishSelected,
-                    onClick = { onUpdatePrimaryLayout(englishLayoutId) },
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = Color(0xFF7AA2F7),
-                        unselectedColor = Color(0xFF6B7280)
+                Checkbox(
+                    checked = isEnglishEnabled,
+                    onCheckedChange = { checked ->
+                        if (!isLastRemaining || checked) {
+                            onToggleLayoutEnabled(englishLayoutId, checked)
+                        }
+                    },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = Color(0xFF7AA2F7),
+                        uncheckedColor = Color(0xFF6B7280),
+                        checkmarkColor = Color(0xFF0F141C)
                     )
                 )
             }
@@ -165,15 +171,14 @@ fun KeyboardLayoutsScreen(
 
         // 2. Bangla Language Group Card (Expandable into separate real keyboard cards)
         SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+            val activeBanglaCount = banglaCards.count { preferences.enabledLayoutIds.contains(it.id) }
+
             Column {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
                             isBanglaExpanded = !isBanglaExpanded
-                            if (!isBanglaPrimary) {
-                                onUpdatePrimaryLayout(KiebordPreferences.LAYOUT_BN_BORNO)
-                            }
                         }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -203,7 +208,7 @@ fun KeyboardLayoutsScreen(
                             color = Color(0xFFE0E2E8)
                         )
                         Text(
-                            text = if (isBanglaExpanded) "Borno Phonetic • Probhat" else "2 layouts available (tap to view)",
+                            text = if (isBanglaExpanded) "Borno Phonetic • Probhat" else "$activeBanglaCount active layout(s) • tap to expand",
                             fontSize = 12.sp,
                             color = Color(0xFF9499A8)
                         )
@@ -212,35 +217,19 @@ fun KeyboardLayoutsScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (isBanglaPrimary) Color(0xFF233047) else Color(0xFF25272B))
+                            .background(if (activeBanglaCount > 0) Color(0xFF233047) else Color(0xFF25272B))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = if (isBanglaExpanded) "Expanded" else "2 Layouts",
+                            text = if (isBanglaExpanded) "Expanded" else "$activeBanglaCount Active",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = if (isBanglaPrimary) Color(0xFF7AA2F7) else Color(0xFF9499A8)
+                            color = if (activeBanglaCount > 0) Color(0xFF7AA2F7) else Color(0xFF9499A8)
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    RadioButton(
-                        selected = isBanglaPrimary,
-                        onClick = {
-                            isBanglaExpanded = true
-                            if (!isBanglaPrimary) {
-                                onUpdatePrimaryLayout(KiebordPreferences.LAYOUT_BN_BORNO)
-                            }
-                        },
-                        colors = RadioButtonDefaults.colors(
-                            selectedColor = Color(0xFF7AA2F7),
-                            unselectedColor = Color(0xFF6B7280)
-                        )
-                    )
                 }
 
-                // Expanded Section: Separate Real Keyboard Cards
+                // Expanded Section: Separate Real Keyboard Cards with Checkboxes (NO shift/delete symbols)
                 AnimatedVisibility(
                     visible = isBanglaExpanded,
                     enter = expandVertically() + fadeIn(),
@@ -253,42 +242,21 @@ fun KeyboardLayoutsScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         banglaCards.forEach { cardData ->
-                            val isSelected = preferences.primaryLayoutId == cardData.id
+                            val isEnabled = preferences.enabledLayoutIds.contains(cardData.id)
+                            val isLastRemaining = preferences.enabledLayoutIds.size == 1 && isEnabled
+
                             RealKeyboardPreviewCard(
                                 cardData = cardData,
-                                isSelected = isSelected,
-                                onSelect = { onUpdatePrimaryLayout(cardData.id) }
+                                isEnabled = isEnabled,
+                                onToggle = {
+                                    if (!isLastRemaining || !isEnabled) {
+                                        onToggleLayoutEnabled(cardData.id, !isEnabled)
+                                    }
+                                }
                             )
                         }
                     }
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-        SettingsCategoryHeader(title = "Language Switcher Rotation")
-
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            val allLayouts = listOf(
-                Pair(englishLayoutId, "English (QWERTY)")
-            ) + banglaCards.map { Pair(it.id, "Bengali (${it.name})") }
-
-            allLayouts.forEachIndexed { index, (layoutId, layoutName) ->
-                val isEnabled = preferences.enabledLayoutIds.contains(layoutId)
-                val isLastRemaining = preferences.enabledLayoutIds.size == 1 && isEnabled
-
-                SettingsToggleItem(
-                    title = layoutName,
-                    subtitle = if (isLastRemaining) "At least one layout must remain active" else "Include in globe switch rotation",
-                    icon = Icons.Outlined.Keyboard,
-                    checked = isEnabled,
-                    showDivider = index < allLayouts.size - 1,
-                    onCheckedChange = { checked ->
-                        if (!isLastRemaining || checked) {
-                            onToggleLayoutEnabled(layoutId, checked)
-                        }
-                    }
-                )
             }
         }
     }
@@ -297,10 +265,10 @@ fun KeyboardLayoutsScreen(
 @Composable
 private fun RealKeyboardPreviewCard(
     cardData: BanglaLayoutCardData,
-    isSelected: Boolean,
-    onSelect: () -> Unit
+    isEnabled: Boolean,
+    onToggle: () -> Unit
 ) {
-    val borderColor = if (isSelected) Color(0xFF7AA2F7) else Color(0xFF2A2D33)
+    val borderColor = if (isEnabled) Color(0xFF7AA2F7) else Color(0xFF2A2D33)
     val cardBackground = Color(0xFF14161A)
 
     Column(
@@ -309,11 +277,11 @@ private fun RealKeyboardPreviewCard(
             .clip(RoundedCornerShape(14.dp))
             .background(cardBackground)
             .border(
-                width = if (isSelected) 1.5.dp else 1.dp,
+                width = if (isEnabled) 1.5.dp else 1.dp,
                 color = borderColor,
                 shape = RoundedCornerShape(14.dp)
             )
-            .clickable(onClick = onSelect)
+            .clickable(onClick = onToggle)
             .padding(12.dp)
     ) {
         // Real Keyboard Surface
@@ -358,18 +326,17 @@ private fun RealKeyboardPreviewCard(
                 }
             }
 
-            // Row 3: Shift + Keys + Delete
+            // Row 3: Shift + Keys + Delete (NO shift or delete symbols)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Shift key
+                // Shift keycap (blank, no symbol)
                 PreviewKeycap(
-                    label = "⇧",
+                    label = "",
                     modifier = Modifier.weight(1.3f),
-                    backgroundColor = Color(0xFF1E2026),
-                    textColor = Color(0xFF9499A8)
+                    backgroundColor = Color(0xFF1E2026)
                 )
 
                 cardData.previewRows[2].forEach { keyStr ->
@@ -379,16 +346,15 @@ private fun RealKeyboardPreviewCard(
                     )
                 }
 
-                // Delete key
+                // Delete keycap (blank, no symbol)
                 PreviewKeycap(
-                    label = "⌫",
+                    label = "",
                     modifier = Modifier.weight(1.3f),
-                    backgroundColor = Color(0xFF1E2026),
-                    textColor = Color(0xFF9499A8)
+                    backgroundColor = Color(0xFF1E2026)
                 )
             }
 
-            // Row 4: ?123, comma, spacebar, punctuation, enter (compact enter key!)
+            // Row 4: ?123, comma, spacebar, punctuation, enter (compact enter key)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
@@ -423,7 +389,7 @@ private fun RealKeyboardPreviewCard(
                     modifier = Modifier.weight(0.9f)
                 )
 
-                // Enter Key (Compact, weight 1.2f - NOT too wide!)
+                // Enter Key (Compact, weight 1.2f)
                 PreviewKeycap(
                     label = "⏎",
                     modifier = Modifier.weight(1.2f),
@@ -436,7 +402,7 @@ private fun RealKeyboardPreviewCard(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Bottom Bar: Badge, Name, Description, and Radio selector
+        // Bottom Bar: Badge, Name, Description, and Checkbox selector
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -462,7 +428,7 @@ private fun RealKeyboardPreviewCard(
                     text = cardData.name,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isSelected) Color(0xFF7AA2F7) else Color(0xFFE0E2E8)
+                    color = if (isEnabled) Color(0xFF7AA2F7) else Color(0xFFE0E2E8)
                 )
                 Text(
                     text = cardData.description,
@@ -472,12 +438,13 @@ private fun RealKeyboardPreviewCard(
                 )
             }
 
-            RadioButton(
-                selected = isSelected,
-                onClick = onSelect,
-                colors = RadioButtonDefaults.colors(
-                    selectedColor = Color(0xFF7AA2F7),
-                    unselectedColor = Color(0xFF6B7280)
+            Checkbox(
+                checked = isEnabled,
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Color(0xFF7AA2F7),
+                    uncheckedColor = Color(0xFF6B7280),
+                    checkmarkColor = Color(0xFF0F141C)
                 )
             )
         }
@@ -500,12 +467,14 @@ private fun PreviewKeycap(
             .border(0.5.dp, Color(0xFF33363F), RoundedCornerShape(4.dp)),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            fontSize = fontSize,
-            fontWeight = FontWeight.Medium,
-            color = textColor,
-            maxLines = 1
-        )
+        if (label.isNotEmpty()) {
+            Text(
+                text = label,
+                fontSize = fontSize,
+                fontWeight = FontWeight.Medium,
+                color = textColor,
+                maxLines = 1
+            )
+        }
     }
 }

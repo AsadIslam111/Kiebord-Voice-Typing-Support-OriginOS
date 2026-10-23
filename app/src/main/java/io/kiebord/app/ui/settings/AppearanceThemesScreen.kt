@@ -23,19 +23,26 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AspectRatio
-import androidx.compose.material.icons.outlined.BorderStyle
-import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material.icons.outlined.Numbers
-import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.data.prefs.KiebordPreferences
@@ -48,6 +55,7 @@ private data class ThemeOption(
     val scheme: KeyboardColorScheme
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceThemesScreen(
     preferences: KiebordPreferences,
@@ -57,6 +65,7 @@ fun AppearanceThemesScreen(
     onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
+    var previewThemeOption by remember { mutableStateOf<ThemeOption?>(null) }
 
     val themes = listOf(
         ThemeOption(
@@ -116,7 +125,7 @@ fun AppearanceThemesScreen(
                             themeOption = themeOption,
                             isSelected = isSelected,
                             modifier = Modifier.weight(1f),
-                            onSelect = { onUpdateTheme(themeOption.id) }
+                            onSelect = { previewThemeOption = themeOption }
                         )
                     }
                     repeat(3 - rowThemes.size) {
@@ -126,7 +135,7 @@ fun AppearanceThemesScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(18.dp))
         SettingsCategoryHeader(title = "Keyboard Dimensions & Scaling")
 
         val heightScale = preferences.keyboardHeightScale
@@ -151,18 +160,25 @@ fun AppearanceThemesScreen(
                 onValueChange = onUpdateHeightScale
             )
         }
+    }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        SettingsCategoryHeader(title = "Keycap Styling")
-
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            SettingsToggleItem(
-                title = "Keycap Outlines",
-                subtitle = "Draw crisp separation borders around individual keys",
-                icon = Icons.Outlined.BorderStyle,
-                checked = preferences.showKeyBorders,
-                showDivider = false,
-                onCheckedChange = onUpdateShowKeyBorders
+    // Modal Bottom Sheet showing Demo Keyboard with QWERTY layout and Key borders toggle
+    if (previewThemeOption != null) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { previewThemeOption = null },
+            sheetState = sheetState,
+            containerColor = Color(0xFF1E1F22),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            ThemePreviewBottomSheetContent(
+                themeOption = previewThemeOption!!,
+                showKeyBorders = preferences.showKeyBorders,
+                onToggleKeyBorders = onUpdateShowKeyBorders,
+                onApplyTheme = {
+                    onUpdateTheme(previewThemeOption!!.id)
+                    previewThemeOption = null
+                }
             )
         }
     }
@@ -188,7 +204,7 @@ private fun AbstractThemeCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(80.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(themeOption.scheme.containerBackground)
                 .border(
@@ -216,7 +232,7 @@ private fun AbstractThemeCard(
                 }
             }
 
-            // Abstract Swatches: Proportional Space key & compact Enter key on solid theme container
+            // Abstract Swatches: Space key & compact Enter key on solid theme container
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -229,7 +245,7 @@ private fun AbstractThemeCard(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(9.dp)
+                        .height(10.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(themeOption.scheme.keyBackground)
                         .border(
@@ -243,7 +259,7 @@ private fun AbstractThemeCard(
                 Box(
                     modifier = Modifier
                         .width(14.dp)
-                        .height(9.dp)
+                        .height(10.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(themeOption.scheme.actionKeyBackground)
                 )
@@ -258,6 +274,286 @@ private fun AbstractThemeCard(
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = if (isSelected) Color(0xFF7AA2F7) else Color(0xFFE0E2E8),
             maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun ThemePreviewBottomSheetContent(
+    themeOption: ThemeOption,
+    showKeyBorders: Boolean,
+    onToggleKeyBorders: (Boolean) -> Unit,
+    onApplyTheme: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = themeOption.name,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFE0E2E8)
+        )
+        Text(
+            text = themeOption.description,
+            fontSize = 12.sp,
+            color = Color(0xFF9499A8),
+            modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
+        )
+
+        // Demo Keyboard with QWERTY layout
+        DemoQwertyKeyboard(
+            scheme = themeOption.scheme,
+            showKeyBorders = showKeyBorders
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Key Border Toggle (moved below demo keyboard preview)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF25272B))
+                .clickable { onToggleKeyBorders(!showKeyBorders) }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Key borders",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFE0E2E8)
+                )
+                Text(
+                    text = "Toggle flat keycaps (like Borno Keyboard) and default key borders",
+                    fontSize = 12.sp,
+                    color = Color(0xFF9499A8)
+                )
+            }
+            Switch(
+                checked = showKeyBorders,
+                onCheckedChange = onToggleKeyBorders,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF7AA2F7),
+                    uncheckedThumbColor = Color(0xFF9499A8),
+                    uncheckedTrackColor = Color(0xFF383A40)
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        Button(
+            onClick = onApplyTheme,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF7AA2F7)
+            )
+        ) {
+            Text(
+                text = "Apply Theme",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0F141C)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DemoQwertyKeyboard(
+    scheme: KeyboardColorScheme,
+    showKeyBorders: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(scheme.containerBackground)
+            .border(1.dp, Color(0xFF2E3138), RoundedCornerShape(14.dp))
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        val row1 = listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p")
+        val row2 = listOf("a", "s", "d", "f", "g", "h", "j", "k", "l")
+        val row3 = listOf("z", "x", "c", "v", "b", "n", "m")
+
+        // Row 1
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            row1.forEach { key ->
+                DemoKeycap(
+                    label = key,
+                    modifier = Modifier.weight(1f),
+                    scheme = scheme,
+                    showKeyBorders = showKeyBorders
+                )
+            }
+        }
+
+        // Row 2 (centered)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Spacer(modifier = Modifier.weight(0.5f))
+            row2.forEach { key ->
+                DemoKeycap(
+                    label = key,
+                    modifier = Modifier.weight(1f),
+                    scheme = scheme,
+                    showKeyBorders = showKeyBorders
+                )
+            }
+            Spacer(modifier = Modifier.weight(0.5f))
+        }
+
+        // Row 3: Shift, keys, Delete
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DemoKeycap(
+                label = "⇧",
+                modifier = Modifier.weight(1.3f),
+                scheme = scheme,
+                showKeyBorders = showKeyBorders,
+                isActionKey = true
+            )
+            row3.forEach { key ->
+                DemoKeycap(
+                    label = key,
+                    modifier = Modifier.weight(1f),
+                    scheme = scheme,
+                    showKeyBorders = showKeyBorders
+                )
+            }
+            DemoKeycap(
+                label = "⌫",
+                modifier = Modifier.weight(1.3f),
+                scheme = scheme,
+                showKeyBorders = showKeyBorders,
+                isActionKey = true
+            )
+        }
+
+        // Row 4: ?123, comma, spacebar, dot, enter
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DemoKeycap(
+                label = "?123",
+                modifier = Modifier.weight(1.2f),
+                scheme = scheme,
+                showKeyBorders = showKeyBorders,
+                isActionKey = true,
+                fontSize = 10.sp
+            )
+            DemoKeycap(
+                label = ",",
+                modifier = Modifier.weight(0.9f),
+                scheme = scheme,
+                showKeyBorders = showKeyBorders
+            )
+            // Spacebar
+            Box(
+                modifier = Modifier
+                    .weight(4.0f)
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(
+                        if (showKeyBorders) scheme.keyBackground else scheme.keyBackground.copy(alpha = 0.5f)
+                    )
+                    .then(
+                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, RoundedCornerShape(6.dp))
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "English",
+                    fontSize = 11.sp,
+                    color = scheme.keyForeground.copy(alpha = 0.6f)
+                )
+            }
+            DemoKeycap(
+                label = ".",
+                modifier = Modifier.weight(0.9f),
+                scheme = scheme,
+                showKeyBorders = showKeyBorders
+            )
+            // Enter key
+            Box(
+                modifier = Modifier
+                    .weight(1.2f)
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(scheme.actionKeyBackground)
+                    .then(
+                        if (showKeyBorders) Modifier.border(1.dp, scheme.keyBorder, RoundedCornerShape(6.dp))
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "⏎",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.actionKeyForeground
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DemoKeycap(
+    label: String,
+    modifier: Modifier = Modifier,
+    scheme: KeyboardColorScheme,
+    showKeyBorders: Boolean,
+    isActionKey: Boolean = false,
+    fontSize: TextUnit = 13.sp
+) {
+    val bg = when {
+        isActionKey -> scheme.actionKeyBackground
+        showKeyBorders -> scheme.keyBackground
+        else -> Color.Transparent
+    }
+    val borderMod = if (showKeyBorders) {
+        Modifier.border(1.dp, scheme.keyBorder, RoundedCornerShape(6.dp))
+    } else {
+        Modifier
+    }
+    val textColor = if (isActionKey) scheme.actionKeyForeground else scheme.keyForeground
+
+    Box(
+        modifier = modifier
+            .height(34.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(bg)
+            .then(borderMod),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Medium,
+            color = textColor
         )
     }
 }

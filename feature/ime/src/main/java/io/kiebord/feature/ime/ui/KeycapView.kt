@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -76,7 +77,8 @@ fun KeycapView(
     val baseBackground = when {
         key.type == KeyType.ACTION -> colorScheme.accentColor
         isActionOrModifier -> colorScheme.actionKeyBackground
-        else -> colorScheme.keyBackground
+        key.type == KeyType.SPACE -> if (showKeyBorders) colorScheme.keyBackground else colorScheme.keyBackground.copy(alpha = 0.5f)
+        else -> if (showKeyBorders) colorScheme.keyBackground else Color.Transparent
     }
 
     val activeBackground = if (isPressed) {
