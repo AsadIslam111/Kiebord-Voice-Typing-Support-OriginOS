@@ -34,6 +34,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.common.model.KeyDef
@@ -54,6 +55,7 @@ fun KeycapView(
     isSlidingSymbolMode: Boolean = false,
     showKeyBorders: Boolean = true,
     showSecondaryKeys: Boolean = true,
+    rowHeight: Dp = 60.dp,
     onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
@@ -75,6 +77,7 @@ fun KeycapView(
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
+    val scaleFactor = (rowHeight.value / 60f).coerceIn(0.4f, 1.6f)
     var isPressed by remember { mutableStateOf(false) }
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
@@ -107,16 +110,17 @@ fun KeycapView(
 
     val displaySymbolLabel = key.displayLabel(shiftState)
 
-    // Key shape: When key borders are enabled, all keys including spacebar use standard 8.dp radius.
-    // In flat mode (!showKeyBorders), floating accent pills (space, sym, action) use 20.dp stadium pills.
+    // Key shape: When key borders are enabled, all keys including spacebar use standard scaled radius.
+    // In flat mode (!showKeyBorders), floating accent pills (space, sym, action) use stadium pills.
     val keyShape = when {
-        !showKeyBorders && isPillColoredKey -> RoundedCornerShape(20.dp)
-        else -> RoundedCornerShape(8.dp)
+        !showKeyBorders && isPillColoredKey -> RoundedCornerShape((20 * scaleFactor).coerceAtLeast(6f).dp)
+        else -> RoundedCornerShape((8 * scaleFactor).coerceAtLeast(3f).dp)
     }
 
     // In flat theme (!showKeyBorders), reduce height of Space bar, Sym key, and Enter key
     val isReducedHeightKey = !showKeyBorders && isPillColoredKey
-    val verticalPadding = if (isReducedHeightKey) 7.dp else 3.dp
+    val horizontalPadding = (3 * scaleFactor).coerceIn(1f, 4f).dp
+    val verticalPadding = if (isReducedHeightKey) (7 * scaleFactor).coerceAtLeast(2f).dp else (3 * scaleFactor).coerceIn(1f, 4f).dp
 
     // Capture latest parameters in updated states to allow pointerInput without gesture cancellation
     val currentKey = rememberUpdatedState(key)
@@ -145,7 +149,7 @@ fun KeycapView(
                 keyCoordinates = coords
                 onKeyPositioned(key, coords)
             }
-            .padding(horizontal = 3.dp, vertical = verticalPadding)
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding)
             .clip(keyShape)
             .background(activeBackground)
             .pointerInput(isInteractive) {
@@ -317,16 +321,17 @@ fun KeycapView(
             Text(
                 text = key.flickUp!!,
                 color = colorScheme.keyForeground.copy(alpha = 0.5f),
-                fontSize = 10.sp,
+                fontSize = (10 * scaleFactor).coerceAtLeast(6f).sp,
                 fontWeight = FontWeight.Normal,
                 fontFamily = KiebordTheme.fontFamily,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 3.dp, end = 5.dp)
+                    .padding(top = (2.5f * scaleFactor).dp, end = (4 * scaleFactor).dp)
             )
         }
 
         // Key content: Vector Material Icons vs Typography label
+        val actionIconSize = (22 * scaleFactor).coerceAtLeast(12f).dp
         when (key.type) {
             KeyType.SHIFT -> {
                 when (shiftState) {
@@ -335,7 +340,7 @@ fun KeycapView(
                             imageVector = Icons.Outlined.ArrowUpward,
                             contentDescription = "Shift",
                             tint = foregroundColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(actionIconSize)
                         )
                     }
                     ShiftState.ONE_SHOT -> {
@@ -343,7 +348,7 @@ fun KeycapView(
                             imageVector = Icons.Filled.ArrowUpward,
                             contentDescription = "Shift One-Shot",
                             tint = colorScheme.shiftActiveColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(actionIconSize)
                         )
                     }
                     ShiftState.CAPS_LOCK -> {
@@ -352,13 +357,13 @@ fun KeycapView(
                                 imageVector = Icons.Filled.ArrowUpward,
                                 contentDescription = "Caps Lock",
                                 tint = colorScheme.shiftActiveColor,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(actionIconSize)
                             )
                             // Underline bar for Caps Lock
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .size(width = 18.dp, height = 2.5.dp)
+                                    .size(width = (18 * scaleFactor).dp, height = (2.5f * scaleFactor).coerceAtLeast(1.5f).dp)
                                     .background(colorScheme.shiftActiveColor)
                             )
                         }
@@ -370,7 +375,7 @@ fun KeycapView(
                     imageVector = Icons.AutoMirrored.Outlined.Backspace,
                     contentDescription = "Backspace",
                     tint = foregroundColor,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(actionIconSize)
                 )
             }
             KeyType.ACTION -> {
@@ -378,7 +383,7 @@ fun KeycapView(
                     imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
                     contentDescription = "Enter",
                     tint = foregroundColor,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(actionIconSize)
                 )
             }
             KeyType.SWITCH_LANGUAGE -> {
@@ -386,22 +391,24 @@ fun KeycapView(
                     imageVector = Icons.Outlined.Language,
                     contentDescription = "Switch Language",
                     tint = foregroundColor,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size((20 * scaleFactor).coerceAtLeast(11f).dp)
                 )
             }
             KeyType.SPACE -> {
                 Text(
                     text = key.displayLabel(shiftState).ifEmpty { "English" },
                     color = colorScheme.keyForeground.copy(alpha = 0.45f),
-                    fontSize = 14.sp,
+                    fontSize = (14 * scaleFactor).coerceAtLeast(7f).sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = KiebordTheme.fontFamily
                 )
             }
             else -> {
-                val textSize = if (key.type == KeyType.SYMBOLS) 15.sp else 22.sp
+                val baseCharSize = if (displaySymbolLabel.length > 2) 15f else if (displaySymbolLabel.length > 1) 18f else 22f
+                val rawSize = if (key.type == KeyType.SYMBOLS) 15f else baseCharSize
+                val textSize = (rawSize * scaleFactor).coerceAtLeast(7.5f).sp
                 val isUppercase = displaySymbolLabel.length == 1 && displaySymbolLabel.first().isUpperCase()
-                val verticalOffset = if (isUppercase) 1.5.dp else 0.dp
+                val verticalOffset = if (isUppercase) (1.5f * scaleFactor).dp else 0.dp
                 Text(
                     text = displaySymbolLabel,
                     color = foregroundColor,

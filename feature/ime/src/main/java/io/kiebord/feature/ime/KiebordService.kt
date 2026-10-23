@@ -217,6 +217,11 @@ class KiebordService : InputMethodService() {
                             )
                         }
                     },
+                    onHeightScaleChange = { scale ->
+                        serviceScope.launch {
+                            preferencesRepo.updateKeyboardHeightScale(scale)
+                        }
+                    },
                     onDeleteSwipeMove = ::handleDeleteSwipeMove,
                     onDeleteSwipeEnd = ::handleDeleteSwipeEnd,
                     onDeleteSwipeCancel = ::handleDeleteSwipeCancel,

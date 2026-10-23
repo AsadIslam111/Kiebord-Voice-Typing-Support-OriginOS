@@ -93,6 +93,7 @@ fun ReorderableToolbar(
     isTextEditActive: Boolean = false,
     isClipboardActive: Boolean = false,
     isCustomizeMode: Boolean = false,
+    scaleFactor: Float = 1.0f,
     onDraggingStateChange: (draggingAction: ToolbarAction?, fingerPosInRoot: Offset?) -> Unit = { _, _ -> }
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -207,19 +208,23 @@ fun ReorderableToolbar(
                         },
                     contentAlignment = Alignment.Center
                 ) {
+                    val tileWidth = (if (isCustomizeMode) 44.dp else 38.dp) * scaleFactor
+                    val tileHeight = 36.dp * scaleFactor
+                    val tileShape = RoundedCornerShape((12 * scaleFactor).coerceAtLeast(4f).dp)
+
                     // 1. Live Drop Target Placeholder
                     if (isDropTargetSlot && !isDraggingThisItem) {
                         Box(
                             modifier = Modifier
-                                .size(if (isCustomizeMode) 44.dp else 38.dp, 36.dp)
+                                .size(tileWidth, tileHeight)
                                 .border(
-                                    width = 1.5.dp,
+                                    width = (1.5f * scaleFactor).coerceAtLeast(1f).dp,
                                     color = colorScheme.accentColor,
-                                    shape = RoundedCornerShape(12.dp)
+                                    shape = tileShape
                                 )
                                 .background(
                                     color = colorScheme.accentColor.copy(alpha = 0.18f),
-                                    shape = RoundedCornerShape(12.dp)
+                                    shape = tileShape
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
@@ -227,7 +232,7 @@ fun ReorderableToolbar(
                                 imageVector = Icons.Outlined.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = colorScheme.accentColor,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size((16 * scaleFactor).coerceAtLeast(10f).dp)
                             )
                         }
                     }
@@ -235,7 +240,7 @@ fun ReorderableToolbar(
                     // 2. The Tool Tile
                     Box(
                         modifier = Modifier
-                            .size(if (isCustomizeMode) 44.dp else 38.dp, 36.dp)
+                            .size(tileWidth, tileHeight)
                             .zIndex(if (isDraggingThisItem) 100f else 1f)
                             .graphicsLayer {
                                 translationX = visualTranslationX
@@ -247,7 +252,7 @@ fun ReorderableToolbar(
                                 if (isDraggingThisItem) {
                                     Modifier.shadow(
                                         elevation = 12.dp,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = tileShape,
                                         clip = false,
                                         ambientColor = Color.Black.copy(alpha = 0.45f),
                                         spotColor = Color.Black.copy(alpha = 0.65f)
@@ -256,7 +261,7 @@ fun ReorderableToolbar(
                                     Modifier
                                 }
                             )
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(tileShape)
                             .background(
                                 when {
                                     isHoveredByDrawerItem -> colorScheme.accentColor.copy(alpha = 0.35f)
@@ -267,7 +272,7 @@ fun ReorderableToolbar(
                                 }
                             )
                             .border(
-                                width = if (isDraggingThisItem || isHoveredByDrawerItem || isActive) 1.5.dp else 0.dp,
+                                width = if (isDraggingThisItem || isHoveredByDrawerItem || isActive) (1.5f * scaleFactor).coerceAtLeast(1f).dp else 0.dp,
                                 color = when {
                                     isHoveredByDrawerItem -> colorScheme.accentColor
                                     isOverRemoveThreshold -> colorScheme.accentColor.copy(alpha = 0.6f)
@@ -275,7 +280,7 @@ fun ReorderableToolbar(
                                     isActive -> colorScheme.accentColor
                                     else -> Color.Transparent
                                 },
-                                shape = RoundedCornerShape(12.dp)
+                                shape = tileShape
                             )
                             .pointerInput(action, isCustomizeMode) {
                                 if (isCustomizeMode) {
@@ -401,7 +406,7 @@ fun ReorderableToolbar(
                                 isDraggingThisItem || isActive || isHoveredByDrawerItem -> colorScheme.accentColor
                                 else -> colorScheme.keyForeground.copy(alpha = 0.85f)
                             },
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(12f).dp)
                         )
                     }
                 }

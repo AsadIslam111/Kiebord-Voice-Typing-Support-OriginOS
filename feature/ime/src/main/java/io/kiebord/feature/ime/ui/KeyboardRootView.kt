@@ -90,6 +90,7 @@ fun KeyboardRootView(
     initialPinnedTools: List<ToolbarAction>? = null,
     initialDrawerTools: List<ToolbarAction>? = null,
     onToolbarToolsChange: ((List<ToolbarAction>, List<ToolbarAction>) -> Unit)? = null,
+    onHeightScaleChange: ((Float) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -218,7 +219,9 @@ fun KeyboardRootView(
         drawerContainerBounds?.contains(currentFingerInRoot!!) ?: false
     } else false
 
-    val toolbarHeight = 46.dp
+    var keyRowHeight by remember(initialRowHeight) { mutableStateOf(initialRowHeight) }
+    val scaleFactor = (keyRowHeight.value / 60f).coerceIn(0.4f, 1.6f)
+    val toolbarHeight = (46 * scaleFactor).dp
 
     val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
         val finger = currentFingerInRoot!!
@@ -239,13 +242,15 @@ fun KeyboardRootView(
     var isToolsDrawerOpen by remember { mutableStateOf(false) }
     var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
     var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
-    var keyRowHeight by remember(initialRowHeight) { mutableStateOf(initialRowHeight) }
-    var chinPadding by remember { mutableStateOf(8.dp) }
+    var chinPadding by remember(initialRowHeight) {
+        val initialScale = (initialRowHeight.value / 60f).coerceIn(0.4f, 1.6f)
+        mutableStateOf((8 * initialScale).dp)
+    }
     var horizontalMargin by remember { mutableStateOf(0.dp) }
 
     // Snapshot state for Resizer Cancel button
     var savedRowHeight by remember { mutableStateOf(initialRowHeight) }
-    var savedChinPadding by remember { mutableStateOf(8.dp) }
+    var savedChinPadding by remember { mutableStateOf(chinPadding) }
     var savedHorizontalMargin by remember { mutableStateOf(0.dp) }
 
     // Obey navigation bar insets: maximum of Compose WindowInsets and platform WindowInsetsCompat
@@ -274,7 +279,7 @@ fun KeyboardRootView(
     }
 
     val isKeysInteractive = isInteractive && !isResizerOpen
-    val numberRowEffectiveHeight = if (showNumberRow && !displayLayout.id.startsWith("symbols")) 44.dp else 0.dp
+    val numberRowEffectiveHeight = if (showNumberRow && !displayLayout.id.startsWith("symbols")) (44 * scaleFactor).dp else 0.dp
     val keyboardContentHeight = (keyRowHeight * 4) + numberRowEffectiveHeight
 
     val context = LocalContext.current
@@ -366,9 +371,9 @@ fun KeyboardRootView(
             }
             .background(colorScheme.containerBackground)
             .padding(
-                start = 4.dp + horizontalMargin + oneHandedStart,
-                end = 4.dp + horizontalMargin + oneHandedEnd,
-                top = 4.dp,
+                start = (4 * scaleFactor).dp + horizontalMargin + oneHandedStart,
+                end = (4 * scaleFactor).dp + horizontalMargin + oneHandedEnd,
+                top = (4 * scaleFactor).dp,
                 bottom = totalBottomPadding
             )
     ) {
@@ -396,7 +401,7 @@ fun KeyboardRootView(
                     // 1. Expand / Back / Toggle button on far left
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size((38 * scaleFactor).coerceAtLeast(24f).dp)
                             .clip(CircleShape)
                             .background(
                                 if (isToolsExpanded) Color(0x22FFFFFF) else Color.Transparent
@@ -426,11 +431,11 @@ fun KeyboardRootView(
                                 else -> "All Tools"
                             },
                             tint = if (isToolsExpanded) colorScheme.keyForeground else colorScheme.keyForeground.copy(alpha = 0.85f),
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(14f).dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width((4 * scaleFactor).coerceAtLeast(2f).dp))
 
                     // 2. Main content: Suggestion Strip INSTEAD OF Toolbar Options in the exact same row
                     if (suggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
@@ -466,6 +471,7 @@ fun KeyboardRootView(
                             isTextEditActive = isTextEditOpen,
                             isClipboardActive = isClipboardOpen,
                             isCustomizeMode = isToolsDrawerOpen,
+                            scaleFactor = scaleFactor,
                             onDraggingStateChange = { action, fingerPos ->
                                 activeDraggingFromToolbar = action
                                 currentFingerInRoot = fingerPos
@@ -539,6 +545,8 @@ fun KeyboardRootView(
                     if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
                         NumberRowBar(
                             language = displayLayout.language,
+                            height = (44 * scaleFactor).dp,
+                            rowHeight = keyRowHeight,
                             showKeyBorders = showKeyBorders,
                             isInteractive = isKeysInteractive,
                             onKeyPress = onKeyPress,
@@ -558,7 +566,7 @@ fun KeyboardRootView(
                         if (row.startPaddingDp > 0f) {
                             Spacer(
                                 modifier = Modifier
-                                    .width(row.startPaddingDp.dp)
+                                    .width((row.startPaddingDp * scaleFactor).dp)
                                     .fillMaxHeight()
                             )
                         }
@@ -591,6 +599,7 @@ fun KeyboardRootView(
                                 showKeyBorders = showKeyBorders,
                                 showSecondaryKeys = if (!isInteractive) false else showSecondaryKeys,
                                 isInteractive = isKeysInteractive,
+                                rowHeight = keyRowHeight,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)
                                     .fillMaxHeight(),
@@ -854,7 +863,7 @@ fun KeyboardRootView(
                         if (row.endPaddingDp > 0f) {
                             Spacer(
                                 modifier = Modifier
-                                    .width(row.endPaddingDp.dp)
+                                    .width((row.endPaddingDp * scaleFactor).dp)
                                     .fillMaxHeight()
                             )
                         }
@@ -889,8 +898,11 @@ fun KeyboardRootView(
                     keyRowHeight = 60.dp
                     chinPadding = 8.dp
                     horizontalMargin = 0.dp
+                    onHeightScaleChange?.invoke(1.0f)
                 },
                 onDone = {
+                    val scale = (keyRowHeight.value / 60f).coerceIn(0.7f, 1.3f)
+                    onHeightScaleChange?.invoke(scale)
                     isResizerOpen = false
                 },
                 onCancel = {

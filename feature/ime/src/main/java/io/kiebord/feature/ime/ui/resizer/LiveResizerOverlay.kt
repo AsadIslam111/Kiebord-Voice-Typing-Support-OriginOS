@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -63,133 +64,168 @@ fun LiveResizerOverlay(
     val currentMarginState = rememberUpdatedState(currentHorizontalMargin)
     val onMarginChangeState = rememberUpdatedState(onHorizontalMarginChange)
 
-    // Bounding wireframe outline with touch consumption (prevents keyboard touches beneath)
+    // Bounding wireframe outline with touch-safe handles
     Box(
         modifier = modifier
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        event.changes.forEach { it.consume() }
-                        if (event.changes.all { !it.pressed }) break
+            .border(2.dp, accentColor, RoundedCornerShape(12.dp))
+    ) {
+        // 1. Semi-transparent backdrop that absorbs touches in empty space without starving handles
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Black.copy(alpha = 0.32f))
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = true)
+                        down.consume()
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { it.consume() }
+                            if (event.changes.all { !it.pressed }) break
+                        }
                     }
                 }
-            }
-            .border(2.dp, accentColor, RoundedCornerShape(12.dp))
-            .background(Color.Black.copy(alpha = 0.32f))
-    ) {
+        )
 
-        // 2. Top Drag Handle (pill centered on top border for smooth height resizing)
+        // 2. Top Drag Handle (large 48dp touch target, centered 64x10 pill for height resizing)
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .width(56.dp)
-                .height(10.dp)
-                .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
-                .clip(RoundedCornerShape(5.dp))
-                .background(accentColor)
+                .fillMaxWidth(0.6f)
+                .height(48.dp)
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
-                        // Keyboard has 4 rows; delta per row is total delta / 4 for smooth 1:1 finger tracking
                         val deltaRowDp = with(density) { (-dragAmount.y / 4f).toDp() }
-                        val newHeight = (currentHeightState.value + deltaRowDp).coerceIn(46.dp, 78.dp)
+                        val newHeight = (currentHeightState.value + deltaRowDp).coerceIn(40.dp, 80.dp)
                         onHeightChangeState.value(newHeight)
                     }
                 },
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.TopCenter
         ) {
             Box(
                 modifier = Modifier
-                    .width(18.dp)
-                    .height(2.dp)
-                    .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(1.dp))
-            )
+                    .padding(top = 2.dp)
+                    .width(64.dp)
+                    .height(10.dp)
+                    .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(accentColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(20.dp)
+                        .height(2.dp)
+                        .background(Color.White.copy(alpha = 0.75f), RoundedCornerShape(1.dp))
+                )
+            }
         }
 
-        // 3. Left Drag Handle (pill centered on left edge for horizontal width / margin)
+        // 3. Left Drag Handle (large 48dp touch target, centered 10x56 pill for horizontal width/margin)
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .width(10.dp)
-                .height(48.dp)
-                .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
-                .clip(RoundedCornerShape(5.dp))
-                .background(accentColor)
+                .width(48.dp)
+                .height(110.dp)
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
-                        // Dragging right (inward) narrows keyboard, left (outward) widens
                         val deltaMarginDp = with(density) { (dragAmount.x / 2f).toDp() }
                         val newMargin = (currentMarginState.value + deltaMarginDp).coerceIn(0.dp, 48.dp)
                         onMarginChangeState.value(newMargin)
                     }
                 },
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.CenterStart
         ) {
             Box(
                 modifier = Modifier
-                    .width(2.dp)
-                    .height(16.dp)
-                    .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(1.dp))
-            )
+                    .padding(start = 2.dp)
+                    .width(10.dp)
+                    .height(56.dp)
+                    .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(accentColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(20.dp)
+                        .background(Color.White.copy(alpha = 0.75f), RoundedCornerShape(1.dp))
+                )
+            }
         }
 
-        // 4. Right Drag Handle (pill centered on right edge for horizontal width / margin)
+        // 4. Right Drag Handle (large 48dp touch target, centered 10x56 pill for horizontal width/margin)
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .width(10.dp)
-                .height(48.dp)
-                .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
-                .clip(RoundedCornerShape(5.dp))
-                .background(accentColor)
+                .width(48.dp)
+                .height(110.dp)
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
-                        // Dragging left (inward) narrows keyboard, right (outward) widens
                         val deltaMarginDp = with(density) { (-dragAmount.x / 2f).toDp() }
                         val newMargin = (currentMarginState.value + deltaMarginDp).coerceIn(0.dp, 48.dp)
                         onMarginChangeState.value(newMargin)
                     }
                 },
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.CenterEnd
         ) {
             Box(
                 modifier = Modifier
-                    .width(2.dp)
-                    .height(16.dp)
-                    .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(1.dp))
-            )
+                    .padding(end = 2.dp)
+                    .width(10.dp)
+                    .height(56.dp)
+                    .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(accentColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(20.dp)
+                        .background(Color.White.copy(alpha = 0.75f), RoundedCornerShape(1.dp))
+                )
+            }
         }
 
-        // 5. Bottom Drag Handle (pill centered on bottom edge for bottom chin / margin)
+        // 5. Bottom Drag Handle (large 48dp touch target, centered 64x10 pill for bottom chin padding)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .width(56.dp)
-                .height(10.dp)
-                .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
-                .clip(RoundedCornerShape(5.dp))
-                .background(accentColor)
+                .fillMaxWidth(0.6f)
+                .height(48.dp)
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
                         val deltaChin = with(density) { (-dragAmount.y).toDp() }
-                        val newChin = (currentChinState.value + deltaChin).coerceIn(0.dp, 36.dp)
+                        val newChin = (currentChinState.value + deltaChin).coerceIn(0.dp, 48.dp)
                         onChinChangeState.value(newChin)
                     }
                 },
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.BottomCenter
         ) {
             Box(
                 modifier = Modifier
-                    .width(18.dp)
-                    .height(2.dp)
-                    .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(1.dp))
-            )
+                    .padding(bottom = 2.dp)
+                    .width(64.dp)
+                    .height(10.dp)
+                    .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(accentColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(20.dp)
+                        .height(2.dp)
+                        .background(Color.White.copy(alpha = 0.75f), RoundedCornerShape(1.dp))
+                )
+            }
         }
 
         // 6. Centered Floating Action Island matching active keyboard theme
