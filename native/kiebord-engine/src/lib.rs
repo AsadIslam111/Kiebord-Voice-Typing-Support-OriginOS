@@ -69,6 +69,29 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_predictNextWords
 }
 
 #[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_loadDictionary(
+    mut env: JNIEnv,
+    _class: JClass,
+    lang: JString,
+    path: JString,
+) -> jboolean {
+    let lang_str: String = match env.get_string(&lang) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    let path_str: String = match env.get_string(&path) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+
+    if dictionary::load_dictionary_path(&lang_str, std::path::Path::new(&path_str)) {
+        1
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_ping(
     _env: JNIEnv,
     _class: JClass,

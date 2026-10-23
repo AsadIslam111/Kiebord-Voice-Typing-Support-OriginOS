@@ -98,6 +98,11 @@ impl KeyProximity {
         self.neighbors.get(&a).map_or(false, |s| s.contains(&b))
     }
 
+    /// Returns iterator over neighboring or confusable characters for a given key.
+    pub fn get_neighbors(&self, c: char) -> impl Iterator<Item = &char> {
+        self.neighbors.get(&c).into_iter().flat_map(|s| s.iter())
+    }
+
     /// Calculates edit penalty:
     /// - 0.0 for identical characters
     /// - 0.4 for neighboring keys (finger slip)

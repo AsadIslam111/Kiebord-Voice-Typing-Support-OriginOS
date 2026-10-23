@@ -50,6 +50,8 @@ class KiebordService : InputMethodService() {
         super.onCreate()
         clipboardManager = SandboxedClipboardManager(this)
         lifecycleOwner.onCreate()
+        NativeEngine.ensureInitialized(this, "en")
+        NativeEngine.ensureInitialized(this, "bn")
     }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
