@@ -84,10 +84,12 @@ fun ReorderableToolbar(
     isOverDrawerBlankSpace: Boolean,
     hoveredByDrawerAction: ToolbarAction?,
     modifier: Modifier = Modifier,
+    isActionActive: ((ToolbarAction) -> Boolean)? = null,
     isEmojiActive: Boolean = false,
     isResizerActive: Boolean = false,
     isNumberRowActive: Boolean = false,
     isSecondaryKeysActive: Boolean = false,
+    isOneHandedActive: Boolean = false,
     isTextEditActive: Boolean = false,
     isClipboardActive: Boolean = false,
     isCustomizeMode: Boolean = false,
@@ -155,11 +157,12 @@ fun ReorderableToolbar(
             val item = allActionMap[action]
             if (item != null) {
                 key(action) {
-                    val isActive = when (action) {
+                    val isActive = isActionActive?.invoke(action) ?: when (action) {
                         ToolbarAction.EMOJI -> isEmojiActive
                         ToolbarAction.RESIZER -> isResizerActive
                         ToolbarAction.NUMBER_ROW_TOGGLE -> isNumberRowActive
                         ToolbarAction.SECONDARY_KEYS_TOGGLE -> isSecondaryKeysActive
+                        ToolbarAction.ONE_HANDED -> isOneHandedActive
                         ToolbarAction.TEXT_EDIT -> isTextEditActive
                         ToolbarAction.CLIPBOARD -> isClipboardActive
                         else -> false
@@ -258,17 +261,18 @@ fun ReorderableToolbar(
                                 when {
                                     isHoveredByDrawerItem -> colorScheme.accentColor.copy(alpha = 0.35f)
                                     isDraggingThisItem -> colorScheme.actionKeyBackground
-                                    isActive -> colorScheme.accentColor.copy(alpha = 0.25f)
+                                    isActive -> colorScheme.accentColor.copy(alpha = 0.20f)
                                     isCustomizeMode -> colorScheme.actionKeyBackground
                                     else -> Color.Transparent
                                 }
                             )
                             .border(
-                                width = if (isDraggingThisItem || isHoveredByDrawerItem) 1.5.dp else 0.dp,
+                                width = if (isDraggingThisItem || isHoveredByDrawerItem || isActive) 1.5.dp else 0.dp,
                                 color = when {
                                     isHoveredByDrawerItem -> colorScheme.accentColor
                                     isOverRemoveThreshold -> colorScheme.accentColor.copy(alpha = 0.6f)
                                     isDraggingThisItem -> colorScheme.accentColor
+                                    isActive -> colorScheme.accentColor
                                     else -> Color.Transparent
                                 },
                                 shape = RoundedCornerShape(12.dp)
@@ -278,7 +282,7 @@ fun ReorderableToolbar(
                                     detectDragGestures(
                                         onDragStart = { localOffset ->
                                             draggingAction = action
-                                            dragStartIndex = index
+                                            dragStartIndex = currentPinnedTools.indexOf(action)
                                             accumulatedDragX = 0f
                                             accumulatedDragY = 0f
                                             itemCoordinates?.let { coords ->
@@ -301,18 +305,21 @@ fun ReorderableToolbar(
                                         onDragEnd = {
                                             val draggedAct = draggingAction
                                             if (draggedAct != null) {
-                                                if (currentHoveredDrawerAction != null) {
+                                                if (currentHoveredDrawerAction != null && currentHoveredDrawerAction != draggedAct) {
                                                     // Drop over specific drawer option -> INTERCHANGE!
                                                     currentOnInterchange(draggedAct, currentHoveredDrawerAction!!)
                                                 } else if (accumulatedDragY > with(density) { 45.dp.toPx() }) {
                                                     // Drop in drawer area -> MOVE TO DRAWER!
                                                     currentOnMoveToDrawer(draggedAct)
-                                                } else if (hoveredSlot != dragStartIndex) {
-                                                    // Reorder within toolbar with smooth transition
-                                                    val mutable = currentPinnedTools.toMutableList()
-                                                    val moved = mutable.removeAt(dragStartIndex)
-                                                    mutable.add(hoveredSlot, moved)
-                                                    currentOnPinnedChange(mutable)
+                                                } else {
+                                                    val fromIndex = currentPinnedTools.indexOf(draggedAct)
+                                                    if (fromIndex != -1 && hoveredSlot in 0..currentPinnedTools.lastIndex && fromIndex != hoveredSlot) {
+                                                        // Reorder within toolbar with safe distinct list
+                                                        val mutable = currentPinnedTools.toMutableList()
+                                                        val moved = mutable.removeAt(fromIndex)
+                                                        mutable.add(hoveredSlot, moved)
+                                                        currentOnPinnedChange(mutable.distinct())
+                                                    }
                                                 }
                                             }
                                             draggingAction = null
@@ -331,7 +338,7 @@ fun ReorderableToolbar(
                                     detectDragGesturesAfterLongPress(
                                         onDragStart = { localOffset ->
                                             draggingAction = action
-                                            dragStartIndex = index
+                                            dragStartIndex = currentPinnedTools.indexOf(action)
                                             accumulatedDragX = 0f
                                             accumulatedDragY = 0f
                                             itemCoordinates?.let { coords ->
@@ -354,15 +361,18 @@ fun ReorderableToolbar(
                                         onDragEnd = {
                                             val draggedAct = draggingAction
                                             if (draggedAct != null) {
-                                                if (currentHoveredDrawerAction != null) {
+                                                if (currentHoveredDrawerAction != null && currentHoveredDrawerAction != draggedAct) {
                                                     currentOnInterchange(draggedAct, currentHoveredDrawerAction!!)
                                                 } else if (accumulatedDragY > with(density) { 45.dp.toPx() }) {
                                                     currentOnMoveToDrawer(draggedAct)
-                                                } else if (hoveredSlot != dragStartIndex) {
-                                                    val mutable = currentPinnedTools.toMutableList()
-                                                    val moved = mutable.removeAt(dragStartIndex)
-                                                    mutable.add(hoveredSlot, moved)
-                                                    currentOnPinnedChange(mutable)
+                                                } else {
+                                                    val fromIndex = currentPinnedTools.indexOf(draggedAct)
+                                                    if (fromIndex != -1 && hoveredSlot in 0..currentPinnedTools.lastIndex && fromIndex != hoveredSlot) {
+                                                        val mutable = currentPinnedTools.toMutableList()
+                                                        val moved = mutable.removeAt(fromIndex)
+                                                        mutable.add(hoveredSlot, moved)
+                                                        currentOnPinnedChange(mutable.distinct())
+                                                    }
                                                 }
                                             }
                                             draggingAction = null

@@ -95,12 +95,28 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 autoCapitalization = prefs[PreferencesKeys.AUTO_CAPITALIZATION] ?: true,
                 doubleSpacePeriod = prefs[PreferencesKeys.DOUBLE_SPACE_PERIOD] ?: true,
 
-                pinnedTools = prefs[PreferencesKeys.PINNED_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: listOf(
-                    "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"
-                ),
-                drawerTools = prefs[PreferencesKeys.DRAWER_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: listOf(
-                    "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
-                )
+                pinnedTools = run {
+                    val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
+                    val allActionNames = listOf(
+                        "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
+                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+                    )
+                    val rawPinned = prefs[PreferencesKeys.PINNED_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: defaultPinned
+                    rawPinned.filter { it in allActionNames }.distinct().ifEmpty { defaultPinned }
+                },
+                drawerTools = run {
+                    val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
+                    val defaultDrawer = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS")
+                    val allActionNames = listOf(
+                        "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
+                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+                    )
+                    val rawPinned = prefs[PreferencesKeys.PINNED_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: defaultPinned
+                    val pinnedSet = rawPinned.filter { it in allActionNames }.distinct().ifEmpty { defaultPinned }.toSet()
+                    val rawDrawer = prefs[PreferencesKeys.DRAWER_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: defaultDrawer
+                    (rawDrawer.filter { it in allActionNames && it !in pinnedSet } +
+                        allActionNames.filter { it !in pinnedSet }).distinct()
+                }
             )
         }
 
@@ -236,9 +252,19 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
     }
 
     suspend fun updateToolbarTools(pinned: List<String>, drawer: List<String>) {
+        val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
+        val allActionNames = listOf(
+            "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
+            "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+        )
+        val sanitizedPinned = pinned.filter { it in allActionNames }.distinct().ifEmpty { defaultPinned }
+        val pinnedSet = sanitizedPinned.toSet()
+        val sanitizedDrawer = (drawer.filter { it in allActionNames && it !in pinnedSet } +
+            allActionNames.filter { it !in pinnedSet }).distinct()
+
         context.kiebordDataStore.edit {
-            it[PreferencesKeys.PINNED_TOOLS] = pinned.joinToString(",")
-            it[PreferencesKeys.DRAWER_TOOLS] = drawer.joinToString(",")
+            it[PreferencesKeys.PINNED_TOOLS] = sanitizedPinned.joinToString(",")
+            it[PreferencesKeys.DRAWER_TOOLS] = sanitizedDrawer.joinToString(",")
         }
     }
 

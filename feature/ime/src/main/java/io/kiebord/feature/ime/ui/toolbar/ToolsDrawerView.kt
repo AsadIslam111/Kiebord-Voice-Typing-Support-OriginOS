@@ -88,6 +88,7 @@ fun ToolsDrawerView(
     isOverDrawerBlankSpace: Boolean,
     hoveredToolbarAction: ToolbarAction?,
     modifier: Modifier = Modifier,
+    isActionActive: (ToolbarAction) -> Boolean = { false },
     onDraggingStateChange: (draggingAction: ToolbarAction?, fingerPosInRoot: Offset?) -> Unit = { _, _ -> }
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -124,20 +125,22 @@ fun ToolsDrawerView(
     val addThresholdPx = with(density) { 30.dp.toPx() }
     val isOverAddThreshold = draggingAction != null && accumulatedDragY < -addThresholdPx
 
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
             .background(colorScheme.containerBackground)
-            .padding(horizontal = 32.dp, vertical = 6.dp)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 24.dp, vertical = 6.dp)
             .onGloballyPositioned { coords ->
                 rootCoordinates?.let { root ->
                     if (coords.isAttached && root.isAttached) {
                         onReportContainerBounds(root.localBoundingBoxOf(coords))
                     }
                 }
-            }
-            .verticalScroll(rememberScrollState()),
+            },
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Subtitle or active drop zone banner
@@ -278,10 +281,10 @@ fun ToolsDrawerView(
                                             }
                                         )
                                         .pointerInput(action) {
-                                            detectDragGestures(
+                                            detectDragGesturesAfterLongPress(
                                                 onDragStart = { localOffset ->
                                                     draggingAction = action
-                                                    dragStartIndex = globalIndex
+                                                    dragStartIndex = currentDrawerTools.indexOf(action)
                                                     accumulatedDragX = 0f
                                                     accumulatedDragY = 0f
                                                     itemCoordinates?.let { coords ->
@@ -304,12 +307,22 @@ fun ToolsDrawerView(
                                                 onDragEnd = {
                                                     val draggedAct = draggingAction
                                                     if (draggedAct != null) {
-                                                        if (currentHoveredToolbarAction != null) {
+                                                        if (currentHoveredToolbarAction != null && currentHoveredToolbarAction != draggedAct) {
                                                             // Hovered over specific toolbar option -> INTERCHANGE!
                                                             currentOnInterchange(draggedAct, currentHoveredToolbarAction!!)
                                                         } else if (accumulatedDragY < -addThresholdPx) {
                                                             // Hovered over toolbar generally -> MOVE TO TOOLBAR!
                                                             currentOnMoveToToolbar(draggedAct)
+                                                        } else if (hoveredDrawerAction != null && hoveredDrawerAction != draggedAct) {
+                                                            // Reorder / swap within drawer!
+                                                            val fromIndex = currentDrawerTools.indexOf(draggedAct)
+                                                            val toIndex = currentDrawerTools.indexOf(hoveredDrawerAction)
+                                                            if (fromIndex != -1 && toIndex != -1 && fromIndex != toIndex) {
+                                                                val mutable = currentDrawerTools.toMutableList()
+                                                                val moved = mutable.removeAt(fromIndex)
+                                                                mutable.add(toIndex, moved)
+                                                                currentOnOrderChange(mutable.distinct())
+                                                            }
                                                         }
                                                     }
                                                     draggingAction = null
@@ -329,6 +342,7 @@ fun ToolsDrawerView(
                                 ) {
                                     ToolGridItem(
                                         tool = tool,
+                                        isActive = isActionActive(tool.action),
                                         isDragging = isDraggingThisItem,
                                         isOverAddThreshold = isOverAddThreshold,
                                         isHoveredByToolbar = isHoveredByToolbar,
@@ -351,12 +365,16 @@ fun ToolsDrawerView(
                 }
             }
         }
+
+        // Generous bottom spacer so items at the bottom are fully and easily scrollable
+        Spacer(modifier = Modifier.height(28.dp))
     }
 }
 
 @Composable
 private fun ToolGridItem(
     tool: DrawerTool,
+    isActive: Boolean,
     isDragging: Boolean,
     isOverAddThreshold: Boolean,
     isHoveredByToolbar: Boolean,
@@ -375,14 +393,19 @@ private fun ToolGridItem(
                 .size(54.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(
-                    if (isHoveredByToolbar) colorScheme.accentColor.copy(alpha = 0.25f) else colorScheme.actionKeyBackground
+                    when {
+                        isHoveredByToolbar -> colorScheme.accentColor.copy(alpha = 0.25f)
+                        isActive -> colorScheme.accentColor.copy(alpha = 0.20f)
+                        else -> colorScheme.actionKeyBackground
+                    }
                 )
                 .border(
-                    width = if (isDragging || isHoveredByToolbar) 1.5.dp else 0.dp,
+                    width = if (isDragging || isHoveredByToolbar || isActive) 1.5.dp else 0.dp,
                     color = when {
                         isHoveredByToolbar -> colorScheme.accentColor
                         isOverAddThreshold -> colorScheme.accentColor
                         isDragging -> colorScheme.accentColor.copy(alpha = 0.8f)
+                        isActive -> colorScheme.accentColor
                         else -> Color.Transparent
                     },
                     shape = RoundedCornerShape(16.dp)
@@ -396,7 +419,11 @@ private fun ToolGridItem(
                     else -> tool.icon
                 },
                 contentDescription = tool.label,
-                tint = if (isDragging || isOverAddThreshold || isHoveredByToolbar) colorScheme.accentColor else colorScheme.keyForeground,
+                tint = if (isDragging || isOverAddThreshold || isHoveredByToolbar || isActive) {
+                    colorScheme.accentColor
+                } else {
+                    colorScheme.keyForeground
+                },
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -410,9 +437,13 @@ private fun ToolGridItem(
                 isOverAddThreshold -> "Add to top"
                 else -> tool.label
             },
-            color = if (isOverAddThreshold || isHoveredByToolbar) colorScheme.accentColor else colorScheme.keyForeground,
+            color = if (isOverAddThreshold || isHoveredByToolbar || isActive) {
+                colorScheme.accentColor
+            } else {
+                colorScheme.keyForeground
+            },
             fontSize = 12.sp,
-            fontWeight = if (isOverAddThreshold || isHoveredByToolbar) FontWeight.SemiBold else FontWeight.Normal,
+            fontWeight = if (isOverAddThreshold || isHoveredByToolbar || isActive) FontWeight.SemiBold else FontWeight.Normal,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

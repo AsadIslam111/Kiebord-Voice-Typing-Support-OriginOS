@@ -168,16 +168,14 @@ class KiebordService : InputMethodService() {
             val density = LocalDensity.current
             val navBarBottomDp = with(density) { navBarInsetBottomPx.toDp() }
 
+            val defaultPinnedActions = listOf(ToolbarAction.TEXT_EDIT, ToolbarAction.CLIPBOARD, ToolbarAction.THEME_TOGGLE, ToolbarAction.RESIZER)
             val pinnedToolbarActions = preferencesState.pinnedTools.mapNotNull { name ->
                 try { ToolbarAction.valueOf(name) } catch (_: Exception) { null }
-            }.ifEmpty {
-                listOf(ToolbarAction.TEXT_EDIT, ToolbarAction.CLIPBOARD, ToolbarAction.THEME_TOGGLE, ToolbarAction.RESIZER)
-            }
-            val drawerToolbarActions = preferencesState.drawerTools.mapNotNull { name ->
+            }.distinct().ifEmpty { defaultPinnedActions }
+            val pinnedSet = pinnedToolbarActions.toSet()
+            val drawerToolbarActions = (preferencesState.drawerTools.mapNotNull { name ->
                 try { ToolbarAction.valueOf(name) } catch (_: Exception) { null }
-            }.ifEmpty {
-                listOf(ToolbarAction.NUMBER_ROW_TOGGLE, ToolbarAction.SECONDARY_KEYS_TOGGLE, ToolbarAction.EMOJI, ToolbarAction.ONE_HANDED, ToolbarAction.SETTINGS)
-            }
+            }.filter { it !in pinnedSet } + ToolbarAction.values().filter { it !in pinnedSet }).distinct()
 
             KiebordTheme(colorScheme = colorScheme) {
                 KeyboardRootView(
