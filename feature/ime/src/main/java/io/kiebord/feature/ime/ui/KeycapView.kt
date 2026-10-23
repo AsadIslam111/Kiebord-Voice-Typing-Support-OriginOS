@@ -1,7 +1,8 @@
 package io.kiebord.feature.ime.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -25,8 +26,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +38,9 @@ import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.ShiftState
 import io.kiebord.theme.KiebordTheme
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun KeycapView(
@@ -41,10 +48,15 @@ fun KeycapView(
     shiftState: ShiftState,
     modifier: Modifier = Modifier,
     onKeyTap: (KeyDef) -> Unit,
-    onKeyLongPress: (KeyDef) -> Unit = {}
+    onKeyLongPress: (KeyDef) -> Unit = {},
+    onKeyPositioned: (KeyDef, Rect) -> Unit = { _, _ -> },
+    onSlidingDragStart: (KeyDef, Offset) -> Unit = { _, _ -> },
+    onSlidingDragMove: (Offset) -> Unit = {},
+    onSlidingDragEnd: (Offset) -> Unit = {}
 ) {
     val colorScheme = KiebordTheme.colorScheme
     var isPressed by remember { mutableStateOf(false) }
+    var keyBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
 
     // Dynamic key background & foreground colors driven by configurable theme
     val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SWITCH_LANGUAGE
@@ -69,20 +81,62 @@ fun KeycapView(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .onGloballyPositioned { coords ->
+                val bounds = coords.boundsInWindow()
+                keyBoundsInWindow = bounds
+                onKeyPositioned(key, bounds)
+            }
             .padding(horizontal = 3.dp, vertical = 3.dp)
             .shadow(elevation = if (isPressed) 0.dp else 1.5.dp, shape = RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .background(activeBackground)
             .pointerInput(key, shiftState) {
-                detectTapGestures(
-                    onPress = {
+                coroutineScope {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
                         isPressed = true
-                        tryAwaitRelease()
+                        var isSlidingDrag = false
+                        var isLongPressed = false
+
+                        val longPressJob = launch {
+                            delay(260L)
+                            if (!isSlidingDrag) {
+                                isLongPressed = true
+                                onKeyLongPress(key)
+                            }
+                        }
+
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+
+                            if (!change.pressed) {
+                                longPressJob.cancel()
+                                if (isSlidingDrag) {
+                                    onSlidingDragEnd(keyBoundsInWindow.topLeft + change.position)
+                                } else if (!isLongPressed) {
+                                    onKeyTap(key)
+                                }
+                                break
+                            }
+
+                            val currentPos = change.position
+                            val distance = (currentPos - down.position).getDistance()
+
+                            if (key.slidingInput && distance > 22f && !isSlidingDrag) {
+                                longPressJob.cancel()
+                                isSlidingDrag = true
+                                onSlidingDragStart(key, keyBoundsInWindow.center)
+                            }
+
+                            if (isSlidingDrag) {
+                                change.consume()
+                                onSlidingDragMove(keyBoundsInWindow.topLeft + currentPos)
+                            }
+                        }
                         isPressed = false
-                    },
-                    onTap = { onKeyTap(key) },
-                    onLongPress = { onKeyLongPress(key) }
-                )
+                    }
+                }
             },
         contentAlignment = Alignment.Center
     ) {
