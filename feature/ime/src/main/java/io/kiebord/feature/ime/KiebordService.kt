@@ -176,7 +176,7 @@ class KiebordService : InputMethodService() {
             val drawerToolbarActions = preferencesState.drawerTools.mapNotNull { name ->
                 try { ToolbarAction.valueOf(name) } catch (_: Exception) { null }
             }.ifEmpty {
-                listOf(ToolbarAction.NUMBER_ROW_TOGGLE, ToolbarAction.EMOJI, ToolbarAction.ONE_HANDED, ToolbarAction.SETTINGS)
+                listOf(ToolbarAction.NUMBER_ROW_TOGGLE, ToolbarAction.SECONDARY_KEYS_TOGGLE, ToolbarAction.EMOJI, ToolbarAction.ONE_HANDED, ToolbarAction.SETTINGS)
             }
 
             KiebordTheme(colorScheme = colorScheme) {
@@ -201,7 +201,14 @@ class KiebordService : InputMethodService() {
                     onGestureCommit = ::handleGestureCommit,
                     initialRowHeight = (60 * preferencesState.keyboardHeightScale).dp,
                     defaultShowNumberRow = preferencesState.showNumberRow,
+                    onNumberRowToggle = { enabled ->
+                        serviceScope.launch { preferencesRepo.updateShowNumberRow(enabled) }
+                    },
                     showKeyBorders = preferencesState.showKeyBorders,
+                    defaultShowSecondaryKeys = preferencesState.showSecondaryKeys,
+                    onSecondaryKeysToggle = { enabled ->
+                        serviceScope.launch { preferencesRepo.updateShowSecondaryKeys(enabled) }
+                    },
                     initialPinnedTools = pinnedToolbarActions,
                     initialDrawerTools = drawerToolbarActions,
                     onToolbarToolsChange = { newPinned, newDrawer ->

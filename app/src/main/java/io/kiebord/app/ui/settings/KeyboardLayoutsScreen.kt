@@ -261,6 +261,7 @@ private fun RealKeyboardPreviewCard(
                     onKeyLongPress = {},
                     showKeyBorders = preferences.showKeyBorders,
                     defaultShowNumberRow = false,
+                    defaultShowSecondaryKeys = false,
                     initialRowHeight = 36.dp,
                     applySystemInsets = false,
                     isInteractive = false,

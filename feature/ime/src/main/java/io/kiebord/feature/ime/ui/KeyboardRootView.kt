@@ -76,7 +76,10 @@ fun KeyboardRootView(
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
     initialRowHeight: Dp = 60.dp,
     defaultShowNumberRow: Boolean = false,
+    onNumberRowToggle: ((Boolean) -> Unit)? = null,
     showKeyBorders: Boolean = true,
+    defaultShowSecondaryKeys: Boolean = true,
+    onSecondaryKeysToggle: ((Boolean) -> Unit)? = null,
     onKeyPress: (KeyDef) -> Unit = {},
     onDeleteSwipeMove: (Float) -> Unit = {},
     onDeleteSwipeEnd: () -> Unit = {},
@@ -113,6 +116,7 @@ fun KeyboardRootView(
     )
     val defaultDrawer = listOf(
         ToolbarAction.NUMBER_ROW_TOGGLE,
+        ToolbarAction.SECONDARY_KEYS_TOGGLE,
         ToolbarAction.EMOJI,
         ToolbarAction.ONE_HANDED,
         ToolbarAction.SETTINGS
@@ -176,6 +180,7 @@ fun KeyboardRootView(
     var isTextEditOpen by remember { mutableStateOf(false) }
     var isToolsDrawerOpen by remember { mutableStateOf(false) }
     var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
+    var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
     var keyRowHeight by remember(initialRowHeight) { mutableStateOf(initialRowHeight) }
     var chinPadding by remember { mutableStateOf(8.dp) }
     var horizontalMargin by remember { mutableStateOf(0.dp) }
@@ -242,6 +247,11 @@ fun KeyboardRootView(
             }
             ToolbarAction.NUMBER_ROW_TOGGLE -> {
                 showNumberRow = !showNumberRow
+                onNumberRowToggle?.invoke(showNumberRow)
+            }
+            ToolbarAction.SECONDARY_KEYS_TOGGLE -> {
+                showSecondaryKeys = !showSecondaryKeys
+                onSecondaryKeysToggle?.invoke(showSecondaryKeys)
             }
             ToolbarAction.THEME_TOGGLE -> {
                 onThemeToggle()
@@ -385,6 +395,7 @@ fun KeyboardRootView(
                             isEmojiActive = isEmojiOpen,
                             isResizerActive = isResizerOpen,
                             isNumberRowActive = showNumberRow,
+                            isSecondaryKeysActive = showSecondaryKeys,
                             isTextEditActive = false,
                             isClipboardActive = isClipboardOpen,
                             isCustomizeMode = isToolsDrawerOpen,
@@ -514,6 +525,7 @@ fun KeyboardRootView(
                                 isBottomRow = isBottomRow,
                                 isSlidingSymbolMode = isSlidingSymbolMode,
                                 showKeyBorders = showKeyBorders,
+                                showSecondaryKeys = if (!isInteractive) false else showSecondaryKeys,
                                 isInteractive = isKeysInteractive,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)

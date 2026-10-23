@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Pin
@@ -106,6 +107,7 @@ fun ToolsDrawerView(
             ToolbarAction.THEME_TOGGLE to DrawerTool(ToolbarAction.THEME_TOGGLE, Icons.Outlined.Palette, "Theme"),
             ToolbarAction.RESIZER to DrawerTool(ToolbarAction.RESIZER, Icons.Outlined.CropFree, "Resize"),
             ToolbarAction.NUMBER_ROW_TOGGLE to DrawerTool(ToolbarAction.NUMBER_ROW_TOGGLE, Icons.Outlined.Pin, "Number row"),
+            ToolbarAction.SECONDARY_KEYS_TOGGLE to DrawerTool(ToolbarAction.SECONDARY_KEYS_TOGGLE, Icons.Outlined.Layers, "Key hints"),
             ToolbarAction.EMOJI to DrawerTool(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emoji"),
             ToolbarAction.ONE_HANDED to DrawerTool(ToolbarAction.ONE_HANDED, Icons.Outlined.TouchApp, "One-handed"),
             ToolbarAction.SETTINGS to DrawerTool(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings")

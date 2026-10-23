@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Numbers
+import androidx.compose.material.icons.outlined.SmartButton
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Vibration
@@ -48,6 +49,7 @@ fun PreferencesScreen(
     onUpdateLongPressDelay: (Int) -> Unit,
     onUpdateShowNumberRow: (Boolean) -> Unit,
     onUpdateShowKeyPopups: (Boolean) -> Unit,
+    onUpdateShowSecondaryKeys: (Boolean) -> Unit = {},
     onUpdateCursorTrackpad: (Boolean) -> Unit,
     onUpdateOneHandedMode: (String) -> Unit,
     onUpdateLongPressDelete: (Boolean) -> Unit,
@@ -194,9 +196,17 @@ fun PreferencesScreen(
             )
 
             SettingsToggleItem(
+                title = "Secondary Key Hints",
+                subtitle = "Show secondary symbol hints on the corner of keycaps",
+                icon = Icons.Outlined.Layers,
+                checked = preferences.showSecondaryKeys,
+                onCheckedChange = onUpdateShowSecondaryKeys
+            )
+
+            SettingsToggleItem(
                 title = "Popup on Keypress",
                 subtitle = "Show magnified character pill when touching keys",
-                icon = Icons.Outlined.Layers,
+                icon = Icons.Outlined.SmartButton,
                 checked = preferences.showKeyPopups,
                 showDivider = false,
                 onCheckedChange = onUpdateShowKeyPopups

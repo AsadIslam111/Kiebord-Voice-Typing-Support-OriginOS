@@ -53,6 +53,7 @@ fun KeycapView(
     isBottomRow: Boolean = false,
     isSlidingSymbolMode: Boolean = false,
     showKeyBorders: Boolean = true,
+    showSecondaryKeys: Boolean = true,
     onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
@@ -311,8 +312,8 @@ fun KeycapView(
             },
         contentAlignment = Alignment.Center
     ) {
-        // Flick up preview badge in top right corner (hidden when sliding symbol mode is active)
-        if (!key.flickUp.isNullOrEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode) {
+        // Flick up preview badge in top right corner (hidden when sliding symbol mode is active or secondary keys disabled)
+        if (showSecondaryKeys && !key.flickUp.isNullOrEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode) {
             Text(
                 text = key.flickUp!!,
                 color = colorScheme.keyForeground.copy(alpha = 0.5f),

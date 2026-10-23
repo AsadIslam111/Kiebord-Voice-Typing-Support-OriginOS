@@ -26,6 +26,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val SHOW_NUMBER_ROW = booleanPreferencesKey("pref_show_number_row")
         val SHOW_KEY_BORDERS = booleanPreferencesKey("pref_show_key_borders")
         val SHOW_KEY_POPUPS = booleanPreferencesKey("pref_show_key_popups")
+        val SHOW_SECONDARY_KEYS = booleanPreferencesKey("pref_show_secondary_keys")
 
         val VIBRATE_ON_KEYPRESS = booleanPreferencesKey("pref_vibrate_on_keypress")
         val VIBRATION_TYPE = stringPreferencesKey("pref_vibration_type")
@@ -67,6 +68,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 showNumberRow = prefs[PreferencesKeys.SHOW_NUMBER_ROW] ?: false,
                 showKeyBorders = prefs[PreferencesKeys.SHOW_KEY_BORDERS] ?: true,
                 showKeyPopups = prefs[PreferencesKeys.SHOW_KEY_POPUPS] ?: true,
+                showSecondaryKeys = prefs[PreferencesKeys.SHOW_SECONDARY_KEYS] ?: true,
 
                 vibrateOnKeypress = prefs[PreferencesKeys.VIBRATE_ON_KEYPRESS] ?: true,
                 vibrationType = prefs[PreferencesKeys.VIBRATION_TYPE] ?: KiebordPreferences.VIBRATION_TYPE_HAPTIC,
@@ -97,7 +99,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                     "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"
                 ),
                 drawerTools = prefs[PreferencesKeys.DRAWER_TOOLS]?.split(",")?.filter { it.isNotBlank() } ?: listOf(
-                    "NUMBER_ROW_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+                    "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
                 )
             )
         }
@@ -121,6 +123,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateShowKeyPopups(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.SHOW_KEY_POPUPS] = enabled }
+    }
+
+    suspend fun updateShowSecondaryKeys(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SHOW_SECONDARY_KEYS] = enabled }
     }
 
     // Preferences & Haptics mutators

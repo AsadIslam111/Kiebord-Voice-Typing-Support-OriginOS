@@ -10,6 +10,7 @@ data class KiebordPreferences(
     val showNumberRow: Boolean = false,
     val showKeyBorders: Boolean = true,
     val showKeyPopups: Boolean = true,
+    val showSecondaryKeys: Boolean = true,
 
     // Preferences & Haptics
     val vibrateOnKeypress: Boolean = true,
@@ -41,7 +42,7 @@ data class KiebordPreferences(
 
     // Toolbar rearrangement persistence
     val pinnedTools: List<String> = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"),
-    val drawerTools: List<String> = listOf("NUMBER_ROW_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS")
+    val drawerTools: List<String> = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS")
 ) {
     companion object {
         const val THEME_DEFAULT_DARK = "default_dark"

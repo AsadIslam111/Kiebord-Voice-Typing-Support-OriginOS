@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Pin
@@ -58,6 +59,7 @@ enum class ToolbarAction {
     THEME_TOGGLE,
     RESIZER,
     NUMBER_ROW_TOGGLE,
+    SECONDARY_KEYS_TOGGLE,
     EMOJI,
     ONE_HANDED,
     SETTINGS
@@ -85,6 +87,7 @@ fun ReorderableToolbar(
     isEmojiActive: Boolean = false,
     isResizerActive: Boolean = false,
     isNumberRowActive: Boolean = false,
+    isSecondaryKeysActive: Boolean = false,
     isTextEditActive: Boolean = false,
     isClipboardActive: Boolean = false,
     isCustomizeMode: Boolean = false,
@@ -108,6 +111,7 @@ fun ReorderableToolbar(
             ToolbarAction.THEME_TOGGLE to ToolbarItem(ToolbarAction.THEME_TOGGLE, Icons.Outlined.Palette, "Toggle Theme"),
             ToolbarAction.RESIZER to ToolbarItem(ToolbarAction.RESIZER, Icons.Outlined.CropFree, "Resize Keyboard"),
             ToolbarAction.NUMBER_ROW_TOGGLE to ToolbarItem(ToolbarAction.NUMBER_ROW_TOGGLE, Icons.Outlined.Pin, "Number Row"),
+            ToolbarAction.SECONDARY_KEYS_TOGGLE to ToolbarItem(ToolbarAction.SECONDARY_KEYS_TOGGLE, Icons.Outlined.Layers, "Key Hints"),
             ToolbarAction.EMOJI to ToolbarItem(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emojis"),
             ToolbarAction.ONE_HANDED to ToolbarItem(ToolbarAction.ONE_HANDED, Icons.Outlined.TouchApp, "One-Handed"),
             ToolbarAction.SETTINGS to ToolbarItem(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings")
@@ -155,6 +159,7 @@ fun ReorderableToolbar(
                         ToolbarAction.EMOJI -> isEmojiActive
                         ToolbarAction.RESIZER -> isResizerActive
                         ToolbarAction.NUMBER_ROW_TOGGLE -> isNumberRowActive
+                        ToolbarAction.SECONDARY_KEYS_TOGGLE -> isSecondaryKeysActive
                         ToolbarAction.TEXT_EDIT -> isTextEditActive
                         ToolbarAction.CLIPBOARD -> isClipboardActive
                         else -> false

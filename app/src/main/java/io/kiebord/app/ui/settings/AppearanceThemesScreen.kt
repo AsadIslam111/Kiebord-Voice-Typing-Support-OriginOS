@@ -316,6 +316,7 @@ private fun ThemePreviewBottomSheetContent(
                     onKeyLongPress = {},
                     showKeyBorders = showKeyBorders,
                     defaultShowNumberRow = preferences.showNumberRow,
+                    defaultShowSecondaryKeys = false,
                     initialRowHeight = (60 * preferences.keyboardHeightScale).dp,
                     applySystemInsets = false,
                     isInteractive = false,

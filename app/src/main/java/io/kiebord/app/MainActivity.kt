@@ -275,6 +275,9 @@ fun KiebordSettingsApp(
                             onUpdateShowKeyPopups = { enabled ->
                                 scope.launch { preferencesRepo.updateShowKeyPopups(enabled) }
                             },
+                            onUpdateShowSecondaryKeys = { enabled ->
+                                scope.launch { preferencesRepo.updateShowSecondaryKeys(enabled) }
+                            },
                             onUpdateCursorTrackpad = { enabled ->
                                 scope.launch { preferencesRepo.updateCursorTrackpadEnabled(enabled) }
                             },
