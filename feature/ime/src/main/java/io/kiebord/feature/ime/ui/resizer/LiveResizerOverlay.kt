@@ -211,7 +211,7 @@ fun LiveResizerOverlay(
         ) {
             Box(
                 modifier = Modifier
-                    .padding(bottom = 2.dp)
+                    .padding(bottom = 6.dp)
                     .width(64.dp)
                     .height(10.dp)
                     .shadow(elevation = 6.dp, shape = RoundedCornerShape(5.dp))

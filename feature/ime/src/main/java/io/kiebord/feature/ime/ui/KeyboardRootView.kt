@@ -12,12 +12,17 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -82,6 +87,7 @@ import io.kiebord.feature.ime.ui.dialog.LanguageSelectionDialog
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.KeyboardColorScheme
 
 @Composable
 fun KeyboardRootView(
@@ -1260,7 +1266,10 @@ fun KeyboardRootView(
                     horizontalMargin = savedHorizontalMargin
                     isResizerOpen = false
                 },
-                modifier = Modifier.matchParentSize()
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(bottom = effectiveNavBarBottom)
+                    .zIndex(80f)
             )
         }
 
@@ -1275,12 +1284,20 @@ fun KeyboardRootView(
 
         // 5. Spacebar Layout Slider Floating Popup Overlay
         if (isSpacebarSwiping && effectiveLayoutList.size > 1) {
+            val spaceKeyCoords = keyCoordinatesMap.entries.firstOrNull { it.key.type == KeyType.SPACE }?.value
             SpacebarLayoutSliderOverlay(
                 activeLayouts = effectiveLayoutList,
                 currentIndex = currentLayoutIndex,
                 swipeDeltaX = spacebarSwipeDeltaX,
                 commitThresholdPx = commitThresholdPx,
-                modifier = Modifier.matchParentSize()
+                spaceKeyCoords = spaceKeyCoords,
+                rootCoordinates = rootCoordinates,
+                scaleFactor = scaleFactor,
+                totalBottomPadding = totalBottomPadding,
+                keyRowHeight = keyRowHeight,
+                keyboardLeftPx = keyboardLeftPx,
+                keyboardRightPx = keyboardRightPx,
+                modifier = Modifier.zIndex(90f)
             )
         }
 
@@ -1372,13 +1389,51 @@ fun SpacebarLayoutSliderOverlay(
     currentIndex: Int,
     swipeDeltaX: Float,
     commitThresholdPx: Float,
+    spaceKeyCoords: LayoutCoordinates? = null,
+    rootCoordinates: LayoutCoordinates? = null,
+    scaleFactor: Float = 1.0f,
+    totalBottomPadding: Dp = 8.dp,
+    keyRowHeight: Dp = 58.dp,
+    keyboardLeftPx: Float = 0f,
+    keyboardRightPx: Float = 0f,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
-    val slotPx = with(density) { 140.dp.toPx() }
     val n = activeLayouts.size
     if (n <= 1) return
+
+    // Exact spacebar bounds in root coordinates
+    val (anchorCenterX, anchorTopY, spaceWidthPx) = if (spaceKeyCoords != null && spaceKeyCoords.isAttached &&
+        rootCoordinates != null && rootCoordinates.isAttached) {
+        try {
+            val spaceBounds = rootCoordinates.localBoundingBoxOf(spaceKeyCoords)
+            Triple(spaceBounds.center.x, spaceBounds.top, spaceBounds.width)
+        } catch (_: Exception) {
+            val fallbackRootHeight = rootCoordinates?.size?.height?.toFloat() ?: 0f
+            val spaceTop = fallbackRootHeight - with(density) { (totalBottomPadding + keyRowHeight).toPx() }
+            val fallbackWidth = (keyboardRightPx - keyboardLeftPx) * 0.55f
+            Triple(keyboardLeftPx + (keyboardRightPx - keyboardLeftPx) / 2f, spaceTop, fallbackWidth)
+        }
+    } else {
+        val fallbackRootHeight = rootCoordinates?.size?.height?.toFloat() ?: 0f
+        val spaceTop = fallbackRootHeight - with(density) { (totalBottomPadding + keyRowHeight).toPx() }
+        val fallbackWidth = (keyboardRightPx - keyboardLeftPx) * 0.55f
+        Triple(keyboardLeftPx + (keyboardRightPx - keyboardLeftPx) / 2f, spaceTop, fallbackWidth)
+    }
+
+    // Balanced pill dimensions: at least the width of the spacebar itself
+    val spaceWidthDp = with(density) { spaceWidthPx.toDp() }
+    val maxAllowedWidthDp = with(density) { (keyboardRightPx - keyboardLeftPx - 16f).toDp() }
+    val popupWidth = maxOf(spaceWidthDp, (180 * scaleFactor).dp).coerceAtMost(maxAllowedWidthDp)
+    val popupHeight = (46 * scaleFactor).coerceIn(42f, 52f).dp
+    val defaultGapDp = (12 * scaleFactor).coerceIn(8f, 16f).dp
+
+    val popupWidthPx = with(density) { popupWidth.toPx() }
+    val popupHeightPx = with(density) { popupHeight.toPx() }
+    val defaultGapPx = with(density) { defaultGapDp.toPx() }
+
+    val slotPx = with(density) { (popupWidth * 0.5f).toPx() }
 
     val absDelta = Math.abs(swipeDeltaX)
     val clampedAbs = if (absDelta <= slotPx) {
@@ -1403,22 +1458,45 @@ fun SpacebarLayoutSliderOverlay(
         else -> centerIndex
     }
 
+    // Position popup so its bottom edge is exactly `defaultGapPx` (12dp) above the spacebar's top edge
+    // This gives the exact same offset from the touch point as standard key popups
+    val minTopPx = with(density) { 6.dp.toPx() }
+    val idealTopPx = anchorTopY - defaultGapPx - popupHeightPx
+    val clampedTopPx = if (idealTopPx < minTopPx) minTopPx else idealTopPx
+
+    // Horizontally center above spacebar, clamped within keyboard bounds
+    val marginPx = with(density) { 6.dp.toPx() }
+    val minLeftPx = keyboardLeftPx + marginPx
+    val maxLeftPx = (keyboardRightPx - popupWidthPx - marginPx).coerceAtLeast(minLeftPx)
+    val idealLeftPx = anchorCenterX - (popupWidthPx / 2f)
+    val clampedLeftPx = idealLeftPx.coerceIn(minLeftPx, maxLeftPx)
+
+    val isLight = colorScheme == KeyboardColorScheme.DefaultLight
+    val pillShape = RoundedCornerShape(percent = 50)
+
     Box(
-        modifier = modifier.padding(bottom = 74.dp),
-        contentAlignment = Alignment.BottomCenter
+        modifier = modifier
+            .offset { IntOffset(clampedLeftPx.roundToInt(), clampedTopPx.roundToInt()) }
+            .wrapContentSize()
     ) {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(22.dp))
-                .background(colorScheme.containerBackground.copy(alpha = 0.96f))
+                .requiredSize(width = popupWidth, height = popupHeight)
+                .shadow(
+                    elevation = (4 * scaleFactor).dp,
+                    shape = pillShape,
+                    clip = false,
+                    ambientColor = Color(0x38000000),
+                    spotColor = Color(0x30000000)
+                )
+                .clip(pillShape)
+                .background(colorScheme.moreKeysBackground)
                 .border(
                     width = 1.dp,
-                    color = colorScheme.accentColor.copy(alpha = if (isCommitted) 0.85f else 0.45f),
-                    shape = RoundedCornerShape(22.dp)
+                    color = if (isCommitted) colorScheme.accentColor else (if (isLight) Color(0x1F000000) else Color(0x33FFFFFF)),
+                    shape = pillShape
                 )
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-                .widthIn(min = 190.dp, max = 240.dp)
-                .height(40.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -1449,7 +1527,7 @@ fun SpacebarLayoutSliderOverlay(
                 Text(
                     text = leftName,
                     color = if (isLeftTarget) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.75f),
-                    fontSize = 14.sp,
+                    fontSize = (15.5f * scaleFactor).coerceIn(14f, 18f).sp,
                     fontWeight = if (isLeftTarget) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
                     maxLines = 1,
@@ -1472,7 +1550,7 @@ fun SpacebarLayoutSliderOverlay(
                 Text(
                     text = centerName,
                     color = if (isCenterTarget) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.75f),
-                    fontSize = 14.sp,
+                    fontSize = (15.5f * scaleFactor).coerceIn(14f, 18f).sp,
                     fontWeight = if (isCenterTarget) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
                     maxLines = 1,
@@ -1495,7 +1573,7 @@ fun SpacebarLayoutSliderOverlay(
                 Text(
                     text = rightName,
                     color = if (isRightTarget) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.75f),
-                    fontSize = 14.sp,
+                    fontSize = (15.5f * scaleFactor).coerceIn(14f, 18f).sp,
                     fontWeight = if (isRightTarget) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
                     maxLines = 1,

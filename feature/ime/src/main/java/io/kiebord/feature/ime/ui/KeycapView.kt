@@ -435,7 +435,7 @@ fun KeycapView(
             Text(
                 text = key.flickUp!!,
                 color = colorScheme.keyForeground.copy(alpha = 0.5f),
-                fontSize = (10 * scaleFactor).coerceAtLeast(6f).sp,
+                fontSize = (11 * scaleFactor).coerceAtLeast(6.5f).sp,
                 fontWeight = FontWeight.Normal,
                 fontFamily = KiebordTheme.fontFamily,
                 modifier = Modifier
@@ -512,15 +512,15 @@ fun KeycapView(
                 Text(
                     text = key.displayLabel(shiftState).ifEmpty { "English" },
                     color = colorScheme.keyForeground.copy(alpha = 0.45f),
-                    fontSize = (14 * scaleFactor).coerceAtLeast(7f).sp,
+                    fontSize = (15.5f * scaleFactor).coerceAtLeast(8f).sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = KiebordTheme.fontFamily
                 )
             }
             else -> {
-                val baseCharSize = if (displaySymbolLabel.length > 2) 15.5f else if (displaySymbolLabel.length > 1) 19f else 23.5f
-                val rawSize = if (key.type == KeyType.SYMBOLS) 15.5f else baseCharSize
-                val textSize = (rawSize * scaleFactor).coerceAtLeast(7.5f).sp
+                val baseCharSize = if (displaySymbolLabel.length > 2) 17f else if (displaySymbolLabel.length > 1) 20.5f else 25.5f
+                val rawSize = if (key.type == KeyType.SYMBOLS) 17f else baseCharSize
+                val textSize = (rawSize * scaleFactor).coerceAtLeast(8.5f).sp
                 val isUppercase = displaySymbolLabel.length == 1 && displaySymbolLabel.first().isUpperCase()
                 val verticalShift = if (isUppercase) (1.5f * scaleFactor).dp else 0.dp
                 Text(
@@ -614,7 +614,7 @@ fun KeycapView(
                 Text(
                     text = displaySymbolLabel,
                     color = colorScheme.keyForeground,
-                    fontSize = (25 * scaleFactor).coerceIn(19f, 32f).sp,
+                    fontSize = (27 * scaleFactor).coerceIn(21f, 34f).sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = KiebordTheme.fontFamily,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
