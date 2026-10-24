@@ -340,6 +340,9 @@ fun KeyboardRootView(
         }
     }
 
+    val isQwertyBasedLayout = displayLayout.id == "en_qwerty" || displayLayout.id == "bn_borno"
+    val isEffectiveGestureTypingEnabled = gestureTypingEnabled && isQwertyBasedLayout
+
     // Clear key coordinate cache whenever active layout changes to prevent stale hits
     LaunchedEffect(isSlidingSymbolMode, displayLayout.id) {
         keyCoordinatesMap.clear()
@@ -874,7 +877,7 @@ fun KeyboardRootView(
                                 showKeyPopups = showKeyPopups,
                                 isInteractive = isKeysInteractive,
                                 rowHeight = currentRowHeight,
-                                gestureTypingEnabled = gestureTypingEnabled,
+                                gestureTypingEnabled = isEffectiveGestureTypingEnabled,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)
                                     .fillMaxHeight(),
@@ -1016,7 +1019,7 @@ fun KeyboardRootView(
                                     dragStartPosInRoot = null
                                 },
                                 onGestureStart = { keyCoords, posInKey ->
-                                    if (!gestureTypingEnabled) return@KeycapView
+                                    if (!isEffectiveGestureTypingEnabled) return@KeycapView
                                     val rCoords = rootCoordinates
                                     if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
                                         val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
@@ -1024,7 +1027,7 @@ fun KeyboardRootView(
                                     }
                                 },
                                 onGestureMove = { keyCoords, posInKey ->
-                                    if (!gestureTypingEnabled) return@KeycapView
+                                    if (!isEffectiveGestureTypingEnabled) return@KeycapView
                                     val rCoords = rootCoordinates
                                     if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
                                         val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
@@ -1035,7 +1038,7 @@ fun KeyboardRootView(
                                     }
                                 },
                                 onGestureEnd = {
-                                    if (!gestureTypingEnabled) {
+                                    if (!isEffectiveGestureTypingEnabled) {
                                         gestureTrail = emptyList()
                                         return@KeycapView
                                     }
@@ -1140,7 +1143,7 @@ fun KeyboardRootView(
         }
 
         // 4. Single-colored Gesture Trail Overlay
-        if (gestureTypingEnabled && showGestureTrail) {
+        if (isEffectiveGestureTypingEnabled && showGestureTrail) {
             GestureTrailOverlay(
                 trail = gestureTrail,
                 accentColor = colorScheme.accentColor,

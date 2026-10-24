@@ -109,13 +109,14 @@ class UserDictionaryRepository internal constructor(private val baseDir: File) {
      * Predicts learned subsequent words following [prevWord], sorted descending by learned frequency.
      * Guaranteed zero-allocation, sub-millisecond in-memory lookup.
      */
-    fun getNextWords(prevWord: String, limit: Int = 5): List<String> {
+    fun getNextWords(prevWord: String, limit: Int = 5, filter: ((String) -> Boolean)? = null): List<String> {
         val cleanPrev = prevWord.trim().lowercase()
         if (cleanPrev.isEmpty()) return emptyList()
 
         val nextMap = bigramFrequencies[cleanPrev] ?: return emptyList()
         return nextMap.entries
             .asSequence()
+            .filter { filter == null || filter(it.key) }
             .sortedByDescending { it.value }
             .map { it.key }
             .take(limit)
@@ -126,7 +127,7 @@ class UserDictionaryRepository internal constructor(private val baseDir: File) {
      * Retrieves learned words matching [prefix], sorted descending by usage frequency.
      * Enables user-typed custom words and frequently selected candidates to appear in suggestion strip.
      */
-    fun getCompletions(prefix: String, limit: Int = 5): List<String> {
+    fun getCompletions(prefix: String, limit: Int = 5, filter: ((String) -> Boolean)? = null): List<String> {
         val cleanPrefix = prefix.trim()
         if (cleanPrefix.isEmpty()) return emptyList()
 
@@ -137,11 +138,12 @@ class UserDictionaryRepository internal constructor(private val baseDir: File) {
             .asSequence()
             .filter { entry ->
                 val w = entry.key
-                if (isLatin) {
+                val matches = if (isLatin) {
                     w.lowercase().startsWith(searchPrefix)
                 } else {
                     w.startsWith(searchPrefix)
                 }
+                matches && (filter == null || filter(w))
             }
             .sortedByDescending { it.value }
             .map { it.key }

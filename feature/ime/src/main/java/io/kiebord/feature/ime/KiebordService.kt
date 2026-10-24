@@ -209,7 +209,7 @@ class KiebordService : InputMethodService() {
                         updateSuggestions()
                     },
                     onGestureCommit = ::handleGestureCommit,
-                    gestureTypingEnabled = preferencesState.gestureTypingEnabled,
+                    gestureTypingEnabled = preferencesState.gestureTypingEnabled && isQwertyBasedLayout(activeLayout.id),
                     showGestureTrail = preferencesState.showGestureTrail,
                     initialRowHeight = (58 * preferencesState.keyboardHeightScale).dp,
                     defaultShowNumberRow = preferencesState.showNumberRow,
@@ -1485,20 +1485,67 @@ class KiebordService : InputMethodService() {
         updateSuggestions()
     }
 
+    private fun isBengaliChar(c: Char): Boolean = c in '\u0980'..'\u09FF'
+    private fun isLatinChar(c: Char): Boolean = (c in 'a'..'z') || (c in 'A'..'Z')
+
+    private fun containsBengaliText(text: String): Boolean = text.any { isBengaliChar(it) }
+    private fun containsLatinText(text: String): Boolean = text.any { isLatinChar(it) }
+
+    private fun isBanglaLayout(layout: io.kiebord.common.model.KeyboardLayoutDef = activeLayout): Boolean {
+        return layout.language == "bn" || layout.id.startsWith("bn")
+    }
+
+    private fun isEnglishLayout(layout: io.kiebord.common.model.KeyboardLayoutDef = activeLayout): Boolean {
+        return layout.language == "en" || layout.id.startsWith("en")
+    }
+
+    private fun isQwertyBasedLayout(layoutId: String): Boolean {
+        return layoutId == "en_qwerty" || layoutId == "bn_borno"
+    }
+
+    private fun filterCandidatesForLayout(candidates: List<SuggestionCandidate>): List<SuggestionCandidate> {
+        if (candidates.isEmpty()) return emptyList()
+        val isBangla = isBanglaLayout()
+        val isEnglish = isEnglishLayout()
+        return candidates.filter { cand ->
+            val text = cand.text
+            when {
+                isBangla -> !containsLatinText(text)
+                isEnglish -> !containsBengaliText(text)
+                else -> true
+            }
+        }
+    }
+
+    private fun filterAndMarkCandidates(candidates: List<SuggestionCandidate>): List<SuggestionCandidate> {
+        val filtered = filterCandidatesForLayout(candidates)
+        if (filtered.isEmpty()) return emptyList()
+        val marked = markLearnedCandidates(filtered)
+        return marked.mapIndexed { idx, cand ->
+            if (cand.isPrimary != (idx == 0)) cand.copy(isPrimary = (idx == 0)) else cand
+        }
+    }
+
     private fun handleGestureCommit(
         trail: List<androidx.compose.ui.geometry.Offset>,
         centroids: List<KeyCentroid>,
         keyWidthPx: Float
     ) {
-        if (!preferencesState.gestureTypingEnabled) return
+        if (!preferencesState.gestureTypingEnabled || !isQwertyBasedLayout(activeLayout.id)) return
         if (trail.size < 2 || centroids.isEmpty()) return
 
         val lang = activeLayout.id
         val learnedWords = if (preferencesState.learnedWordsEnabled) {
-            userDictionaryRepo.getAllLearnedWords(50)
+            val all = userDictionaryRepo.getAllLearnedWords(50)
+            if (isBanglaLayout()) {
+                all.filter { !containsLatinText(it) }
+            } else {
+                all.filter { !containsBengaliText(it) }
+            }
         } else emptyList()
 
-        val candidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, learnedWords)
+        val rawCandidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, learnedWords)
+        val candidates = filterCandidatesForLayout(rawCandidates)
         if (candidates.isNotEmpty()) {
             val primary = candidates.first()
             val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
@@ -1515,9 +1562,7 @@ class KiebordService : InputMethodService() {
                 lastSpaceTapTime = SystemClock.uptimeMillis()
             }
 
-            activeSuggestions = markLearnedCandidates(candidates.take(12).mapIndexed { idx, cand ->
-                cand.copy(isPrimary = idx == 0)
-            })
+            activeSuggestions = filterAndMarkCandidates(candidates.take(12))
         }
     }
 
@@ -1540,23 +1585,18 @@ class KiebordService : InputMethodService() {
                 val raw = translitMgr.currentRawInput
                 val translit = translitMgr.currentTransliteration
                 val dictMatches = NativeEngine.querySuggestions(translit, activeLayout.id, 12)
-                    .filter { it != translit }
+                    .filter { it != translit && !containsLatinText(it) }
 
                 val list = mutableListOf<SuggestionCandidate>()
 
-                // 1. Raw typed input first in suggestion bar (e.g. "ami", "intarnet")
-                if (raw.isNotEmpty()) {
-                    list.add(SuggestionCandidate(text = raw, isPrimary = (translit == raw), rawInput = raw))
-                }
-
-                // 2. Primary transliterated word
-                if (translit.isNotEmpty() && translit != raw) {
+                // Primary transliterated word (strictly non-Latin/Bengali)
+                if (translit.isNotEmpty() && !containsLatinText(translit)) {
                     list.add(SuggestionCandidate(text = translit, isPrimary = true, rawInput = raw))
                 }
 
-                // 3. User learned words matching transliterated or raw prefix
-                if (preferencesState.learnedWordsEnabled) {
-                    val learned = (userDictionaryRepo.getCompletions(translit, 4) + userDictionaryRepo.getCompletions(raw, 4)).distinct()
+                // User learned words matching transliterated prefix (strictly non-Latin/Bengali)
+                if (preferencesState.learnedWordsEnabled && translit.isNotEmpty() && !containsLatinText(translit)) {
+                    val learned = userDictionaryRepo.getCompletions(translit, 4) { !containsLatinText(it) }
                     for (w in learned) {
                         if (list.size < 12 && list.none { it.text == w }) {
                             list.add(SuggestionCandidate(text = w, isPrimary = false))
@@ -1564,22 +1604,24 @@ class KiebordService : InputMethodService() {
                     }
                 }
 
-                // 4. Additional dictionary completions & alternatives
+                // Additional dictionary completions & alternatives
                 for (match in dictMatches) {
                     if (list.size < 12 && list.none { it.text == match }) {
                         list.add(SuggestionCandidate(text = match, isPrimary = false))
                     }
                 }
 
-                activeSuggestions = markLearnedCandidates(list.take(12))
+                activeSuggestions = filterAndMarkCandidates(list.take(12))
             } else {
                 val prev = getPrecedingWord()
                 val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
-                    userDictionaryRepo.getNextWords(prev, 5)
+                    userDictionaryRepo.getNextWords(prev, 5) { !containsLatinText(it) }
                 } else emptyList()
-                val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 10) else emptyList()
+                val predictions = if (prev.isNotEmpty()) {
+                    NativeEngine.queryNextWords(prev, activeLayout.id, 10).filter { !containsLatinText(it) }
+                } else emptyList()
                 val merged = (learnedNext + predictions).distinct().take(12)
-                activeSuggestions = markLearnedCandidates(merged.mapIndexed { idx, word ->
+                activeSuggestions = filterAndMarkCandidates(merged.mapIndexed { idx, word ->
                     SuggestionCandidate(text = word, isPrimary = idx == 0)
                 })
             }
@@ -1591,25 +1633,30 @@ class KiebordService : InputMethodService() {
                 val prefix = composingBuffer.toString()
                 if (prefix.isNotEmpty()) {
                     val learned = if (preferencesState.learnedWordsEnabled) {
-                        userDictionaryRepo.getCompletions(prefix, 4)
+                        userDictionaryRepo.getCompletions(prefix, 4) { !containsLatinText(it) }
                     } else emptyList()
                     val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 12)
+                        .filter { !containsLatinText(it) }
                     val merged = (learned + matches).distinct().take(12)
-                    activeSuggestions = markLearnedCandidates(if (merged.isNotEmpty()) {
+                    activeSuggestions = filterAndMarkCandidates(if (merged.isNotEmpty()) {
                         merged.mapIndexed { i, w ->
                             SuggestionCandidate(text = w, isPrimary = i == 0)
                         }
                     } else {
-                        listOf(SuggestionCandidate(text = prefix, isPrimary = true))
+                        if (!containsLatinText(prefix)) {
+                            listOf(SuggestionCandidate(text = prefix, isPrimary = true))
+                        } else emptyList()
                     })
                 } else {
                     val prev = getPrecedingWord()
                     val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
-                        userDictionaryRepo.getNextWords(prev, 5)
+                        userDictionaryRepo.getNextWords(prev, 5) { !containsLatinText(it) }
                     } else emptyList()
-                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 10) else emptyList()
+                    val predictions = if (prev.isNotEmpty()) {
+                        NativeEngine.queryNextWords(prev, activeLayout.id, 10).filter { !containsLatinText(it) }
+                    } else emptyList()
                     val merged = (learnedNext + predictions).distinct().take(12)
-                    activeSuggestions = markLearnedCandidates(merged.mapIndexed { idx, word ->
+                    activeSuggestions = filterAndMarkCandidates(merged.mapIndexed { idx, word ->
                         SuggestionCandidate(text = word, isPrimary = idx == 0)
                     })
                 }
@@ -1618,25 +1665,30 @@ class KiebordService : InputMethodService() {
                 val prefix = composingBuffer.toString()
                 if (prefix.isNotEmpty()) {
                     val learned = if (preferencesState.learnedWordsEnabled) {
-                        userDictionaryRepo.getCompletions(prefix, 4)
+                        userDictionaryRepo.getCompletions(prefix, 4) { !containsBengaliText(it) }
                     } else emptyList()
                     val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 12)
+                        .filter { !containsBengaliText(it) }
                     val merged = (learned + matches).distinct().take(12)
-                    activeSuggestions = markLearnedCandidates(if (merged.isNotEmpty()) {
+                    activeSuggestions = filterAndMarkCandidates(if (merged.isNotEmpty()) {
                         merged.mapIndexed { i, w ->
                             SuggestionCandidate(text = w, isPrimary = i == 0)
                         }
                     } else {
-                        listOf(SuggestionCandidate(text = prefix, isPrimary = true))
+                        if (!containsBengaliText(prefix)) {
+                            listOf(SuggestionCandidate(text = prefix, isPrimary = true))
+                        } else emptyList()
                     })
                 } else {
                     val prev = getPrecedingWord()
                     val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
-                        userDictionaryRepo.getNextWords(prev, 5)
+                        userDictionaryRepo.getNextWords(prev, 5) { !containsBengaliText(it) }
                     } else emptyList()
-                    val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 10) else emptyList()
+                    val predictions = if (prev.isNotEmpty()) {
+                        NativeEngine.queryNextWords(prev, activeLayout.id, 10).filter { !containsBengaliText(it) }
+                    } else emptyList()
                     val merged = (learnedNext + predictions).distinct().take(12)
-                    activeSuggestions = markLearnedCandidates(merged.mapIndexed { idx, word ->
+                    activeSuggestions = filterAndMarkCandidates(merged.mapIndexed { idx, word ->
                         SuggestionCandidate(text = word, isPrimary = idx == 0)
                     })
                 }

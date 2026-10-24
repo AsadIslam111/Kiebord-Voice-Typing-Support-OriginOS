@@ -28,16 +28,27 @@ class CrossLanguageGestureDecoder {
         if (points.size < 2 || keyCentroids.isEmpty()) return emptyList()
 
         val kw = keyWidthPx.coerceAtLeast(10f)
+        val isBangla = lang.startsWith("bn")
+        val isEnglish = lang.startsWith("en")
+
+        val sanitizedLearned = learnedWords.filter { w ->
+            when {
+                isBangla -> !w.any { (it in 'a'..'z') || (it in 'A'..'Z') }
+                isEnglish -> !w.any { it in '\u0980'..'\u09FF' }
+                else -> true
+            }
+        }
+
         val decodedWords = if (NativeEngine.isAvailable()) {
-            NativeEngine.queryGesture(points, keyCentroids, kw, lang, 8, learnedWords)
+            NativeEngine.queryGesture(points, keyCentroids, kw, lang, 8, sanitizedLearned)
         } else {
             emptyList()
         }
 
-        val learnedSet = learnedWords.toSet()
+        val learnedSet = sanitizedLearned.toSet()
 
         // Prioritize dictionary decoded words first!
-        val sortedWords = if (learnedWords.isNotEmpty()) {
+        val sortedWords = if (sanitizedLearned.isNotEmpty()) {
             val decodedSet = decodedWords.toSet()
             val matchingLearned = if (keyCentroids.isNotEmpty()) {
                 val keyMap = HashMap<Char, Offset>(keyCentroids.size)
@@ -46,7 +57,7 @@ class CrossLanguageGestureDecoder {
                         keyMap[k.character[0].lowercaseChar()] = Offset(k.centerX, k.centerY)
                     }
                 }
-                learnedWords
+                sanitizedLearned
                     .filter { !decodedSet.contains(it) }
                     .mapNotNull { lw ->
                         val score = scoreLearnedWord(lw, points, keyMap, kw)
@@ -77,16 +88,18 @@ class CrossLanguageGestureDecoder {
             val candidates = mutableListOf<SuggestionCandidate>()
             for (i in sortedWords.indices) {
                 val word = sortedWords[i]
+                if (isBangla && word.any { (it in 'a'..'z') || (it in 'A'..'Z') }) continue
+                if (isEnglish && word.any { it in '\u0980'..'\u09FF' }) continue
                 candidates.add(
                     SuggestionCandidate(
                         text = word,
-                        isPrimary = (i == 0),
+                        isPrimary = (candidates.isEmpty()),
                         rawInput = word,
                         isLearned = learnedSet.contains(word)
                     )
                 )
             }
-            return candidates
+            if (candidates.isNotEmpty()) return candidates
         }
 
         // Fallback: heuristic key sequence along trajectory
@@ -135,19 +148,18 @@ class CrossLanguageGestureDecoder {
             } else {
                 rawWord
             }
-            return listOf(
-                SuggestionCandidate(
-                    text = transliterated,
-                    isPrimary = true,
-                    rawInput = rawWord
-                ),
-                SuggestionCandidate(
-                    text = rawWord,
-                    isPrimary = false,
-                    rawInput = rawWord
+            return if (!transliterated.any { (it in 'a'..'z') || (it in 'A'..'Z') }) {
+                listOf(
+                    SuggestionCandidate(
+                        text = transliterated,
+                        isPrimary = true,
+                        rawInput = rawWord
+                    )
                 )
-            )
+            } else emptyList()
         } else {
+            if (isEnglish && rawWord.any { it in '\u0980'..'\u09FF' }) return emptyList()
+            if (isBangla && rawWord.any { (it in 'a'..'z') || (it in 'A'..'Z') }) return emptyList()
             return listOf(
                 SuggestionCandidate(
                     text = rawWord,

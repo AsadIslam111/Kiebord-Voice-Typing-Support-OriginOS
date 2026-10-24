@@ -121,7 +121,8 @@ pub fn generate_dict_assets(combined_dir: &Path, out_dir: &Path) -> std::io::Res
 /// Main entry point for query suggestions: exact completions + proximity typo corrections.
 /// Returns a pipe-delimited string of suggestions, e.g. "the|that|this"
 pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) -> String {
-    let dict_opt = if lang_or_layout.starts_with("bn") {
+    let is_bn = lang_or_layout.starts_with("bn");
+    let dict_opt = if is_bn {
         get_bn_binary_dict()
     } else {
         get_en_binary_dict()
@@ -144,6 +145,13 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
             }
         }
 
+        // Strict language separation: purge cross-language words
+        if is_bn {
+            words.retain(|w| !w.chars().any(|c| c.is_ascii_alphabetic()));
+        } else {
+            words.retain(|w| !w.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c)));
+        }
+
         words.join("|")
     } else {
         String::new()
@@ -153,14 +161,20 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
 /// Main entry point for next-word prediction based on previous committed word.
 /// Returns a pipe-delimited string of predicted words, e.g. "are|is|do"
 pub fn predict_next_words(prev_word: &str, lang_or_layout: &str, max_results: usize) -> String {
-    let dict_opt = if lang_or_layout.starts_with("bn") {
+    let is_bn = lang_or_layout.starts_with("bn");
+    let dict_opt = if is_bn {
         get_bn_binary_dict()
     } else {
         get_en_binary_dict()
     };
 
     if let Some(dict) = dict_opt {
-        let words = dict.predict_next(prev_word, max_results);
+        let mut words = dict.predict_next(prev_word, max_results);
+        if is_bn {
+            words.retain(|w| !w.chars().any(|c| c.is_ascii_alphabetic()));
+        } else {
+            words.retain(|w| !w.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c)));
+        }
         words.join("|")
     } else {
         String::new()

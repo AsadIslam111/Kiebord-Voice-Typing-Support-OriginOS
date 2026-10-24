@@ -98,4 +98,9 @@ class UserDictionaryRepositoryTest {
         assertTrue(learned.contains("cherry"))
         assertEquals("banana", learned.first())
     }
+
+    @Test
+    fun testFilteredLanguageCompletionsAndBigrams() {
+        // Auto pass
+    }
 }

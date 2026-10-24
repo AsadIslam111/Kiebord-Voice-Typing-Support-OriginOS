@@ -220,9 +220,10 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
             (dict, true)
         }
         None => {
-            let dict = match lang_id.as_str() {
-                "bn" | "bn_probhat" => dictionary::get_bn_binary_dict(),
-                _ => dictionary::get_en_binary_dict(),
+            let dict = if lang_id.starts_with("bn") {
+                dictionary::get_bn_binary_dict()
+            } else {
+                dictionary::get_en_binary_dict()
             };
             (dict, false)
         }
@@ -233,14 +234,26 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
         None => return empty,
     };
 
+    let is_bn_mode = is_phonetic || lang_id.starts_with("bn");
+    let sanitized_learned: Vec<String> = if is_bn_mode {
+        learned_words.into_iter().filter(|w| !w.chars().any(|c| c.is_ascii_alphabetic())).collect()
+    } else {
+        learned_words.into_iter().filter(|w| !w.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c))).collect()
+    };
+
     let limit = if max_results <= 0 { 5 } else { max_results as usize };
     let candidates = if is_phonetic {
         let t = translit_opt.unwrap();
-        gesture::decoder::GestureDecoder::decode_phonetic_with_learned(&points, &keys, key_width, dict, t, limit, &learned_words)
+        gesture::decoder::GestureDecoder::decode_phonetic_with_learned(&points, &keys, key_width, dict, t, limit, &sanitized_learned)
     } else {
-        gesture::decoder::GestureDecoder::decode_with_learned(&points, &keys, key_width, dict, limit, &learned_words)
+        gesture::decoder::GestureDecoder::decode_with_learned(&points, &keys, key_width, dict, limit, &sanitized_learned)
     };
-    let words: Vec<String> = candidates.into_iter().map(|c| c.word).collect();
+    let mut words: Vec<String> = candidates.into_iter().map(|c| c.word).collect();
+    if is_bn_mode {
+        words.retain(|w| !w.chars().any(|c| c.is_ascii_alphabetic()));
+    } else {
+        words.retain(|w| !w.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c)));
+    }
     let result = words.join("|");
     env.new_string(result).unwrap().into_raw()
 }

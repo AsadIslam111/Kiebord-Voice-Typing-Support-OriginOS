@@ -238,7 +238,7 @@ impl GestureDecoder {
         let mut learned_matches: Vec<GestureCandidate> = Vec::new();
 
         for lw in learned_words {
-            if dict_word_set.contains(lw) {
+            if dict_word_set.contains(lw) || lw.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c)) {
                 continue;
             }
             let chars: Vec<char> = lw.chars().collect();
@@ -721,12 +721,16 @@ impl GestureDecoder {
                     }
                 }
             } else {
-                let chars: Vec<char> = lw.chars().collect();
-                if let Some(score) = Self::evaluate_candidate(&chars, &key_map, &user_path, kw, 255) {
-                    let slot = word_scores.entry(lw.clone()).or_insert(f32::MIN);
-                    let boosted = score + 30.0;
-                    if boosted > *slot {
-                        *slot = boosted;
+                let is_bengali = lw.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c));
+                let has_ascii = lw.chars().any(|c| c.is_ascii_alphabetic());
+                if is_bengali && !has_ascii {
+                    let chars: Vec<char> = lw.chars().collect();
+                    if let Some(score) = Self::evaluate_candidate(&chars, &key_map, &user_path, kw, 255) {
+                        let slot = word_scores.entry(lw.clone()).or_insert(f32::MIN);
+                        let boosted = score + 30.0;
+                        if boosted > *slot {
+                            *slot = boosted;
+                        }
                     }
                 }
             }
@@ -735,6 +739,7 @@ impl GestureDecoder {
         let mut candidates: Vec<GestureCandidate> = word_scores
             .into_iter()
             .map(|(word, score)| GestureCandidate { word, score })
+            .filter(|c| !c.word.chars().any(|ch| ch.is_ascii_alphabetic()))
             .collect();
 
         candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
