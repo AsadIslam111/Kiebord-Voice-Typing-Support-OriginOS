@@ -208,7 +208,7 @@ fun PreferencesScreen(
 
             SettingsToggleItem(
                 title = "Popup on Keypress",
-                subtitle = "Show magnified character pill when touching keys",
+                subtitle = "Show circular character preview popup when touching keys",
                 icon = Icons.Outlined.SmartButton,
                 checked = preferences.showKeyPopups,
                 showDivider = false,

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
@@ -32,12 +33,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.ShiftState
@@ -56,6 +60,7 @@ fun KeycapView(
     isSlidingSymbolMode: Boolean = false,
     showKeyBorders: Boolean = true,
     showSecondaryKeys: Boolean = true,
+    showKeyPopups: Boolean = true,
     rowHeight: Dp = 54.dp,
     onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
@@ -84,6 +89,7 @@ fun KeycapView(
     val density = LocalDensity.current
     val scaleFactor = (rowHeight.value / 54f).coerceIn(0.4f, 1.6f)
     var isPressed by remember { mutableStateOf(false) }
+    var isMoreKeysActive by remember { mutableStateOf(false) }
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     // Dynamic key background & foreground colors driven by configurable theme
@@ -153,42 +159,50 @@ fun KeycapView(
     val currentOnGestureEnd = rememberUpdatedState(onGestureEnd)
     val currentGestureTypingEnabled = rememberUpdatedState(gestureTypingEnabled)
 
+    val showCircularPopup = showKeyPopups && isPressed && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isMoreKeysActive
+
     // Key styling: cleanly toggles between keyborder mode (keycap boxes) and flat mode (no boxes except accent pills)
     Box(
         modifier = modifier
             .fillMaxSize()
+            .zIndex(if (showCircularPopup) 50f else 0f)
             .onGloballyPositioned { coords ->
                 keyCoordinates = coords
                 onKeyPositioned(key, coords)
-            }
-            .padding(horizontal = horizontalPadding, vertical = verticalPadding)
-            .then(
-                if (showKeyBorders && colorScheme.keyShadow.alpha > 0.01f) {
-                    Modifier.shadow(
-                        elevation = (1.5f * scaleFactor).dp,
-                        shape = keyShape,
-                        clip = false,
-                        ambientColor = colorScheme.keyShadow,
-                        spotColor = colorScheme.keyShadow
-                    )
-                } else {
-                    Modifier
-                }
-            )
-            .clip(keyShape)
-            .background(activeBackground)
-            .pointerInput(isInteractive, gestureTypingEnabled) {
-                if (!isInteractive) return@pointerInput
-                coroutineScope {
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        val initialKey = currentKey.value
-                        val initialDownPos = down.position
-                        isPressed = true
-                        currentOnKeyPress.value(initialKey)
-                        var isMoreKeysActive = false
-                        var isSlidingDrag = false
-                        var isSpacebarDwellReady = false
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding)
+                .then(
+                    if (showKeyBorders && colorScheme.keyShadow.alpha > 0.01f) {
+                        Modifier.shadow(
+                            elevation = (1.5f * scaleFactor).dp,
+                            shape = keyShape,
+                            clip = false,
+                            ambientColor = colorScheme.keyShadow,
+                            spotColor = colorScheme.keyShadow
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
+                .clip(keyShape)
+                .background(activeBackground)
+                .pointerInput(isInteractive, gestureTypingEnabled) {
+                    if (!isInteractive) return@pointerInput
+                    coroutineScope {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            val initialKey = currentKey.value
+                            val initialDownPos = down.position
+                            isPressed = true
+                            isMoreKeysActive = false
+                            currentOnKeyPress.value(initialKey)
+                            var isSlidingDrag = false
+                            var isSpacebarDwellReady = false
                         var isSpacebarSwipingLayout = false
                         var initialSpacebarSwipeX = 0f
                         var isSpacebarTrackpadActive = false
@@ -236,6 +250,7 @@ fun KeycapView(
                                 // Touch released!
                                 spacebarDwellJob?.cancel()
                                 longPressJob.cancel()
+                                isMoreKeysActive = false
                                 val delta = change.position - initialDownPos
                                 if (isDeleteSwipeActive) {
                                     if (delta.x < -18f) {
@@ -348,6 +363,7 @@ fun KeycapView(
                                     longPressJob.cancel()
                                     isGestureTyping = true
                                     isPressed = false
+                                    isMoreKeysActive = false
                                     val coords = keyCoordinates
                                     if (coords != null && coords.isAttached) {
                                         currentOnGestureStart.value(coords, initialDownPos)
@@ -378,6 +394,7 @@ fun KeycapView(
                             currentOnGestureEnd.value()
                         }
                         isPressed = false
+                        isMoreKeysActive = false
                     }
                 }
             },
@@ -492,6 +509,75 @@ fun KeycapView(
                             trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
                         ),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                )
+            }
+        }
+    }
+
+        // Circular Keypress Preview Popup
+        if (showCircularPopup) {
+            val popupDiameter = (52 * scaleFactor).coerceIn(44f, 60f).dp
+            val popupOffsetY = (-54 * scaleFactor).coerceIn(-64f, -46f).dp
+
+            val coords = keyCoordinates
+            val clampedOffsetX = if (coords != null && coords.isAttached) {
+                try {
+                    val rootCoords = coords.findRootCoordinates()
+                    val rootWidth = rootCoords.size.width.toFloat()
+                    val rootPos = coords.positionInRoot()
+                    val keyCenterX = rootPos.x + coords.size.width / 2f
+                    val halfPopupPx = with(density) { (popupDiameter / 2).toPx() }
+                    val marginPx = with(density) { 6.dp.toPx() }
+                    val minCenterX = halfPopupPx + marginPx
+                    val maxCenterX = rootWidth - halfPopupPx - marginPx
+                    val nudgePx = when {
+                        keyCenterX < minCenterX -> minCenterX - keyCenterX
+                        keyCenterX > maxCenterX -> maxCenterX - keyCenterX
+                        else -> 0f
+                    }
+                    with(density) { nudgePx.toDp() }
+                } catch (_: Exception) {
+                    0.dp
+                }
+            } else {
+                0.dp
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(x = clampedOffsetX, y = popupOffsetY)
+                    .size(popupDiameter)
+                    .shadow(
+                        elevation = (5 * scaleFactor).dp,
+                        shape = CircleShape,
+                        clip = false,
+                        ambientColor = colorScheme.keyShadow,
+                        spotColor = colorScheme.keyShadow
+                    )
+                    .clip(CircleShape)
+                    .background(colorScheme.keyBackground)
+                    .border(
+                        width = 1.2.dp,
+                        color = colorScheme.accentColor.copy(alpha = 0.35f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = displaySymbolLabel,
+                    color = colorScheme.keyForeground,
+                    fontSize = (25 * scaleFactor).coerceIn(19f, 32f).sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = KiebordTheme.fontFamily,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    style = androidx.compose.ui.text.TextStyle(
+                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                        lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                            alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                            trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+                        )
                     )
                 )
             }

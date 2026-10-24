@@ -91,6 +91,8 @@ class KiebordService : InputMethodService() {
     private var activeSuggestions by mutableStateOf<List<SuggestionCandidate>>(emptyList())
     private lateinit var clipboardManager: SandboxedClipboardManager
     private lateinit var userDictionaryRepo: UserDictionaryRepository
+    private var selectionAnchor: Int? = null
+    private var selectionCursor: Int? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -222,6 +224,10 @@ class KiebordService : InputMethodService() {
                     onSecondaryKeysToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateShowSecondaryKeys(enabled) }
                     },
+                    defaultShowKeyPopups = preferencesState.showKeyPopups,
+                    onKeyPopupsToggle = { enabled ->
+                        serviceScope.launch { preferencesRepo.updateShowKeyPopups(enabled) }
+                    },
                     initialPinnedTools = pinnedToolbarActions,
                     initialDrawerTools = drawerToolbarActions,
                     onToolbarToolsChange = { newPinned, newDrawer ->
@@ -289,6 +295,8 @@ class KiebordService : InputMethodService() {
         lastGestureCommittedWord = ""
         lastSpaceTapTime = 0L
         lastAutoSpacePunctuationTime = 0L
+        selectionAnchor = null
+        selectionCursor = null
         updateSuggestions()
     }
 
@@ -297,6 +305,8 @@ class KiebordService : InputMethodService() {
         finishComposing()
         lastSpaceTapTime = 0L
         lastAutoSpacePunctuationTime = 0L
+        selectionAnchor = null
+        selectionCursor = null
         activeSuggestions = emptyList()
         lifecycleOwner.onStop()
     }
@@ -1019,16 +1029,28 @@ class KiebordService : InputMethodService() {
                     val textLen = extracted.text.length
                     val start = extracted.selectionStart.coerceIn(0, textLen)
                     val end = extracted.selectionEnd.coerceIn(0, textLen)
-                    if (start <= 0 && (!isSelecting || end <= 0)) {
-                        false
-                    } else if (isSelecting) {
-                        val newStart = (start - 1).coerceIn(0, textLen)
-                        ic.setSelection(newStart, end)
-                        true
+                    if (isSelecting) {
+                        val anchor = selectionAnchor ?: start
+                        val cur = selectionCursor ?: if (start == end) start else if (anchor == start) end else start
+                        if (cur <= 0) {
+                            false
+                        } else {
+                            val newCur = (cur - 1).coerceIn(0, textLen)
+                            selectionAnchor = anchor
+                            selectionCursor = newCur
+                            ic.setSelection(minOf(anchor, newCur), maxOf(anchor, newCur))
+                            true
+                        }
                     } else {
-                        val newPos = if (start != end) start else (start - 1).coerceIn(0, textLen)
-                        ic.setSelection(newPos, newPos)
-                        true
+                        selectionAnchor = null
+                        selectionCursor = null
+                        if (start <= 0 && end <= 0) {
+                            false
+                        } else {
+                            val newPos = if (start != end) start else (start - 1).coerceIn(0, textLen)
+                            ic.setSelection(newPos, newPos)
+                            true
+                        }
                     }
                 } else {
                     val before = ic.getTextBeforeCursor(1, 0)
@@ -1046,16 +1068,28 @@ class KiebordService : InputMethodService() {
                     val textLen = extracted.text.length
                     val start = extracted.selectionStart.coerceIn(0, textLen)
                     val end = extracted.selectionEnd.coerceIn(0, textLen)
-                    if (end >= textLen && (!isSelecting || start >= textLen)) {
-                        false
-                    } else if (isSelecting) {
-                        val newEnd = (end + 1).coerceIn(0, textLen)
-                        ic.setSelection(start, newEnd)
-                        true
+                    if (isSelecting) {
+                        val anchor = selectionAnchor ?: start
+                        val cur = selectionCursor ?: if (start == end) end else if (anchor == end) start else end
+                        if (cur >= textLen) {
+                            false
+                        } else {
+                            val newCur = (cur + 1).coerceIn(0, textLen)
+                            selectionAnchor = anchor
+                            selectionCursor = newCur
+                            ic.setSelection(minOf(anchor, newCur), maxOf(anchor, newCur))
+                            true
+                        }
                     } else {
-                        val newPos = if (start != end) end else (end + 1).coerceIn(0, textLen)
-                        ic.setSelection(newPos, newPos)
-                        true
+                        selectionAnchor = null
+                        selectionCursor = null
+                        if (start >= textLen && end >= textLen) {
+                            false
+                        } else {
+                            val newPos = if (start != end) end else (end + 1).coerceIn(0, textLen)
+                            ic.setSelection(newPos, newPos)
+                            true
+                        }
                     }
                 } else {
                     val after = ic.getTextAfterCursor(1, 0)
@@ -1068,6 +1102,8 @@ class KiebordService : InputMethodService() {
                 }
             }
             TextAction.MOVE_UP -> {
+                selectionAnchor = null
+                selectionCursor = null
                 val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
                 if (extracted != null && extracted.text != null) {
                     val text = extracted.text.toString()
@@ -1093,6 +1129,8 @@ class KiebordService : InputMethodService() {
                 }
             }
             TextAction.MOVE_DOWN -> {
+                selectionAnchor = null
+                selectionCursor = null
                 val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
                 if (extracted != null && extracted.text != null) {
                     val text = extracted.text.toString()
@@ -1124,10 +1162,11 @@ class KiebordService : InputMethodService() {
                     val textLen = text.length
                     val start = extracted.selectionStart.coerceIn(0, textLen)
                     val end = extracted.selectionEnd.coerceIn(0, textLen)
-                    if (start <= 0) {
+                    val cur = if (isSelecting) (selectionCursor ?: start) else start
+                    if (cur <= 0) {
                         false
                     } else {
-                        var idx = start - 1
+                        var idx = cur - 1
                         while (idx > 0 && text[idx].isWhitespace()) {
                             idx--
                         }
@@ -1135,12 +1174,21 @@ class KiebordService : InputMethodService() {
                             idx--
                         }
                         val target = idx.coerceIn(0, textLen)
-                        if (isSelecting) {
-                            ic.setSelection(target, end)
+                        if (target == cur) {
+                            false
                         } else {
-                            ic.setSelection(target, target)
+                            if (isSelecting) {
+                                val anchor = selectionAnchor ?: start
+                                selectionAnchor = anchor
+                                selectionCursor = target
+                                ic.setSelection(minOf(anchor, target), maxOf(anchor, target))
+                            } else {
+                                selectionAnchor = null
+                                selectionCursor = null
+                                ic.setSelection(target, target)
+                            }
+                            true
                         }
-                        true
                     }
                 } else {
                     val before = ic.getTextBeforeCursor(1, 0)
@@ -1159,10 +1207,11 @@ class KiebordService : InputMethodService() {
                     val textLen = text.length
                     val start = extracted.selectionStart.coerceIn(0, textLen)
                     val end = extracted.selectionEnd.coerceIn(0, textLen)
-                    if (end >= textLen) {
+                    val cur = if (isSelecting) (selectionCursor ?: end) else end
+                    if (cur >= textLen) {
                         false
                     } else {
-                        var idx = end
+                        var idx = cur
                         while (idx < textLen && text[idx].isWhitespace()) {
                             idx++
                         }
@@ -1170,12 +1219,21 @@ class KiebordService : InputMethodService() {
                             idx++
                         }
                         val target = idx.coerceIn(0, textLen)
-                        if (isSelecting) {
-                            ic.setSelection(start, target)
+                        if (target == cur) {
+                            false
                         } else {
-                            ic.setSelection(target, target)
+                            if (isSelecting) {
+                                val anchor = selectionAnchor ?: start
+                                selectionAnchor = anchor
+                                selectionCursor = target
+                                ic.setSelection(minOf(anchor, target), maxOf(anchor, target))
+                            } else {
+                                selectionAnchor = null
+                                selectionCursor = null
+                                ic.setSelection(target, target)
+                            }
+                            true
                         }
-                        true
                     }
                 } else {
                     val after = ic.getTextAfterCursor(1, 0)
@@ -1194,18 +1252,23 @@ class KiebordService : InputMethodService() {
                     val textLen = text.length
                     val start = extracted.selectionStart.coerceIn(0, textLen)
                     val end = extracted.selectionEnd.coerceIn(0, textLen)
-                    val pos = start
-                    if (pos <= 0) {
+                    val cur = if (isSelecting) (selectionCursor ?: start) else start
+                    if (cur <= 0) {
                         false
                     } else {
-                        val prevNewline = text.lastIndexOf('\n', (pos - 1).coerceAtLeast(0))
+                        val prevNewline = text.lastIndexOf('\n', (cur - 1).coerceAtLeast(0))
                         val target = if (prevNewline == -1) 0 else (prevNewline + 1).coerceIn(0, textLen)
-                        if (target == pos) {
+                        if (target == cur) {
                             false
                         } else {
                             if (isSelecting) {
-                                ic.setSelection(target, end)
+                                val anchor = selectionAnchor ?: start
+                                selectionAnchor = anchor
+                                selectionCursor = target
+                                ic.setSelection(minOf(anchor, target), maxOf(anchor, target))
                             } else {
+                                selectionAnchor = null
+                                selectionCursor = null
                                 ic.setSelection(target, target)
                             }
                             true
@@ -1228,18 +1291,23 @@ class KiebordService : InputMethodService() {
                     val textLen = text.length
                     val start = extracted.selectionStart.coerceIn(0, textLen)
                     val end = extracted.selectionEnd.coerceIn(0, textLen)
-                    val pos = end
-                    if (pos >= textLen) {
+                    val cur = if (isSelecting) (selectionCursor ?: end) else end
+                    if (cur >= textLen) {
                         false
                     } else {
-                        val nextNewline = text.indexOf('\n', pos)
+                        val nextNewline = text.indexOf('\n', cur)
                         val target = if (nextNewline == -1) textLen else nextNewline.coerceIn(0, textLen)
-                        if (target == pos) {
+                        if (target == cur) {
                             false
                         } else {
                             if (isSelecting) {
-                                ic.setSelection(start, target)
+                                val anchor = selectionAnchor ?: start
+                                selectionAnchor = anchor
+                                selectionCursor = target
+                                ic.setSelection(minOf(anchor, target), maxOf(anchor, target))
                             } else {
+                                selectionAnchor = null
+                                selectionCursor = null
                                 ic.setSelection(target, target)
                             }
                             true
@@ -1258,51 +1326,20 @@ class KiebordService : InputMethodService() {
             TextAction.SELECT -> {
                 val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
                 if (isSelecting) {
-                    val selectedText = ic.getSelectedText(0)
-                    if (selectedText.isNullOrEmpty()) {
-                        if (extracted != null && extracted.text != null) {
-                            val text = extracted.text.toString()
-                            val textLen = text.length
-                            val cur = extracted.selectionStart.coerceIn(0, textLen)
-                            var wordStart = cur
-                            while (wordStart > 0 && !text[wordStart - 1].isWhitespace() && !isWordSeparator(text[wordStart - 1])) {
-                                wordStart--
-                            }
-                            var wordEnd = cur
-                            while (wordEnd < textLen && !text[wordEnd].isWhitespace() && !isWordSeparator(text[wordEnd])) {
-                                wordEnd++
-                            }
-                            if (wordStart < wordEnd) {
-                                ic.setSelection(wordStart, wordEnd)
-                            } else if (textLen > 0) {
-                                val s = if (cur < textLen) cur else (cur - 1).coerceAtLeast(0)
-                                val e = (s + 1).coerceIn(0, textLen)
-                                ic.setSelection(s, e)
-                            }
-                        } else {
-                            val before = ic.getTextBeforeCursor(100, 0)?.toString() ?: ""
-                            val after = ic.getTextAfterCursor(100, 0)?.toString() ?: ""
-                            var wordBefore = 0
-                            for (i in before.length - 1 downTo 0) {
-                                if (before[i].isWhitespace() || isWordSeparator(before[i])) break
-                                wordBefore++
-                            }
-                            var wordAfter = 0
-                            for (i in 0 until after.length) {
-                                if (after[i].isWhitespace() || isWordSeparator(after[i])) break
-                                wordAfter++
-                            }
-                            if (wordBefore > 0 || wordAfter > 0) {
-                                repeat(wordBefore) {
-                                    sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_LEFT, false)
-                                }
-                                repeat(wordBefore + wordAfter) {
-                                    sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_RIGHT, true)
-                                }
-                            }
-                        }
+                    // Only enable select mode without selecting any text to the left.
+                    if (extracted != null && extracted.text != null) {
+                        val textLen = extracted.text.length
+                        val start = extracted.selectionStart.coerceIn(0, textLen)
+                        val end = extracted.selectionEnd.coerceIn(0, textLen)
+                        selectionAnchor = start
+                        selectionCursor = end
+                    } else {
+                        selectionAnchor = null
+                        selectionCursor = null
                     }
                 } else {
+                    selectionAnchor = null
+                    selectionCursor = null
                     if (extracted != null && extracted.text != null) {
                         val end = extracted.selectionEnd.coerceIn(0, extracted.text.length)
                         ic.setSelection(end, end)
@@ -1313,10 +1350,14 @@ class KiebordService : InputMethodService() {
                 true
             }
             TextAction.SELECT_ALL -> {
+                selectionAnchor = null
+                selectionCursor = null
                 ic.performContextMenuAction(android.R.id.selectAll)
                 true
             }
             TextAction.CUT -> {
+                selectionAnchor = null
+                selectionCursor = null
                 ic.performContextMenuAction(android.R.id.cut)
                 true
             }
@@ -1325,10 +1366,14 @@ class KiebordService : InputMethodService() {
                 true
             }
             TextAction.PASTE -> {
+                selectionAnchor = null
+                selectionCursor = null
                 ic.performContextMenuAction(android.R.id.paste)
                 true
             }
             TextAction.DELETE_BACKWARD -> {
+                selectionAnchor = null
+                selectionCursor = null
                 val selected = ic.getSelectedText(0)
                 if (!selected.isNullOrEmpty()) {
                     ic.commitText("", 1)
@@ -1338,6 +1383,8 @@ class KiebordService : InputMethodService() {
                 true
             }
             TextAction.DELETE_FORWARD -> {
+                selectionAnchor = null
+                selectionCursor = null
                 val selected = ic.getSelectedText(0)
                 if (!selected.isNullOrEmpty()) {
                     ic.commitText("", 1)
@@ -1347,6 +1394,8 @@ class KiebordService : InputMethodService() {
                 true
             }
             TextAction.ENTER -> {
+                selectionAnchor = null
+                selectionCursor = null
                 val currentAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
                 if (currentAction != null && currentAction != EditorInfo.IME_ACTION_NONE && currentAction != EditorInfo.IME_ACTION_UNSPECIFIED) {
                     ic.performEditorAction(currentAction)

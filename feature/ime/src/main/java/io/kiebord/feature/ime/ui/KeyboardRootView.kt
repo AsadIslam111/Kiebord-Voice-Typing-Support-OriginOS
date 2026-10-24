@@ -96,6 +96,8 @@ fun KeyboardRootView(
     showKeyBorders: Boolean = true,
     defaultShowSecondaryKeys: Boolean = true,
     onSecondaryKeysToggle: ((Boolean) -> Unit)? = null,
+    defaultShowKeyPopups: Boolean = true,
+    onKeyPopupsToggle: ((Boolean) -> Unit)? = null,
     onKeyPress: (KeyDef) -> Unit = {},
     onDeleteSwipeMove: (Float) -> Unit = {},
     onDeleteSwipeEnd: () -> Unit = {},
@@ -299,6 +301,7 @@ fun KeyboardRootView(
     var isSuggestionsExpanded by remember { mutableStateOf(false) }
     var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
     var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
+    var showKeyPopups by remember(defaultShowKeyPopups) { mutableStateOf(defaultShowKeyPopups) }
     var chinPadding by remember(initialRowHeight) {
         val initialScale = (initialRowHeight.value / 54f).coerceIn(0.4f, 1.6f)
         mutableStateOf((8 * initialScale).dp)
@@ -377,6 +380,10 @@ fun KeyboardRootView(
                 showSecondaryKeys = !showSecondaryKeys
                 onSecondaryKeysToggle?.invoke(showSecondaryKeys)
             }
+            ToolbarAction.KEY_POPUP_TOGGLE -> {
+                showKeyPopups = !showKeyPopups
+                onKeyPopupsToggle?.invoke(showKeyPopups)
+            }
             ToolbarAction.THEME_TOGGLE -> {
                 onThemeToggle()
             }
@@ -412,6 +419,7 @@ fun KeyboardRootView(
         when (action) {
             ToolbarAction.NUMBER_ROW_TOGGLE -> showNumberRow
             ToolbarAction.SECONDARY_KEYS_TOGGLE -> showSecondaryKeys
+            ToolbarAction.KEY_POPUP_TOGGLE -> showKeyPopups
             ToolbarAction.ONE_HANDED -> oneHandedSide != "OFF"
             ToolbarAction.EMOJI -> isEmojiOpen
             ToolbarAction.RESIZER -> isResizerOpen
@@ -649,6 +657,7 @@ fun KeyboardRootView(
                             height = (44 * scaleFactor).dp,
                             rowHeight = keyRowHeight,
                             showKeyBorders = showKeyBorders,
+                            showKeyPopups = showKeyPopups,
                             isInteractive = isKeysInteractive,
                             onKeyPress = onKeyPress,
                             onKeyTap = onKeyTap,
@@ -699,6 +708,7 @@ fun KeyboardRootView(
                                 isSlidingSymbolMode = isSlidingSymbolMode,
                                 showKeyBorders = showKeyBorders,
                                 showSecondaryKeys = if (!isInteractive) false else showSecondaryKeys,
+                                showKeyPopups = showKeyPopups,
                                 isInteractive = isKeysInteractive,
                                 rowHeight = keyRowHeight,
                                 gestureTypingEnabled = gestureTypingEnabled,

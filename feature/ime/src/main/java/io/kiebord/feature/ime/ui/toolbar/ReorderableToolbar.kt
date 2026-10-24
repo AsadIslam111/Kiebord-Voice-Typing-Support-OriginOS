@@ -60,6 +60,7 @@ enum class ToolbarAction {
     RESIZER,
     NUMBER_ROW_TOGGLE,
     SECONDARY_KEYS_TOGGLE,
+    KEY_POPUP_TOGGLE,
     EMOJI,
     ONE_HANDED,
     SETTINGS

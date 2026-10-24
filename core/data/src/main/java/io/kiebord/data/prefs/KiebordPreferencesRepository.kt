@@ -107,7 +107,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                     val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
                     val allActionNames = listOf(
                         "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
-                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
                     )
                     prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
                         raw.split(",").filter { it in allActionNames }.distinct()
@@ -115,10 +115,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 },
                 drawerTools = run {
                     val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
-                    val defaultDrawer = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS")
+                    val defaultDrawer = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS")
                     val allActionNames = listOf(
                         "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
-                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
                     )
                     val pinnedList = prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
                         raw.split(",").filter { it in allActionNames }.distinct()
