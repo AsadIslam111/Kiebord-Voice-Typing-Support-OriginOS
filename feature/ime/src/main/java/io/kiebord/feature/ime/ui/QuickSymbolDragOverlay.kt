@@ -6,7 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,23 +14,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.kiebord.common.model.KeyDef
+import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
 import kotlin.math.roundToInt
 
 data class QuickSymbolDragState(
     val startOffset: Offset,
     val currentOffset: Offset,
+    val hoveredKey: KeyDef? = null,
     val hoveredKeyBounds: Rect? = null,
     val hoveredSymbol: String? = null
 )
@@ -38,6 +39,9 @@ data class QuickSymbolDragState(
 @Composable
 fun QuickSymbolDragOverlay(
     state: QuickSymbolDragState?,
+    isMoreKeysOpen: Boolean = false,
+    scaleFactor: Float = 1.0f,
+    keyboardWidthPx: Float = 1080f,
     modifier: Modifier = Modifier
 ) {
     if (state == null) return
@@ -47,76 +51,79 @@ fun QuickSymbolDragOverlay(
     val density = LocalDensity.current
 
     Box(modifier = modifier) {
-        // 1. Neon laser line and key highlight canvas
+        // 1. Single-colored guideline matching gesture trail color (no key box highlight)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val start = state.startOffset
             val current = state.currentOffset
 
-            // Draw hovered key highlight border (if over a symbol key)
-            state.hoveredKeyBounds?.let { bounds ->
-                drawRoundRect(
-                    color = accentColor.copy(alpha = 0.28f),
-                    topLeft = bounds.topLeft,
-                    size = bounds.size,
-                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
-                )
-                drawRoundRect(
-                    color = accentColor,
-                    topLeft = bounds.topLeft,
-                    size = bounds.size,
-                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx()),
-                    style = Stroke(width = 2.5.dp.toPx())
-                )
-            }
-
-            // Outer glowing neon line
+            // Smooth single-colored connecting line matching gesture trail
             drawLine(
-                color = accentColor.copy(alpha = 0.45f),
-                start = start,
-                end = current,
-                strokeWidth = 10.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-
-            // Core crisp laser connecting line
-            drawLine(
-                color = Color.White,
+                color = accentColor,
                 start = start,
                 end = current,
                 strokeWidth = 3.5.dp.toPx(),
                 cap = StrokeCap.Round
             )
 
-            // Anchor origin circle at ?123
+            // Anchor dot at start key (?123)
             drawCircle(
                 color = accentColor,
-                radius = 8.dp.toPx(),
+                radius = 5.dp.toPx(),
                 center = start
             )
         }
 
-        // 2. Magnified floating symbol badge above finger
-        if (!state.hoveredSymbol.isNullOrEmpty()) {
-            val badgeSizeDp = 48.dp
-            val badgeSizePx = with(density) { badgeSizeDp.toPx() }
-            val badgeLeft = (state.currentOffset.x - badgeSizePx / 2f).coerceAtLeast(4f)
-            val badgeTop = (state.currentOffset.y - badgeSizePx - with(density) { 16.dp.toPx() }).coerceAtLeast(4f)
+        // 2. Standard circular key preview popup above the hovered key (if morekeys popup is not currently open)
+        if (!isMoreKeysOpen && !state.hoveredSymbol.isNullOrEmpty() && state.hoveredKeyBounds != null) {
+            val popupDiameter = (52 * scaleFactor).coerceIn(44f, 60f).dp
+            val popupDiameterPx = with(density) { popupDiameter.toPx() }
+            val halfPopupPx = popupDiameterPx / 2f
+            val gapDp = (12 * scaleFactor).coerceIn(8f, 16f).dp
+            val gapPx = with(density) { gapDp.toPx() }
+
+            val keyCenterX = state.hoveredKeyBounds.center.x
+            val keyTopY = state.hoveredKeyBounds.top
+
+            val marginPx = with(density) { 6.dp.toPx() }
+            val minCenterX = halfPopupPx + marginPx
+            val maxCenterX = (keyboardWidthPx - halfPopupPx - marginPx).coerceAtLeast(minCenterX)
+            val clampedCenterX = keyCenterX.coerceIn(minCenterX, maxCenterX)
+
+            val idealTop = keyTopY - popupDiameterPx - gapPx
+            val minTopPx = with(density) { 6.dp.toPx() }
+            val clampedTop = if (idealTop < minTopPx) minTopPx else idealTop
+
+            val popupLeft = clampedCenterX - halfPopupPx
+            val isLight = colorScheme == KeyboardColorScheme.DefaultLight
+            val popupBg = colorScheme.moreKeysBackground
 
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(badgeLeft.roundToInt(), badgeTop.roundToInt()) }
-                    .size(badgeSizeDp)
-                    .shadow(elevation = 12.dp, shape = CircleShape)
+                    .offset { IntOffset(popupLeft.roundToInt(), clampedTop.roundToInt()) }
+                    .requiredSize(popupDiameter)
+                    .shadow(
+                        elevation = (4 * scaleFactor).dp,
+                        shape = CircleShape,
+                        clip = false,
+                        ambientColor = Color(0x38000000),
+                        spotColor = Color(0x30000000)
+                    )
                     .clip(CircleShape)
-                    .background(accentColor)
-                    .border(2.dp, Color.White, CircleShape),
+                    .background(popupBg)
+                    .border(
+                        width = 0.5.dp,
+                        color = if (isLight) Color(0x1A000000) else Color(0x22FFFFFF),
+                        shape = CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = state.hoveredSymbol,
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
+                    color = colorScheme.keyForeground,
+                    fontSize = (25 * scaleFactor).coerceIn(19f, 32f).sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = KiebordTheme.fontFamily,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
         }

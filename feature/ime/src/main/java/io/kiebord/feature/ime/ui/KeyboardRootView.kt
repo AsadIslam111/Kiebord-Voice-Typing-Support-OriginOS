@@ -36,7 +36,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -130,6 +134,10 @@ fun KeyboardRootView(
     var quickDragState by remember { mutableStateOf<QuickSymbolDragState?>(null) }
     var isSlidingSymbolMode by remember { mutableStateOf(false) }
     var dragStartPosInRoot by remember { mutableStateOf<Offset?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    var slidingHoveredKey by remember { mutableStateOf<KeyDef?>(null) }
+    var slidingHoveredBounds by remember { mutableStateOf<Rect?>(null) }
+    var slidingDwellJob by remember { mutableStateOf<Job?>(null) }
     var gestureTrail by remember { mutableStateOf<List<Offset>>(emptyList()) }
 
     var isLanguagePickerOpen by remember { mutableStateOf(false) }
@@ -347,6 +355,12 @@ fun KeyboardRootView(
     LaunchedEffect(isSlidingSymbolMode, displayLayout.id) {
         keyCoordinatesMap.clear()
         gestureTrail = emptyList()
+        if (!isSlidingSymbolMode) {
+            slidingDwellJob?.cancel()
+            slidingDwellJob = null
+            slidingHoveredKey = null
+            slidingHoveredBounds = null
+        }
     }
 
     val isKeysInteractive = isInteractive && !isResizerOpen
@@ -668,51 +682,39 @@ fun KeyboardRootView(
                         onKeyPress(keyDef)
                     }
 
-                    val handleShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit = { keyDef, keyCoords ->
-                        val rCoords = rootCoordinates
-                        if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
-                            val localTopLeft = rCoords.localPositionOf(keyCoords, Offset.Zero)
-                            val size = keyCoords.size
-                            val keyRect = Rect(
-                                localTopLeft,
-                                Size(size.width.toFloat(), size.height.toFloat())
-                            )
+                    val openMoreKeysForAnchor: (KeyDef, Rect) -> Unit = { keyDef, keyRect ->
+                        val itemCount = keyDef.moreKeys.size
+                        val itemsPerRow = keyDef.moreKeysColumns ?: ((itemCount + (if (itemCount > 6) 2 else 1) - 1) / (if (itemCount > 6) 2 else 1))
+                        val rowCount = (itemCount + itemsPerRow - 1) / itemsPerRow
+                        val chunkedRows = keyDef.moreKeys.chunked(itemsPerRow)
+                        val maxCols = itemsPerRow
 
-                            val itemCount = keyDef.moreKeys.size
-                            val itemsPerRow = keyDef.moreKeysColumns ?: ((itemCount + (if (itemCount > 6) 2 else 1) - 1) / (if (itemCount > 6) 2 else 1))
-                            val rowCount = (itemCount + itemsPerRow - 1) / itemsPerRow
-                            val chunkedRows = keyDef.moreKeys.chunked(itemsPerRow)
-                            val maxCols = itemsPerRow
+                        val horizontalPaddingPx = with(density) { (6 * scaleFactor).dp.toPx() }
+                        val colGapPx = with(density) { (3 * scaleFactor).dp.toPx() }
+                        val itemWidthPx = with(density) { (42 * scaleFactor).dp.toPx() }
+                        val totalWidthPx = maxCols * itemWidthPx + (maxCols - 1) * colGapPx + horizontalPaddingPx * 2
 
-                            val horizontalPaddingPx = with(density) { (6 * scaleFactor).dp.toPx() }
-                            val colGapPx = with(density) { (3 * scaleFactor).dp.toPx() }
-                            val itemWidthPx = with(density) { (42 * scaleFactor).dp.toPx() }
-                            val totalWidthPx = maxCols * itemWidthPx + (maxCols - 1) * colGapPx + horizontalPaddingPx * 2
+                        val minLeftPx = with(density) { (8 * scaleFactor).dp.toPx() }
+                        val maxLeftPx = (rootWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
+                        val clampedLeft = (keyRect.center.x - totalWidthPx / 2f).coerceIn(minLeftPx, maxLeftPx)
 
-                            val minLeftPx = with(density) { (8 * scaleFactor).dp.toPx() }
-                            val maxLeftPx = (rootWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
-                            val clampedLeft = (keyRect.center.x - totalWidthPx / 2f).coerceIn(minLeftPx, maxLeftPx)
+                        val bottomRowIndex = if (rowCount > 1) rowCount - 1 else 0
+                        val bottomRowItems = chunkedRows[bottomRowIndex]
+                        val relX = keyRect.center.x - (clampedLeft + horizontalPaddingPx)
+                        val initialCol = (relX / (itemWidthPx + colGapPx)).toInt().coerceIn(0, bottomRowItems.lastIndex)
+                        val initialIndex = (bottomRowIndex * itemsPerRow + initialCol).coerceIn(0, keyDef.moreKeys.lastIndex)
 
-                            val bottomRowIndex = if (rowCount > 1) rowCount - 1 else 0
-                            val bottomRowItems = chunkedRows[bottomRowIndex]
-                            val relX = keyRect.center.x - (clampedLeft + horizontalPaddingPx)
-                            val initialCol = (relX / (itemWidthPx + colGapPx)).toInt().coerceIn(0, bottomRowItems.lastIndex)
-                            val initialIndex = (bottomRowIndex * itemsPerRow + initialCol).coerceIn(0, keyDef.moreKeys.lastIndex)
-
-                            moreKeysState = MoreKeysPopupState(
-                                anchorKey = keyDef,
-                                anchorRect = keyRect,
-                                items = keyDef.moreKeys,
-                                selectedIndex = initialIndex
-                            )
-                        }
+                        moreKeysState = MoreKeysPopupState(
+                            anchorKey = keyDef,
+                            anchorRect = keyRect,
+                            items = keyDef.moreKeys,
+                            selectedIndex = initialIndex
+                        )
                     }
 
-                    val handleMoreKeysHover: (LayoutCoordinates, Offset) -> Unit = { keyCoords, touchPosInKey ->
+                    val updateMoreKeysHoverFromRoot: (Offset) -> Unit = { fingerPosInRoot ->
                         val state = moreKeysState
-                        val rCoords = rootCoordinates
-                        if (state != null && rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
-                            val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
+                        if (state != null) {
                             val itemCount = state.items.size
                             val itemsPerRow = state.anchorKey.moreKeysColumns ?: ((itemCount + (if (itemCount > 6) 2 else 1) - 1) / (if (itemCount > 6) 2 else 1))
                             val rowCount = (itemCount + itemsPerRow - 1) / itemsPerRow
@@ -759,6 +761,27 @@ fun KeyboardRootView(
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 } catch (_: Exception) {}
                             }
+                        }
+                    }
+
+                    val handleShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit = { keyDef, keyCoords ->
+                        val rCoords = rootCoordinates
+                        if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                            val localTopLeft = rCoords.localPositionOf(keyCoords, Offset.Zero)
+                            val size = keyCoords.size
+                            val keyRect = Rect(
+                                localTopLeft,
+                                Size(size.width.toFloat(), size.height.toFloat())
+                            )
+                            openMoreKeysForAnchor(keyDef, keyRect)
+                        }
+                    }
+
+                    val handleMoreKeysHover: (LayoutCoordinates, Offset) -> Unit = { keyCoords, touchPosInKey ->
+                        val rCoords = rootCoordinates
+                        if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                            val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
+                            updateMoreKeysHoverFromRoot(fingerPosInRoot)
                         }
                     }
 
@@ -945,6 +968,12 @@ fun KeyboardRootView(
                                 onSlidingDragStart = { _, keyCoords, initialDownPos ->
                                     val rCoords = rootCoordinates
                                     if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                                        slidingDwellJob?.cancel()
+                                        slidingDwellJob = null
+                                        slidingHoveredKey = null
+                                        slidingHoveredBounds = null
+                                        moreKeysState = null
+
                                         isSlidingSymbolMode = true
                                         val downInRoot = rCoords.localPositionOf(keyCoords, initialDownPos)
                                         val keyCenterInRoot = rCoords.localPositionOf(
@@ -962,6 +991,20 @@ fun KeyboardRootView(
                                     val rCoords = rootCoordinates ?: return@KeycapView
                                     val startPos = dragStartPosInRoot ?: return@KeycapView
                                     val currentFingerInRoot = startPos + deltaFromDown
+
+                                    val currentMoreKeys = moreKeysState
+                                    if (currentMoreKeys != null) {
+                                        val dismissThresholdPx = with(density) { (50 * scaleFactor).dp.toPx() }
+                                        if (currentFingerInRoot.y > currentMoreKeys.anchorRect.bottom + dismissThresholdPx) {
+                                            moreKeysState = null
+                                        } else {
+                                            updateMoreKeysHoverFromRoot(currentFingerInRoot)
+                                            quickDragState = quickDragState?.copy(
+                                                currentOffset = currentFingerInRoot
+                                            )
+                                            return@KeycapView
+                                        }
+                                    }
 
                                     // Find hovered key in root
                                     var hoveredKey: KeyDef? = null
@@ -981,7 +1024,26 @@ fun KeyboardRootView(
                                         }
                                     }
 
-                                    val symbol = if (hoveredKey != null && hoveredKey.type == KeyType.CHARACTER) {
+                                    if (hoveredKey != slidingHoveredKey) {
+                                        slidingDwellJob?.cancel()
+                                        slidingDwellJob = null
+                                        slidingHoveredKey = hoveredKey
+                                        slidingHoveredBounds = hoveredBounds
+
+                                        if (hoveredKey != null && hoveredKey.moreKeys.isNotEmpty()) {
+                                            val targetKey = hoveredKey
+                                            val targetBounds = hoveredBounds!!
+                                            slidingDwellJob = coroutineScope.launch {
+                                                delay(260L)
+                                                openMoreKeysForAnchor(targetKey, targetBounds)
+                                                try {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                } catch (_: Exception) {}
+                                            }
+                                        }
+                                    }
+
+                                    val symbol = if (hoveredKey != null && hoveredKey.label.isNotEmpty()) {
                                         hoveredKey.label
                                     } else {
                                         null
@@ -989,31 +1051,26 @@ fun KeyboardRootView(
 
                                     quickDragState = quickDragState?.copy(
                                         currentOffset = currentFingerInRoot,
+                                        hoveredKey = hoveredKey,
                                         hoveredKeyBounds = hoveredBounds,
                                         hoveredSymbol = symbol
                                     )
                                 },
                                 onSlidingDragEnd = { deltaFromDown ->
-                                    val rCoords = rootCoordinates
-                                    val startPos = dragStartPosInRoot
-                                    if (rCoords != null && startPos != null) {
-                                        val finalFingerInRoot = startPos + deltaFromDown
-                                        for ((k, coords) in keyCoordinatesMap) {
-                                            if (coords.isAttached) {
-                                                val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
-                                                val rect = Rect(
-                                                    topLeft,
-                                                    Size(coords.size.width.toFloat(), coords.size.height.toFloat())
-                                                )
-                                                if (rect.contains(finalFingerInRoot)) {
-                                                    if (k.type == KeyType.CHARACTER && k.label.isNotEmpty()) {
-                                                        onKeyTap(k)
-                                                    }
-                                                    break
-                                                }
-                                            }
+                                    slidingDwellJob?.cancel()
+                                    slidingDwellJob = null
+
+                                    if (moreKeysState != null) {
+                                        handleMoreKeysCommit()
+                                    } else {
+                                        val keyToCommit = slidingHoveredKey
+                                        if (keyToCommit != null && (keyToCommit.label.isNotEmpty() || !keyToCommit.commitText.isNullOrEmpty())) {
+                                            onKeyTap(keyToCommit)
                                         }
                                     }
+
+                                    slidingHoveredKey = null
+                                    slidingHoveredBounds = null
                                     isSlidingSymbolMode = false
                                     quickDragState = null
                                     dragStartPosInRoot = null
@@ -1099,9 +1156,12 @@ fun KeyboardRootView(
         }
     }
 
-        // 1. Neon laser guideline overlay for sliding symbol input (matchParentSize prevents shifting)
+        // 1. Guideline overlay for sliding symbol input (matchParentSize prevents shifting)
         QuickSymbolDragOverlay(
             state = quickDragState,
+            isMoreKeysOpen = moreKeysState != null,
+            scaleFactor = scaleFactor,
+            keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f,
             modifier = Modifier.matchParentSize()
         )
 
