@@ -222,6 +222,159 @@ impl GestureDecoder {
         candidates
     }
 
+    /// Windowed Dynamic Time Warping distance between two sampled polyline sequences.
+    pub fn dtw_distance(seq_a: &[GesturePoint], seq_b: &[GesturePoint], window: usize) -> f32 {
+        let n = seq_a.len();
+        let m = seq_b.len();
+        if n == 0 || m == 0 {
+            return f32::MAX;
+        }
+
+        const MAX_LEN: usize = 64;
+        let mut prev = [f32::INFINITY; MAX_LEN];
+        let mut curr = [f32::INFINITY; MAX_LEN];
+
+        prev[0] = 0.0;
+
+        for i in 1..=n.min(MAX_LEN - 1) {
+            let pt_a = &seq_a[i - 1];
+            curr[0] = f32::INFINITY;
+
+            let j_start = if i > window { i - window } else { 1 };
+            let j_end = (i + window).min(m.min(MAX_LEN - 1));
+
+            for j in 1..j_start {
+                curr[j] = f32::INFINITY;
+            }
+
+            for j in j_start..=j_end {
+                let pt_b = &seq_b[j - 1];
+                let dx = pt_a.x - pt_b.x;
+                let dy = pt_a.y - pt_b.y;
+                let dist = (dx * dx + dy * dy).sqrt();
+
+                let min_prev = prev[j].min(curr[j - 1]).min(prev[j - 1]);
+                curr[j] = dist + min_prev;
+            }
+
+            for j in (j_end + 1)..=m.min(MAX_LEN - 1) {
+                curr[j] = f32::INFINITY;
+            }
+
+            prev = curr;
+        }
+
+        let target_m = m.min(MAX_LEN - 1);
+        let total = prev[target_m];
+        if total.is_finite() {
+            total / (n.max(m) as f32)
+        } else {
+            let mut sum = 0.0;
+            let count = n.min(m);
+            for k in 0..count {
+                let dx = seq_a[k].x - seq_b[k].x;
+                let dy = seq_a[k].y - seq_b[k].y;
+                sum += (dx * dx + dy * dy).sqrt();
+            }
+            sum / count.max(1) as f32
+        }
+    }
+
+    /// Evaluates shape match and scoring of a candidate word path against the user's touch trajectory.
+    /// Uses windowed Dynamic Time Warping (DTW), key-visit proximity verification, and log-scaled frequency.
+    pub fn evaluate_candidate(
+        ideal_chars: &[char],
+        key_map: &HashMap<char, (f32, f32)>,
+        user_path: &[GesturePoint],
+        kw: f32,
+        freq: u8,
+    ) -> Option<f32> {
+        if ideal_chars.len() < 2 || user_path.len() < 2 {
+            return None;
+        }
+
+        let mut ideal_pts = Vec::with_capacity(ideal_chars.len());
+        for &ch in ideal_chars {
+            if let Some(&pos) = key_map.get(&ch.to_ascii_lowercase()) {
+                ideal_pts.push(GesturePoint {
+                    x: pos.0,
+                    y: pos.1,
+                    timestamp_ms: 0,
+                });
+            } else {
+                return None;
+            }
+        }
+
+        // Start and end anchor distances (normalized by key width)
+        let d_start = {
+            let dx = user_path[0].x - ideal_pts[0].x;
+            let dy = user_path[0].y - ideal_pts[0].y;
+            (dx * dx + dy * dy).sqrt() / kw
+        };
+        let d_end = {
+            let dx = user_path.last().unwrap().x - ideal_pts.last().unwrap().x;
+            let dy = user_path.last().unwrap().y - ideal_pts.last().unwrap().y;
+            (dx * dx + dy * dy).sqrt() / kw
+        };
+
+        // If start or end key is too far from gesture endpoints, reject
+        if d_start > 2.2 || d_end > 2.2 {
+            return None;
+        }
+
+        // Key-visit verification: every key in the candidate must be approached by the trajectory
+        let mut max_key_miss = 0.0f32;
+        let mut total_key_miss = 0.0f32;
+        for k_pt in &ideal_pts {
+            let mut min_d = f32::MAX;
+            for u_pt in user_path {
+                let dx = u_pt.x - k_pt.x;
+                let dy = u_pt.y - k_pt.y;
+                let d = (dx * dx + dy * dy).sqrt();
+                if d < min_d {
+                    min_d = d;
+                }
+            }
+            let norm_d = min_d / kw;
+            if norm_d > max_key_miss {
+                max_key_miss = norm_d;
+            }
+            total_key_miss += norm_d;
+        }
+
+        // Candidates containing keys never visited (e.g. > 1.6 key widths away) are eliminated
+        if max_key_miss > 1.6 {
+            return None;
+        }
+
+        let avg_key_miss = total_key_miss / ideal_pts.len() as f32;
+
+        // Dynamic Time Warping (DTW) with Sakoe-Chiba band window
+        let resampled_ideal = Self::resample_polyline(&ideal_pts, user_path.len());
+        let dtw_dist = Self::dtw_distance(user_path, &resampled_ideal, 6) / kw;
+
+        // Key miss penalty for keys that were relatively far (> 1.15 key width)
+        let miss_penalty = if max_key_miss > 1.15 {
+            (max_key_miss - 1.15) * 2.5
+        } else {
+            0.0
+        };
+
+        let total_cost = dtw_dist + 0.5 * d_start + 0.5 * d_end + 0.4 * avg_key_miss + miss_penalty;
+
+        if total_cost > 3.0 {
+            return None;
+        }
+
+        // Shape score dominates (0 to 100), log-scaled frequency acts as tie-breaker (0 to 15)
+        let shape_score = (-total_cost * 1.5).exp();
+        let freq_score = (1.0 + freq as f32).ln() / (256.0f32).ln();
+        let score = 100.0 * shape_score + 15.0 * freq_score;
+
+        Some(score)
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn collect_words(
         dict: &BinaryDict,
@@ -243,50 +396,15 @@ impl GestureDecoder {
                 if end_keys.contains(&last_ch.to_ascii_lowercase()) {
                     let freq = dict.freq(node);
                     if freq >= 1 {
-                        let mut valid = true;
-                        let mut ideal_pts = Vec::with_capacity(buffer.len());
-                        for &u in buffer.iter() {
-                            if let Some(ch) = char::from_u32(u as u32) {
-                                if let Some(&pos) = key_map.get(&ch.to_ascii_lowercase()) {
-                                    ideal_pts.push(GesturePoint {
-                                        x: pos.0,
-                                        y: pos.1,
-                                        timestamp_ms: 0,
-                                    });
-                                } else {
-                                    valid = false;
-                                    break;
-                                }
-                            } else {
-                                valid = false;
-                                break;
-                            }
-                        }
-
-                        if valid && ideal_pts.len() >= 2 {
-                            let resampled_ideal = Self::resample_polyline(&ideal_pts, user_path.len());
-                            let mut shape_dist = 0.0f32;
-                            for (u_pt, i_pt) in user_path.iter().zip(resampled_ideal.iter()) {
-                                let dx = u_pt.x - i_pt.x;
-                                let dy = u_pt.y - i_pt.y;
-                                shape_dist += (dx * dx + dy * dy).sqrt();
-                            }
-                            let avg_dist = shape_dist / user_path.len() as f32;
-
-                            let d_start = {
-                                let dx = user_path[0].x - ideal_pts[0].x;
-                                let dy = user_path[0].y - ideal_pts[0].y;
-                                (dx * dx + dy * dy).sqrt()
-                            };
-                            let d_end = {
-                                let dx = user_path.last().unwrap().x - ideal_pts.last().unwrap().x;
-                                let dy = user_path.last().unwrap().y - ideal_pts.last().unwrap().y;
-                                (dx * dx + dy * dy).sqrt()
-                            };
-
-                            let cost = (avg_dist / kw) + 0.6 * (d_start / kw) + 0.6 * (d_end / kw);
-                            if cost < 3.2 {
-                                let score = (freq as f32) - 50.0 * cost;
+                        let chars: Vec<char> = buffer.iter().filter_map(|&u| char::from_u32(u as u32)).collect();
+                        if chars.len() == buffer.len() {
+                            if let Some(score) = Self::evaluate_candidate(
+                                &chars,
+                                key_map,
+                                user_path,
+                                kw,
+                                freq,
+                            ) {
                                 let word_str = String::from_utf16_lossy(buffer);
                                 results.push(GestureCandidate {
                                     word: word_str,
@@ -380,54 +498,21 @@ impl GestureDecoder {
             for &e in &end_keys {
                 if let Some(entries) = index.buckets.get(&(s, e)) {
                     for entry in entries {
-                        let mut valid = true;
-                        let mut ideal_pts = Vec::with_capacity(entry.keys.len());
-                        for &c in &entry.keys {
-                            if let Some(&pos) = key_map.get(&c) {
-                                ideal_pts.push(GesturePoint {
-                                    x: pos.0,
-                                    y: pos.1,
-                                    timestamp_ms: 0,
-                                });
-                            } else {
-                                valid = false;
-                                break;
-                            }
-                        }
-
-                        if valid && ideal_pts.len() >= 2 {
-                            let resampled_ideal = Self::resample_polyline(&ideal_pts, sample_count);
-                            let mut shape_dist = 0.0f32;
-                            for (u_pt, i_pt) in user_path.iter().zip(resampled_ideal.iter()) {
-                                let dx = u_pt.x - i_pt.x;
-                                let dy = u_pt.y - i_pt.y;
-                                shape_dist += (dx * dx + dy * dy).sqrt();
-                            }
-                            let avg_dist = shape_dist / sample_count as f32;
-
-                            let d_start = {
-                                let dx = user_path[0].x - ideal_pts[0].x;
-                                let dy = user_path[0].y - ideal_pts[0].y;
-                                (dx * dx + dy * dy).sqrt()
-                            };
-                            let d_end = {
-                                let dx = user_path.last().unwrap().x - ideal_pts.last().unwrap().x;
-                                let dy = user_path.last().unwrap().y - ideal_pts.last().unwrap().y;
-                                (dx * dx + dy * dy).sqrt()
-                            };
-
-                            let cost = (avg_dist / kw) + 0.6 * (d_start / kw) + 0.6 * (d_end / kw);
-                            if cost < 3.2 {
-                                let score = (entry.freq as f32) - 50.0 * cost;
-                                if let Some(word_str) = dict.word_at(entry.word_id) {
-                                    let norm_word = word_str.replace("\u{0985}\u{09BE}", "আ");
-                                    if !seen_words.contains(&norm_word) {
-                                        seen_words.insert(norm_word.clone());
-                                        candidates.push(GestureCandidate {
-                                            word: norm_word,
-                                            score,
-                                        });
-                                    }
+                        if let Some(score) = Self::evaluate_candidate(
+                            &entry.keys,
+                            &key_map,
+                            &user_path,
+                            kw,
+                            entry.freq,
+                        ) {
+                            if let Some(word_str) = dict.word_at(entry.word_id) {
+                                let norm_word = word_str.replace("\u{0985}\u{09BE}", "আ");
+                                if !seen_words.contains(&norm_word) {
+                                    seen_words.insert(norm_word.clone());
+                                    candidates.push(GestureCandidate {
+                                        word: norm_word,
+                                        score,
+                                    });
                                 }
                             }
                         }
@@ -567,5 +652,53 @@ mod tests {
         let results_amader = GestureDecoder::decode_phonetic(&stroke_amader, &keys, 40.0, dict, &translit, 5);
         assert!(!results_amader.is_empty(), "Expected results for 'amader'");
         assert_eq!(results_amader[0].word, "আমাদের");
+    }
+
+    #[test]
+    fn test_decode_milking_gesture() {
+        let dict = get_en_binary_dict().expect("en dict");
+        let keys = vec![
+            KeyCenter { char_code: 'q', x: 20.0, y: 50.0 },
+            KeyCenter { char_code: 'w', x: 60.0, y: 50.0 },
+            KeyCenter { char_code: 'e', x: 100.0, y: 50.0 },
+            KeyCenter { char_code: 'r', x: 140.0, y: 50.0 },
+            KeyCenter { char_code: 't', x: 180.0, y: 50.0 },
+            KeyCenter { char_code: 'y', x: 220.0, y: 50.0 },
+            KeyCenter { char_code: 'u', x: 260.0, y: 50.0 },
+            KeyCenter { char_code: 'i', x: 300.0, y: 50.0 },
+            KeyCenter { char_code: 'o', x: 340.0, y: 50.0 },
+            KeyCenter { char_code: 'p', x: 380.0, y: 50.0 },
+            KeyCenter { char_code: 'a', x: 40.0, y: 120.0 },
+            KeyCenter { char_code: 's', x: 80.0, y: 120.0 },
+            KeyCenter { char_code: 'd', x: 120.0, y: 120.0 },
+            KeyCenter { char_code: 'f', x: 160.0, y: 120.0 },
+            KeyCenter { char_code: 'g', x: 200.0, y: 120.0 },
+            KeyCenter { char_code: 'h', x: 240.0, y: 120.0 },
+            KeyCenter { char_code: 'j', x: 280.0, y: 120.0 },
+            KeyCenter { char_code: 'k', x: 320.0, y: 120.0 },
+            KeyCenter { char_code: 'l', x: 360.0, y: 120.0 },
+            KeyCenter { char_code: 'z', x: 60.0, y: 190.0 },
+            KeyCenter { char_code: 'x', x: 100.0, y: 190.0 },
+            KeyCenter { char_code: 'c', x: 140.0, y: 190.0 },
+            KeyCenter { char_code: 'v', x: 180.0, y: 190.0 },
+            KeyCenter { char_code: 'b', x: 220.0, y: 190.0 },
+            KeyCenter { char_code: 'n', x: 260.0, y: 190.0 },
+            KeyCenter { char_code: 'm', x: 300.0, y: 190.0 },
+        ];
+
+        // Swipe points for "milking": m -> i -> l -> k -> i -> n -> g
+        let stroke_milking = vec![
+            GesturePoint { x: 300.0, y: 190.0, timestamp_ms: 0 },   // m
+            GesturePoint { x: 300.0, y: 50.0, timestamp_ms: 50 },    // i
+            GesturePoint { x: 360.0, y: 120.0, timestamp_ms: 100 },  // l
+            GesturePoint { x: 320.0, y: 120.0, timestamp_ms: 150 },  // k
+            GesturePoint { x: 300.0, y: 50.0, timestamp_ms: 200 },   // i
+            GesturePoint { x: 260.0, y: 190.0, timestamp_ms: 250 },  // n
+            GesturePoint { x: 200.0, y: 120.0, timestamp_ms: 300 },  // g
+        ];
+
+        let results = GestureDecoder::decode(&stroke_milking, &keys, 40.0, dict, 10);
+        assert!(!results.is_empty(), "Results should not be empty");
+        assert_eq!(results[0].word, "milking", "Expected 'milking' to be the top candidate: {:?}", results);
     }
 }
