@@ -10,7 +10,7 @@ android {
     ndkVersion = "26.2.11394342"
 
     defaultConfig {
-        applicationId = "io.kiebord.app"
+        applicationId = "com.jayed.kiebord"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -28,7 +28,6 @@ android {
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
         }
     }
 

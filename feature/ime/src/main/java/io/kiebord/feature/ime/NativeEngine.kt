@@ -93,8 +93,13 @@ object NativeEngine {
         if (initializedLangs.contains(baseLang)) return
 
         try {
+            val safeContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                if (context.isDeviceProtectedStorage) context else context.createDeviceProtectedStorageContext()
+            } else {
+                context
+            }
             val assetPath = "dictionaries/$baseLang.dict"
-            val destFile = java.io.File(context.filesDir, assetPath)
+            val destFile = java.io.File(safeContext.filesDir, assetPath)
             var needsCopy = !destFile.exists()
 
             if (!needsCopy) {

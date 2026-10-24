@@ -134,6 +134,7 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.Preferences -> "Preferences"
         is SettingsScreen.CorrectionsSuggestions -> "Corrections & Suggestions"
         is SettingsScreen.About -> "About Kiebord"
+        is SettingsScreen.Onboarding -> "Setup Wizard"
     }
 
     val subtitle = when (screen) {
@@ -143,6 +144,7 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.Preferences -> "Haptics, smart gestures & ergonomics"
         is SettingsScreen.CorrectionsSuggestions -> "Candidate strip, auto-fix & glide typing"
         is SettingsScreen.About -> "Privacy, engine architecture & diagnostics"
+        is SettingsScreen.Onboarding -> "Welcome to Kiebord"
     }
 
     val isMain = screen == SettingsScreen.Main

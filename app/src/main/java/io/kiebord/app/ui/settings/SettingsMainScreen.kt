@@ -1,6 +1,7 @@
 package io.kiebord.app.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -84,7 +85,7 @@ fun SettingsMainScreen(
 
         val colors = LocalSettingsColors.current
 
-        // Activation / Status Card
+        // Activation / Status Card (inspired by SetupStatusPreference)
         if (!isImeEnabled || !isImeSelected) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -93,7 +94,7 @@ fun SettingsMainScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = if (!isImeEnabled) "Keyboard Not Enabled" else "Keyboard Not Selected",
+                        text = if (!isImeEnabled) "Keyboard Disabled" else "Keyboard Not Active",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.warningCardText
@@ -102,32 +103,53 @@ fun SettingsMainScreen(
                         text = if (!isImeEnabled) {
                             "Enable Kiebord in Android system settings to begin typing."
                         } else {
-                            "Switch your active input method to Kiebord."
+                            "Kiebord is enabled, but not set as your active input method."
                         },
                         fontSize = 12.sp,
                         color = colors.warningCardSubtext,
                         modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
                     )
 
-                    Button(
-                        onClick = if (!isImeEnabled) onOpenSettings else onSwitchIme,
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.warningBtnBg,
-                            contentColor = colors.warningBtnText
-                        )
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = if (!isImeEnabled) Icons.Outlined.Settings else Icons.Outlined.SwapHoriz,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (!isImeEnabled) "Enable in Settings" else "Switch Input Method",
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Button(
+                            onClick = if (!isImeEnabled) onOpenSettings else onSwitchIme,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colors.warningBtnBg,
+                                contentColor = colors.warningBtnText
+                            )
+                        ) {
+                            Icon(
+                                imageVector = if (!isImeEnabled) Icons.Outlined.Settings else Icons.Outlined.SwapHoriz,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (!isImeEnabled) "Turn On" else "Switch Back",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = { onNavigate(SettingsScreen.Onboarding) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colors.iconBackground,
+                                contentColor = colors.textPrimary
+                            )
+                        ) {
+                            Text(
+                                text = "Setup Wizard",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
                 }
             }
@@ -150,7 +172,7 @@ fun SettingsMainScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Kiebord is Active",
                             fontSize = 14.sp,
@@ -161,6 +183,20 @@ fun SettingsMainScreen(
                             text = "Ready to type in all applications",
                             fontSize = 11.sp,
                             color = colors.activeCardSubtext
+                        )
+                    }
+                    Button(
+                        onClick = { onNavigate(SettingsScreen.Onboarding) },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.activeCardBg,
+                            contentColor = colors.activeCardText
+                        )
+                    ) {
+                        Text(
+                            text = "Wizard",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

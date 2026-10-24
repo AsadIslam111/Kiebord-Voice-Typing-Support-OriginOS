@@ -24,6 +24,7 @@
         <service
             android:name="io.kiebord.feature.ime.KiebordService"
             android:exported="true"
+            android:directBootAware="true"
             android:label="@string/ime_name"
             android:permission="android.permission.BIND_INPUT_METHOD">
             <intent-filter>

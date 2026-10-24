@@ -18,6 +18,26 @@ val KeyboardFontFamily = FontFamily(
     Font(R.font.keyboard_font, FontWeight.Bold)
 )
 
+val KiebordTypography = androidx.compose.material3.Typography().let { defaultTypography ->
+    androidx.compose.material3.Typography(
+        displayLarge = defaultTypography.displayLarge.copy(fontFamily = KeyboardFontFamily),
+        displayMedium = defaultTypography.displayMedium.copy(fontFamily = KeyboardFontFamily),
+        displaySmall = defaultTypography.displaySmall.copy(fontFamily = KeyboardFontFamily),
+        headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = KeyboardFontFamily),
+        headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = KeyboardFontFamily),
+        headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = KeyboardFontFamily),
+        titleLarge = defaultTypography.titleLarge.copy(fontFamily = KeyboardFontFamily),
+        titleMedium = defaultTypography.titleMedium.copy(fontFamily = KeyboardFontFamily),
+        titleSmall = defaultTypography.titleSmall.copy(fontFamily = KeyboardFontFamily),
+        bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = KeyboardFontFamily),
+        bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = KeyboardFontFamily),
+        bodySmall = defaultTypography.bodySmall.copy(fontFamily = KeyboardFontFamily),
+        labelLarge = defaultTypography.labelLarge.copy(fontFamily = KeyboardFontFamily),
+        labelMedium = defaultTypography.labelMedium.copy(fontFamily = KeyboardFontFamily),
+        labelSmall = defaultTypography.labelSmall.copy(fontFamily = KeyboardFontFamily)
+    )
+}
+
 val LocalKeyboardColorScheme = staticCompositionLocalOf {
     KeyboardColorScheme.DefaultDark
 }

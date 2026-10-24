@@ -1,6 +1,7 @@
 package io.kiebord.data.prefs
 
 import android.content.Context
+import android.os.Build
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -56,6 +57,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
         val PINNED_TOOLS = stringPreferencesKey("pref_pinned_tools")
         val DRAWER_TOOLS = stringPreferencesKey("pref_drawer_tools")
+        val SETUP_COMPLETED = booleanPreferencesKey("pref_setup_completed")
     }
 
     val preferencesFlow: Flow<KiebordPreferences> = context.kiebordDataStore.data
@@ -129,7 +131,8 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                     val rawDrawer = prefs[PreferencesKeys.DRAWER_TOOLS]?.split(",")?.filter { it in allActionNames } ?: defaultDrawer
                     (rawDrawer.filter { it !in pinnedSet } +
                         allActionNames.filter { it !in pinnedSet }).distinct()
-                }
+                },
+                setupCompleted = prefs[PreferencesKeys.SETUP_COMPLETED] ?: false
             )
         }
 
@@ -301,6 +304,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         }
     }
 
+    suspend fun updateSetupCompleted(completed: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SETUP_COMPLETED] = completed }
+    }
+
     // Reset
     suspend fun resetToDefaults() {
         context.kiebordDataStore.edit { it.clear() }
@@ -311,8 +318,14 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         private var INSTANCE: KiebordPreferencesRepository? = null
 
         fun getInstance(context: Context): KiebordPreferencesRepository {
+            val safeContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val app = context.applicationContext ?: context
+                if (app.isDeviceProtectedStorage) app else app.createDeviceProtectedStorageContext()
+            } else {
+                context.applicationContext ?: context
+            }
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: KiebordPreferencesRepository(context.applicationContext).also { INSTANCE = it }
+                INSTANCE ?: KiebordPreferencesRepository(safeContext).also { INSTANCE = it }
             }
         }
     }

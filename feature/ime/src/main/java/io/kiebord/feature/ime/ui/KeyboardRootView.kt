@@ -925,7 +925,7 @@ fun KeyboardRootView(
                                 isBottomRow = isBottomRow,
                                 isSlidingSymbolMode = isSlidingSymbolMode,
                                 showKeyBorders = showKeyBorders,
-                                showSecondaryKeys = if (!isInteractive) false else showSecondaryKeys,
+                                showSecondaryKeys = showSecondaryKeys,
                                 showKeyPopups = showKeyPopups,
                                 isInteractive = isKeysInteractive,
                                 rowHeight = currentRowHeight,

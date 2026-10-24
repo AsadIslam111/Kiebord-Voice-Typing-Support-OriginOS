@@ -24,10 +24,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.text.TextStyle
+import io.kiebord.theme.KeyboardFontFamily
+import io.kiebord.theme.KiebordTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -37,12 +41,14 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import io.kiebord.app.ui.onboarding.OnboardingScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -61,6 +67,7 @@ import io.kiebord.data.dictionary.UserDictionaryRepository
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.data.prefs.KiebordPreferencesRepository
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -95,7 +102,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            CompositionLocalProvider(LocalSettingsColors provides settingsColors) {
+            CompositionLocalProvider(
+                LocalSettingsColors provides settingsColors,
+                LocalTextStyle provides TextStyle(fontFamily = KeyboardFontFamily)
+            ) {
                 MaterialTheme(
                     colorScheme = if (isDark) {
                         darkColorScheme(
@@ -113,7 +123,8 @@ class MainActivity : ComponentActivity() {
                             onPrimary = Color(0xFFFFFFFF),
                             onSurface = settingsColors.textPrimary
                         )
-                    }
+                    },
+                    typography = KiebordTypography
                 ) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
@@ -121,6 +132,13 @@ class MainActivity : ComponentActivity() {
                     ) {
                         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
                             updateImeStatus()
+                        }
+
+                        LaunchedEffect(Unit) {
+                            while (true) {
+                                updateImeStatus()
+                                delay(300L)
+                            }
                         }
 
                         KiebordSettingsApp(
@@ -167,11 +185,17 @@ fun KiebordSettingsApp(
     onSwitchIme: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val initialScreen = remember {
+    val initialScreen = remember(preferences.setupCompleted) {
         val target = (context as? android.app.Activity)?.intent?.getStringExtra("navigate_to")
-        if (target == "layouts") SettingsScreen.KeyboardLayouts else SettingsScreen.Main
+        if (!preferences.setupCompleted) {
+            SettingsScreen.Onboarding
+        } else if (target == "layouts") {
+            SettingsScreen.KeyboardLayouts
+        } else {
+            SettingsScreen.Main
+        }
     }
-    var currentScreen by remember { mutableStateOf<SettingsScreen>(initialScreen) }
+    var currentScreen by remember(initialScreen) { mutableStateOf<SettingsScreen>(initialScreen) }
     var backStack by remember { mutableStateOf<List<SettingsScreen>>(emptyList()) }
     var predictiveProgress by remember { mutableFloatStateOf(0f) }
     var isPredictiveBackActive by remember { mutableStateOf(false) }
@@ -227,10 +251,12 @@ fun KiebordSettingsApp(
             .navigationBarsPadding()
     ) {
         // Persistent Top Bar that stays anchored, only transitioning title/back-icon smoothly
-        SettingsUnifiedTopBar(
-            screen = currentScreen,
-            onBack = navigateBack
-        )
+        if (currentScreen != SettingsScreen.Onboarding) {
+            SettingsUnifiedTopBar(
+                screen = currentScreen,
+                onBack = navigateBack
+            )
+        }
 
         // Inner Content changes smoothly without reloading the entire page
         Box(
@@ -385,6 +411,21 @@ fun KiebordSettingsApp(
                                 scope.launch { preferencesRepo.resetToDefaults() }
                             },
                             onBack = navigateBack
+                        )
+                    }
+
+                    is SettingsScreen.Onboarding -> {
+                        OnboardingScreen(
+                            preferences = preferences,
+                            preferencesRepo = preferencesRepo,
+                            isImeEnabled = isImeEnabled,
+                            isImeSelected = isImeSelected,
+                            onOpenSettings = onOpenSettings,
+                            onSwitchIme = onSwitchIme,
+                            onComplete = {
+                                currentScreen = SettingsScreen.Main
+                                backStack = emptyList()
+                            }
                         )
                     }
                 }

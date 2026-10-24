@@ -1,6 +1,7 @@
 package io.kiebord.data.dictionary
 
 import android.content.Context
+import android.os.Build
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20,7 +21,14 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class UserDictionaryRepository internal constructor(private val baseDir: File) {
 
-    constructor(context: Context) : this(context.filesDir)
+    constructor(context: Context) : this(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val safe = if (context.isDeviceProtectedStorage) context else context.createDeviceProtectedStorageContext()
+            safe.filesDir
+        } else {
+            context.filesDir
+        }
+    )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var saveJob: Job? = null
