@@ -14,6 +14,8 @@ enum class TextAction {
     CUT,
     COPY,
     PASTE,
+    UNDO,
+    REDO,
     DELETE_BACKWARD,
     DELETE_FORWARD,
     ENTER

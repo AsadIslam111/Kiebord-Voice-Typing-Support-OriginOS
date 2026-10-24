@@ -1371,6 +1371,18 @@ class KiebordService : InputMethodService() {
                 ic.performContextMenuAction(android.R.id.paste)
                 true
             }
+            TextAction.UNDO -> {
+                selectionAnchor = null
+                selectionCursor = null
+                ic.performContextMenuAction(android.R.id.undo)
+                true
+            }
+            TextAction.REDO -> {
+                selectionAnchor = null
+                selectionCursor = null
+                ic.performContextMenuAction(android.R.id.redo)
+                true
+            }
             TextAction.DELETE_BACKWARD -> {
                 selectionAnchor = null
                 selectionCursor = null

@@ -61,7 +61,7 @@ object PredefinedLayouts {
                     KeyDef(",", flickUp = null, moreKeys = listOf("<", ">", "[", "]", "{", "}"), widthWeight = 1.0f),
                     KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
                     KeyDef(".", flickUp = ">", moreKeys = listOf("?", "!", ",", "-", "/", "@", ":", "'", "\"", "_", ";"), widthWeight = 1.0f),
-                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
             )
         )
@@ -123,7 +123,7 @@ object PredefinedLayouts {
                     KeyDef(",", widthWeight = 1.0f, moreKeys = listOf(";", ":", "<", ">")),
                     KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
                     KeyDef("।", moreKeys = listOf(".", "!", "?", ",", "-", "/", "—"), widthWeight = 1.0f),
-                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
             )
         )
@@ -189,7 +189,7 @@ object PredefinedLayouts {
                     KeyDef(",", widthWeight = 1.0f),
                     KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
                     KeyDef(".", widthWeight = 1.0f),
-                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
             )
         )
@@ -248,7 +248,7 @@ object PredefinedLayouts {
                     KeyDef("<", widthWeight = 1.0f),
                     KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
                     KeyDef(">", widthWeight = 1.0f),
-                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f)
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
             )
         )

@@ -758,7 +758,37 @@ fun KeyboardRootView(
                             val selectedChar = state.items.getOrNull(state.selectedIndex)
                                 ?: state.items.firstOrNull()
                             if (!selectedChar.isNullOrEmpty()) {
-                                onKeyTap(KeyDef(label = selectedChar, type = KeyType.CHARACTER))
+                                when (selectedChar) {
+                                    "ACTION_EMOJI", "action:emoji", "EMOJI" -> {
+                                        isEmojiOpen = true
+                                        isToolsDrawerOpen = false
+                                        isClipboardOpen = false
+                                        isResizerOpen = false
+                                        isTextEditOpen = false
+                                        isSuggestionsExpanded = false
+                                    }
+                                    "ACTION_SELECT_ALL", "action:select_all", "SELECT_ALL" -> {
+                                        onTextAction(TextAction.SELECT_ALL, true)
+                                    }
+                                    "ACTION_CUT", "action:cut", "CUT" -> {
+                                        onTextAction(TextAction.CUT, false)
+                                    }
+                                    "ACTION_COPY", "action:copy", "COPY" -> {
+                                        onTextAction(TextAction.COPY, false)
+                                    }
+                                    "ACTION_PASTE", "action:paste", "PASTE" -> {
+                                        onTextAction(TextAction.PASTE, false)
+                                    }
+                                    "ACTION_UNDO", "action:undo", "UNDO" -> {
+                                        onTextAction(TextAction.UNDO, false)
+                                    }
+                                    "ACTION_REDO", "action:redo", "REDO" -> {
+                                        onTextAction(TextAction.REDO, false)
+                                    }
+                                    else -> {
+                                        onKeyTap(KeyDef(label = selectedChar, type = KeyType.CHARACTER))
+                                    }
+                                }
                             }
                         }
                         moreKeysState = null

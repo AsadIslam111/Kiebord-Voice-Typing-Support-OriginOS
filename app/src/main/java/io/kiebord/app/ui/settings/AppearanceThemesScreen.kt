@@ -213,51 +213,29 @@ private fun AbstractThemeCard(
                 }
             }
 
-            // Stylized mini keyboard preview swatches
-            Column(
+            // Stylized mini keyboard preview swatches: Space key swatch & Enter key accent swatch
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(bottom = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Top row of 3 mini keys
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    repeat(3) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(14.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(themeOption.scheme.keyBackground)
-                        )
-                    }
-                }
-
-                // Bottom row: Space key swatch & Enter key accent swatch
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(14.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(themeOption.scheme.keyBackground)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .width(22.dp)
-                            .height(14.dp)
-                            .clip(RoundedCornerShape(percent = 50))
-                            .background(themeOption.scheme.accentColor)
-                    )
-                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(themeOption.scheme.keyBackground)
+                )
+                Box(
+                    modifier = Modifier
+                        .width(26.dp)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(themeOption.scheme.accentColor)
+                )
             }
         }
 

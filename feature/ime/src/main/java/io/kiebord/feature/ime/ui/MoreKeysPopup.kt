@@ -21,6 +21,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Mood
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -201,12 +210,73 @@ fun MoreKeysPopup(
                                         .size(itemWidthDp, itemHeightDp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = item,
-                                        color = animatedTextColor,
-                                        fontSize = (19 * scaleFactor).sp,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
-                                    )
+                                    val actionIconSize = (22 * scaleFactor).coerceAtLeast(15f).dp
+                                    when (item) {
+                                        "ACTION_EMOJI", "action:emoji", "EMOJI" -> {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Mood,
+                                                contentDescription = "Emoji",
+                                                tint = animatedTextColor,
+                                                modifier = Modifier.size(actionIconSize)
+                                            )
+                                        }
+                                        "ACTION_SELECT_ALL", "action:select_all", "SELECT_ALL" -> {
+                                            Icon(
+                                                imageVector = Icons.Outlined.SelectAll,
+                                                contentDescription = "Select All",
+                                                tint = animatedTextColor,
+                                                modifier = Modifier.size(actionIconSize)
+                                            )
+                                        }
+                                        "ACTION_CUT", "action:cut", "CUT" -> {
+                                            Icon(
+                                                imageVector = Icons.Outlined.ContentCut,
+                                                contentDescription = "Cut",
+                                                tint = animatedTextColor,
+                                                modifier = Modifier.size(actionIconSize)
+                                            )
+                                        }
+                                        "ACTION_COPY", "action:copy", "COPY" -> {
+                                            Icon(
+                                                imageVector = Icons.Outlined.ContentCopy,
+                                                contentDescription = "Copy",
+                                                tint = animatedTextColor,
+                                                modifier = Modifier.size(actionIconSize)
+                                            )
+                                        }
+                                        "ACTION_PASTE", "action:paste", "PASTE" -> {
+                                            Icon(
+                                                imageVector = Icons.Outlined.ContentPaste,
+                                                contentDescription = "Paste",
+                                                tint = animatedTextColor,
+                                                modifier = Modifier.size(actionIconSize)
+                                            )
+                                        }
+                                        "ACTION_UNDO", "action:undo", "UNDO" -> {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Outlined.Undo,
+                                                contentDescription = "Undo",
+                                                tint = animatedTextColor,
+                                                modifier = Modifier.size(actionIconSize)
+                                            )
+                                        }
+                                        "ACTION_REDO", "action:redo", "REDO" -> {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Outlined.Redo,
+                                                contentDescription = "Redo",
+                                                tint = animatedTextColor,
+                                                modifier = Modifier.size(actionIconSize)
+                                            )
+                                        }
+                                        else -> {
+                                            Text(
+                                                text = item,
+                                                color = animatedTextColor,
+                                                fontSize = (19 * scaleFactor).sp,
+                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
