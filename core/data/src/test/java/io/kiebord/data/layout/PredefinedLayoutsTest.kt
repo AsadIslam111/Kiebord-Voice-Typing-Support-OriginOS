@@ -90,4 +90,88 @@ class PredefinedLayoutsTest {
         assertEquals("।", row4Keys[4].label)
         assertEquals(KeyType.ACTION, row4Keys[5].type)
     }
+
+    @Test
+    fun testSymbolsLayoutsWithAndWithoutNumberRow() {
+        val standard = PredefinedLayouts.getSymbolsLayout("symbols_1", hasNumberRow = false)
+        assertEquals("symbols_1", standard.id)
+        assertEquals(4, standard.rows.size)
+        // Row 0 is numbers
+        assertEquals("1", standard.rows[0].keys[0].label)
+        assertEquals("0", standard.rows[0].keys[9].label)
+        // Row 1 is @, #, $, %, etc.
+        assertEquals("@", standard.rows[1].keys[0].label)
+        assertEquals("ZWNJ", standard.rows[1].keys[9].label)
+        assertEquals("\u200C", standard.rows[1].keys[9].textToCommit(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        // Row 2 is =<, *, ", etc.
+        assertEquals("=\\<", standard.rows[2].keys[0].label)
+        // Row 3 is ABC, comma, underscore, space, slash, period, enter
+        assertEquals("ABC", standard.rows[3].keys[0].label)
+        assertEquals(",", standard.rows[3].keys[1].label)
+        assertEquals("_", standard.rows[3].keys[2].label)
+        assertEquals(KeyType.SPACE, standard.rows[3].keys[3].type)
+        assertEquals("/", standard.rows[3].keys[4].label)
+        assertEquals(".", standard.rows[3].keys[5].label)
+
+        // With extra row (number row enabled)
+        val withExtra = PredefinedLayouts.getSymbolsLayout("symbols_1", hasNumberRow = true)
+        assertEquals(5, withExtra.rows.size)
+        // Row 0 is numbers
+        assertEquals("1", withExtra.rows[0].keys[0].label)
+        // Row 1 is the EXTRA ROW from Borno XML reference: ~ < > _ ` º \ = { }
+        val extraRow = withExtra.rows[1].keys
+        assertEquals(10, extraRow.size)
+        assertEquals("~", extraRow[0].label)
+        assertEquals("<", extraRow[1].label)
+        assertEquals(">", extraRow[2].label)
+        assertEquals("_", extraRow[3].label)
+        assertEquals("`", extraRow[4].label)
+        assertEquals("º", extraRow[5].label)
+        assertEquals("\\", extraRow[6].label)
+        assertEquals("=", extraRow[7].label)
+        assertEquals("{", extraRow[8].label)
+        assertEquals("}", extraRow[9].label)
+        // Row 2 is @, #, $...
+        assertEquals("@", withExtra.rows[2].keys[0].label)
+        // Row 3 is =<...
+        assertEquals("=\\<", withExtra.rows[3].keys[0].label)
+        // Row 4 is ABC...
+        assertEquals("ABC", withExtra.rows[4].keys[0].label)
+    }
+
+    @Test
+    fun testSymbolsMoreLayoutsWithAndWithoutNumberRow() {
+        val standard = PredefinedLayouts.getSymbolsLayout("symbols_2", hasNumberRow = false)
+        assertEquals("symbols_2", standard.id)
+        assertEquals(4, standard.rows.size)
+        assertEquals("~", standard.rows[0].keys[0].label)
+        assertEquals("∆", standard.rows[0].keys[9].label)
+        assertEquals("£", standard.rows[1].keys[0].label)
+        assertEquals("?123", standard.rows[2].keys[0].label)
+        assertEquals("ABC", standard.rows[3].keys[0].label)
+
+        // With extra shift row (number row enabled)
+        val withExtra = PredefinedLayouts.getSymbolsLayout("symbols_2", hasNumberRow = true)
+        assertEquals(5, withExtra.rows.size)
+        assertEquals("~", withExtra.rows[0].keys[0].label)
+        // Row 1 is the EXTRA SHIFT ROW from Borno XML reference: ≠ ≤ ≥ ∫ Σ ≈ ± ∓ ½ ∞
+        val extraShiftRow = withExtra.rows[1].keys
+        assertEquals(10, extraShiftRow.size)
+        assertEquals("≠", extraShiftRow[0].label)
+        assertEquals("≤", extraShiftRow[1].label)
+        assertEquals("≥", extraShiftRow[2].label)
+        assertEquals("∫", extraShiftRow[3].label)
+        assertEquals("Σ", extraShiftRow[4].label)
+        assertEquals("≈", extraShiftRow[5].label)
+        assertEquals("±", extraShiftRow[6].label)
+        assertEquals("∓", extraShiftRow[7].label)
+        assertEquals("½", extraShiftRow[8].label)
+        assertEquals("∞", extraShiftRow[9].label)
+        // Row 2 is £, ¢...
+        assertEquals("£", withExtra.rows[2].keys[0].label)
+        // Row 3 is ?123...
+        assertEquals("?123", withExtra.rows[3].keys[0].label)
+        // Row 4 is ABC...
+        assertEquals("ABC", withExtra.rows[4].keys[0].label)
+    }
 }

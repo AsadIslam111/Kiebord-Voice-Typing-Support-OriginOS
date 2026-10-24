@@ -9,13 +9,18 @@ data class KeyDef(
     val flickUp: String? = null,
     val moreKeys: List<String> = emptyList(),
     val moreKeysColumns: Int? = null,
-    val slidingInput: Boolean = false
+    val slidingInput: Boolean = false,
+    val commitText: String? = null
 ) {
     fun displayLabel(shiftState: ShiftState): String {
         return when (shiftState) {
             ShiftState.UNSHIFTED -> label
             ShiftState.ONE_SHOT, ShiftState.CAPS_LOCK -> shiftedLabel ?: label.uppercase()
         }
+    }
+
+    fun textToCommit(shiftState: ShiftState): String {
+        return commitText ?: displayLabel(shiftState)
     }
 }
 

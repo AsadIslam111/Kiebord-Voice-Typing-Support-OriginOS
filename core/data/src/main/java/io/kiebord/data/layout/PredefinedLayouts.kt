@@ -258,55 +258,82 @@ object PredefinedLayouts {
         rows = listOf(
             KeyRow(
                 listOf(
-                    KeyDef("1", moreKeys = listOf("1", "১")),
-                    KeyDef("2", moreKeys = listOf("2", "২")),
-                    KeyDef("3", moreKeys = listOf("3", "৩")),
-                    KeyDef("4", moreKeys = listOf("4", "৪")),
-                    KeyDef("5", moreKeys = listOf("5", "৫")),
+                    KeyDef("1", moreKeys = listOf("1", "¹", "½", "⅓", "¼", "⅛", "১")),
+                    KeyDef("2", moreKeys = listOf("2", "²", "⅔", "২")),
+                    KeyDef("3", moreKeys = listOf("3", "³", "¾", "⅜", "৩")),
+                    KeyDef("4", moreKeys = listOf("4", "⁴", "৪")),
+                    KeyDef("5", moreKeys = listOf("5", "⅝", "৫")),
                     KeyDef("6", moreKeys = listOf("6", "৬")),
-                    KeyDef("7", moreKeys = listOf("7", "৭")),
+                    KeyDef("7", moreKeys = listOf("7", "⅞", "৭")),
                     KeyDef("8", moreKeys = listOf("8", "৮")),
                     KeyDef("9", moreKeys = listOf("9", "৯")),
-                    KeyDef("0", moreKeys = listOf("0", "০"))
+                    KeyDef("0", moreKeys = listOf("0", "ⁿ", "∅", "০"))
                 )
             ),
             KeyRow(
                 listOf(
                     KeyDef("@"),
                     KeyDef("#"),
-                    KeyDef("$", moreKeys = listOf("$", "৳", "₹", "€", "£", "¥")),
-                    KeyDef("_"),
+                    KeyDef("$", moreKeys = listOf("$", "৳", "₹", "€", "£", "¥", "¢")),
+                    KeyDef("%", moreKeys = listOf("%", "‰")),
                     KeyDef("&"),
-                    KeyDef("-"),
-                    KeyDef("+"),
-                    KeyDef("("),
-                    KeyDef(")"),
-                    KeyDef("/")
+                    KeyDef("-", moreKeys = listOf("-", "_", "–", "—", "·", "⁻")),
+                    KeyDef("+", moreKeys = listOf("+", "±", "⁺")),
+                    KeyDef("(", moreKeys = listOf("(", "[", "{", "<")),
+                    KeyDef(")", moreKeys = listOf(")", "]", "}", ">")),
+                    KeyDef("ZWNJ", commitText = "\u200C", moreKeys = listOf("ZWJ", "/"))
                 )
             ),
             KeyRow(
                 listOf(
                     KeyDef("=\\<", type = KeyType.SYMBOLS, widthWeight = 1.5f),
-                    KeyDef("*"),
-                    KeyDef("\""),
-                    KeyDef("'"),
-                    KeyDef(":"),
-                    KeyDef(";"),
-                    KeyDef("!"),
-                    KeyDef("?"),
+                    KeyDef("*", moreKeys = listOf("*", "★", "†", "‡")),
+                    KeyDef("\"", moreKeys = listOf("\"", "”", "“", "„", "»", "«")),
+                    KeyDef("'", moreKeys = listOf("'", "’", "‘", "‚", "›", "‹")),
+                    KeyDef(":", moreKeys = listOf(":", "ঃ")),
+                    KeyDef(";", moreKeys = listOf(";")),
+                    KeyDef("!", moreKeys = listOf("!", "¡")),
+                    KeyDef("?", moreKeys = listOf("?", "¿")),
                     KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.5f)
                 )
             ),
             KeyRow(
                 listOf(
                     KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.5f),
-                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
                     KeyDef(",", widthWeight = 1.0f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
-                    KeyDef(".", widthWeight = 1.0f),
+                    KeyDef("_", widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 3.0f),
+                    KeyDef("/", widthWeight = 1.0f),
+                    KeyDef(".", widthWeight = 1.0f, moreKeys = listOf(".", "…")),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
             )
+        )
+    )
+
+    val SymbolsWithNumberRow = KeyboardLayoutDef(
+        id = "symbols_1",
+        name = "Symbols",
+        language = "sym",
+        rows = listOf(
+            Symbols.rows[0],
+            KeyRow(
+                listOf(
+                    KeyDef("~"),
+                    KeyDef("<", moreKeys = listOf("<", "«", "≤")),
+                    KeyDef(">", moreKeys = listOf(">", "»", "≥")),
+                    KeyDef("_"),
+                    KeyDef("`"),
+                    KeyDef("º", moreKeys = listOf("º", "°")),
+                    KeyDef("\\"),
+                    KeyDef("=", moreKeys = listOf("=", "≠", "≈", "∞")),
+                    KeyDef("{"),
+                    KeyDef("}")
+                )
+            ),
+            Symbols.rows[1],
+            Symbols.rows[2],
+            Symbols.rows[3]
         )
     )
 
@@ -320,37 +347,38 @@ object PredefinedLayouts {
                     KeyDef("~"),
                     KeyDef("`"),
                     KeyDef("|"),
-                    KeyDef("•"),
+                    KeyDef("•", moreKeys = listOf("•", "♪", "♥", "♠", "♦", "♣")),
                     KeyDef("√"),
-                    KeyDef("π"),
+                    KeyDef("π", moreKeys = listOf("π", "Π")),
                     KeyDef("÷"),
                     KeyDef("×"),
-                    KeyDef("§"),
-                    KeyDef("Δ")
+                    KeyDef("¶", moreKeys = listOf("¶", "§")),
+                    KeyDef("∆")
                 )
             ),
             KeyRow(
-                listOf(
+                keys = listOf(
                     KeyDef("£"),
+                    KeyDef("¢"),
                     KeyDef("€"),
                     KeyDef("¥"),
-                    KeyDef("¢"),
-                    KeyDef("^"),
-                    KeyDef("°"),
-                    KeyDef("="),
+                    KeyDef("^", moreKeys = listOf("^", "↑", "↓", "←", "→")),
+                    KeyDef("°", moreKeys = listOf("°", "′", "″")),
+                    KeyDef("=", moreKeys = listOf("=", "≠", "≈", "∞")),
                     KeyDef("{"),
-                    KeyDef("}"),
-                    KeyDef("\\")
-                )
+                    KeyDef("}")
+                ),
+                startPaddingWeight = 0.5f,
+                endPaddingWeight = 0.5f
             ),
             KeyRow(
                 listOf(
                     KeyDef("?123", type = KeyType.SYMBOLS, widthWeight = 1.5f),
-                    KeyDef("%"),
+                    KeyDef("\\"),
                     KeyDef("©"),
                     KeyDef("®"),
                     KeyDef("™"),
-                    KeyDef("✓"),
+                    KeyDef("℅"),
                     KeyDef("["),
                     KeyDef("]"),
                     KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.5f)
@@ -359,21 +387,57 @@ object PredefinedLayouts {
             KeyRow(
                 listOf(
                     KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.5f),
-                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
-                    KeyDef("<", widthWeight = 1.0f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
-                    KeyDef(">", widthWeight = 1.0f),
+                    KeyDef(",", widthWeight = 1.0f),
+                    KeyDef("<", widthWeight = 1.0f, moreKeys = listOf("<", "«", "≤")),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 3.0f),
+                    KeyDef(">", widthWeight = 1.0f, moreKeys = listOf(">", "»", "≥")),
+                    KeyDef(".", widthWeight = 1.0f, moreKeys = listOf(".", "…")),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
             )
         )
     )
 
+    val SymbolsMoreWithNumberRow = KeyboardLayoutDef(
+        id = "symbols_2",
+        name = "More Symbols",
+        language = "sym",
+        rows = listOf(
+            SymbolsMore.rows[0],
+            KeyRow(
+                listOf(
+                    KeyDef("≠"),
+                    KeyDef("≤"),
+                    KeyDef("≥"),
+                    KeyDef("∫"),
+                    KeyDef("Σ"),
+                    KeyDef("≈"),
+                    KeyDef("±"),
+                    KeyDef("∓"),
+                    KeyDef("½"),
+                    KeyDef("∞")
+                )
+            ),
+            SymbolsMore.rows[1],
+            SymbolsMore.rows[2],
+            SymbolsMore.rows[3]
+        )
+    )
+
+    fun getSymbolsLayout(id: String, hasNumberRow: Boolean): KeyboardLayoutDef {
+        return when (id) {
+            "symbols_2" -> if (hasNumberRow) SymbolsMoreWithNumberRow else SymbolsMore
+            else -> if (hasNumberRow) SymbolsWithNumberRow else Symbols
+        }
+    }
+
     fun fromId(id: String): KeyboardLayoutDef {
         return when (id) {
             "bn_borno" -> BengaliBorno
             "bn_probhat" -> BengaliProbhat
             "bn_national" -> BengaliNational
+            "symbols_1" -> Symbols
+            "symbols_2" -> SymbolsMore
             else -> EnglishQwerty
         }
     }

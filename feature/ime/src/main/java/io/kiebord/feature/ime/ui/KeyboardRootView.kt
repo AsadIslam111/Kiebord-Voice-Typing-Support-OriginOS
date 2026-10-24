@@ -331,7 +331,14 @@ fun KeyboardRootView(
     }
 
     // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
-    val displayLayout = if (isSlidingSymbolMode) PredefinedLayouts.Symbols else layout
+    val rawDisplayLayout = if (isSlidingSymbolMode) PredefinedLayouts.Symbols else layout
+    val displayLayout = remember(rawDisplayLayout, showNumberRow) {
+        if (rawDisplayLayout.id.startsWith("symbols")) {
+            PredefinedLayouts.getSymbolsLayout(rawDisplayLayout.id, showNumberRow)
+        } else {
+            rawDisplayLayout
+        }
+    }
 
     // Clear key coordinate cache whenever active layout changes to prevent stale hits
     LaunchedEffect(isSlidingSymbolMode, displayLayout.id) {
@@ -340,7 +347,7 @@ fun KeyboardRootView(
     }
 
     val isKeysInteractive = isInteractive && !isResizerOpen
-    val numberRowEffectiveHeight = if (showNumberRow && !displayLayout.id.startsWith("symbols")) (44 * scaleFactor).dp else 0.dp
+    val numberRowEffectiveHeight = if (showNumberRow) (44 * scaleFactor).dp else 0.dp
     val keyboardContentHeight = (keyRowHeight * 4) + numberRowEffectiveHeight
 
     val context = LocalContext.current
@@ -786,7 +793,12 @@ fun KeyboardRootView(
                                         onTextAction(TextAction.REDO, false)
                                     }
                                     else -> {
-                                        onKeyTap(KeyDef(label = selectedChar, type = KeyType.CHARACTER))
+                                        val charToCommit = when (selectedChar) {
+                                            "ZWNJ" -> "\u200C"
+                                            "ZWJ" -> "\u200D"
+                                            else -> selectedChar
+                                        }
+                                        onKeyTap(KeyDef(label = selectedChar, commitText = charToCommit, type = KeyType.CHARACTER))
                                     }
                                 }
                             }
@@ -814,12 +826,17 @@ fun KeyboardRootView(
 
                     // Keyboard rows (stable layout without recomposition shifts)
                     displayLayout.rows.forEachIndexed { rowIndex, row ->
-                    val isBottomRow = rowIndex == displayLayout.rows.lastIndex
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(keyRowHeight)
-                    ) {
+                        val isBottomRow = rowIndex == displayLayout.rows.lastIndex
+                        val currentRowHeight = if (displayLayout.id.startsWith("symbols") && displayLayout.rows.size == 5 && rowIndex == 0) {
+                            (44 * scaleFactor).dp
+                        } else {
+                            keyRowHeight
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(currentRowHeight)
+                        ) {
                         if (row.startPaddingDp > 0f) {
                             Spacer(
                                 modifier = Modifier
@@ -856,7 +873,7 @@ fun KeyboardRootView(
                                 showSecondaryKeys = if (!isInteractive) false else showSecondaryKeys,
                                 showKeyPopups = showKeyPopups,
                                 isInteractive = isKeysInteractive,
-                                rowHeight = keyRowHeight,
+                                rowHeight = currentRowHeight,
                                 gestureTypingEnabled = gestureTypingEnabled,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)

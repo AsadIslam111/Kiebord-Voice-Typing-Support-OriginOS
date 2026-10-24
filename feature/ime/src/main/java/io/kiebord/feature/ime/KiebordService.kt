@@ -430,7 +430,7 @@ class KiebordService : InputMethodService() {
         when (key.type) {
             KeyType.CHARACTER -> {
                 val initialShiftState = shiftState
-                val text = key.displayLabel(shiftState)
+                val text = key.textToCommit(shiftState)
 
                 when {
                     isTransliterationLayout() -> {
@@ -615,7 +615,7 @@ class KiebordService : InputMethodService() {
             KeyType.SYMBOLS -> {
                 finishComposing()
                 when (key.label) {
-                    "?123" -> {
+                    "?123", "?১২৩" -> {
                         if (!isSymbolsMode) {
                             primaryAlphaLayout = activeLayout
                             isSymbolsMode = true
