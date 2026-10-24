@@ -54,6 +54,7 @@ import io.kiebord.feature.ime.ui.emoji.EmojiPanelView
 import io.kiebord.feature.ime.ui.resizer.LiveResizerOverlay
 import io.kiebord.feature.ime.ui.textedit.TextAction
 import io.kiebord.feature.ime.ui.textedit.TextEditPanelView
+import io.kiebord.feature.ime.ui.suggestion.ExpandedSuggestionsPanelView
 import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
 import io.kiebord.feature.ime.ui.suggestion.SuggestionStripView
 import io.kiebord.feature.ime.ui.toolbar.ReorderableToolbar
@@ -238,6 +239,7 @@ fun KeyboardRootView(
     var isResizerOpen by remember { mutableStateOf(false) }
     var isTextEditOpen by remember { mutableStateOf(false) }
     var isToolsDrawerOpen by remember { mutableStateOf(false) }
+    var isSuggestionsExpanded by remember { mutableStateOf(false) }
     var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
     var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
     var chinPadding by remember(initialRowHeight) {
@@ -260,10 +262,11 @@ fun KeyboardRootView(
     val effectiveNavBarBottom = maxOf(navBarBottomInset, composeNavBottom)
     val totalBottomPadding = chinPadding + effectiveNavBarBottom
 
-    // Reset toolbar options visibility when suggestions clear
+    // Reset toolbar options & expanded suggestions visibility when suggestions clear
     LaunchedEffect(suggestions.isEmpty()) {
         if (suggestions.isEmpty()) {
             isToolbarOptionsVisible = false
+            isSuggestionsExpanded = false
         }
     }
 
@@ -288,12 +291,14 @@ fun KeyboardRootView(
                 isToolsDrawerOpen = false
                 isEmojiOpen = false
                 isResizerOpen = false
+                isSuggestionsExpanded = false
             }
             ToolbarAction.EMOJI -> {
                 isEmojiOpen = !isEmojiOpen
                 if (isEmojiOpen) {
                     isToolsDrawerOpen = false
                     isResizerOpen = false
+                    isSuggestionsExpanded = false
                 }
             }
             ToolbarAction.RESIZER -> {
@@ -303,6 +308,7 @@ fun KeyboardRootView(
                     savedHorizontalMargin = horizontalMargin
                     isEmojiOpen = false
                     isToolsDrawerOpen = false
+                    isSuggestionsExpanded = false
                 }
                 isResizerOpen = !isResizerOpen
             }
@@ -321,6 +327,7 @@ fun KeyboardRootView(
                 isToolsDrawerOpen = false
                 isEmojiOpen = false
                 isResizerOpen = false
+                isSuggestionsExpanded = false
                 isClipboardOpen = !isClipboardOpen
                 if (isClipboardOpen) {
                     clipboardManager?.syncFromSystemClipboard()
@@ -394,7 +401,7 @@ fun KeyboardRootView(
                         .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible
+                    val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible || isSuggestionsExpanded
 
                     // 1. Expand / Back / Toggle button on far left
                     Box(
@@ -406,6 +413,9 @@ fun KeyboardRootView(
                             )
                             .clickable {
                                 when {
+                                    isSuggestionsExpanded -> {
+                                        isSuggestionsExpanded = false
+                                    }
                                     isToolsDrawerOpen || isToolbarOptionsVisible -> {
                                         isToolsDrawerOpen = false
                                         isToolbarOptionsVisible = false
@@ -424,6 +434,7 @@ fun KeyboardRootView(
                                 else -> Icons.Outlined.GridView
                             },
                             contentDescription = when {
+                                isSuggestionsExpanded -> "Collapse Suggestions"
                                 isToolsDrawerOpen -> "Close Tools"
                                 isToolbarOptionsVisible -> "Show Suggestions"
                                 else -> "All Tools"
@@ -439,7 +450,20 @@ fun KeyboardRootView(
                     if (suggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
                         SuggestionStripView(
                             candidates = suggestions,
-                            onCandidateClick = onCandidateSelect,
+                            onCandidateClick = { candidate ->
+                                isSuggestionsExpanded = false
+                                onCandidateSelect(candidate)
+                            },
+                            isExpanded = isSuggestionsExpanded,
+                            onExpandToggle = {
+                                isSuggestionsExpanded = !isSuggestionsExpanded
+                                if (isSuggestionsExpanded) {
+                                    isToolsDrawerOpen = false
+                                    isClipboardOpen = false
+                                    isEmojiOpen = false
+                                    isResizerOpen = false
+                                }
+                            },
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -489,8 +513,18 @@ fun KeyboardRootView(
                     }
                 }
 
-                // Switch between Tools Drawer, Clipboard Panel, Emoji Panel, and Keyboard Keys
-                if (isToolsDrawerOpen) {
+                // Switch between Expanded Suggestions Panel, Tools Drawer, Clipboard Panel, Emoji Panel, and Keyboard Keys
+                if (isSuggestionsExpanded && suggestions.isNotEmpty()) {
+                    ExpandedSuggestionsPanelView(
+                        candidates = suggestions,
+                        onCandidateClick = { candidate ->
+                            isSuggestionsExpanded = false
+                            onCandidateSelect(candidate)
+                        },
+                        onClose = { isSuggestionsExpanded = false },
+                        height = keyboardContentHeight
+                    )
+                } else if (isToolsDrawerOpen) {
                     ToolsDrawerView(
                         drawerTools = drawerTools,
                         onDrawerToolsChange = { updateTools(pinnedTools, it) },
