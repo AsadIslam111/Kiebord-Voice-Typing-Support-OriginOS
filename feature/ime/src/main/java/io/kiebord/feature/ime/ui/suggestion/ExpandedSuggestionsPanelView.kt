@@ -64,20 +64,12 @@ fun ExpandedSuggestionsPanelView(
             .height(height)
             .background(colorScheme.containerBackground)
     ) {
-        // Subtle divider on top
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(0.5.dp)
-                .background(colorScheme.keyForeground.copy(alpha = 0.12f))
-        )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            // 1. Dynamic-width Candidate Grid area (not fixed columns; sized according to candidate text with dividers)
+            // 1. Dynamic-width Candidate Flow area (sized according to candidate text with clean vertical dividers)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -94,18 +86,13 @@ fun ExpandedSuggestionsPanelView(
                         Box(
                             modifier = Modifier
                                 .drawBehind {
-                                    // Clean vertical divider line on right
+                                    // Clean vertical divider centered vertically, matching suggestion bar aesthetic
+                                    val dividerHeightPx = 18.dp.toPx()
+                                    val startY = (size.height - dividerHeightPx) / 2f
                                     drawLine(
                                         color = dividerColor,
-                                        start = Offset(size.width, 0f),
-                                        end = Offset(size.width, size.height),
-                                        strokeWidth = 1.dp.toPx()
-                                    )
-                                    // Clean horizontal divider line on bottom
-                                    drawLine(
-                                        color = dividerColor,
-                                        start = Offset(0f, size.height),
-                                        end = Offset(size.width, size.height),
+                                        start = Offset(size.width, startY),
+                                        end = Offset(size.width, startY + dividerHeightPx),
                                         strokeWidth = 1.dp.toPx()
                                     )
                                 }
