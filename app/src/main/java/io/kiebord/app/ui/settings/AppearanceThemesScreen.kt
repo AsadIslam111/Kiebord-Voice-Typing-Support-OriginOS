@@ -166,13 +166,15 @@ fun AppearanceThemesScreen(
         }
     }
 
+    val colors = LocalSettingsColors.current
+
     // Modal Bottom Sheet showing real actual KeyboardRootView in theme colors and Key borders toggle
     if (previewThemeOption != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = { previewThemeOption = null },
             sheetState = sheetState,
-            containerColor = Color(0xFF1E1F22),
+            containerColor = colors.cardBackground,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
         ) {
             ThemePreviewBottomSheetContent(
@@ -196,8 +198,9 @@ private fun AbstractThemeCard(
     modifier: Modifier = Modifier,
     onSelect: () -> Unit
 ) {
+    val colors = LocalSettingsColors.current
     val borderColor by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF7AA2F7) else Color(0xFF2B2D31),
+        targetValue = if (isSelected) colors.accent else colors.cardBorder,
         animationSpec = tween(durationMillis = 200),
         label = "themeBorder"
     )
@@ -224,14 +227,14 @@ private fun AbstractThemeCard(
                     modifier = Modifier
                         .size(16.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF7AA2F7))
+                        .background(colors.accent)
                         .align(Alignment.TopEnd),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Selected",
-                        tint = Color(0xFF0F141C),
+                        tint = if (colors.isDark) Color(0xFF0F141C) else Color(0xFFFFFFFF),
                         modifier = Modifier.size(11.dp)
                     )
                 }
@@ -272,7 +275,7 @@ private fun AbstractThemeCard(
             text = themeOption.name,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) Color(0xFF7AA2F7) else Color(0xFFE0E2E8),
+            color = if (isSelected) colors.accent else colors.textPrimary,
             maxLines = 1
         )
     }
@@ -286,6 +289,8 @@ private fun ThemePreviewBottomSheetContent(
     onToggleKeyBorders: (Boolean) -> Unit,
     onApplyTheme: () -> Unit
 ) {
+    val colors = LocalSettingsColors.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -296,7 +301,7 @@ private fun ThemePreviewBottomSheetContent(
             text = themeOption.name,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFFE0E2E8),
+            color = colors.textPrimary,
             modifier = Modifier.padding(bottom = 14.dp)
         )
 
@@ -349,7 +354,7 @@ private fun ThemePreviewBottomSheetContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF25272B))
+                    .background(colors.inputBackground)
                     .clickable { onToggleKeyBorders(!showKeyBorders) }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -358,17 +363,17 @@ private fun ThemePreviewBottomSheetContent(
                     text = "Key borders",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFE0E2E8),
+                    color = colors.textPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 Switch(
                     checked = showKeyBorders,
                     onCheckedChange = onToggleKeyBorders,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = Color(0xFF7AA2F7),
-                        uncheckedThumbColor = Color(0xFF9499A8),
-                        uncheckedTrackColor = Color(0xFF383A40)
+                        checkedThumbColor = if (colors.isDark) Color(0xFF0F141C) else Color.White,
+                        checkedTrackColor = colors.accent,
+                        uncheckedThumbColor = colors.textSecondary,
+                        uncheckedTrackColor = colors.inputBorder
                     )
                 )
             }
@@ -382,14 +387,14 @@ private fun ThemePreviewBottomSheetContent(
                     .height(48.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7AA2F7)
+                    containerColor = colors.accent
                 )
             ) {
                 Text(
                     text = "Apply Theme",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F141C)
+                    color = if (colors.isDark) Color(0xFF0F141C) else Color.White
                 )
             }
         }

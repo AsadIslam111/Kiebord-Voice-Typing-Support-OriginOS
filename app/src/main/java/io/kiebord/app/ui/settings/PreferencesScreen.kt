@@ -77,6 +77,7 @@ fun PreferencesScreen(
 
             if (preferences.vibrateOnKeypress) {
                 // Feedback Type Selector: Haptic vs Vibration
+                val colors = LocalSettingsColors.current
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -84,16 +85,17 @@ fun PreferencesScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val isHaptic = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_HAPTIC
+                    val hapticBg = if (isHaptic) (if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)) else colors.inputBackground
+                    val hapticBorder = if (isHaptic) colors.accent else colors.inputBorder
+                    val hapticTint = if (isHaptic) colors.accent else colors.textSecondary
+                    val hapticText = if (isHaptic) colors.accent else colors.textPrimary
+
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (isHaptic) Color(0xFF233047) else Color(0xFF25272B))
-                            .border(
-                                1.dp,
-                                if (isHaptic) Color(0xFF7AA2F7) else Color(0xFF383A40),
-                                RoundedCornerShape(10.dp)
-                            )
+                            .background(hapticBg)
+                            .border(1.dp, hapticBorder, RoundedCornerShape(10.dp))
                             .clickable { onUpdateVibrationType(KiebordPreferences.VIBRATION_TYPE_HAPTIC) }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
@@ -105,29 +107,30 @@ fun PreferencesScreen(
                             Icon(
                                 imageVector = Icons.Outlined.TouchApp,
                                 contentDescription = null,
-                                tint = if (isHaptic) Color(0xFF7AA2F7) else Color(0xFF9499A8),
+                                tint = hapticTint,
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
                                 text = "Haptic",
                                 fontSize = 13.sp,
                                 fontWeight = if (isHaptic) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isHaptic) Color(0xFF7AA2F7) else Color(0xFFE0E2E8)
+                                color = hapticText
                             )
                         }
                     }
 
                     val isVibration = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_VIBRATION
+                    val vibrationBg = if (isVibration) (if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)) else colors.inputBackground
+                    val vibrationBorder = if (isVibration) colors.accent else colors.inputBorder
+                    val vibrationTint = if (isVibration) colors.accent else colors.textSecondary
+                    val vibrationText = if (isVibration) colors.accent else colors.textPrimary
+
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (isVibration) Color(0xFF233047) else Color(0xFF25272B))
-                            .border(
-                                1.dp,
-                                if (isVibration) Color(0xFF7AA2F7) else Color(0xFF383A40),
-                                RoundedCornerShape(10.dp)
-                            )
+                            .background(vibrationBg)
+                            .border(1.dp, vibrationBorder, RoundedCornerShape(10.dp))
                             .clickable { onUpdateVibrationType(KiebordPreferences.VIBRATION_TYPE_VIBRATION) }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
@@ -139,14 +142,14 @@ fun PreferencesScreen(
                             Icon(
                                 imageVector = Icons.Outlined.Vibration,
                                 contentDescription = null,
-                                tint = if (isVibration) Color(0xFF7AA2F7) else Color(0xFF9499A8),
+                                tint = vibrationTint,
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
                                 text = "Vibration",
                                 fontSize = 13.sp,
                                 fontWeight = if (isVibration) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isVibration) Color(0xFF7AA2F7) else Color(0xFFE0E2E8)
+                                color = vibrationText
                             )
                         }
                     }

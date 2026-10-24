@@ -63,6 +63,7 @@ fun KeyboardLayoutsScreen(
     onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
+    val colors = LocalSettingsColors.current
 
     val isAnyBanglaEnabled = preferences.enabledLayoutIds.any { it.startsWith("bn") }
     var isBanglaExpanded by remember {
@@ -138,14 +139,14 @@ fun KeyboardLayoutsScreen(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF2B2D31)),
+                            .background(colors.iconBackground),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "বাং",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF7AA2F7)
+                            color = colors.accent
                         )
                     }
 
@@ -156,26 +157,31 @@ fun KeyboardLayoutsScreen(
                             text = "Bangla Language",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFE0E2E8)
+                            color = colors.textPrimary
                         )
                         Text(
                             text = if (isBanglaExpanded) "Borno Phonetic • Probhat" else "$activeBanglaCount active layout(s) • tap to expand",
                             fontSize = 12.sp,
-                            color = Color(0xFF9499A8)
+                            color = colors.textSecondary
                         )
                     }
+
+                    val badgeBg = if (activeBanglaCount > 0) {
+                        if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)
+                    } else colors.inputBackground
+                    val badgeText = if (activeBanglaCount > 0) colors.accent else colors.textSecondary
 
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (activeBanglaCount > 0) Color(0xFF233047) else Color(0xFF25272B))
+                            .background(badgeBg)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = if (isBanglaExpanded) "Expanded" else "$activeBanglaCount Active",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = if (activeBanglaCount > 0) Color(0xFF7AA2F7) else Color(0xFF9499A8)
+                            color = badgeText
                         )
                     }
                 }
@@ -222,8 +228,9 @@ private fun RealKeyboardPreviewCard(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val borderColor = if (isEnabled) Color(0xFF7AA2F7) else Color(0xFF2A2D33)
-    val cardBackground = Color(0xFF14161A)
+    val colors = LocalSettingsColors.current
+    val borderColor = if (isEnabled) colors.accent else colors.cardBorder
+    val cardBackground = colors.cardBackground
 
     val currentScheme = when (preferences.theme) {
         KiebordPreferences.THEME_AMOLED_BLACK -> KeyboardColorScheme.AmoledBlack
@@ -291,14 +298,14 @@ private fun RealKeyboardPreviewCard(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF22252B))
+                    .background(colors.iconBackground)
                     .padding(horizontal = 7.dp, vertical = 3.dp)
             ) {
                 Text(
                     text = cardData.badge,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF7AA2F7)
+                    color = colors.accent
                 )
             }
 
@@ -309,12 +316,12 @@ private fun RealKeyboardPreviewCard(
                     text = cardData.name,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isEnabled) Color(0xFF7AA2F7) else Color(0xFFE0E2E8)
+                    color = if (isEnabled) colors.accent else colors.textPrimary
                 )
                 Text(
                     text = cardData.description,
                     fontSize = 11.sp,
-                    color = Color(0xFF9499A8),
+                    color = colors.textSecondary,
                     maxLines = 1
                 )
             }
@@ -323,9 +330,9 @@ private fun RealKeyboardPreviewCard(
                 checked = isEnabled,
                 onCheckedChange = { onToggle() },
                 colors = CheckboxDefaults.colors(
-                    checkedColor = Color(0xFF7AA2F7),
-                    uncheckedColor = Color(0xFF6B7280),
-                    checkmarkColor = Color(0xFF0F141C)
+                    checkedColor = colors.accent,
+                    uncheckedColor = colors.textSecondary,
+                    checkmarkColor = if (colors.isDark) Color(0xFF0F141C) else Color(0xFFFFFFFF)
                 )
             )
         }

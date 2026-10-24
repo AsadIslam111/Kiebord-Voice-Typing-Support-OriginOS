@@ -189,6 +189,7 @@ fun KeycapView(
                         var isSlidingDrag = false
                         var isSpacebarDwellReady = false
                         var isSpacebarSwipingLayout = false
+                        var initialSpacebarSwipeX = 0f
                         var isSpacebarTrackpadActive = false
                         var isGestureTyping = false
                         var isDeleteSwipeActive = false
@@ -242,12 +243,7 @@ fun KeycapView(
                                         currentOnDeleteSwipeCancel.value()
                                     }
                                 } else if (isSpacebarSwipingLayout) {
-                                    val swipeActivationPx = with(density) { 30.dp.toPx() }
-                                    val effectiveDeltaX = if (delta.x > 0) {
-                                        (delta.x - swipeActivationPx).coerceAtLeast(0f)
-                                    } else {
-                                        (delta.x + swipeActivationPx).coerceAtMost(0f)
-                                    }
+                                    val effectiveDeltaX = delta.x - initialSpacebarSwipeX
                                     currentOnSpacebarSwipeEnd.value(effectiveDeltaX)
                                 } else if (isSpacebarTrackpadActive) {
                                     // Trackpad gesture completed, don't emit normal space tap
@@ -306,13 +302,10 @@ fun KeycapView(
                                             longPressJob.cancel()
                                             isSpacebarSwipingLayout = true
                                             isPressed = false
+                                            initialSpacebarSwipeX = delta.x
                                         }
                                         change.consume()
-                                        val effectiveDeltaX = if (delta.x > 0) {
-                                            delta.x - swipeActivationPx
-                                        } else {
-                                            delta.x + swipeActivationPx
-                                        }
+                                        val effectiveDeltaX = delta.x - initialSpacebarSwipeX
                                         currentOnSpacebarSwipeMove.value(effectiveDeltaX)
                                     }
                                 } else {

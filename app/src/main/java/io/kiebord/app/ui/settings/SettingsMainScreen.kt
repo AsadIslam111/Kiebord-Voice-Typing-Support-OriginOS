@@ -1,5 +1,6 @@
 package io.kiebord.app.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,19 +82,21 @@ fun SettingsMainScreen(
     ) {
         Spacer(modifier = Modifier.height(6.dp))
 
+        val colors = LocalSettingsColors.current
+
         // Activation / Status Card
         if (!isImeEnabled || !isImeSelected) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2B271F))
+                colors = CardDefaults.cardColors(containerColor = colors.warningCardBg)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = if (!isImeEnabled) "Keyboard Not Enabled" else "Keyboard Not Selected",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFFFFB86C)
+                        color = colors.warningCardText
                     )
                     Text(
                         text = if (!isImeEnabled) {
@@ -102,7 +105,7 @@ fun SettingsMainScreen(
                             "Switch your active input method to Kiebord."
                         },
                         fontSize = 12.sp,
-                        color = Color(0xFFD4C8B8),
+                        color = colors.warningCardSubtext,
                         modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
                     )
 
@@ -111,8 +114,8 @@ fun SettingsMainScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFFB86C),
-                            contentColor = Color(0xFF1E1F22)
+                            containerColor = colors.warningBtnBg,
+                            contentColor = colors.warningBtnText
                         )
                     ) {
                         Icon(
@@ -132,7 +135,7 @@ fun SettingsMainScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2E20))
+                colors = CardDefaults.cardColors(containerColor = colors.activeCardBg)
             ) {
                 Row(
                     modifier = Modifier
@@ -143,7 +146,7 @@ fun SettingsMainScreen(
                     Icon(
                         imageVector = Icons.Outlined.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFF81C784),
+                        tint = colors.activeCardIcon,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -152,12 +155,12 @@ fun SettingsMainScreen(
                             text = "Kiebord is Active",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFA5D6A7)
+                            color = colors.activeCardText
                         )
                         Text(
                             text = "Ready to type in all applications",
                             fontSize = 11.sp,
-                            color = Color(0xFF81C784)
+                            color = colors.activeCardSubtext
                         )
                     }
                 }
@@ -220,13 +223,14 @@ fun SettingsMainScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1F22))
+            colors = CardDefaults.cardColors(containerColor = colors.cardBackground),
+            border = if (!colors.isDark) BorderStroke(1.dp, colors.cardBorder) else null
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = "Tap below to test your settings live:",
                     fontSize = 12.sp,
-                    color = Color(0xFF9499A8)
+                    color = colors.textSecondary
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -235,17 +239,17 @@ fun SettingsMainScreen(
                     value = testText,
                     onValueChange = { testText = it },
                     placeholder = {
-                        Text(text = "Try typing in English or বাংলা...", color = Color(0xFF6B7280))
+                        Text(text = "Try typing in English or বাংলা...", color = colors.textSecondary.copy(alpha = 0.7f))
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFF2B2D31),
-                        unfocusedContainerColor = Color(0xFF25272B),
-                        focusedBorderColor = Color(0xFF7AA2F7),
-                        unfocusedBorderColor = Color(0xFF383A40),
-                        focusedTextColor = Color(0xFFE0E2E8),
-                        unfocusedTextColor = Color(0xFFE0E2E8)
+                        focusedContainerColor = colors.inputBackground,
+                        unfocusedContainerColor = colors.inputBackground,
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.inputBorder,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
                     )
                 )
             }

@@ -17,6 +17,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +27,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -37,13 +41,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import io.kiebord.app.ui.settings.AboutScreen
 import io.kiebord.app.ui.settings.AppearanceThemesScreen
 import io.kiebord.app.ui.settings.CorrectionsSuggestionsScreen
+import io.kiebord.app.ui.settings.DarkSettingsColors
 import io.kiebord.app.ui.settings.KeyboardLayoutsScreen
+import io.kiebord.app.ui.settings.LightSettingsColors
+import io.kiebord.app.ui.settings.LocalSettingsColors
 import io.kiebord.app.ui.settings.PreferencesScreen
 import io.kiebord.app.ui.settings.SettingsMainScreen
 import io.kiebord.app.ui.settings.SettingsScreen
@@ -71,36 +80,63 @@ class MainActivity : ComponentActivity() {
                 initial = KiebordPreferences()
             )
 
-            MaterialTheme(
-                colorScheme = darkColorScheme(
-                    background = Color(0xFF131417),
-                    surface = Color(0xFF1E1F22),
-                    primary = Color(0xFF7AA2F7),
-                    onPrimary = Color(0xFF0F141C),
-                    onSurface = Color(0xFFE0E2E8)
-                )
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-                        updateImeStatus()
-                    }
+            val isDark = isSystemInDarkTheme()
+            val settingsColors = if (isDark) DarkSettingsColors else LightSettingsColors
 
-                    KiebordSettingsApp(
-                        preferences = preferences,
-                        preferencesRepo = preferencesRepo,
-                        isImeEnabled = isImeEnabledState,
-                        isImeSelected = isImeSelectedState,
-                        onOpenSettings = {
-                            startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
-                        },
-                        onSwitchIme = {
-                            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                            imm.showInputMethodPicker()
+            val view = LocalView.current
+            if (!view.isInEditMode) {
+                SideEffect {
+                    val window = (view.context as? android.app.Activity)?.window
+                    if (window != null) {
+                        val insetsController = WindowCompat.getInsetsController(window, view)
+                        insetsController.isAppearanceLightStatusBars = !isDark
+                        insetsController.isAppearanceLightNavigationBars = !isDark
+                    }
+                }
+            }
+
+            CompositionLocalProvider(LocalSettingsColors provides settingsColors) {
+                MaterialTheme(
+                    colorScheme = if (isDark) {
+                        darkColorScheme(
+                            background = settingsColors.background,
+                            surface = settingsColors.cardBackground,
+                            primary = settingsColors.accent,
+                            onPrimary = Color(0xFF0F141C),
+                            onSurface = settingsColors.textPrimary
+                        )
+                    } else {
+                        lightColorScheme(
+                            background = settingsColors.background,
+                            surface = settingsColors.cardBackground,
+                            primary = settingsColors.accent,
+                            onPrimary = Color(0xFFFFFFFF),
+                            onSurface = settingsColors.textPrimary
+                        )
+                    }
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+                            updateImeStatus()
                         }
-                    )
+
+                        KiebordSettingsApp(
+                            preferences = preferences,
+                            preferencesRepo = preferencesRepo,
+                            isImeEnabled = isImeEnabledState,
+                            isImeSelected = isImeSelectedState,
+                            onOpenSettings = {
+                                startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+                            },
+                            onSwitchIme = {
+                                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                                imm.showInputMethodPicker()
+                            }
+                        )
+                    }
                 }
             }
         }

@@ -55,6 +55,7 @@ fun CorrectionsSuggestionsScreen(
     val scrollState = rememberScrollState()
     var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val colors = LocalSettingsColors.current
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -63,13 +64,13 @@ fun CorrectionsSuggestionsScreen(
                 Text(
                     text = "Delete Learned Words?",
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFE0E2E8)
+                    color = colors.textPrimary
                 )
             },
             text = {
                 Text(
                     text = "This will erase all custom words, next-word prediction ngrams, and personalized frequency data learned from your typing.",
-                    color = Color(0xFF9499A8),
+                    color = colors.textSecondary,
                     fontSize = 14.sp
                 )
             },
@@ -86,10 +87,10 @@ fun CorrectionsSuggestionsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel", color = Color(0xFF9499A8))
+                    Text("Cancel", color = colors.textSecondary)
                 }
             },
-            containerColor = Color(0xFF1E1F22),
+            containerColor = colors.dialogBackground,
             shape = RoundedCornerShape(16.dp)
         )
     }

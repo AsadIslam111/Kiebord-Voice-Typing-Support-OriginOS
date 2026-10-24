@@ -1110,29 +1110,28 @@ fun SpacebarLayoutSliderOverlay(
     val n = activeLayouts.size
     if (n <= 1) return
 
-    val isSwipingRight = swipeDeltaX >= 0f
-    val targetIndex = if (isSwipingRight) (currentIndex + 1) % n else (currentIndex - 1 + n) % n
-    val isCommitted = Math.abs(swipeDeltaX) >= commitThresholdPx
-
-    // Direct 1:1 translation with smooth rubber-band clamping beyond slotPx
     val absDelta = Math.abs(swipeDeltaX)
-    val clampedOffset = if (absDelta <= slotPx) {
+    val clampedAbs = if (absDelta <= slotPx) {
         absDelta
     } else {
         slotPx + (absDelta - slotPx) * 0.22f
     }
-    val signedOffset = if (isSwipingRight) clampedOffset else -clampedOffset
+    val signedOffset = if (swipeDeltaX >= 0f) clampedAbs else -clampedAbs
+    val isCommitted = absDelta >= commitThresholdPx
 
-    val primaryTranslationX = signedOffset
-    val secondaryTranslationX = if (isSwipingRight) {
-        -slotPx + signedOffset
-    } else {
-        slotPx + signedOffset
+    val leftIndex = (currentIndex + 1) % n
+    val centerIndex = currentIndex
+    val rightIndex = (currentIndex - 1 + n) % n
+
+    val leftTranslationX = -slotPx + signedOffset
+    val centerTranslationX = signedOffset
+    val rightTranslationX = slotPx + signedOffset
+
+    val targetIndex = when {
+        swipeDeltaX >= commitThresholdPx -> leftIndex
+        swipeDeltaX <= -commitThresholdPx -> rightIndex
+        else -> centerIndex
     }
-
-    val progress = if (commitThresholdPx > 0f) (absDelta / commitThresholdPx).coerceIn(0f, 1f) else 0f
-    val primaryAlpha = (1f - progress * 0.7f).coerceIn(0.2f, 1f)
-    val secondaryAlpha = (0.25f + progress * 0.75f).coerceIn(0.25f, 1f)
 
     Box(
         modifier = modifier.padding(bottom = 74.dp),
@@ -1144,7 +1143,7 @@ fun SpacebarLayoutSliderOverlay(
                 .background(colorScheme.containerBackground.copy(alpha = 0.96f))
                 .border(
                     width = 1.dp,
-                    color = colorScheme.accentColor.copy(alpha = if (isCommitted) 0.8f else 0.45f),
+                    color = colorScheme.accentColor.copy(alpha = if (isCommitted) 0.85f else 0.45f),
                     shape = RoundedCornerShape(22.dp)
                 )
                 .padding(horizontal = 10.dp, vertical = 6.dp)
@@ -1155,7 +1154,7 @@ fun SpacebarLayoutSliderOverlay(
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
                 contentDescription = null,
-                tint = if (!isSwipingRight && isCommitted) {
+                tint = if (swipeDeltaX <= -commitThresholdPx) {
                     colorScheme.accentColor
                 } else {
                     colorScheme.keyForeground.copy(alpha = 0.35f)
@@ -1170,35 +1169,72 @@ fun SpacebarLayoutSliderOverlay(
                     .clipToBounds(),
                 contentAlignment = Alignment.Center
             ) {
-                // Primary layout (current layout)
-                val primaryName = PredefinedLayouts.displayName(activeLayouts[currentIndex])
+                // Item incoming from left (selected when swiping right)
+                val leftName = PredefinedLayouts.displayName(activeLayouts[leftIndex])
+                val leftDist = Math.abs(leftTranslationX)
+                val leftProgress = (leftDist / slotPx).coerceIn(0f, 1f)
+                val leftAlpha = (1f - leftProgress * 0.75f).coerceIn(0.15f, 1f)
+                val leftScale = (1f - leftProgress * 0.12f).coerceIn(0.88f, 1f)
+                val isLeftTarget = targetIndex == leftIndex
                 Text(
-                    text = primaryName,
-                    color = if (!isCommitted) colorScheme.accentColor else colorScheme.keyForeground,
+                    text = leftName,
+                    color = if (isLeftTarget) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.75f),
                     fontSize = 14.sp,
-                    fontWeight = if (!isCommitted) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (isLeftTarget) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
                     maxLines = 1,
                     modifier = Modifier
                         .graphicsLayer {
-                            translationX = primaryTranslationX
-                            alpha = primaryAlpha
+                            translationX = leftTranslationX
+                            alpha = leftAlpha
+                            scaleX = leftScale
+                            scaleY = leftScale
                         }
                 )
 
-                // Secondary layout (incoming adjacent layout)
-                val secondaryName = PredefinedLayouts.displayName(activeLayouts[targetIndex])
+                // Current center item
+                val centerName = PredefinedLayouts.displayName(activeLayouts[centerIndex])
+                val centerDist = Math.abs(centerTranslationX)
+                val centerProgress = (centerDist / slotPx).coerceIn(0f, 1f)
+                val centerAlpha = (1f - centerProgress * 0.75f).coerceIn(0.15f, 1f)
+                val centerScale = (1f - centerProgress * 0.12f).coerceIn(0.88f, 1f)
+                val isCenterTarget = targetIndex == centerIndex
                 Text(
-                    text = secondaryName,
-                    color = if (isCommitted) colorScheme.accentColor else colorScheme.keyForeground,
+                    text = centerName,
+                    color = if (isCenterTarget) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.75f),
                     fontSize = 14.sp,
-                    fontWeight = if (isCommitted) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (isCenterTarget) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
                     maxLines = 1,
                     modifier = Modifier
                         .graphicsLayer {
-                            translationX = secondaryTranslationX
-                            alpha = secondaryAlpha
+                            translationX = centerTranslationX
+                            alpha = centerAlpha
+                            scaleX = centerScale
+                            scaleY = centerScale
+                        }
+                )
+
+                // Item incoming from right (selected when swiping left)
+                val rightName = PredefinedLayouts.displayName(activeLayouts[rightIndex])
+                val rightDist = Math.abs(rightTranslationX)
+                val rightProgress = (rightDist / slotPx).coerceIn(0f, 1f)
+                val rightAlpha = (1f - rightProgress * 0.75f).coerceIn(0.15f, 1f)
+                val rightScale = (1f - rightProgress * 0.12f).coerceIn(0.88f, 1f)
+                val isRightTarget = targetIndex == rightIndex
+                Text(
+                    text = rightName,
+                    color = if (isRightTarget) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.75f),
+                    fontSize = 14.sp,
+                    fontWeight = if (isRightTarget) FontWeight.SemiBold else FontWeight.Normal,
+                    fontFamily = KiebordTheme.fontFamily,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            translationX = rightTranslationX
+                            alpha = rightAlpha
+                            scaleX = rightScale
+                            scaleY = rightScale
                         }
                 )
             }
@@ -1206,7 +1242,7 @@ fun SpacebarLayoutSliderOverlay(
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 contentDescription = null,
-                tint = if (isSwipingRight && isCommitted) {
+                tint = if (swipeDeltaX >= commitThresholdPx) {
                     colorScheme.accentColor
                 } else {
                     colorScheme.keyForeground.copy(alpha = 0.35f)
