@@ -150,7 +150,10 @@ fun TextEditPanelView(
                         .weight(1f)
                         .clip(buttonShape)
                         .background(if (isSelecting) accentColor else navKeyBg)
-                        .clickable { isSelecting = !isSelecting },
+                        .clickable {
+                            isSelecting = !isSelecting
+                            onTextAction(TextAction.SELECT, isSelecting)
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

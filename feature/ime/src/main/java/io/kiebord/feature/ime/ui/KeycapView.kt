@@ -151,6 +151,7 @@ fun KeycapView(
     val currentOnGestureStart = rememberUpdatedState(onGestureStart)
     val currentOnGestureMove = rememberUpdatedState(onGestureMove)
     val currentOnGestureEnd = rememberUpdatedState(onGestureEnd)
+    val currentGestureTypingEnabled = rememberUpdatedState(gestureTypingEnabled)
 
     // Key styling: cleanly toggles between keyborder mode (keycap boxes) and flat mode (no boxes except accent pills)
     Box(
@@ -176,7 +177,7 @@ fun KeycapView(
             )
             .clip(keyShape)
             .background(activeBackground)
-            .pointerInput(isInteractive) {
+            .pointerInput(isInteractive, gestureTypingEnabled) {
                 if (!isInteractive) return@pointerInput
                 coroutineScope {
                     awaitEachGesture {
@@ -199,7 +200,7 @@ fun KeycapView(
 
                         val spacebarDwellJob = if (initialKey.type == KeyType.SPACE) {
                             launch {
-                                delay(220L)
+                                delay(400L)
                                 isSpacebarDwellReady = true
                                 currentOnSpacebarDwellReady.value()
                             }
@@ -341,7 +342,7 @@ fun KeycapView(
                             }
 
                             // Gesture typing detector on character keys
-                            if (gestureTypingEnabled && initialKey.type == KeyType.CHARACTER && !isMoreKeysActive && !isSlidingDrag) {
+                            if (currentGestureTypingEnabled.value && initialKey.type == KeyType.CHARACTER && !isMoreKeysActive && !isSlidingDrag) {
                                 val gestureThresholdPx = with(density) { 28.dp.toPx() }
                                 if (!isGestureTyping && distance > gestureThresholdPx) {
                                     longPressJob.cancel()

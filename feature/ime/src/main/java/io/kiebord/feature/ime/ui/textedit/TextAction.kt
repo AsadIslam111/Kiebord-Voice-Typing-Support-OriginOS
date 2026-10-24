@@ -9,6 +9,7 @@ enum class TextAction {
     WORD_RIGHT,
     LINE_START,
     LINE_END,
+    SELECT,
     SELECT_ALL,
     CUT,
     COPY,

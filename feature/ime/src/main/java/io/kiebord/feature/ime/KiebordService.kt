@@ -721,10 +721,11 @@ class KiebordService : InputMethodService() {
         }
 
         if (swipeDeleteInitialCursor != -1) {
-            val start = (swipeDeleteInitialCursor - charsToSelect).coerceAtLeast(0)
-            ic.setSelection(start, swipeDeleteInitialCursor)
+            val cur = swipeDeleteInitialCursor.coerceIn(0, textLen)
+            val start = (cur - charsToSelect).coerceIn(0, textLen)
+            ic.setSelection(start, cur)
         } else {
-            val start = (textLen - charsToSelect).coerceAtLeast(0)
+            val start = (textLen - charsToSelect).coerceIn(0, textLen)
             ic.setSelection(start, textLen)
         }
     }
@@ -745,10 +746,12 @@ class KiebordService : InputMethodService() {
         val ic = currentInputConnection ?: return
         if (isSwipeDeleting) {
             isSwipeDeleting = false
+            val textLen = swipeDeleteInitialText.length
             if (swipeDeleteInitialCursor != -1) {
-                ic.setSelection(swipeDeleteInitialCursor, swipeDeleteInitialCursor)
+                val cur = swipeDeleteInitialCursor.coerceIn(0, textLen)
+                ic.setSelection(cur, cur)
             } else {
-                ic.setSelection(swipeDeleteInitialText.length, swipeDeleteInitialText.length)
+                ic.setSelection(textLen, textLen)
             }
         }
     }
@@ -992,23 +995,335 @@ class KiebordService : InputMethodService() {
         return cp in 0x0980..0x09FF
     }
 
-    private fun handleTextAction(action: TextAction, isSelecting: Boolean) {
-        val ic = currentInputConnection ?: return
+    private fun isWordSeparator(c: Char): Boolean {
+        return c.isWhitespace() || c == '.' || c == ',' || c == '!' || c == '?' ||
+               c == ':' || c == ';' || c == '।' || c == '॥' || c == '/' || c == '\\' ||
+               c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
+               c == '<' || c == '>' || c == '"' || c == '\'' || c == '`' || c == '@' ||
+               c == '#' || c == '$' || c == '%' || c == '^' || c == '&' || c == '*' ||
+               c == '-' || c == '+' || c == '=' || c == '|' || c == '~'
+    }
+
+    private fun handleTextAction(action: TextAction, isSelecting: Boolean): Boolean {
+        val ic = currentInputConnection ?: return false
         finishComposing()
 
-        when (action) {
-            TextAction.MOVE_UP -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_UP, isSelecting)
-            TextAction.MOVE_DOWN -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_DOWN, isSelecting)
-            TextAction.MOVE_LEFT -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_LEFT, isSelecting)
-            TextAction.MOVE_RIGHT -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_RIGHT, isSelecting)
-            TextAction.WORD_LEFT -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_LEFT, isSelecting, isWord = true)
-            TextAction.WORD_RIGHT -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_RIGHT, isSelecting, isWord = true)
-            TextAction.LINE_START -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_MOVE_HOME, isSelecting)
-            TextAction.LINE_END -> sendNavKeyEvent(ic, KeyEvent.KEYCODE_MOVE_END, isSelecting)
-            TextAction.SELECT_ALL -> ic.performContextMenuAction(android.R.id.selectAll)
-            TextAction.CUT -> ic.performContextMenuAction(android.R.id.cut)
-            TextAction.COPY -> ic.performContextMenuAction(android.R.id.copy)
-            TextAction.PASTE -> ic.performContextMenuAction(android.R.id.paste)
+        val moved: Boolean = when (action) {
+            TextAction.MOVE_LEFT -> {
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
+                if (extracted != null && extracted.text != null) {
+                    val textLen = extracted.text.length
+                    val start = extracted.selectionStart.coerceIn(0, textLen)
+                    val end = extracted.selectionEnd.coerceIn(0, textLen)
+                    if (start <= 0 && (!isSelecting || end <= 0)) {
+                        false
+                    } else if (isSelecting) {
+                        val newStart = (start - 1).coerceIn(0, textLen)
+                        ic.setSelection(newStart, end)
+                        true
+                    } else {
+                        val newPos = if (start != end) start else (start - 1).coerceIn(0, textLen)
+                        ic.setSelection(newPos, newPos)
+                        true
+                    }
+                } else {
+                    val before = ic.getTextBeforeCursor(1, 0)
+                    if (before.isNullOrEmpty()) {
+                        false
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_LEFT, isSelecting)
+                        true
+                    }
+                }
+            }
+            TextAction.MOVE_RIGHT -> {
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
+                if (extracted != null && extracted.text != null) {
+                    val textLen = extracted.text.length
+                    val start = extracted.selectionStart.coerceIn(0, textLen)
+                    val end = extracted.selectionEnd.coerceIn(0, textLen)
+                    if (end >= textLen && (!isSelecting || start >= textLen)) {
+                        false
+                    } else if (isSelecting) {
+                        val newEnd = (end + 1).coerceIn(0, textLen)
+                        ic.setSelection(start, newEnd)
+                        true
+                    } else {
+                        val newPos = if (start != end) end else (end + 1).coerceIn(0, textLen)
+                        ic.setSelection(newPos, newPos)
+                        true
+                    }
+                } else {
+                    val after = ic.getTextAfterCursor(1, 0)
+                    if (after.isNullOrEmpty()) {
+                        false
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_RIGHT, isSelecting)
+                        true
+                    }
+                }
+            }
+            TextAction.MOVE_UP -> {
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
+                if (extracted != null && extracted.text != null) {
+                    val text = extracted.text.toString()
+                    val start = extracted.selectionStart.coerceIn(0, text.length)
+                    val firstLine = !text.substring(0, start).contains('\n')
+                    if (firstLine && start <= 0) {
+                        false
+                    } else if (firstLine && !isSelecting) {
+                        ic.setSelection(0, 0)
+                        true
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_UP, isSelecting)
+                        true
+                    }
+                } else {
+                    val before = ic.getTextBeforeCursor(200, 0)?.toString() ?: ""
+                    if (!before.contains('\n') && before.isEmpty()) {
+                        false
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_UP, isSelecting)
+                        true
+                    }
+                }
+            }
+            TextAction.MOVE_DOWN -> {
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
+                if (extracted != null && extracted.text != null) {
+                    val text = extracted.text.toString()
+                    val end = extracted.selectionEnd.coerceIn(0, text.length)
+                    val lastLine = !text.substring(end).contains('\n')
+                    if (lastLine && end >= text.length) {
+                        false
+                    } else if (lastLine && !isSelecting) {
+                        ic.setSelection(text.length, text.length)
+                        true
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_DOWN, isSelecting)
+                        true
+                    }
+                } else {
+                    val after = ic.getTextAfterCursor(200, 0)?.toString() ?: ""
+                    if (!after.contains('\n') && after.isEmpty()) {
+                        false
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_DOWN, isSelecting)
+                        true
+                    }
+                }
+            }
+            TextAction.WORD_LEFT -> {
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
+                if (extracted != null && extracted.text != null) {
+                    val text = extracted.text.toString()
+                    val textLen = text.length
+                    val start = extracted.selectionStart.coerceIn(0, textLen)
+                    val end = extracted.selectionEnd.coerceIn(0, textLen)
+                    if (start <= 0) {
+                        false
+                    } else {
+                        var idx = start - 1
+                        while (idx > 0 && text[idx].isWhitespace()) {
+                            idx--
+                        }
+                        while (idx > 0 && !text[idx - 1].isWhitespace() && !isWordSeparator(text[idx - 1])) {
+                            idx--
+                        }
+                        val target = idx.coerceIn(0, textLen)
+                        if (isSelecting) {
+                            ic.setSelection(target, end)
+                        } else {
+                            ic.setSelection(target, target)
+                        }
+                        true
+                    }
+                } else {
+                    val before = ic.getTextBeforeCursor(1, 0)
+                    if (before.isNullOrEmpty()) {
+                        false
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_LEFT, isSelecting, isWord = true)
+                        true
+                    }
+                }
+            }
+            TextAction.WORD_RIGHT -> {
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
+                if (extracted != null && extracted.text != null) {
+                    val text = extracted.text.toString()
+                    val textLen = text.length
+                    val start = extracted.selectionStart.coerceIn(0, textLen)
+                    val end = extracted.selectionEnd.coerceIn(0, textLen)
+                    if (end >= textLen) {
+                        false
+                    } else {
+                        var idx = end
+                        while (idx < textLen && text[idx].isWhitespace()) {
+                            idx++
+                        }
+                        while (idx < textLen && !text[idx].isWhitespace() && !isWordSeparator(text[idx])) {
+                            idx++
+                        }
+                        val target = idx.coerceIn(0, textLen)
+                        if (isSelecting) {
+                            ic.setSelection(start, target)
+                        } else {
+                            ic.setSelection(target, target)
+                        }
+                        true
+                    }
+                } else {
+                    val after = ic.getTextAfterCursor(1, 0)
+                    if (after.isNullOrEmpty()) {
+                        false
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_RIGHT, isSelecting, isWord = true)
+                        true
+                    }
+                }
+            }
+            TextAction.LINE_START -> {
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
+                if (extracted != null && extracted.text != null) {
+                    val text = extracted.text.toString()
+                    val textLen = text.length
+                    val start = extracted.selectionStart.coerceIn(0, textLen)
+                    val end = extracted.selectionEnd.coerceIn(0, textLen)
+                    val pos = start
+                    if (pos <= 0) {
+                        false
+                    } else {
+                        val prevNewline = text.lastIndexOf('\n', (pos - 1).coerceAtLeast(0))
+                        val target = if (prevNewline == -1) 0 else (prevNewline + 1).coerceIn(0, textLen)
+                        if (target == pos) {
+                            false
+                        } else {
+                            if (isSelecting) {
+                                ic.setSelection(target, end)
+                            } else {
+                                ic.setSelection(target, target)
+                            }
+                            true
+                        }
+                    }
+                } else {
+                    val before = ic.getTextBeforeCursor(1, 0)
+                    if (before.isNullOrEmpty()) {
+                        false
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_MOVE_HOME, isSelecting)
+                        true
+                    }
+                }
+            }
+            TextAction.LINE_END -> {
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
+                if (extracted != null && extracted.text != null) {
+                    val text = extracted.text.toString()
+                    val textLen = text.length
+                    val start = extracted.selectionStart.coerceIn(0, textLen)
+                    val end = extracted.selectionEnd.coerceIn(0, textLen)
+                    val pos = end
+                    if (pos >= textLen) {
+                        false
+                    } else {
+                        val nextNewline = text.indexOf('\n', pos)
+                        val target = if (nextNewline == -1) textLen else nextNewline.coerceIn(0, textLen)
+                        if (target == pos) {
+                            false
+                        } else {
+                            if (isSelecting) {
+                                ic.setSelection(start, target)
+                            } else {
+                                ic.setSelection(target, target)
+                            }
+                            true
+                        }
+                    }
+                } else {
+                    val after = ic.getTextAfterCursor(1, 0)
+                    if (after.isNullOrEmpty()) {
+                        false
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_MOVE_END, isSelecting)
+                        true
+                    }
+                }
+            }
+            TextAction.SELECT -> {
+                val extracted = ic.getExtractedText(ExtractedTextRequest(), 0)
+                if (isSelecting) {
+                    val selectedText = ic.getSelectedText(0)
+                    if (selectedText.isNullOrEmpty()) {
+                        if (extracted != null && extracted.text != null) {
+                            val text = extracted.text.toString()
+                            val textLen = text.length
+                            val cur = extracted.selectionStart.coerceIn(0, textLen)
+                            var wordStart = cur
+                            while (wordStart > 0 && !text[wordStart - 1].isWhitespace() && !isWordSeparator(text[wordStart - 1])) {
+                                wordStart--
+                            }
+                            var wordEnd = cur
+                            while (wordEnd < textLen && !text[wordEnd].isWhitespace() && !isWordSeparator(text[wordEnd])) {
+                                wordEnd++
+                            }
+                            if (wordStart < wordEnd) {
+                                ic.setSelection(wordStart, wordEnd)
+                            } else if (textLen > 0) {
+                                val s = if (cur < textLen) cur else (cur - 1).coerceAtLeast(0)
+                                val e = (s + 1).coerceIn(0, textLen)
+                                ic.setSelection(s, e)
+                            }
+                        } else {
+                            val before = ic.getTextBeforeCursor(100, 0)?.toString() ?: ""
+                            val after = ic.getTextAfterCursor(100, 0)?.toString() ?: ""
+                            var wordBefore = 0
+                            for (i in before.length - 1 downTo 0) {
+                                if (before[i].isWhitespace() || isWordSeparator(before[i])) break
+                                wordBefore++
+                            }
+                            var wordAfter = 0
+                            for (i in 0 until after.length) {
+                                if (after[i].isWhitespace() || isWordSeparator(after[i])) break
+                                wordAfter++
+                            }
+                            if (wordBefore > 0 || wordAfter > 0) {
+                                repeat(wordBefore) {
+                                    sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_LEFT, false)
+                                }
+                                repeat(wordBefore + wordAfter) {
+                                    sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_RIGHT, true)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (extracted != null && extracted.text != null) {
+                        val end = extracted.selectionEnd.coerceIn(0, extracted.text.length)
+                        ic.setSelection(end, end)
+                    } else {
+                        sendNavKeyEvent(ic, KeyEvent.KEYCODE_DPAD_RIGHT, false)
+                    }
+                }
+                true
+            }
+            TextAction.SELECT_ALL -> {
+                ic.performContextMenuAction(android.R.id.selectAll)
+                true
+            }
+            TextAction.CUT -> {
+                ic.performContextMenuAction(android.R.id.cut)
+                true
+            }
+            TextAction.COPY -> {
+                ic.performContextMenuAction(android.R.id.copy)
+                true
+            }
+            TextAction.PASTE -> {
+                ic.performContextMenuAction(android.R.id.paste)
+                true
+            }
             TextAction.DELETE_BACKWARD -> {
                 val selected = ic.getSelectedText(0)
                 if (!selected.isNullOrEmpty()) {
@@ -1016,6 +1331,7 @@ class KiebordService : InputMethodService() {
                 } else {
                     ic.deleteSurroundingText(1, 0)
                 }
+                true
             }
             TextAction.DELETE_FORWARD -> {
                 val selected = ic.getSelectedText(0)
@@ -1024,6 +1340,7 @@ class KiebordService : InputMethodService() {
                 } else {
                     ic.deleteSurroundingText(0, 1)
                 }
+                true
             }
             TextAction.ENTER -> {
                 val currentAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
@@ -1032,9 +1349,11 @@ class KiebordService : InputMethodService() {
                 } else {
                     sendKeyChar('\n')
                 }
+                true
             }
         }
         updateSuggestions()
+        return moved
     }
 
     private fun getPrecedingWord(excludeComposing: Boolean = false): String {

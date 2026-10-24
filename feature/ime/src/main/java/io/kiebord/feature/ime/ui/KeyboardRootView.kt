@@ -81,7 +81,7 @@ fun KeyboardRootView(
     shiftState: ShiftState,
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit,
-    onTextAction: (TextAction, Boolean) -> Unit = { _, _ -> },
+    onTextAction: (TextAction, Boolean) -> Boolean = { _, _ -> false },
     onThemeToggle: () -> Unit = {},
     suggestions: List<SuggestionCandidate> = emptyList(),
     onCandidateSelect: (SuggestionCandidate) -> Unit = {},
@@ -440,7 +440,7 @@ fun KeyboardRootView(
             if (isTextEditOpen) {
                 // Text Editing panel covers the toolbar and replaces the expand icon with back icon (matching Borno Keyboard)
                 TextEditPanelView(
-                    onTextAction = onTextAction,
+                    onTextAction = { action, isSelecting -> onTextAction(action, isSelecting) },
                     onClose = { isTextEditOpen = false },
                     height = toolbarHeight + keyboardContentHeight
                 )
@@ -744,13 +744,15 @@ fun KeyboardRootView(
                                     keyCoordinatesMap[k] = coords
                                 },
                                 onSpacebarTrackpad = { direction ->
-                                    onTextAction(
+                                    val didMove = onTextAction(
                                         if (direction > 0) TextAction.MOVE_RIGHT else TextAction.MOVE_LEFT,
                                         false
                                     )
-                                    try {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    } catch (_: Exception) {}
+                                    if (didMove) {
+                                        try {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        } catch (_: Exception) {}
+                                    }
                                 },
                                 onShowMoreKeys = { keyDef, keyCoords ->
                                     val rCoords = rootCoordinates
@@ -930,6 +932,7 @@ fun KeyboardRootView(
                                     dragStartPosInRoot = null
                                 },
                                 onGestureStart = { keyCoords, posInKey ->
+                                    if (!gestureTypingEnabled) return@KeycapView
                                     val rCoords = rootCoordinates
                                     if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
                                         val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
@@ -937,6 +940,7 @@ fun KeyboardRootView(
                                     }
                                 },
                                 onGestureMove = { keyCoords, posInKey ->
+                                    if (!gestureTypingEnabled) return@KeycapView
                                     val rCoords = rootCoordinates
                                     if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
                                         val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
@@ -947,6 +951,10 @@ fun KeyboardRootView(
                                     }
                                 },
                                 onGestureEnd = {
+                                    if (!gestureTypingEnabled) {
+                                        gestureTrail = emptyList()
+                                        return@KeycapView
+                                    }
                                     val trail = gestureTrail
                                     gestureTrail = emptyList()
                                     // Require intentional swipe path: at least 4 points and minimum length of 48.dp
