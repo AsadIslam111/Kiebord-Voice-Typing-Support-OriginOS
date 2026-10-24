@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.kiebord.common.model.KeyDef
@@ -23,7 +25,10 @@ fun NumberRowBar(
     isInteractive: Boolean = true,
     onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
-    onKeyLongPress: (KeyDef) -> Unit = {}
+    onKeyLongPress: (KeyDef) -> Unit = {},
+    onShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit = { _, _ -> },
+    onMoreKeysHover: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
+    onMoreKeysCommit: () -> Unit = {}
 ) {
     val numberKeys = if (language == "bn") {
         listOf(
@@ -72,7 +77,10 @@ fun NumberRowBar(
                     .fillMaxHeight(),
                 onKeyPress = onKeyPress,
                 onKeyTap = onKeyTap,
-                onKeyLongPress = onKeyLongPress
+                onKeyLongPress = onKeyLongPress,
+                onShowMoreKeys = onShowMoreKeys,
+                onMoreKeysHover = onMoreKeysHover,
+                onMoreKeysCommit = onMoreKeysCommit
             )
         }
     }

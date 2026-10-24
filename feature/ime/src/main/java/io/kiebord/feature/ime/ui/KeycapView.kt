@@ -5,10 +5,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -250,6 +253,7 @@ fun KeycapView(
                                 // Touch released!
                                 spacebarDwellJob?.cancel()
                                 longPressJob.cancel()
+                                val wasMoreKeysActive = isMoreKeysActive
                                 isMoreKeysActive = false
                                 val delta = change.position - initialDownPos
                                 if (isDeleteSwipeActive) {
@@ -274,7 +278,7 @@ fun KeycapView(
                                     currentOnGestureEnd.value()
                                 } else if (isSlidingDrag) {
                                     currentOnSlidingEnd.value(delta)
-                                } else if (isMoreKeysActive) {
+                                } else if (wasMoreKeysActive) {
                                     currentOnMoreKeysCommit.value()
                                 } else if (isDeleteLongPressActive || isLongPressTriggered) {
                                     // Handled during long-press, do NOT emit tap on release
@@ -392,6 +396,10 @@ fun KeycapView(
                         }
                         if (isGestureTyping && !gestureEnded) {
                             currentOnGestureEnd.value()
+                        }
+                        if (isMoreKeysActive) {
+                            isMoreKeysActive = false
+                            currentOnMoreKeysCommit.value()
                         }
                         isPressed = false
                         isMoreKeysActive = false
@@ -548,7 +556,9 @@ fun KeycapView(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .offset(x = clampedOffsetX, y = popupOffsetY)
-                    .size(popupDiameter)
+                    .wrapContentSize(align = Alignment.Center, unbounded = true)
+                    .requiredSize(popupDiameter)
+                    .aspectRatio(1f, matchHeightConstraintsFirst = false)
                     .shadow(
                         elevation = (5 * scaleFactor).dp,
                         shape = CircleShape,

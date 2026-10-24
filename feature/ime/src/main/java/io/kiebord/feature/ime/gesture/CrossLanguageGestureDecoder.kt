@@ -36,31 +36,30 @@ class CrossLanguageGestureDecoder {
 
         val learnedSet = learnedWords.toSet()
 
-        // Evaluate learned words directly against trajectory
-        val matchingLearned = if (learnedWords.isNotEmpty()) {
-            val keyMap = HashMap<Char, Offset>(keyCentroids.size)
-            for (k in keyCentroids) {
-                if (k.character.isNotEmpty()) {
-                    keyMap[k.character[0].lowercaseChar()] = Offset(k.centerX, k.centerY)
+        // Prioritize dictionary decoded words first!
+        val sortedWords = if (learnedWords.isNotEmpty()) {
+            val decodedSet = decodedWords.toSet()
+            val matchingLearned = if (keyCentroids.isNotEmpty()) {
+                val keyMap = HashMap<Char, Offset>(keyCentroids.size)
+                for (k in keyCentroids) {
+                    if (k.character.isNotEmpty()) {
+                        keyMap[k.character[0].lowercaseChar()] = Offset(k.centerX, k.centerY)
+                    }
                 }
-            }
-            learnedWords.mapNotNull { lw ->
-                val score = scoreLearnedWord(lw, points, keyMap, kw)
-                if (score != null) lw to score else null
-            }.sortedByDescending { it.second }.map { it.first }
-        } else emptyList()
+                learnedWords
+                    .filter { !decodedSet.contains(it) }
+                    .mapNotNull { lw ->
+                        val score = scoreLearnedWord(lw, points, keyMap, kw)
+                        if (score != null) lw to score else null
+                    }
+                    .sortedByDescending { it.second }
+                    .map { it.first }
+            } else emptyList()
 
-        val sortedWords = when {
-            matchingLearned.isNotEmpty() -> {
-                (matchingLearned + decodedWords).distinct()
-            }
-            learnedWords.isNotEmpty() -> {
-                val (learnedMatches, otherMatches) = decodedWords.partition { it in learnedSet }
-                (learnedMatches + otherMatches).distinct()
-            }
-            else -> {
-                decodedWords
-            }
+            // Dictionary words first, then append strictly-matched learned words
+            (decodedWords + matchingLearned).distinct().take(8)
+        } else {
+            decodedWords
         }
 
         if (sortedWords.isNotEmpty()) {
@@ -165,16 +164,16 @@ class CrossLanguageGestureDecoder {
 
         val dStart = hypot(startPt.x - startKey.x, startPt.y - startKey.y) / kw
         val dEnd = hypot(endPt.x - endKey.x, endPt.y - endKey.y) / kw
-        if (dStart > 2.2f || dEnd > 2.2f) return null
+        if (dStart > 1.15f || dEnd > 1.15f) return null
 
         var maxMiss = 0f
         var totalMiss = 0f
-        var lastPointIdx = -1
+        var lastPointIdx = 0
 
         for (ch in chars) {
             val keyPos = keyMap[ch] ?: return null
             var minD = Float.MAX_VALUE
-            var bestIdx = -1
+            var bestIdx = 0
             for (pIdx in points.indices) {
                 val pt = points[pIdx]
                 val d = hypot(pt.x - keyPos.x, pt.y - keyPos.y)
@@ -184,14 +183,19 @@ class CrossLanguageGestureDecoder {
                 }
             }
             val normD = minD / kw
-            if (normD > 1.8f) return null
+            // All characters must be closely approached along trajectory
+            if (normD > 0.95f) return null
             if (normD > maxMiss) maxMiss = normD
             totalMiss += normD
-            if (bestIdx < lastPointIdx - (points.size / 3)) return null
+
+            // Sequential progression: gesture must progress forward through word characters
+            if (bestIdx < (lastPointIdx - 1).coerceAtLeast(0)) return null
             if (bestIdx > lastPointIdx) lastPointIdx = bestIdx
         }
 
         val avgMiss = totalMiss / chars.size
-        return 100f - (dStart * 15f + dEnd * 15f + avgMiss * 20f + maxMiss * 10f)
+        val cost = dStart * 0.5f + dEnd * 0.5f + avgMiss * 0.5f + maxMiss * 0.5f
+        if (cost > 1.8f) return null
+        return (100f * kotlin.math.exp(-cost * 1.5f)).coerceIn(0f, 100f)
     }
 }

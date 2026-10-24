@@ -229,33 +229,40 @@ impl GestureDecoder {
             }
         }
 
-        let mut word_scores: HashMap<String, f32> = HashMap::with_capacity(candidates.len() + learned_words.len());
-        for c in candidates {
-            let slot = word_scores.entry(c.word).or_insert(f32::MIN);
-            if c.score > *slot {
-                *slot = c.score;
-            }
-        }
+        // 1. Sort dictionary candidates by score (prioritize dictionary words first)
+        let mut dict_candidates = candidates;
+        dict_candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+
+        // 2. Strictly evaluate learned words: all characters in the learned word must be traversed by the gesture path
+        let dict_word_set: HashSet<String> = dict_candidates.iter().map(|c| c.word.clone()).collect();
+        let mut learned_matches: Vec<GestureCandidate> = Vec::new();
 
         for lw in learned_words {
+            if dict_word_set.contains(lw) {
+                continue;
+            }
             let chars: Vec<char> = lw.chars().collect();
-            if let Some(score) = Self::evaluate_candidate(&chars, &key_map, &user_path, kw, 255) {
-                let slot = word_scores.entry(lw.clone()).or_insert(f32::MIN);
-                let boosted = score + 30.0;
-                if boosted > *slot {
-                    *slot = boosted;
-                }
+            if let Some(score) = Self::evaluate_learned_candidate(&chars, &key_map, &user_path, kw) {
+                learned_matches.push(GestureCandidate {
+                    word: lw.clone(),
+                    score,
+                });
             }
         }
 
-        let mut deduped: Vec<GestureCandidate> = word_scores
-            .into_iter()
-            .map(|(word, score)| GestureCandidate { word, score })
-            .collect();
+        learned_matches.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
 
-        deduped.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
-        deduped.truncate(limit);
-        deduped
+        // 3. Dictionary candidates take precedence, strictly traversed learned words follow
+        let mut results = dict_candidates;
+        for lm in learned_matches {
+            if results.len() >= limit {
+                break;
+            }
+            results.push(lm);
+        }
+
+        results.truncate(limit);
+        results
     }
 
     /// Windowed Dynamic Time Warping distance between two sampled polyline sequences.
@@ -314,6 +321,104 @@ impl GestureDecoder {
             }
             sum / count.max(1) as f32
         }
+    }
+
+    /// Evaluates a personalized learned word strictly.
+    /// Requires that EVERY key in the learned word was actually traversed along the user's gesture path
+    /// in temporal sequence, with endpoints closely anchored.
+    pub fn evaluate_learned_candidate(
+        ideal_chars: &[char],
+        key_map: &HashMap<char, (f32, f32)>,
+        user_path: &[GesturePoint],
+        kw: f32,
+    ) -> Option<f32> {
+        if ideal_chars.len() < 2 || user_path.len() < 2 {
+            return None;
+        }
+
+        let mut ideal_pts = Vec::with_capacity(ideal_chars.len());
+        for &ch in ideal_chars {
+            if let Some(&pos) = key_map.get(&ch.to_ascii_lowercase()) {
+                ideal_pts.push(GesturePoint {
+                    x: pos.0,
+                    y: pos.1,
+                    timestamp_ms: 0,
+                });
+            } else {
+                return None;
+            }
+        }
+
+        // Strict endpoint proximity: both start and end keys must be closely anchored
+        let d_start = {
+            let dx = user_path[0].x - ideal_pts[0].x;
+            let dy = user_path[0].y - ideal_pts[0].y;
+            (dx * dx + dy * dy).sqrt() / kw
+        };
+        let d_end = {
+            let dx = user_path.last().unwrap().x - ideal_pts.last().unwrap().x;
+            let dy = user_path.last().unwrap().y - ideal_pts.last().unwrap().y;
+            (dx * dx + dy * dy).sqrt() / kw
+        };
+
+        if d_start > 1.15 || d_end > 1.15 {
+            return None;
+        }
+
+        // Strict sequential traversal: every key must be approached closely in temporal order
+        let mut last_point_idx: usize = 0;
+        let mut total_key_miss = 0.0f32;
+        let mut max_key_miss = 0.0f32;
+
+        for k_pt in &ideal_pts {
+            let mut min_d = f32::MAX;
+            let mut best_u_idx = 0;
+
+            for (u_idx, u_pt) in user_path.iter().enumerate() {
+                let dx = u_pt.x - k_pt.x;
+                let dy = u_pt.y - k_pt.y;
+                let d = (dx * dx + dy * dy).sqrt();
+                if d < min_d {
+                    min_d = d;
+                    best_u_idx = u_idx;
+                }
+            }
+
+            let norm_d = min_d / kw;
+            // Every character must be passed within 0.95 key width
+            if norm_d > 0.95 {
+                return None;
+            }
+            if norm_d > max_key_miss {
+                max_key_miss = norm_d;
+            }
+            total_key_miss += norm_d;
+
+            // Sequential progression: gesture must not jump backwards in time
+            if best_u_idx < last_point_idx.saturating_sub(1) {
+                return None;
+            }
+            if best_u_idx > last_point_idx {
+                last_point_idx = best_u_idx;
+            }
+        }
+
+        let avg_key_miss = total_key_miss / ideal_pts.len() as f32;
+
+        // Dynamic Time Warping (DTW) check
+        let resampled_ideal = Self::resample_polyline(&ideal_pts, user_path.len());
+        let dtw_dist = Self::dtw_distance(user_path, &resampled_ideal, 4) / kw;
+        if dtw_dist > 1.3 {
+            return None;
+        }
+
+        let total_cost = dtw_dist + 0.5 * d_start + 0.5 * d_end + 0.5 * avg_key_miss;
+        if total_cost > 1.8 {
+            return None;
+        }
+
+        let shape_score = (-total_cost * 1.5).exp();
+        Some(100.0 * shape_score)
     }
 
     /// Evaluates shape match and scoring of a candidate word path against the user's touch trajectory.
@@ -869,9 +974,10 @@ mod tests {
             GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 200 },
         ];
 
-        let learned = vec!["the".to_string(), "thy".to_string()];
+        let learned = vec!["the".to_string(), "thy".to_string(), "xyz".to_string()];
         let results = GestureDecoder::decode_with_learned(&stroke, &keys, 40.0, dict, 5, &learned);
         assert!(!results.is_empty());
         assert_eq!(results[0].word, "the");
+        assert!(!results.iter().any(|c| c.word == "xyz"));
     }
 }
