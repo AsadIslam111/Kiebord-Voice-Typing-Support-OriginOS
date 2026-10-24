@@ -219,7 +219,7 @@ fun KeyboardRootView(
 
     var keyRowHeight by remember(initialRowHeight) { mutableStateOf(initialRowHeight) }
     val scaleFactor = (keyRowHeight.value / 54f).coerceIn(0.4f, 1.6f)
-    val toolbarHeight = (46 * scaleFactor).dp
+    val toolbarHeight = (40 * scaleFactor).dp
 
     val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
         val finger = currentFingerInRoot!!
@@ -371,7 +371,7 @@ fun KeyboardRootView(
             .padding(
                 start = (4 * scaleFactor).dp + horizontalMargin + oneHandedStart,
                 end = (4 * scaleFactor).dp + horizontalMargin + oneHandedEnd,
-                top = (4 * scaleFactor).dp,
+                top = 0.dp,
                 bottom = totalBottomPadding
             )
     ) {
@@ -399,7 +399,7 @@ fun KeyboardRootView(
                     // 1. Expand / Back / Toggle button on far left
                     Box(
                         modifier = Modifier
-                            .size((38 * scaleFactor).coerceAtLeast(24f).dp)
+                            .size((32 * scaleFactor).coerceAtLeast(22f).dp)
                             .clip(CircleShape)
                             .background(
                                 if (isToolsExpanded) Color(0x22FFFFFF) else Color.Transparent
@@ -429,7 +429,7 @@ fun KeyboardRootView(
                                 else -> "All Tools"
                             },
                             tint = if (isToolsExpanded) colorScheme.keyForeground else colorScheme.keyForeground.copy(alpha = 0.85f),
-                            modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(14f).dp)
+                            modifier = Modifier.size((19 * scaleFactor).coerceAtLeast(13f).dp)
                         )
                     }
 

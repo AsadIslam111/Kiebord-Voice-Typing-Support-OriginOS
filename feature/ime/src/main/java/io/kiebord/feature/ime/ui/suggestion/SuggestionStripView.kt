@@ -42,7 +42,7 @@ fun SuggestionStripView(
     Row(
         modifier = modifier
             .fillMaxHeight()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -53,7 +53,7 @@ fun SuggestionStripView(
             if (index > 0) {
                 Box(
                     modifier = Modifier
-                        .height(18.dp)
+                        .height(15.dp)
                         .width(1.dp)
                         .background(colorScheme.keyForeground.copy(alpha = 0.15f))
                 )
