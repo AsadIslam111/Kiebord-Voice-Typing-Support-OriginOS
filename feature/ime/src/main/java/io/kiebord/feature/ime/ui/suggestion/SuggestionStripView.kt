@@ -77,7 +77,7 @@ fun SuggestionStripView(
                 if (index > 0) {
                     Box(
                         modifier = Modifier
-                            .height(15.dp)
+                            .height(18.dp)
                             .width(1.dp)
                             .background(colorScheme.keyForeground.copy(alpha = 0.15f))
                     )
@@ -104,7 +104,7 @@ fun SuggestionStripView(
                             isRaw -> colorScheme.keyForeground.copy(alpha = 0.88f)
                             else -> colorScheme.keyForeground.copy(alpha = 0.72f)
                         },
-                        fontSize = if (isPrimary) 17.sp else 16.sp,
+                        fontSize = if (isPrimary) 18.5.sp else 17.5.sp,
                         fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
                         fontFamily = KiebordTheme.fontFamily,
                         textAlign = TextAlign.Center,
@@ -119,7 +119,7 @@ fun SuggestionStripView(
         if (showExpandBtn) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(38.dp)
                     .clip(CircleShape)
                     .clickable { onExpandToggle?.invoke() },
                 contentAlignment = Alignment.Center
@@ -128,7 +128,7 @@ fun SuggestionStripView(
                     imageVector = if (isExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse suggestions" else "Expand suggestions",
                     tint = if (isExpanded) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.7f),
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }

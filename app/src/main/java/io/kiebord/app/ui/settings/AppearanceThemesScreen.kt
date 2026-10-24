@@ -314,7 +314,7 @@ private fun ThemePreviewBottomSheetContent(
                     showKeyBorders = showKeyBorders,
                     defaultShowNumberRow = preferences.showNumberRow,
                     defaultShowSecondaryKeys = false,
-                    initialRowHeight = (54 * preferences.keyboardHeightScale).dp,
+                    initialRowHeight = (58 * preferences.keyboardHeightScale).dp,
                     applySystemInsets = false,
                     isInteractive = false,
                     navBarBottomInset = 0.dp

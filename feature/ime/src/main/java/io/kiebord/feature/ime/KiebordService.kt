@@ -214,7 +214,7 @@ class KiebordService : InputMethodService() {
                     onGestureCommit = ::handleGestureCommit,
                     gestureTypingEnabled = preferencesState.gestureTypingEnabled,
                     showGestureTrail = preferencesState.showGestureTrail,
-                    initialRowHeight = (54 * preferencesState.keyboardHeightScale).dp,
+                    initialRowHeight = (58 * preferencesState.keyboardHeightScale).dp,
                     defaultShowNumberRow = preferencesState.showNumberRow,
                     onNumberRowToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateShowNumberRow(enabled) }

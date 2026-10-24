@@ -136,7 +136,7 @@ fun ReorderableToolbar(
     val slotWidthPx = if (pinnedTools.isNotEmpty() && toolbarWidthPx > 0f) {
         toolbarWidthPx / pinnedTools.size
     } else {
-        with(density) { 54.dp.toPx() }
+        with(density) { 58.dp.toPx() }
     }
 
     val hoveredSlot = if (draggingAction != null && slotWidthPx > 0f) {
@@ -209,8 +209,8 @@ fun ReorderableToolbar(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    val tileWidth = (if (isCustomizeMode) 40.dp else 34.dp) * scaleFactor
-                    val tileHeight = 31.dp * scaleFactor
+                    val tileWidth = (if (isCustomizeMode) 42.dp else 36.dp) * scaleFactor
+                    val tileHeight = (34 * scaleFactor).dp
                     val tileShape = RoundedCornerShape((10 * scaleFactor).coerceAtLeast(4f).dp)
 
                     // 1. Live Drop Target Placeholder
@@ -233,7 +233,7 @@ fun ReorderableToolbar(
                                 imageVector = Icons.Outlined.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = colorScheme.accentColor,
-                                modifier = Modifier.size((14 * scaleFactor).coerceAtLeast(9f).dp)
+                                modifier = Modifier.size((16 * scaleFactor).coerceAtLeast(11f).dp)
                             )
                         }
                     }
@@ -349,7 +349,7 @@ fun ReorderableToolbar(
                                 isDraggingThisItem || isActive || isHoveredByDrawerItem -> colorScheme.accentColor
                                 else -> colorScheme.keyForeground.copy(alpha = 0.85f)
                             },
-                            modifier = Modifier.size((19 * scaleFactor).coerceAtLeast(12f).dp)
+                            modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(15f).dp)
                         )
                     }
                 }

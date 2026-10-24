@@ -65,7 +65,7 @@ fun KeycapView(
     showKeyBorders: Boolean = true,
     showSecondaryKeys: Boolean = true,
     showKeyPopups: Boolean = true,
-    rowHeight: Dp = 54.dp,
+    rowHeight: Dp = 58.dp,
     onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
@@ -91,7 +91,7 @@ fun KeycapView(
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
-    val scaleFactor = (rowHeight.value / 54f).coerceIn(0.4f, 1.6f)
+    val scaleFactor = (rowHeight.value / 58f).coerceIn(0.4f, 1.6f)
     var isPressed by remember { mutableStateOf(false) }
     var isMoreKeysActive by remember { mutableStateOf(false) }
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }

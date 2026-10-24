@@ -90,7 +90,7 @@ fun KeyboardRootView(
     clipboardManager: SandboxedClipboardManager? = null,
     onPasteClip: (String) -> Unit = {},
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
-    initialRowHeight: Dp = 54.dp,
+    initialRowHeight: Dp = 58.dp,
     defaultShowNumberRow: Boolean = false,
     onNumberRowToggle: ((Boolean) -> Unit)? = null,
     showKeyBorders: Boolean = true,
@@ -278,8 +278,8 @@ fun KeyboardRootView(
     } else false
 
     var keyRowHeight by remember(initialRowHeight) { mutableStateOf(initialRowHeight) }
-    val scaleFactor = (keyRowHeight.value / 54f).coerceIn(0.4f, 1.6f)
-    val toolbarHeight = (40 * scaleFactor).dp
+    val scaleFactor = (keyRowHeight.value / 58f).coerceIn(0.4f, 1.6f)
+    val toolbarHeight = (44 * scaleFactor).dp
 
     val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
         val finger = currentFingerInRoot!!
@@ -303,7 +303,7 @@ fun KeyboardRootView(
     var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
     var showKeyPopups by remember(defaultShowKeyPopups) { mutableStateOf(defaultShowKeyPopups) }
     var chinPadding by remember(initialRowHeight) {
-        val initialScale = (initialRowHeight.value / 54f).coerceIn(0.4f, 1.6f)
+        val initialScale = (initialRowHeight.value / 58f).coerceIn(0.4f, 1.6f)
         mutableStateOf((8 * initialScale).dp)
     }
     var horizontalMargin by remember { mutableStateOf(0.dp) }
@@ -471,7 +471,7 @@ fun KeyboardRootView(
                     // 1. Expand / Back / Toggle button on far left
                     Box(
                         modifier = Modifier
-                            .size((32 * scaleFactor).coerceAtLeast(22f).dp)
+                            .size((36 * scaleFactor).coerceAtLeast(26f).dp)
                             .clip(CircleShape)
                             .background(
                                 if (isToolsExpanded) Color(0x22FFFFFF) else Color.Transparent
@@ -505,7 +505,7 @@ fun KeyboardRootView(
                                 else -> "All Tools"
                             },
                             tint = if (isToolsExpanded) colorScheme.keyForeground else colorScheme.keyForeground.copy(alpha = 0.85f),
-                            modifier = Modifier.size((19 * scaleFactor).coerceAtLeast(13f).dp)
+                            modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(16f).dp)
                         )
                     }
 
@@ -1073,13 +1073,13 @@ fun KeyboardRootView(
                 onChinPaddingChange = { chinPadding = it },
                 onHorizontalMarginChange = { horizontalMargin = it },
                 onReset = {
-                    keyRowHeight = 54.dp
+                    keyRowHeight = 58.dp
                     chinPadding = 8.dp
                     horizontalMargin = 0.dp
                     onHeightScaleChange?.invoke(1.0f)
                 },
                 onDone = {
-                    val scale = (keyRowHeight.value / 54f).coerceIn(0.7f, 1.3f)
+                    val scale = (keyRowHeight.value / 58f).coerceIn(0.7f, 1.3f)
                     onHeightScaleChange?.invoke(scale)
                     isResizerOpen = false
                 },
