@@ -75,6 +75,20 @@ class KiebordService : InputMethodService() {
         return TransliterationManagerFactory.isTransliterationLayout(activeLayout.id)
     }
 
+    private fun isBornoPhoneticLayout(): Boolean {
+        return isTransliterationLayout() ||
+                activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO ||
+                primaryAlphaLayout.id == KiebordPreferences.LAYOUT_BN_BORNO
+    }
+
+    private fun shouldAutoCapitalize(): Boolean {
+        if (!preferencesState.autoCapitalization) return false
+        if (isBornoPhoneticLayout()) return false
+        if (activeLayout.id.startsWith("bn_") || primaryAlphaLayout.id.startsWith("bn_")) return false
+        if (isUrlOrCodeField()) return false
+        return true
+    }
+
     private fun getTransliterationManager(): TransliterationManager {
         if (transliterationManager.layoutId != activeLayout.id) {
             transliterationManager = TransliterationManagerFactory.create(activeLayout.id) { currentInputConnection }
@@ -290,9 +304,12 @@ class KiebordService : InputMethodService() {
             }
         }
         lifecycleOwner.onStart()
-        shiftState = ShiftState.UNSHIFTED
         isSymbolsMode = false
         activeLayout = primaryAlphaLayout
+        val initialCaps = if (shouldAutoCapitalize() && info != null) {
+            info.initialCapsMode
+        } else 0
+        shiftState = if (initialCaps != 0) ShiftState.ONE_SHOT else ShiftState.UNSHIFTED
         getTransliterationManager().reset()
         composingBuffer.clear()
         lastGestureCommittedWord = ""
@@ -341,6 +358,9 @@ class KiebordService : InputMethodService() {
         primaryAlphaLayout = PredefinedLayouts.fromId(layoutId)
         if (!isSymbolsMode) {
             activeLayout = primaryAlphaLayout
+        }
+        if (!shouldAutoCapitalize()) {
+            shiftState = ShiftState.UNSHIFTED
         }
         updateSuggestions()
     }
@@ -530,8 +550,10 @@ class KiebordService : InputMethodService() {
                 updateSuggestions()
 
                 // If in one-shot shift mode, revert to unshifted after one character (unless a sentence terminator just set ONE_SHOT)
-                if (initialShiftState == ShiftState.ONE_SHOT && shiftState == ShiftState.ONE_SHOT && !isSentenceTerminator(text)) {
-                    shiftState = ShiftState.UNSHIFTED
+                if (initialShiftState == ShiftState.ONE_SHOT && shiftState == ShiftState.ONE_SHOT) {
+                    if (!shouldAutoCapitalize() || !isSentenceTerminator(text)) {
+                        shiftState = ShiftState.UNSHIFTED
+                    }
                 }
             }
             KeyType.SHIFT -> {
@@ -542,6 +564,9 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.DELETE -> {
+                if (shiftState == ShiftState.ONE_SHOT) {
+                    shiftState = ShiftState.UNSHIFTED
+                }
                 val selectedText = ic.getSelectedText(0)
                 if (!selectedText.isNullOrEmpty()) {
                     ic.commitText("", 1)
@@ -584,6 +609,9 @@ class KiebordService : InputMethodService() {
                     ic.performEditorAction(currentAction)
                 } else {
                     sendKeyChar('\n')
+                    if (shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {
+                        shiftState = ShiftState.ONE_SHOT
+                    }
                 }
                 updateSuggestions()
             }
@@ -635,7 +663,7 @@ class KiebordService : InputMethodService() {
                             ic.deleteSurroundingText(1, 0)
                             val puncToInsert = if (activeLayout.id.startsWith("bn_")) "। " else ". "
                             ic.commitText(puncToInsert, 1)
-                            if (preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED) {
+                            if (shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {
                                 shiftState = ShiftState.ONE_SHOT
                             }
                             lastSpaceTapTime = 0L
@@ -648,7 +676,7 @@ class KiebordService : InputMethodService() {
                     val textBefore = ic.getTextBeforeCursor(1, 0)
                     ic.commitText(" ", 1)
                     lastSpaceTapTime = now
-                    if (preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED && textBefore != null) {
+                    if (shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED && textBefore != null) {
                         val lastChar = textBefore.lastOrNull()
                         if (lastChar != null && isSentenceTerminatorChar(lastChar)) {
                             shiftState = ShiftState.ONE_SHOT
@@ -674,11 +702,17 @@ class KiebordService : InputMethodService() {
                     "ABC" -> {
                         isSymbolsMode = false
                         activeLayout = primaryAlphaLayout
+                        if (!shouldAutoCapitalize()) {
+                            shiftState = ShiftState.UNSHIFTED
+                        }
                     }
                     else -> {
                         if (isSymbolsMode) {
                             isSymbolsMode = false
                             activeLayout = primaryAlphaLayout
+                            if (!shouldAutoCapitalize()) {
+                                shiftState = ShiftState.UNSHIFTED
+                            }
                         } else {
                             primaryAlphaLayout = activeLayout
                             isSymbolsMode = true
@@ -710,6 +744,9 @@ class KiebordService : InputMethodService() {
                     primaryAlphaLayout = PredefinedLayouts.fromId(nextId)
                     if (!isSymbolsMode) {
                         activeLayout = primaryAlphaLayout
+                    }
+                    if (!shouldAutoCapitalize()) {
+                        shiftState = ShiftState.UNSHIFTED
                     }
                     serviceScope.launch {
                         updateSuggestions()
@@ -1010,7 +1047,7 @@ class KiebordService : InputMethodService() {
                     val now = SystemClock.uptimeMillis()
                     lastSpaceTapTime = now
                     lastAutoSpacePunctuationTime = now
-                    if (isSentenceTerminator(text) && preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED) {
+                    if (isSentenceTerminator(text) && shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {
                         shiftState = ShiftState.ONE_SHOT
                     }
                     return
@@ -1025,7 +1062,7 @@ class KiebordService : InputMethodService() {
                 val now = SystemClock.uptimeMillis()
                 lastSpaceTapTime = now
                 lastAutoSpacePunctuationTime = now
-                if (isSentenceTerminator(text) && preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED) {
+                if (isSentenceTerminator(text) && shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {
                     shiftState = ShiftState.ONE_SHOT
                 }
                 return
@@ -1039,7 +1076,7 @@ class KiebordService : InputMethodService() {
                     val now = SystemClock.uptimeMillis()
                     lastSpaceTapTime = now
                     lastAutoSpacePunctuationTime = now
-                    if (isSentenceTerminator(text) && preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED) {
+                    if (isSentenceTerminator(text) && shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {
                         shiftState = ShiftState.ONE_SHOT
                     }
                     return
@@ -1462,6 +1499,9 @@ class KiebordService : InputMethodService() {
                     ic.performEditorAction(currentAction)
                 } else {
                     sendKeyChar('\n')
+                    if (shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {
+                        shiftState = ShiftState.ONE_SHOT
+                    }
                 }
                 true
             }
@@ -1532,6 +1572,9 @@ class KiebordService : InputMethodService() {
             composingBuffer.clear()
         } else {
             ic.commitText(textToCommit, 1)
+        }
+        if (!shouldAutoCapitalize() && shiftState == ShiftState.ONE_SHOT) {
+            shiftState = ShiftState.UNSHIFTED
         }
         if (shouldAutoSpace) {
             lastSpaceTapTime = SystemClock.uptimeMillis()
