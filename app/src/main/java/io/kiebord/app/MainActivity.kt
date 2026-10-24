@@ -74,11 +74,14 @@ class MainActivity : ComponentActivity() {
 
     private var isImeEnabledState by mutableStateOf(false)
     private var isImeSelectedState by mutableStateOf(false)
+    private var requestedNavigationTarget by mutableStateOf<String?>(null)
     private lateinit var preferencesRepo: KiebordPreferencesRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        requestedNavigationTarget = intent?.getStringExtra("navigate_to")
+            ?: if (intent?.action == "io.kiebord.action.THEMES") "themes" else null
         preferencesRepo = KiebordPreferencesRepository.getInstance(this)
         updateImeStatus()
 
@@ -146,6 +149,8 @@ class MainActivity : ComponentActivity() {
                             preferencesRepo = preferencesRepo,
                             isImeEnabled = isImeEnabledState,
                             isImeSelected = isImeSelectedState,
+                            navigationTarget = requestedNavigationTarget,
+                            onNavigationTargetConsumed = { requestedNavigationTarget = null },
                             onOpenSettings = {
                                 startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
                             },
@@ -158,6 +163,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val target = intent.getStringExtra("navigate_to")
+            ?: if (intent.action == "io.kiebord.action.THEMES") "themes" else null
+        requestedNavigationTarget = target
     }
 
     override fun onResume() {
@@ -181,22 +194,53 @@ fun KiebordSettingsApp(
     preferencesRepo: KiebordPreferencesRepository,
     isImeEnabled: Boolean,
     isImeSelected: Boolean,
+    navigationTarget: String? = null,
+    onNavigationTargetConsumed: () -> Unit = {},
     onOpenSettings: () -> Unit,
     onSwitchIme: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val initialScreen = remember(preferences.setupCompleted) {
         val target = (context as? android.app.Activity)?.intent?.getStringExtra("navigate_to")
+            ?: if ((context as? android.app.Activity)?.intent?.action == "io.kiebord.action.THEMES") "themes" else null
         if (!preferences.setupCompleted) {
             SettingsScreen.Onboarding
         } else if (target == "layouts") {
             SettingsScreen.KeyboardLayouts
+        } else if (target == "themes" || target == "appearance") {
+            SettingsScreen.AppearanceThemes
         } else {
             SettingsScreen.Main
         }
     }
     var currentScreen by remember(initialScreen) { mutableStateOf<SettingsScreen>(initialScreen) }
     var backStack by remember { mutableStateOf<List<SettingsScreen>>(emptyList()) }
+
+    LaunchedEffect(navigationTarget) {
+        if (navigationTarget != null) {
+            when (navigationTarget) {
+                "themes", "appearance" -> {
+                    if (currentScreen != SettingsScreen.AppearanceThemes) {
+                        backStack = listOf(SettingsScreen.Main)
+                        currentScreen = SettingsScreen.AppearanceThemes
+                    }
+                }
+                "layouts" -> {
+                    if (currentScreen != SettingsScreen.KeyboardLayouts) {
+                        backStack = listOf(SettingsScreen.Main)
+                        currentScreen = SettingsScreen.KeyboardLayouts
+                    }
+                }
+                "preferences" -> {
+                    if (currentScreen != SettingsScreen.Preferences) {
+                        backStack = listOf(SettingsScreen.Main)
+                        currentScreen = SettingsScreen.Preferences
+                    }
+                }
+            }
+            onNavigationTargetConsumed()
+        }
+    }
     var predictiveProgress by remember { mutableFloatStateOf(0f) }
     var isPredictiveBackActive by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()

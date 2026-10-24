@@ -62,6 +62,8 @@ data class MoreKeysPopupState(
 fun MoreKeysPopup(
     state: MoreKeysPopupState?,
     keyboardWidthPx: Float,
+    keyboardLeftPx: Float = 0f,
+    keyboardRightPx: Float = keyboardWidthPx,
     scaleFactor: Float = 1.0f,
     modifier: Modifier = Modifier
 ) {
@@ -70,55 +72,55 @@ fun MoreKeysPopup(
     val density = LocalDensity.current
     val colorScheme = KiebordTheme.colorScheme
 
-    val horizontalPaddingDp = (6 * scaleFactor).dp
-    val verticalPaddingDp = (5 * scaleFactor).dp
-    val colGapDp = (3 * scaleFactor).dp
-    val rowGapDp = (4 * scaleFactor).dp
-    val itemWidthDp = (42 * scaleFactor).dp
-    val itemHeightDp = (42 * scaleFactor).dp
+    val dims = remember(density.density, scaleFactor, keyboardWidthPx) {
+        MoreKeysLayoutHelper.calculateDimensions(density.density, scaleFactor, keyboardWidthPx)
+    }
 
-    val horizontalPaddingPx = with(density) { horizontalPaddingDp.toPx() }
-    val verticalPaddingPx = with(density) { verticalPaddingDp.toPx() }
-    val colGapPx = with(density) { colGapDp.toPx() }
-    val rowGapPx = with(density) { rowGapDp.toPx() }
-    val itemWidthPx = with(density) { itemWidthDp.toPx() }
-    val itemHeightPx = with(density) { itemHeightDp.toPx() }
+    val itemWidthDp = with(density) { dims.itemWidthPx.toDp() }
+    val itemHeightDp = with(density) { dims.itemHeightPx.toDp() }
+    val colGapDp = with(density) { dims.colGapPx.toDp() }
+    val rowGapDp = with(density) { dims.rowGapPx.toDp() }
+    val horizontalPaddingDp = with(density) { dims.horizontalPaddingPx.toDp() }
+    val verticalPaddingDp = with(density) { dims.verticalPaddingPx.toDp() }
 
-    val layoutResult = remember(state.items, state.anchorKey, state.anchorRect, keyboardWidthPx, scaleFactor) {
+    val anchorCenterX = state.anchorRect.center.x
+    val anchorXInKeyboard = (anchorCenterX - keyboardLeftPx).coerceAtLeast(0f)
+
+    val layoutResult = remember(state.items, state.anchorKey, state.anchorRect, keyboardWidthPx, keyboardLeftPx, dims) {
         MoreKeysLayoutHelper.computeLayout(
             itemCount = state.items.size,
             columnsHint = state.anchorKey.moreKeysColumns,
-            anchorCenterX = state.anchorRect.center.x,
+            anchorCenterX = anchorXInKeyboard,
             keyboardWidthPx = keyboardWidthPx,
-            columnWidthPx = itemWidthPx + colGapPx
+            columnWidthPx = dims.itemWidthPx + dims.colGapPx
         )
     }
 
     val maxCols = layoutResult.numColumns
     val rowCount = layoutResult.numRows
 
-    val totalWidthPx = maxCols * itemWidthPx + (maxCols - 1) * colGapPx + horizontalPaddingPx * 2
-    val totalHeightPx = rowCount * itemHeightPx + (rowCount - 1) * rowGapPx + verticalPaddingPx * 2
+    val totalWidthPx = dims.totalWidthPx(maxCols)
+    val totalHeightPx = dims.totalHeightPx(rowCount)
 
-    // 1. Safe horizontal clamping: align default key (leftKeys) with anchorCenterX, then clamp
-    val anchorCenterX = state.anchorRect.center.x
-    val idealLeft = anchorCenterX - (layoutResult.leftKeys * (itemWidthPx + colGapPx) + itemWidthPx / 2f + horizontalPaddingPx)
-    val minLeftPx = with(density) { (8 * scaleFactor).dp.toPx() }
-    val maxLeftPx = (keyboardWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
+    // 1. Safe horizontal clamping: align default key (leftKeys) with anchorCenterX, then clamp within [keyboardLeftPx, keyboardRightPx]
+    val idealLeft = anchorCenterX - (layoutResult.leftKeys * (dims.itemWidthPx + dims.colGapPx) + dims.itemWidthPx / 2f + dims.horizontalPaddingPx)
+    val marginPx = with(density) { 4.dp.toPx() }
+    val minLeftPx = keyboardLeftPx + marginPx
+    val maxLeftPx = (keyboardRightPx - totalWidthPx - marginPx).coerceAtLeast(minLeftPx)
     val clampedLeft = idealLeft.coerceIn(minLeftPx, maxLeftPx)
 
     // 2. Safe vertical clamping: above anchor keycap, never off top of screen
     val anchorTop = state.anchorRect.top
-    val gapDp = (12 * scaleFactor).coerceIn(8f, 16f).dp
+    val gapDp = (10 * scaleFactor).coerceIn(6f, 14f).dp
     val gapPx = with(density) { gapDp.toPx() }
     val idealTop = anchorTop - totalHeightPx - gapPx
-    val minTopDp = 6.dp
+    val minTopDp = 4.dp
     val minTopPx = with(density) { minTopDp.toPx() }
     val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
 
     // 3. Dynamic transform origin for smooth bloom originating right from anchor key
     val pivotFractionX = if (totalWidthPx > 0f) {
-        ((anchorCenterX - clampedLeft) / totalWidthPx).coerceIn(0.08f, 0.92f)
+        ((anchorCenterX - clampedLeft) / totalWidthPx).coerceIn(0.06f, 0.94f)
     } else {
         0.5f
     }
@@ -223,7 +225,7 @@ fun MoreKeysPopup(
                                         .size(itemWidthDp, itemHeightDp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    val actionIconSize = (22 * scaleFactor).coerceAtLeast(15f).dp
+                                    val actionIconSize = dims.iconSizeDp.dp
                                     when (item) {
                                         "ACTION_EMOJI", "action:emoji", "EMOJI" -> {
                                             Icon(
@@ -285,7 +287,7 @@ fun MoreKeysPopup(
                                             Text(
                                                 text = item,
                                                 color = animatedTextColor,
-                                                fontSize = (19 * scaleFactor).sp,
+                                                fontSize = dims.fontSizeSp.sp,
                                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
                                             )
                                         }

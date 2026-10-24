@@ -271,18 +271,23 @@ class KiebordService : InputMethodService() {
                     onSwitchToLayout = ::switchToLayout,
                     onOpenLanguagesSettings = ::openLanguagesSettings,
                     onOpenInputMethodPicker = ::openInputMethodPicker,
-                    onThemeToggle = {
-                        val nextThemeId = when (preferencesState.theme) {
-                            KiebordPreferences.THEME_DEFAULT_DARK -> KiebordPreferences.THEME_AMOLED_BLACK
-                            KiebordPreferences.THEME_AMOLED_BLACK -> KiebordPreferences.THEME_TOKYO_NIGHT
-                            KiebordPreferences.THEME_TOKYO_NIGHT -> KiebordPreferences.THEME_NORD
-                            KiebordPreferences.THEME_NORD -> KiebordPreferences.THEME_DEFAULT_LIGHT
-                            else -> KiebordPreferences.THEME_DEFAULT_DARK
-                        }
+                    onOpenThemeSettings = ::openThemeSettings,
+                    defaultOneHandedMode = when (preferencesState.oneHandedMode) {
+                        KiebordPreferences.ONE_HANDED_LEFT -> "LEFT"
+                        KiebordPreferences.ONE_HANDED_RIGHT -> "RIGHT"
+                        else -> "OFF"
+                    },
+                    onOneHandedModeChange = { mode ->
                         serviceScope.launch {
-                            preferencesRepo.updateTheme(nextThemeId)
+                            val prefMode = when (mode) {
+                                "LEFT" -> KiebordPreferences.ONE_HANDED_LEFT
+                                "RIGHT" -> KiebordPreferences.ONE_HANDED_RIGHT
+                                else -> KiebordPreferences.ONE_HANDED_OFF
+                            }
+                            preferencesRepo.updateOneHandedMode(prefMode)
                         }
-                    }
+                    },
+                    onThemeToggle = ::openThemeSettings
                 )
             }
         }
@@ -370,6 +375,16 @@ class KiebordService : InputMethodService() {
             val intent = Intent(this, Class.forName("io.kiebord.app.MainActivity")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("navigate_to", "layouts")
+            }
+            startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    fun openThemeSettings() {
+        try {
+            val intent = Intent(this, Class.forName("io.kiebord.app.MainActivity")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("navigate_to", "themes")
             }
             startActivity(intent)
         } catch (_: Exception) {}

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import io.kiebord.feature.ime.ui.onehanded.OneHandedSideBar
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
@@ -29,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -89,6 +91,9 @@ fun KeyboardRootView(
     onKeyLongPress: (KeyDef) -> Unit,
     onTextAction: (TextAction, Boolean) -> Boolean = { _, _ -> false },
     onThemeToggle: () -> Unit = {},
+    onOpenThemeSettings: () -> Unit = onThemeToggle,
+    defaultOneHandedMode: String = "OFF",
+    onOneHandedModeChange: ((String) -> Unit)? = null,
     suggestions: List<SuggestionCandidate> = emptyList(),
     onCandidateSelect: (SuggestionCandidate) -> Unit = {},
     onUnlearnWord: (String) -> Unit = {},
@@ -265,7 +270,8 @@ fun KeyboardRootView(
     }
 
     var isToolbarOptionsVisible by remember { mutableStateOf(false) }
-    var oneHandedSide by remember { mutableStateOf("OFF") } // "OFF", "RIGHT", "LEFT"
+    var oneHandedSide by remember(defaultOneHandedMode) { mutableStateOf(defaultOneHandedMode) } // "OFF", "RIGHT", "LEFT"
+    var oneHandedSideWidth by remember { mutableFloatStateOf(64f) }
     var isEmojiOpen by remember { mutableStateOf(false) }
 
     // Active drag session across toolbar and drawer
@@ -418,7 +424,7 @@ fun KeyboardRootView(
                 onKeyPopupsToggle?.invoke(showKeyPopups)
             }
             ToolbarAction.THEME_TOGGLE -> {
-                onThemeToggle()
+                onOpenThemeSettings()
             }
             ToolbarAction.CLIPBOARD -> {
                 isToolsDrawerOpen = false
@@ -436,6 +442,7 @@ fun KeyboardRootView(
                     "RIGHT" -> "LEFT"
                     else -> "OFF"
                 }
+                onOneHandedModeChange?.invoke(oneHandedSide)
             }
             ToolbarAction.SETTINGS -> {
                 try {
@@ -467,8 +474,19 @@ fun KeyboardRootView(
         }
     }
 
-    val oneHandedStart = if (oneHandedSide == "RIGHT") 56.dp else 0.dp
-    val oneHandedEnd = if (oneHandedSide == "LEFT") 56.dp else 0.dp
+    val oneHandedStart = if (oneHandedSide == "RIGHT") oneHandedSideWidth.dp else 0.dp
+    val oneHandedEnd = if (oneHandedSide == "LEFT") oneHandedSideWidth.dp else 0.dp
+
+    val keyboardStartInset = (4 * scaleFactor).dp + horizontalMargin + oneHandedStart
+    val keyboardEndInset = (4 * scaleFactor).dp + horizontalMargin + oneHandedEnd
+
+    val keyboardLeftPx = with(density) { keyboardStartInset.toPx() }
+    val keyboardRightPx = if (rootWidthPx > 0f) {
+        (rootWidthPx - with(density) { keyboardEndInset.toPx() }).coerceAtLeast(keyboardLeftPx + 100f)
+    } else {
+        1080f
+    }
+    val effectiveKeyboardWidthPx = (keyboardRightPx - keyboardLeftPx).coerceAtLeast(100f)
 
     Box(
         modifier = modifier
@@ -478,14 +496,18 @@ fun KeyboardRootView(
                 rootWidthPx = coords.size.width.toFloat()
             }
             .background(colorScheme.containerBackground)
-            .padding(
-                start = (4 * scaleFactor).dp + horizontalMargin + oneHandedStart,
-                end = (4 * scaleFactor).dp + horizontalMargin + oneHandedEnd,
-                top = 0.dp,
-                bottom = totalBottomPadding
-            )
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = keyboardStartInset,
+                    end = keyboardEndInset,
+                    top = 0.dp,
+                    bottom = totalBottomPadding
+                )
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
             if (isTextEditOpen) {
                 // Text Editing panel covers the toolbar and replaces the expand icon with back icon (matching Borno Keyboard)
                 TextEditPanelView(
@@ -698,14 +720,18 @@ fun KeyboardRootView(
                     }
 
                     val openMoreKeysForAnchor: (KeyDef, Rect) -> Unit = { keyDef, keyRect ->
-                        val itemWidthPx = with(density) { (42 * scaleFactor).dp.toPx() }
-                        val colGapPx = with(density) { (3 * scaleFactor).dp.toPx() }
+                        val dims = MoreKeysLayoutHelper.calculateDimensions(
+                            density = density.density,
+                            scaleFactor = scaleFactor,
+                            keyboardWidthPx = effectiveKeyboardWidthPx
+                        )
+                        val anchorXInKeyboard = (keyRect.center.x - keyboardLeftPx).coerceAtLeast(0f)
                         val layoutResult = MoreKeysLayoutHelper.computeLayout(
                             itemCount = keyDef.moreKeys.size,
                             columnsHint = keyDef.moreKeysColumns,
-                            anchorCenterX = keyRect.center.x,
-                            keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f,
-                            columnWidthPx = itemWidthPx + colGapPx
+                            anchorCenterX = anchorXInKeyboard,
+                            keyboardWidthPx = effectiveKeyboardWidthPx,
+                            columnWidthPx = dims.itemWidthPx + dims.colGapPx
                         )
                         moreKeysState = MoreKeysPopupState(
                             anchorKey = keyDef,
@@ -718,40 +744,40 @@ fun KeyboardRootView(
                     val updateMoreKeysHoverFromRoot: (Offset) -> Boolean = { fingerPosInRoot ->
                         val state = moreKeysState
                         if (state != null) {
-                            val colGapPx = with(density) { (3 * scaleFactor).dp.toPx() }
-                            val rowGapPx = with(density) { (4 * scaleFactor).dp.toPx() }
-                            val itemWidthPx = with(density) { (42 * scaleFactor).dp.toPx() }
-                            val itemHeightPx = with(density) { (42 * scaleFactor).dp.toPx() }
-                            val horizontalPaddingPx = with(density) { (6 * scaleFactor).dp.toPx() }
-                            val verticalPaddingPx = with(density) { (5 * scaleFactor).dp.toPx() }
-
+                            val dims = MoreKeysLayoutHelper.calculateDimensions(
+                                density = density.density,
+                                scaleFactor = scaleFactor,
+                                keyboardWidthPx = effectiveKeyboardWidthPx
+                            )
+                            val anchorXInKeyboard = (state.anchorRect.center.x - keyboardLeftPx).coerceAtLeast(0f)
                             val layoutResult = MoreKeysLayoutHelper.computeLayout(
                                 itemCount = state.items.size,
                                 columnsHint = state.anchorKey.moreKeysColumns,
-                                anchorCenterX = state.anchorRect.center.x,
-                                keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f,
-                                columnWidthPx = itemWidthPx + colGapPx
+                                anchorCenterX = anchorXInKeyboard,
+                                keyboardWidthPx = effectiveKeyboardWidthPx,
+                                columnWidthPx = dims.itemWidthPx + dims.colGapPx
                             )
 
-                            val totalWidthPx = layoutResult.numColumns * itemWidthPx + (layoutResult.numColumns - 1) * colGapPx + horizontalPaddingPx * 2
-                            val totalHeightPx = layoutResult.numRows * itemHeightPx + (layoutResult.numRows - 1) * rowGapPx + verticalPaddingPx * 2
+                            val totalWidthPx = dims.totalWidthPx(layoutResult.numColumns)
+                            val totalHeightPx = dims.totalHeightPx(layoutResult.numRows)
 
-                            val minLeftPx = with(density) { (8 * scaleFactor).dp.toPx() }
-                            val maxLeftPx = (rootWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
-                            val idealLeft = state.anchorRect.center.x - (layoutResult.leftKeys * (itemWidthPx + colGapPx) + itemWidthPx / 2f + horizontalPaddingPx)
+                            val marginPx = with(density) { 4.dp.toPx() }
+                            val minLeftPx = keyboardLeftPx + marginPx
+                            val maxLeftPx = (keyboardRightPx - totalWidthPx - marginPx).coerceAtLeast(minLeftPx)
+                            val idealLeft = state.anchorRect.center.x - (layoutResult.leftKeys * (dims.itemWidthPx + dims.colGapPx) + dims.itemWidthPx / 2f + dims.horizontalPaddingPx)
                             val clampedLeft = idealLeft.coerceIn(minLeftPx, maxLeftPx)
 
-                            val gapDp = (12 * scaleFactor).coerceIn(8f, 16f).dp
+                            val gapDp = (10 * scaleFactor).coerceIn(6f, 14f).dp
                             val gapPx = with(density) { gapDp.toPx() }
                             val idealTop = state.anchorRect.top - totalHeightPx - gapPx
-                            val minTopDp = 6.dp
+                            val minTopDp = 4.dp
                             val minTopPx = with(density) { minTopDp.toPx() }
                             val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
 
                             // Hit-test bounding box with slop
-                            val slopHorizontalPx = with(density) { (32 * scaleFactor).dp.toPx() }
-                            val slopTopPx = with(density) { (36 * scaleFactor).dp.toPx() }
-                            val slopBottomPx = with(density) { (40 * scaleFactor).dp.toPx() }
+                            val slopHorizontalPx = with(density) { (28 * scaleFactor).dp.toPx() }
+                            val slopTopPx = with(density) { (32 * scaleFactor).dp.toPx() }
+                            val slopBottomPx = with(density) { (36 * scaleFactor).dp.toPx() }
 
                             val allowedLeft = minOf(clampedLeft, state.anchorRect.left) - slopHorizontalPx
                             val allowedRight = maxOf(clampedLeft + totalWidthPx, state.anchorRect.right) + slopHorizontalPx
@@ -764,16 +790,16 @@ fun KeyboardRootView(
                             if (!isWithinBounds) {
                                 false
                             } else {
-                                val relX = fingerPosInRoot.x - (clampedLeft + horizontalPaddingPx)
-                                val relY = fingerPosInRoot.y - (popupTop + verticalPaddingPx)
+                                val relX = fingerPosInRoot.x - (clampedLeft + dims.horizontalPaddingPx)
+                                val relY = fingerPosInRoot.y - (popupTop + dims.verticalPaddingPx)
 
                                 val hoveredRow = if (layoutResult.numRows > 1) {
-                                    (relY / (itemHeightPx + rowGapPx)).toInt().coerceIn(0, layoutResult.numRows - 1)
+                                    (relY / (dims.itemHeightPx + dims.rowGapPx)).toInt().coerceIn(0, layoutResult.numRows - 1)
                                 } else {
                                     0
                                 }
 
-                                val hoveredCol = (relX / (itemWidthPx + colGapPx)).toInt().coerceIn(0, layoutResult.numColumns - 1)
+                                val hoveredCol = (relX / (dims.itemWidthPx + dims.colGapPx)).toInt().coerceIn(0, layoutResult.numColumns - 1)
 
                                 val targetItemIndex = layoutResult.grid.getOrNull(hoveredRow)?.getOrNull(hoveredCol)
                                     ?: run {
@@ -1187,6 +1213,7 @@ fun KeyboardRootView(
             }
         }
     }
+}
 
         // 1. Guideline overlay for sliding symbol input (matchParentSize prevents shifting)
         QuickSymbolDragOverlay(
@@ -1200,8 +1227,11 @@ fun KeyboardRootView(
         // 2. Borno Keyboard rounded pill MoreKeys floating popup
         MoreKeysPopup(
             state = moreKeysState,
-            keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f,
-            scaleFactor = scaleFactor
+            keyboardWidthPx = effectiveKeyboardWidthPx,
+            keyboardLeftPx = keyboardLeftPx,
+            keyboardRightPx = keyboardRightPx,
+            scaleFactor = scaleFactor,
+            modifier = Modifier.zIndex(100f)
         )
 
         // 3. Live Keyboard Resizer Overlay (Borno Keyboard 4-way drag handles)
@@ -1290,6 +1320,41 @@ fun KeyboardRootView(
                 },
                 onDismiss = { unlearnCandidateTarget = null },
                 modifier = Modifier.matchParentSize()
+            )
+        }
+
+        // 8. One-Handed Mode Side Control Bar (Padding Adjuster '=', Expand, and Direction '<' / '>')
+        if (oneHandedSide != "OFF") {
+            OneHandedSideBar(
+                oneHandedSide = oneHandedSide,
+                sideWidth = oneHandedSideWidth.dp,
+                onAdjustPaddingDelta = { deltaPx ->
+                    val deltaDp = deltaPx / density.density
+                    if (oneHandedSide == "LEFT") {
+                        oneHandedSideWidth = (oneHandedSideWidth - deltaDp).coerceIn(48f, 130f)
+                    } else {
+                        oneHandedSideWidth = (oneHandedSideWidth + deltaDp).coerceIn(48f, 130f)
+                    }
+                },
+                onCyclePaddingPreset = {
+                    oneHandedSideWidth = when {
+                        oneHandedSideWidth < 62f -> 76f
+                        oneHandedSideWidth < 86f -> 100f
+                        else -> 56f
+                    }
+                },
+                onExpand = {
+                    oneHandedSide = "OFF"
+                    onOneHandedModeChange?.invoke("OFF")
+                },
+                onSwitchDirection = {
+                    val nextSide = if (oneHandedSide == "LEFT") "RIGHT" else "LEFT"
+                    oneHandedSide = nextSide
+                    onOneHandedModeChange?.invoke(nextSide)
+                },
+                modifier = Modifier
+                    .height(toolbarHeight + keyboardContentHeight)
+                    .align(if (oneHandedSide == "LEFT") Alignment.TopEnd else Alignment.TopStart)
             )
         }
     }

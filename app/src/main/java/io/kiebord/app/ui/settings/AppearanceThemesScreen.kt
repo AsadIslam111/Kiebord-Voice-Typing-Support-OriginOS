@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -140,41 +139,6 @@ fun AppearanceThemesScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        SettingsCategoryHeader(title = "Dimensions & Key Styling")
-
-        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-            val heightScale = preferences.keyboardHeightScale
-            val heightLabel = when {
-                heightScale <= 0.88f -> "85% (Compact)"
-                heightScale <= 0.96f -> "95% (Slim)"
-                heightScale <= 1.05f -> "100% (Standard)"
-                heightScale <= 1.16f -> "115% (Comfortable)"
-                else -> "125% (Large)"
-            }
-
-            SettingsSliderItem(
-                title = "Keyboard Height",
-                subtitle = "Scale vertical height of keycaps and row spacing",
-                icon = Icons.Outlined.AspectRatio,
-                value = heightScale,
-                valueRange = 0.85f..1.25f,
-                steps = 7,
-                valueLabel = heightLabel,
-                position = GroupPosition.TOP,
-                onValueChange = onUpdateHeightScale
-            )
-
-            SettingsToggleItem(
-                title = "Key Borders",
-                subtitle = "Display subtle outline borders around individual keycaps",
-                icon = Icons.Outlined.Layers,
-                checked = preferences.showKeyBorders,
-                position = GroupPosition.BOTTOM,
-                onCheckedChange = onUpdateShowKeyBorders
-            )
-        }
     }
 
     val colors = LocalSettingsColors.current
