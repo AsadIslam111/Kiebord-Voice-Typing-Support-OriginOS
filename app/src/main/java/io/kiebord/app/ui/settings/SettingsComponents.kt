@@ -5,7 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -170,7 +169,7 @@ fun SettingsUnifiedTopBar(
                     Icon(
                         imageVector = Icons.Outlined.Keyboard,
                         contentDescription = null,
-                        tint = colors.accent,
+                        tint = colors.textSecondary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -280,7 +279,7 @@ fun SettingsCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = colors.cardBackground),
-        border = if (!colors.isDark) BorderStroke(1.dp, colors.cardBorder) else null
+        border = null
     ) {
         Column(
             modifier = Modifier.padding(vertical = 4.dp),
@@ -292,7 +291,7 @@ fun SettingsCard(
 @Composable
 fun SettingsNavigationItem(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     icon: ImageVector,
     iconTint: Color? = null,
     badge: String? = null,
@@ -300,7 +299,7 @@ fun SettingsNavigationItem(
     onClick: () -> Unit
 ) {
     val colors = LocalSettingsColors.current
-    val effectiveTint = iconTint ?: colors.accent
+    val effectiveTint = iconTint ?: colors.textSecondary
     Column {
         Row(
             modifier = Modifier
@@ -352,12 +351,14 @@ fun SettingsNavigationItem(
                         }
                     }
                 }
-                Text(
-                    text = subtitle,
-                    fontSize = 12.sp,
-                    color = colors.textSecondary,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        fontSize = 12.sp,
+                        color = colors.textSecondary,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
         }
 
@@ -382,7 +383,7 @@ fun SettingsToggleItem(
     onCheckedChange: (Boolean) -> Unit
 ) {
     val colors = LocalSettingsColors.current
-    val effectiveTint = iconTint ?: colors.accent
+    val effectiveTint = iconTint ?: colors.textSecondary
     Column {
         Row(
             modifier = Modifier
@@ -465,7 +466,7 @@ fun SettingsSliderItem(
     onValueChange: (Float) -> Unit
 ) {
     val colors = LocalSettingsColors.current
-    val effectiveTint = iconTint ?: colors.accent
+    val effectiveTint = iconTint ?: colors.textSecondary
     Column {
         Column(
             modifier = Modifier

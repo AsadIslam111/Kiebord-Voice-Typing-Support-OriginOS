@@ -1,6 +1,5 @@
 package io.kiebord.app.ui.settings
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -173,7 +172,6 @@ fun SettingsMainScreen(
         SettingsCard {
             SettingsNavigationItem(
                 title = "Appearance & Themes",
-                subtitle = "Themes, keyboard height, key borders and styling",
                 icon = Icons.Outlined.Palette,
                 badge = themeBadge,
                 onClick = { onNavigate(SettingsScreen.AppearanceThemes) }
@@ -181,7 +179,6 @@ fun SettingsMainScreen(
 
             SettingsNavigationItem(
                 title = "Keyboard Layouts",
-                subtitle = "English (QWERTY), Borno Phonetic and Probhat",
                 icon = Icons.Outlined.Keyboard,
                 badge = layoutBadge,
                 onClick = { onNavigate(SettingsScreen.KeyboardLayouts) }
@@ -189,14 +186,12 @@ fun SettingsMainScreen(
 
             SettingsNavigationItem(
                 title = "Preferences",
-                subtitle = "Haptic feedback, vibration, sounds and dwell delays",
                 icon = Icons.Outlined.Tune,
                 onClick = { onNavigate(SettingsScreen.Preferences) }
             )
 
             SettingsNavigationItem(
                 title = "Corrections & Suggestions",
-                subtitle = "Glide typing, predictive suggestions and auto-capitalization",
                 icon = Icons.Outlined.Spellcheck,
                 showDivider = false,
                 onClick = { onNavigate(SettingsScreen.CorrectionsSuggestions) }
@@ -209,7 +204,6 @@ fun SettingsMainScreen(
         SettingsCard {
             SettingsNavigationItem(
                 title = "About Kiebord",
-                subtitle = "100% offline privacy, Rust core architecture and version info",
                 icon = Icons.Outlined.Info,
                 badge = "v0.1.0",
                 showDivider = false,
@@ -223,8 +217,7 @@ fun SettingsMainScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = colors.cardBackground),
-            border = if (!colors.isDark) BorderStroke(1.dp, colors.cardBorder) else null
+            colors = CardDefaults.cardColors(containerColor = colors.cardBackground)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
