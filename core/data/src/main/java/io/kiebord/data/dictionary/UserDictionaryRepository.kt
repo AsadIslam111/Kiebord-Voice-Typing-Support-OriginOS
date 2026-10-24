@@ -18,7 +18,9 @@ import java.util.concurrent.ConcurrentHashMap
  * with zero UI thread latency. Persistence to internal disk storage is completely asynchronous
  * and debounced via Coroutines on Dispatchers.IO.
  */
-class UserDictionaryRepository private constructor(private val context: Context) {
+class UserDictionaryRepository internal constructor(private val baseDir: File) {
+
+    constructor(context: Context) : this(context.filesDir)
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var saveJob: Job? = null
@@ -34,7 +36,7 @@ class UserDictionaryRepository private constructor(private val context: Context)
     private val gestureWords = ConcurrentHashMap<String, Int>()
 
     private val storageFile: File by lazy {
-        File(context.filesDir, "user_dict_data.json")
+        File(baseDir, "user_dict_data.json")
     }
 
     init {
@@ -55,7 +57,7 @@ class UserDictionaryRepository private constructor(private val context: Context)
         // 2. Increment bigram frequency if prevWord exists
         if (!prevWord.isNullOrBlank()) {
             val cleanPrev = prevWord.trim().lowercase()
-            if (cleanPrev.isNotEmpty() && cleanPrev != cleanWord.lowercase()) {
+            if (cleanPrev.isNotEmpty()) {
                 val nextMap = bigramFrequencies.computeIfAbsent(cleanPrev) { ConcurrentHashMap() }
                 nextMap.merge(cleanWord, 1) { old, v -> (old + v).coerceAtMost(100_000) }
             }
@@ -180,7 +182,7 @@ class UserDictionaryRepository private constructor(private val context: Context)
             }
             root.put("gestures", gesturesObj)
 
-            val tempFile = File(context.filesDir, "user_dict_data.json.tmp")
+            val tempFile = File(baseDir, "user_dict_data.json.tmp")
             tempFile.writeText(root.toString())
             if (tempFile.exists()) {
                 tempFile.renameTo(storageFile)

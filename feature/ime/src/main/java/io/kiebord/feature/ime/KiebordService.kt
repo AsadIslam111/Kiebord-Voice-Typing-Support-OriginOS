@@ -447,9 +447,9 @@ class KiebordService : InputMethodService() {
                 updateSuggestions()
             }
             KeyType.SPACE -> {
-                val prevWord = getPrecedingWord()
                 val translitMgr = getTransliterationManager()
                 if (translitMgr.isComposing) {
+                    val prevWord = getPrecedingWord(excludeComposing = true)
                     val committed = translitMgr.currentTransliteration
                     ic.commitText(committed + " ", 1)
                     if (preferencesState.learnedWordsEnabled && committed.isNotBlank()) {
@@ -457,6 +457,7 @@ class KiebordService : InputMethodService() {
                     }
                     translitMgr.reset()
                 } else if (composingBuffer.isNotEmpty()) {
+                    val prevWord = getPrecedingWord(excludeComposing = true)
                     val committed = composingBuffer.toString()
                     ic.commitText(committed + " ", 1)
                     if (preferencesState.learnedWordsEnabled && committed.isNotBlank()) {
@@ -733,18 +734,44 @@ class KiebordService : InputMethodService() {
         updateSuggestions()
     }
 
-    private fun getPrecedingWord(): String {
+    private fun getPrecedingWord(excludeComposing: Boolean = false): String {
         val ic = currentInputConnection ?: return ""
-        val text = ic.getTextBeforeCursor(40, 0)?.toString() ?: return ""
-        val trimmed = text.trimEnd()
-        if (trimmed.isEmpty()) return ""
-        return trimmed.split(Regex("[\\s,.;!?]+")).lastOrNull() ?: ""
+        val text = ic.getTextBeforeCursor(100, 0)?.toString() ?: return ""
+        if (text.isEmpty()) return ""
+
+        val translitMgr = getTransliterationManager()
+        val isCurrentlyComposing = translitMgr.isComposing || composingBuffer.isNotEmpty()
+
+        val textToProcess = if (excludeComposing && isCurrentlyComposing) {
+            val composing = when {
+                translitMgr.isComposing -> translitMgr.currentTransliteration
+                composingBuffer.isNotEmpty() -> composingBuffer.toString()
+                else -> ""
+            }
+            val raw = if (translitMgr.isComposing) translitMgr.currentRawInput else ""
+
+            when {
+                composing.isNotEmpty() && text.endsWith(composing) -> text.dropLast(composing.length)
+                composing.isNotEmpty() && text.trimEnd().endsWith(composing) -> text.trimEnd().dropLast(composing.length)
+                raw.isNotEmpty() && text.endsWith(raw) -> text.dropLast(raw.length)
+                raw.isNotEmpty() && text.trimEnd().endsWith(raw) -> text.trimEnd().dropLast(raw.length)
+                else -> {
+                    val tokens = text.trimEnd().split(Regex("[\\s,.;:!?\"'()\\[\\]{}]+")).filter { it.isNotEmpty() }
+                    return if (tokens.size >= 2) tokens[tokens.size - 2] else ""
+                }
+            }
+        } else {
+            text
+        }
+
+        val tokens = textToProcess.trimEnd().split(Regex("[\\s,.;:!?\"'()\\[\\]{}]+")).filter { it.isNotEmpty() }
+        return tokens.lastOrNull() ?: ""
     }
 
     private fun handleCandidateSelect(candidate: SuggestionCandidate) {
         performKeyFeedback()
         val ic = currentInputConnection ?: return
-        val prevWord = getPrecedingWord()
+        val prevWord = getPrecedingWord(excludeComposing = true)
         val candidateText = candidate.text.trim()
         if (preferencesState.learnedWordsEnabled && candidateText.isNotEmpty()) {
             userDictionaryRepo.recordWord(candidateText, prevWord)
