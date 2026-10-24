@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,7 +63,7 @@ private data class ThemeOption(
 fun AppearanceThemesScreen(
     preferences: KiebordPreferences,
     onUpdateTheme: (String) -> Unit,
-    onUpdateHeightScale: (Float) -> Unit,
+    onUpdateHeightScale: (Float) -> Unit = {},
     onUpdateShowKeyBorders: (Boolean) -> Unit,
     onBack: () -> Unit = {}
 ) {
@@ -138,32 +137,6 @@ fun AppearanceThemesScreen(
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(18.dp))
-        SettingsCategoryHeader(title = "Keyboard Dimensions & Scaling")
-
-        val heightScale = preferences.keyboardHeightScale
-        val heightLabel = when {
-            heightScale <= 0.88f -> "85% (Compact)"
-            heightScale <= 0.96f -> "95% (Slim)"
-            heightScale <= 1.05f -> "100% (Standard)"
-            heightScale <= 1.16f -> "115% (Comfortable)"
-            else -> "125% (Large)"
-        }
-
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-            SettingsSliderItem(
-                title = "Keyboard Height",
-                subtitle = "Scale vertical height of keycaps and row spacing",
-                icon = Icons.Outlined.AspectRatio,
-                value = heightScale,
-                valueRange = 0.85f..1.25f,
-                steps = 7,
-                valueLabel = heightLabel,
-                showDivider = false,
-                onValueChange = onUpdateHeightScale
-            )
-        }
     }
 
     val colors = LocalSettingsColors.current
@@ -212,20 +185,20 @@ private fun AbstractThemeCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .height(98.dp)
+                .clip(RoundedCornerShape(18.dp))
                 .background(themeOption.scheme.containerBackground)
                 .border(
                     width = if (isSelected) 2.dp else 1.dp,
                     color = borderColor,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(18.dp)
                 )
-                .padding(horizontal = 10.dp, vertical = 8.dp)
+                .padding(horizontal = 10.dp, vertical = 9.dp)
         ) {
             if (isSelected) {
                 Box(
                     modifier = Modifier
-                        .size(16.dp)
+                        .size(18.dp)
                         .clip(CircleShape)
                         .background(colors.accent)
                         .align(Alignment.TopEnd),
@@ -235,45 +208,64 @@ private fun AbstractThemeCard(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Selected",
                         tint = if (colors.isDark) Color(0xFF0F141C) else Color(0xFFFFFFFF),
-                        modifier = Modifier.size(11.dp)
+                        modifier = Modifier.size(12.dp)
                     )
                 }
             }
 
-            // Abstract Swatches: Space key & Enter key on solid theme container
-            Row(
+            // Stylized mini keyboard preview swatches
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 3.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment = Alignment.Bottom
+                    .padding(bottom = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Space key swatch
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(13.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(themeOption.scheme.keyBackground)
-                )
+                // Top row of 3 mini keys
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    repeat(3) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(themeOption.scheme.keyBackground)
+                        )
+                    }
+                }
 
-                // Enter key swatch (accent color pill)
-                Box(
-                    modifier = Modifier
-                        .width(22.dp)
-                        .height(13.dp)
-                        .clip(RoundedCornerShape(percent = 50))
-                        .background(themeOption.scheme.accentColor)
-                )
+                // Bottom row: Space key swatch & Enter key accent swatch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(themeOption.scheme.keyBackground)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(22.dp)
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(percent = 50))
+                            .background(themeOption.scheme.accentColor)
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(7.dp))
 
         Text(
             text = themeOption.name,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = if (isSelected) colors.accent else colors.textPrimary,
             maxLines = 1

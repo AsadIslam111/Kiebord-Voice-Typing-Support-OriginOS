@@ -138,7 +138,7 @@ fun SettingsUnifiedTopBar(
 
     val subtitle = when (screen) {
         is SettingsScreen.Main -> "Privacy Focused"
-        is SettingsScreen.AppearanceThemes -> "Themes, scaling & key styling"
+        is SettingsScreen.AppearanceThemes -> "Themes & key styling"
         is SettingsScreen.KeyboardLayouts -> "Active languages & preview"
         is SettingsScreen.Preferences -> "Haptics, smart gestures & ergonomics"
         is SettingsScreen.CorrectionsSuggestions -> "Candidate strip, auto-fix & glide typing"
