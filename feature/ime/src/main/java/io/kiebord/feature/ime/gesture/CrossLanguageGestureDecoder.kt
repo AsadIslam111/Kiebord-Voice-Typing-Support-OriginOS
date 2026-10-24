@@ -56,8 +56,19 @@ class CrossLanguageGestureDecoder {
                     .map { it.first }
             } else emptyList()
 
-            // Dictionary words first, then append strictly-matched learned words
-            (decodedWords + matchingLearned).distinct().take(8)
+            if (matchingLearned.isNotEmpty()) {
+                if (decodedWords.isNotEmpty()) {
+                    val list = mutableListOf<String>()
+                    list.add(decodedWords.first())
+                    list.addAll(matchingLearned.take(2))
+                    list.addAll(decodedWords.drop(1))
+                    list.distinct().take(8)
+                } else {
+                    matchingLearned.take(8)
+                }
+            } else {
+                decodedWords
+            }
         } else {
             decodedWords
         }
@@ -164,7 +175,7 @@ class CrossLanguageGestureDecoder {
 
         val dStart = hypot(startPt.x - startKey.x, startPt.y - startKey.y) / kw
         val dEnd = hypot(endPt.x - endKey.x, endPt.y - endKey.y) / kw
-        if (dStart > 1.15f || dEnd > 1.15f) return null
+        if (dStart > 1.35f || dEnd > 1.35f) return null
 
         var maxMiss = 0f
         var totalMiss = 0f
@@ -183,19 +194,20 @@ class CrossLanguageGestureDecoder {
                 }
             }
             val normD = minD / kw
-            // All characters must be closely approached along trajectory
-            if (normD > 0.95f) return null
+            // All characters must be approached along trajectory
+            if (normD > 1.35f) return null
             if (normD > maxMiss) maxMiss = normD
             totalMiss += normD
 
             // Sequential progression: gesture must progress forward through word characters
-            if (bestIdx < (lastPointIdx - 1).coerceAtLeast(0)) return null
+            if (bestIdx < (lastPointIdx - 2).coerceAtLeast(0)) return null
             if (bestIdx > lastPointIdx) lastPointIdx = bestIdx
         }
 
         val avgMiss = totalMiss / chars.size
-        val cost = dStart * 0.5f + dEnd * 0.5f + avgMiss * 0.5f + maxMiss * 0.5f
-        if (cost > 1.8f) return null
-        return (100f * kotlin.math.exp(-cost * 1.5f)).coerceIn(0f, 100f)
+        if (avgMiss > 1.15f) return null
+        val cost = dStart * 0.4f + dEnd * 0.4f + avgMiss * 0.6f + maxMiss * 0.4f
+        if (cost > 2.5f) return null
+        return (100f * kotlin.math.exp(-cost * 1.2f)).coerceIn(0f, 100f)
     }
 }

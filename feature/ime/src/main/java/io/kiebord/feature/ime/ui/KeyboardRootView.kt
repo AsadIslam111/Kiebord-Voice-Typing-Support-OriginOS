@@ -725,7 +725,7 @@ fun KeyboardRootView(
 
                             val gapPx = with(density) { 6.dp.toPx() }
                             val idealTop = state.anchorRect.top - totalHeightPx - gapPx
-                            val minTopPx = with(density) { 6.dp.toPx() }
+                            val minTopPx = with(density) { 10.dp.toPx() }
                             val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
 
                             val relX = fingerPosInRoot.x - (clampedLeft + horizontalPaddingPx)

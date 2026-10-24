@@ -48,6 +48,7 @@ import androidx.compose.ui.zIndex
 import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.ShiftState
+import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -526,10 +527,10 @@ fun KeycapView(
         // Circular Keypress Preview Popup
         if (showCircularPopup) {
             val popupDiameter = (52 * scaleFactor).coerceIn(44f, 60f).dp
-            val popupOffsetY = (-54 * scaleFactor).coerceIn(-64f, -46f).dp
+            val defaultOffsetY = (-54 * scaleFactor).coerceIn(-64f, -46f).dp
 
             val coords = keyCoordinates
-            val clampedOffsetX = if (coords != null && coords.isAttached) {
+            val (clampedOffsetX, clampedOffsetY) = if (coords != null && coords.isAttached) {
                 try {
                     val rootCoords = coords.findRootCoordinates()
                     val rootWidth = rootCoords.size.width.toFloat()
@@ -544,33 +545,52 @@ fun KeycapView(
                         keyCenterX > maxCenterX -> maxCenterX - keyCenterX
                         else -> 0f
                     }
-                    with(density) { nudgePx.toDp() }
+                    val offsetX = with(density) { nudgePx.toDp() }
+
+                    // Prevent popup from being cut off at the top of the keyboard window
+                    val keyTopInRoot = with(density) { rootPos.y.toDp() }
+                    val minTopDp = 6.dp
+                    val offsetY = if (keyTopInRoot + defaultOffsetY < minTopDp) {
+                        minTopDp - keyTopInRoot
+                    } else {
+                        defaultOffsetY
+                    }
+                    offsetX to offsetY
                 } catch (_: Exception) {
-                    0.dp
+                    0.dp to defaultOffsetY
                 }
             } else {
-                0.dp
+                0.dp to defaultOffsetY
+            }
+
+            val isLight = colorScheme == KeyboardColorScheme.DefaultLight
+            val popupBg = when (colorScheme) {
+                KeyboardColorScheme.DefaultLight -> Color.White
+                KeyboardColorScheme.AmoledBlack -> Color(0xFF232328)
+                KeyboardColorScheme.TokyoNight -> Color(0xFF2E334B)
+                KeyboardColorScheme.Nord -> Color(0xFF434C5E)
+                else -> Color(0xFF38383F)
             }
 
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset(x = clampedOffsetX, y = popupOffsetY)
+                    .offset(x = clampedOffsetX, y = clampedOffsetY)
                     .wrapContentSize(align = Alignment.Center, unbounded = true)
                     .requiredSize(popupDiameter)
                     .aspectRatio(1f, matchHeightConstraintsFirst = false)
                     .shadow(
-                        elevation = (5 * scaleFactor).dp,
+                        elevation = (4 * scaleFactor).dp,
                         shape = CircleShape,
                         clip = false,
-                        ambientColor = colorScheme.keyShadow,
-                        spotColor = colorScheme.keyShadow
+                        ambientColor = Color(0x38000000),
+                        spotColor = Color(0x30000000)
                     )
                     .clip(CircleShape)
-                    .background(colorScheme.keyBackground)
+                    .background(popupBg)
                     .border(
-                        width = 1.2.dp,
-                        color = colorScheme.accentColor.copy(alpha = 0.35f),
+                        width = 0.5.dp,
+                        color = if (isLight) Color(0x1A000000) else Color(0x22FFFFFF),
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -579,7 +599,7 @@ fun KeycapView(
                     text = displaySymbolLabel,
                     color = colorScheme.keyForeground,
                     fontSize = (25 * scaleFactor).coerceIn(19f, 32f).sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = KiebordTheme.fontFamily,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     style = androidx.compose.ui.text.TextStyle(

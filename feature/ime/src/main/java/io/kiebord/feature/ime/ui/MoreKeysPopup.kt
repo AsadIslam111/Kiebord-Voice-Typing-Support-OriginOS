@@ -92,7 +92,7 @@ fun MoreKeysPopup(
     val anchorTop = state.anchorRect.top
     val gapPx = with(density) { 6.dp.toPx() }
     val idealTop = anchorTop - totalHeightPx - gapPx
-    val minTopPx = with(density) { 6.dp.toPx() }
+    val minTopPx = with(density) { 10.dp.toPx() }
     val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
 
     // 3. Dynamic transform origin for smooth bloom originating right from anchor key
@@ -145,7 +145,12 @@ fun MoreKeysPopup(
             Box(
                 modifier = Modifier
                     .wrapContentSize()
-                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(20.dp))
+                    .shadow(
+                        elevation = 6.dp,
+                        shape = RoundedCornerShape(20.dp),
+                        ambientColor = Color(0x38000000),
+                        spotColor = Color(0x30000000)
+                    )
                     .clip(RoundedCornerShape(20.dp))
                     .background(colorScheme.moreKeysBackground)
                     .padding(horizontal = horizontalPaddingDp, vertical = verticalPaddingDp)

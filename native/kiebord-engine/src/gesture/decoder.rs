@@ -252,13 +252,39 @@ impl GestureDecoder {
 
         learned_matches.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
 
-        // 3. Dictionary candidates take precedence, strictly traversed learned words follow
-        let mut results = dict_candidates;
-        for lm in learned_matches {
-            if results.len() >= limit {
-                break;
+        // 3. Blend: prioritize top dictionary word, but always include top matching learned words
+        let mut results: Vec<GestureCandidate> = Vec::with_capacity(limit);
+        if let Some(top_dict) = dict_candidates.first() {
+            if let Some(top_learned) = learned_matches.first() {
+                if top_learned.score > top_dict.score + 15.0 {
+                    results.push(top_learned.clone());
+                    results.push(top_dict.clone());
+                } else {
+                    results.push(top_dict.clone());
+                    results.push(top_learned.clone());
+                }
+                for lm in learned_matches.iter().skip(1).take(1) {
+                    results.push(lm.clone());
+                }
+            } else {
+                results.push(top_dict.clone());
             }
-            results.push(lm);
+
+            for dc in dict_candidates.iter().skip(1) {
+                if results.len() >= limit {
+                    break;
+                }
+                if !results.iter().any(|r| r.word == dc.word) {
+                    results.push(dc.clone());
+                }
+            }
+        } else {
+            for lm in learned_matches {
+                if results.len() >= limit {
+                    break;
+                }
+                results.push(lm);
+            }
         }
 
         results.truncate(limit);
@@ -349,7 +375,7 @@ impl GestureDecoder {
             }
         }
 
-        // Strict endpoint proximity: both start and end keys must be closely anchored
+        // Endpoint proximity: both start and end keys must be anchored within reason
         let d_start = {
             let dx = user_path[0].x - ideal_pts[0].x;
             let dy = user_path[0].y - ideal_pts[0].y;
@@ -361,11 +387,11 @@ impl GestureDecoder {
             (dx * dx + dy * dy).sqrt() / kw
         };
 
-        if d_start > 1.15 || d_end > 1.15 {
+        if d_start > 1.35 || d_end > 1.35 {
             return None;
         }
 
-        // Strict sequential traversal: every key must be approached closely in temporal order
+        // Sequential traversal: every key must be approached along trajectory
         let mut last_point_idx: usize = 0;
         let mut total_key_miss = 0.0f32;
         let mut max_key_miss = 0.0f32;
@@ -385,8 +411,8 @@ impl GestureDecoder {
             }
 
             let norm_d = min_d / kw;
-            // Every character must be passed within 0.95 key width
-            if norm_d > 0.95 {
+            // Every character must be passed within 1.35 key width
+            if norm_d > 1.35 {
                 return None;
             }
             if norm_d > max_key_miss {
@@ -394,8 +420,8 @@ impl GestureDecoder {
             }
             total_key_miss += norm_d;
 
-            // Sequential progression: gesture must not jump backwards in time
-            if best_u_idx < last_point_idx.saturating_sub(1) {
+            // Sequential progression: gesture must progress forward through word characters
+            if best_u_idx < last_point_idx.saturating_sub(2) {
                 return None;
             }
             if best_u_idx > last_point_idx {
@@ -404,20 +430,23 @@ impl GestureDecoder {
         }
 
         let avg_key_miss = total_key_miss / ideal_pts.len() as f32;
+        if avg_key_miss > 1.15 {
+            return None;
+        }
 
         // Dynamic Time Warping (DTW) check
         let resampled_ideal = Self::resample_polyline(&ideal_pts, user_path.len());
         let dtw_dist = Self::dtw_distance(user_path, &resampled_ideal, 4) / kw;
-        if dtw_dist > 1.3 {
+        if dtw_dist > 1.8 {
             return None;
         }
 
         let total_cost = dtw_dist + 0.5 * d_start + 0.5 * d_end + 0.5 * avg_key_miss;
-        if total_cost > 1.8 {
+        if total_cost > 2.5 {
             return None;
         }
 
-        let shape_score = (-total_cost * 1.5).exp();
+        let shape_score = (-total_cost * 1.2).exp();
         Some(100.0 * shape_score)
     }
 
