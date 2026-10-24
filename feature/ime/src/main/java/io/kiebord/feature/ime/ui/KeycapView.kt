@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,7 +56,7 @@ fun KeycapView(
     isSlidingSymbolMode: Boolean = false,
     showKeyBorders: Boolean = true,
     showSecondaryKeys: Boolean = true,
-    rowHeight: Dp = 60.dp,
+    rowHeight: Dp = 54.dp,
     onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
@@ -77,7 +78,7 @@ fun KeycapView(
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
-    val scaleFactor = (rowHeight.value / 60f).coerceIn(0.4f, 1.6f)
+    val scaleFactor = (rowHeight.value / 54f).coerceIn(0.4f, 1.6f)
     var isPressed by remember { mutableStateOf(false) }
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
@@ -420,18 +421,18 @@ fun KeycapView(
                 )
             }
             else -> {
-                val baseCharSize = if (displaySymbolLabel.length > 2) 15f else if (displaySymbolLabel.length > 1) 18f else 22f
-                val rawSize = if (key.type == KeyType.SYMBOLS) 15f else baseCharSize
+                val baseCharSize = if (displaySymbolLabel.length > 2) 15.5f else if (displaySymbolLabel.length > 1) 19f else 23.5f
+                val rawSize = if (key.type == KeyType.SYMBOLS) 15.5f else baseCharSize
                 val textSize = (rawSize * scaleFactor).coerceAtLeast(7.5f).sp
                 val isUppercase = displaySymbolLabel.length == 1 && displaySymbolLabel.first().isUpperCase()
-                val verticalOffset = if (isUppercase) (1.5f * scaleFactor).dp else 0.dp
+                val verticalShift = if (isUppercase) (1.5f * scaleFactor).dp else 0.dp
                 Text(
                     text = displaySymbolLabel,
                     color = foregroundColor,
                     fontSize = textSize,
                     fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Bold else FontWeight.Medium,
                     fontFamily = KiebordTheme.fontFamily,
-                    modifier = if (verticalOffset > 0.dp) Modifier.padding(top = verticalOffset) else Modifier,
+                    modifier = if (verticalShift > 0.dp) Modifier.offset(y = verticalShift) else Modifier,
                     style = androidx.compose.ui.text.TextStyle(
                         fontFamily = KiebordTheme.fontFamily,
                         platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),

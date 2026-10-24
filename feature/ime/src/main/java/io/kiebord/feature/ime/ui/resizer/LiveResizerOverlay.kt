@@ -293,7 +293,7 @@ fun LiveResizerOverlay(
 
                 // Scale / Height readout percentage
                 Text(
-                    text = "${(currentRowHeight.value / 60f * 100).toInt()}%",
+                    text = "${(currentRowHeight.value / 54f * 100).toInt()}%",
                     color = colorScheme.keyForeground,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp

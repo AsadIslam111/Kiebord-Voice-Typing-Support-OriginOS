@@ -74,7 +74,7 @@ fun KeyboardRootView(
     clipboardManager: SandboxedClipboardManager? = null,
     onPasteClip: (String) -> Unit = {},
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
-    initialRowHeight: Dp = 60.dp,
+    initialRowHeight: Dp = 54.dp,
     defaultShowNumberRow: Boolean = false,
     onNumberRowToggle: ((Boolean) -> Unit)? = null,
     showKeyBorders: Boolean = true,
@@ -218,7 +218,7 @@ fun KeyboardRootView(
     } else false
 
     var keyRowHeight by remember(initialRowHeight) { mutableStateOf(initialRowHeight) }
-    val scaleFactor = (keyRowHeight.value / 60f).coerceIn(0.4f, 1.6f)
+    val scaleFactor = (keyRowHeight.value / 54f).coerceIn(0.4f, 1.6f)
     val toolbarHeight = (46 * scaleFactor).dp
 
     val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
@@ -241,7 +241,7 @@ fun KeyboardRootView(
     var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
     var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
     var chinPadding by remember(initialRowHeight) {
-        val initialScale = (initialRowHeight.value / 60f).coerceIn(0.4f, 1.6f)
+        val initialScale = (initialRowHeight.value / 54f).coerceIn(0.4f, 1.6f)
         mutableStateOf((8 * initialScale).dp)
     }
     var horizontalMargin by remember { mutableStateOf(0.dp) }
@@ -893,13 +893,13 @@ fun KeyboardRootView(
                 onChinPaddingChange = { chinPadding = it },
                 onHorizontalMarginChange = { horizontalMargin = it },
                 onReset = {
-                    keyRowHeight = 60.dp
+                    keyRowHeight = 54.dp
                     chinPadding = 8.dp
                     horizontalMargin = 0.dp
                     onHeightScaleChange?.invoke(1.0f)
                 },
                 onDone = {
-                    val scale = (keyRowHeight.value / 60f).coerceIn(0.7f, 1.3f)
+                    val scale = (keyRowHeight.value / 54f).coerceIn(0.7f, 1.3f)
                     onHeightScaleChange?.invoke(scale)
                     isResizerOpen = false
                 },

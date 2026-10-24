@@ -197,7 +197,7 @@ class KiebordService : InputMethodService() {
                         updateSuggestions()
                     },
                     onGestureCommit = ::handleGestureCommit,
-                    initialRowHeight = (60 * preferencesState.keyboardHeightScale).dp,
+                    initialRowHeight = (54 * preferencesState.keyboardHeightScale).dp,
                     defaultShowNumberRow = preferencesState.showNumberRow,
                     onNumberRowToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateShowNumberRow(enabled) }
