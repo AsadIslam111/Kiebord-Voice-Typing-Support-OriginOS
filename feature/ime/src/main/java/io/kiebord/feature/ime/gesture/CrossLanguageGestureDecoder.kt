@@ -21,20 +21,30 @@ class CrossLanguageGestureDecoder {
         points: List<Offset>,
         keyCentroids: List<KeyCentroid>,
         keyWidthPx: Float = 60f,
-        lang: String = "en"
+        lang: String = "en",
+        learnedWords: List<String> = emptyList()
     ): List<SuggestionCandidate> {
         if (points.size < 2 || keyCentroids.isEmpty()) return emptyList()
 
         val decodedWords = if (NativeEngine.isAvailable()) {
-            NativeEngine.queryGesture(points, keyCentroids, keyWidthPx, lang, 5)
+            NativeEngine.queryGesture(points, keyCentroids, keyWidthPx, lang, 8)
         } else {
             emptyList()
         }
 
         if (decodedWords.isNotEmpty()) {
+            // Re-rank candidates: learned words selected multiple times take precedence
+            val sortedWords = if (learnedWords.isNotEmpty()) {
+                val learnedSet = learnedWords.toSet()
+                val (learnedMatches, otherMatches) = decodedWords.partition { it in learnedSet }
+                (learnedMatches + otherMatches).distinct()
+            } else {
+                decodedWords
+            }
+
             val candidates = mutableListOf<SuggestionCandidate>()
-            for (i in decodedWords.indices) {
-                val word = decodedWords[i]
+            for (i in sortedWords.indices) {
+                val word = sortedWords[i]
                 candidates.add(
                     SuggestionCandidate(
                         text = word,

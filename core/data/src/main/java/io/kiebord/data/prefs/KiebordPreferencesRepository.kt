@@ -44,6 +44,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val SUGGESTIONS_ENABLED = booleanPreferencesKey("pref_suggestions_enabled")
         val NEXT_WORD_PREDICTION = booleanPreferencesKey("pref_next_word_prediction")
         val BENGALI_SMART_PHONETIC = booleanPreferencesKey("pref_bengali_smart_phonetic")
+        val LEARNED_WORDS_ENABLED = booleanPreferencesKey("pref_learned_words_enabled")
         val GESTURE_TYPING_ENABLED = booleanPreferencesKey("pref_gesture_typing_enabled")
         val SHOW_GESTURE_TRAIL = booleanPreferencesKey("pref_show_gesture_trail")
         val AUTO_CAPITALIZATION = booleanPreferencesKey("pref_auto_capitalization")
@@ -90,6 +91,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 suggestionsEnabled = prefs[PreferencesKeys.SUGGESTIONS_ENABLED] ?: true,
                 nextWordPrediction = prefs[PreferencesKeys.NEXT_WORD_PREDICTION] ?: true,
                 bengaliSmartPhonetic = prefs[PreferencesKeys.BENGALI_SMART_PHONETIC] ?: true,
+                learnedWordsEnabled = prefs[PreferencesKeys.LEARNED_WORDS_ENABLED] ?: true,
                 gestureTypingEnabled = prefs[PreferencesKeys.GESTURE_TYPING_ENABLED] ?: true,
                 showGestureTrail = prefs[PreferencesKeys.SHOW_GESTURE_TRAIL] ?: true,
                 autoCapitalization = prefs[PreferencesKeys.AUTO_CAPITALIZATION] ?: true,
@@ -236,6 +238,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateBengaliSmartPhonetic(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.BENGALI_SMART_PHONETIC] = enabled }
+    }
+
+    suspend fun updateLearnedWordsEnabled(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.LEARNED_WORDS_ENABLED] = enabled }
     }
 
     suspend fun updateGestureTypingEnabled(enabled: Boolean) {

@@ -48,6 +48,7 @@ import io.kiebord.app.ui.settings.PreferencesScreen
 import io.kiebord.app.ui.settings.SettingsMainScreen
 import io.kiebord.app.ui.settings.SettingsScreen
 import io.kiebord.app.ui.settings.SettingsUnifiedTopBar
+import io.kiebord.data.dictionary.UserDictionaryRepository
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.data.prefs.KiebordPreferencesRepository
 import kotlin.coroutines.cancellation.CancellationException
@@ -134,6 +135,7 @@ fun KiebordSettingsApp(
     var predictiveProgress by remember { mutableFloatStateOf(0f) }
     var isPredictiveBackActive by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val navigateTo: (SettingsScreen) -> Unit = { screen ->
         backStack = backStack + currentScreen
@@ -305,6 +307,12 @@ fun KiebordSettingsApp(
                             },
                             onUpdateBengaliSmartPhonetic = { enabled ->
                                 scope.launch { preferencesRepo.updateBengaliSmartPhonetic(enabled) }
+                            },
+                            onUpdateLearnedWordsEnabled = { enabled ->
+                                scope.launch { preferencesRepo.updateLearnedWordsEnabled(enabled) }
+                            },
+                            onDeleteLearnedWords = {
+                                UserDictionaryRepository.getInstance(context).clearAll()
                             },
                             onUpdateGestureTyping = { enabled ->
                                 scope.launch { preferencesRepo.updateGestureTypingEnabled(enabled) }

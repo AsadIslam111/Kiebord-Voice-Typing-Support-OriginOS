@@ -27,6 +27,7 @@ import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
+import io.kiebord.data.dictionary.UserDictionaryRepository
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.feature.ime.gesture.CrossLanguageGestureDecoder
@@ -83,11 +84,13 @@ class KiebordService : InputMethodService() {
     private var navBarInsetBottomPx by mutableIntStateOf(0)
     private var activeSuggestions by mutableStateOf<List<SuggestionCandidate>>(emptyList())
     private lateinit var clipboardManager: SandboxedClipboardManager
+    private lateinit var userDictionaryRepo: UserDictionaryRepository
 
     override fun onCreate() {
         super.onCreate()
         preferencesRepo = KiebordPreferencesRepository.getInstance(this)
         clipboardManager = SandboxedClipboardManager(this)
+        userDictionaryRepo = UserDictionaryRepository.getInstance(this)
         lifecycleOwner.onCreate()
         NativeEngine.ensureInitialized(this, "en")
         NativeEngine.ensureInitialized(this, "bn")
@@ -444,12 +447,21 @@ class KiebordService : InputMethodService() {
                 updateSuggestions()
             }
             KeyType.SPACE -> {
+                val prevWord = getPrecedingWord()
                 val translitMgr = getTransliterationManager()
                 if (translitMgr.isComposing) {
-                    ic.commitText(translitMgr.currentTransliteration + " ", 1)
+                    val committed = translitMgr.currentTransliteration
+                    ic.commitText(committed + " ", 1)
+                    if (preferencesState.learnedWordsEnabled && committed.isNotBlank()) {
+                        userDictionaryRepo.recordWord(committed.trim(), prevWord)
+                    }
                     translitMgr.reset()
                 } else if (composingBuffer.isNotEmpty()) {
-                    ic.commitText(composingBuffer.toString() + " ", 1)
+                    val committed = composingBuffer.toString()
+                    ic.commitText(committed + " ", 1)
+                    if (preferencesState.learnedWordsEnabled && committed.isNotBlank()) {
+                        userDictionaryRepo.recordWord(committed.trim(), prevWord)
+                    }
                     composingBuffer.clear()
                 } else {
                     ic.commitText(" ", 1)
@@ -732,6 +744,11 @@ class KiebordService : InputMethodService() {
     private fun handleCandidateSelect(candidate: SuggestionCandidate) {
         performKeyFeedback()
         val ic = currentInputConnection ?: return
+        val prevWord = getPrecedingWord()
+        val candidateText = candidate.text.trim()
+        if (preferencesState.learnedWordsEnabled && candidateText.isNotEmpty()) {
+            userDictionaryRepo.recordWord(candidateText, prevWord)
+        }
         if (lastGestureCommittedWord.isNotEmpty()) {
             ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
             lastGestureCommittedWord = ""
@@ -759,17 +776,24 @@ class KiebordService : InputMethodService() {
         if (trail.size < 2 || centroids.isEmpty()) return
 
         val lang = activeLayout.id
+        val learnedGestureWords = if (preferencesState.learnedWordsEnabled) {
+            userDictionaryRepo.getLearnedGestureWords(10)
+        } else emptyList()
 
-        val candidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang)
+        val candidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, learnedGestureWords)
         if (candidates.isNotEmpty()) {
             val primary = candidates.first()
             val textToCommit = primary.text + " "
             val ic = currentInputConnection
+            val prevWord = getPrecedingWord()
+            if (preferencesState.learnedWordsEnabled && primary.text.isNotBlank()) {
+                userDictionaryRepo.recordWord(primary.text.trim(), prevWord, isGesture = true)
+            }
             finishComposing()
             ic?.commitText(textToCommit, 1)
             lastGestureCommittedWord = textToCommit
 
-            activeSuggestions = candidates.take(3).mapIndexed { idx, cand ->
+            activeSuggestions = candidates.take(12).mapIndexed { idx, cand ->
                 cand.copy(isPrimary = idx == 0)
             }
         }
@@ -801,9 +825,19 @@ class KiebordService : InputMethodService() {
                     list.add(SuggestionCandidate(text = translit, isPrimary = true, rawInput = raw))
                 }
 
-                // 3. Additional dictionary completions & alternatives
+                // 3. User learned words matching transliterated or raw prefix
+                if (preferencesState.learnedWordsEnabled) {
+                    val learned = (userDictionaryRepo.getCompletions(translit, 4) + userDictionaryRepo.getCompletions(raw, 4)).distinct()
+                    for (w in learned) {
+                        if (list.size < 12 && list.none { it.text == w }) {
+                            list.add(SuggestionCandidate(text = w, isPrimary = false))
+                        }
+                    }
+                }
+
+                // 4. Additional dictionary completions & alternatives
                 for (match in dictMatches) {
-                    if (list.none { it.text == match }) {
+                    if (list.size < 12 && list.none { it.text == match }) {
                         list.add(SuggestionCandidate(text = match, isPrimary = false))
                     }
                 }
@@ -811,8 +845,12 @@ class KiebordService : InputMethodService() {
                 activeSuggestions = list.take(12)
             } else {
                 val prev = getPrecedingWord()
+                val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
+                    userDictionaryRepo.getNextWords(prev, 5)
+                } else emptyList()
                 val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 10) else emptyList()
-                activeSuggestions = predictions.mapIndexed { idx, word ->
+                val merged = (learnedNext + predictions).distinct().take(12)
+                activeSuggestions = merged.mapIndexed { idx, word ->
                     SuggestionCandidate(text = word, isPrimary = idx == 0)
                 }
             }
@@ -823,9 +861,13 @@ class KiebordService : InputMethodService() {
             "bn_probhat" -> {
                 val prefix = composingBuffer.toString()
                 if (prefix.isNotEmpty()) {
+                    val learned = if (preferencesState.learnedWordsEnabled) {
+                        userDictionaryRepo.getCompletions(prefix, 4)
+                    } else emptyList()
                     val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 12)
-                    activeSuggestions = if (matches.isNotEmpty()) {
-                        matches.take(12).mapIndexed { i, w ->
+                    val merged = (learned + matches).distinct().take(12)
+                    activeSuggestions = if (merged.isNotEmpty()) {
+                        merged.mapIndexed { i, w ->
                             SuggestionCandidate(text = w, isPrimary = i == 0)
                         }
                     } else {
@@ -833,8 +875,12 @@ class KiebordService : InputMethodService() {
                     }
                 } else {
                     val prev = getPrecedingWord()
+                    val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
+                        userDictionaryRepo.getNextWords(prev, 5)
+                    } else emptyList()
                     val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 10) else emptyList()
-                    activeSuggestions = predictions.mapIndexed { idx, word ->
+                    val merged = (learnedNext + predictions).distinct().take(12)
+                    activeSuggestions = merged.mapIndexed { idx, word ->
                         SuggestionCandidate(text = word, isPrimary = idx == 0)
                     }
                 }
@@ -842,9 +888,13 @@ class KiebordService : InputMethodService() {
             "en_qwerty" -> {
                 val prefix = composingBuffer.toString()
                 if (prefix.isNotEmpty()) {
+                    val learned = if (preferencesState.learnedWordsEnabled) {
+                        userDictionaryRepo.getCompletions(prefix, 4)
+                    } else emptyList()
                     val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 12)
-                    activeSuggestions = if (matches.isNotEmpty()) {
-                        matches.take(12).mapIndexed { i, w ->
+                    val merged = (learned + matches).distinct().take(12)
+                    activeSuggestions = if (merged.isNotEmpty()) {
+                        merged.mapIndexed { i, w ->
                             SuggestionCandidate(text = w, isPrimary = i == 0)
                         }
                     } else {
@@ -852,8 +902,12 @@ class KiebordService : InputMethodService() {
                     }
                 } else {
                     val prev = getPrecedingWord()
+                    val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
+                        userDictionaryRepo.getNextWords(prev, 5)
+                    } else emptyList()
                     val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 10) else emptyList()
-                    activeSuggestions = predictions.mapIndexed { idx, word ->
+                    val merged = (learnedNext + predictions).distinct().take(12)
+                    activeSuggestions = merged.mapIndexed { idx, word ->
                         SuggestionCandidate(text = word, isPrimary = idx == 0)
                     }
                 }

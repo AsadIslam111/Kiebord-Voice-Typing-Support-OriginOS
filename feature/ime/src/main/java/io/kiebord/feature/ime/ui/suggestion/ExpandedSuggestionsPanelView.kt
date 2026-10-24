@@ -5,8 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,16 +29,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ExpandedSuggestionsPanelView(
     candidates: List<SuggestionCandidate>,
@@ -52,11 +55,8 @@ fun ExpandedSuggestionsPanelView(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
 
-    // Standard keyboard has 4 rows; allocate row height so 4 rows cleanly fit the view height
-    val rowHeight = (height / 4).coerceAtLeast(48.dp)
-    val scrollStepPx = with(density) { rowHeight.toPx() }
-
-    val candidateRows = candidates.chunked(3)
+    val scrollStepPx = with(density) { 54.dp.toPx() }
+    val dividerColor = colorScheme.keyForeground.copy(alpha = 0.12f)
 
     Column(
         modifier = modifier
@@ -77,77 +77,54 @@ fun ExpandedSuggestionsPanelView(
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            // 1. Candidate Grid area (3 columns per row, with dividers between cells, no button-like background)
+            // 1. Dynamic-width Candidate Grid area (not fixed columns; sized according to candidate text with dividers)
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
                     .verticalScroll(scrollState)
             ) {
-                candidateRows.forEachIndexed { rowIndex, rowCandidates ->
-                    // Horizontal divider between rows
-                    if (rowIndex > 0) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    candidates.forEach { candidate ->
+                        val isPrimary = candidate.isPrimary
+                        val isRaw = candidate.rawInput != null && candidate.text == candidate.rawInput
+
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(colorScheme.keyForeground.copy(alpha = 0.12f))
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(rowHeight),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        for (slotIndex in 0 until 3) {
-                            // Vertical divider between candidate columns
-                            if (slotIndex > 0) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .width(1.dp)
-                                        .background(colorScheme.keyForeground.copy(alpha = 0.12f))
-                                )
-                            }
-
-                            if (slotIndex < rowCandidates.size) {
-                                val candidate = rowCandidates[slotIndex]
-                                val isPrimary = candidate.isPrimary
-                                val isRaw = candidate.rawInput != null && candidate.text == candidate.rawInput
-
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .clickable { onCandidateClick(candidate) }
-                                        .padding(horizontal = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = candidate.text,
-                                        color = when {
-                                            isPrimary -> colorScheme.accentColor
-                                            isRaw -> colorScheme.keyForeground.copy(alpha = 0.9f)
-                                            else -> colorScheme.keyForeground.copy(alpha = 0.78f)
-                                        },
-                                        fontSize = if (isPrimary) 20.sp else 19.sp,
-                                        fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
-                                        fontFamily = KiebordTheme.fontFamily,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                .drawBehind {
+                                    // Clean vertical divider line on right
+                                    drawLine(
+                                        color = dividerColor,
+                                        start = Offset(size.width, 0f),
+                                        end = Offset(size.width, size.height),
+                                        strokeWidth = 1.dp.toPx()
+                                    )
+                                    // Clean horizontal divider line on bottom
+                                    drawLine(
+                                        color = dividerColor,
+                                        start = Offset(0f, size.height),
+                                        end = Offset(size.width, size.height),
+                                        strokeWidth = 1.dp.toPx()
                                     )
                                 }
-                            } else {
-                                // Empty slot in row
-                                Spacer(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                )
-                            }
+                                .clickable { onCandidateClick(candidate) }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = candidate.text,
+                                color = when {
+                                    isPrimary -> colorScheme.accentColor
+                                    isRaw -> colorScheme.keyForeground.copy(alpha = 0.9f)
+                                    else -> colorScheme.keyForeground.copy(alpha = 0.78f)
+                                },
+                                fontSize = if (isPrimary) 20.sp else 19.sp,
+                                fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
+                                fontFamily = KiebordTheme.fontFamily,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
