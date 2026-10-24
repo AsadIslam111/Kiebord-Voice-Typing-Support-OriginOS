@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,13 +70,6 @@ fun MoreKeysPopup(
     val density = LocalDensity.current
     val colorScheme = KiebordTheme.colorScheme
 
-    val itemCount = state.items.size
-    // Multi-row support: honor custom moreKeysColumns if defined, else split into 2 rows if > 6 items
-    val itemsPerRow = state.anchorKey.moreKeysColumns ?: ((itemCount + (if (itemCount > 6) 2 else 1) - 1) / (if (itemCount > 6) 2 else 1))
-    val rowCount = (itemCount + itemsPerRow - 1) / itemsPerRow
-    val chunkedRows = state.items.chunked(itemsPerRow)
-    val maxCols = itemsPerRow
-
     val horizontalPaddingDp = (6 * scaleFactor).dp
     val verticalPaddingDp = (5 * scaleFactor).dp
     val colGapDp = (3 * scaleFactor).dp
@@ -90,12 +84,25 @@ fun MoreKeysPopup(
     val itemWidthPx = with(density) { itemWidthDp.toPx() }
     val itemHeightPx = with(density) { itemHeightDp.toPx() }
 
+    val layoutResult = remember(state.items, state.anchorKey, state.anchorRect, keyboardWidthPx, scaleFactor) {
+        MoreKeysLayoutHelper.computeLayout(
+            itemCount = state.items.size,
+            columnsHint = state.anchorKey.moreKeysColumns,
+            anchorCenterX = state.anchorRect.center.x,
+            keyboardWidthPx = keyboardWidthPx,
+            columnWidthPx = itemWidthPx + colGapPx
+        )
+    }
+
+    val maxCols = layoutResult.numColumns
+    val rowCount = layoutResult.numRows
+
     val totalWidthPx = maxCols * itemWidthPx + (maxCols - 1) * colGapPx + horizontalPaddingPx * 2
     val totalHeightPx = rowCount * itemHeightPx + (rowCount - 1) * rowGapPx + verticalPaddingPx * 2
 
-    // 1. Safe horizontal clamping: at least 8dp from screen edges
+    // 1. Safe horizontal clamping: align default key (leftKeys) with anchorCenterX, then clamp
     val anchorCenterX = state.anchorRect.center.x
-    val idealLeft = anchorCenterX - totalWidthPx / 2f
+    val idealLeft = anchorCenterX - (layoutResult.leftKeys * (itemWidthPx + colGapPx) + itemWidthPx / 2f + horizontalPaddingPx)
     val minLeftPx = with(density) { (8 * scaleFactor).dp.toPx() }
     val maxLeftPx = (keyboardWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
     val clampedLeft = idealLeft.coerceIn(minLeftPx, maxLeftPx)
@@ -118,11 +125,12 @@ fun MoreKeysPopup(
 
     // 4. Calculate target coordinates for the sliding highlight pill
     val safeSelectedIndex = state.selectedIndex.coerceIn(0, state.items.lastIndex)
-    val selectedRow = (safeSelectedIndex / itemsPerRow).coerceIn(0, rowCount - 1)
-    val selectedCol = (safeSelectedIndex % itemsPerRow)
+    val targetCoords = layoutResult.itemPositions[safeSelectedIndex]
+        ?: layoutResult.itemPositions[0]
+        ?: Pair(layoutResult.numRows - 1, layoutResult.leftKeys)
 
-    val targetPillX = (itemWidthDp + colGapDp) * selectedCol
-    val targetPillY = (itemHeightDp + rowGapDp) * selectedRow
+    val targetPillX = (itemWidthDp + colGapDp) * targetCoords.second
+    val targetPillY = (itemHeightDp + rowGapDp) * targetCoords.first
 
     // Snappy, silky-smooth sliding highlight indicator (80ms glide, zero lag, no bouncy spring delay)
     val animatedPillX by animateDpAsState(
@@ -190,14 +198,19 @@ fun MoreKeysPopup(
                     verticalArrangement = Arrangement.spacedBy(rowGapDp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    chunkedRows.forEachIndexed { rowIndex, rowItems ->
+                    layoutResult.grid.forEach { rowItems ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(colGapDp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            rowItems.forEachIndexed { colIndex, item ->
-                                val flatIndex = rowIndex * itemsPerRow + colIndex
-                                val isSelected = flatIndex == safeSelectedIndex
+                            rowItems.forEach { originalItemIndex ->
+                                if (originalItemIndex == null) {
+                                    androidx.compose.foundation.layout.Spacer(
+                                        modifier = Modifier.size(itemWidthDp, itemHeightDp)
+                                    )
+                                } else {
+                                    val item = state.items[originalItemIndex]
+                                    val isSelected = originalItemIndex == safeSelectedIndex
 
                                 val animatedTextColor by animateColorAsState(
                                     targetValue = if (isSelected) Color.White else colorScheme.keyForeground,
@@ -281,6 +294,7 @@ fun MoreKeysPopup(
                             }
                         }
                     }
+                }
                 }
             }
         }
