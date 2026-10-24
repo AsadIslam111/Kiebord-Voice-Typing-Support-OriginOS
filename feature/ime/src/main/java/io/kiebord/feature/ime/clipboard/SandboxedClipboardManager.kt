@@ -75,6 +75,16 @@ class SandboxedClipboardManager(context: Context) {
         clips.removeAll { !it.isPinned }
     }
 
+    /**
+     * Purges excess clips when system is under memory pressure, keeping only pinned clips and top 5 recent clips.
+     */
+    fun purgeOldClips() {
+        val pinned = clips.filter { it.isPinned }
+        val recentUnpinned = clips.filter { !it.isPinned }.take(5)
+        clips.clear()
+        clips.addAll((pinned + recentUnpinned).distinctBy { it.id })
+    }
+
     private fun purgeExpiredOtps() {
         val now = System.currentTimeMillis()
         val fiveMinutes = 5 * 60 * 1000L

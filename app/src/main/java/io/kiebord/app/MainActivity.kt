@@ -130,12 +130,16 @@ fun KiebordSettingsApp(
     onOpenSettings: () -> Unit,
     onSwitchIme: () -> Unit
 ) {
-    var currentScreen by remember { mutableStateOf<SettingsScreen>(SettingsScreen.Main) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val initialScreen = remember {
+        val target = (context as? android.app.Activity)?.intent?.getStringExtra("navigate_to")
+        if (target == "layouts") SettingsScreen.KeyboardLayouts else SettingsScreen.Main
+    }
+    var currentScreen by remember { mutableStateOf<SettingsScreen>(initialScreen) }
     var backStack by remember { mutableStateOf<List<SettingsScreen>>(emptyList()) }
     var predictiveProgress by remember { mutableFloatStateOf(0f) }
     var isPredictiveBackActive by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     val navigateTo: (SettingsScreen) -> Unit = { screen ->
         backStack = backStack + currentScreen

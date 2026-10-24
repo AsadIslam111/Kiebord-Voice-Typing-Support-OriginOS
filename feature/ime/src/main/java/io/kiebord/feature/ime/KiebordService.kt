@@ -1,6 +1,8 @@
 package io.kiebord.feature.ime
 
+import android.content.ComponentCallbacks2
 import android.content.Context
+import android.content.Intent
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.SystemClock
@@ -14,6 +16,7 @@ import android.view.Window
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -228,6 +231,14 @@ class KiebordService : InputMethodService() {
                     onDeleteSwipeMove = ::handleDeleteSwipeMove,
                     onDeleteSwipeEnd = ::handleDeleteSwipeEnd,
                     onDeleteSwipeCancel = ::handleDeleteSwipeCancel,
+                    enabledLayoutIds = preferencesState.enabledLayoutIds.toList().filter { id ->
+                        id == KiebordPreferences.LAYOUT_EN_QWERTY ||
+                        id == KiebordPreferences.LAYOUT_BN_BORNO ||
+                        id == KiebordPreferences.LAYOUT_BN_PROBHAT
+                    }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) },
+                    onSwitchToLayout = ::switchToLayout,
+                    onOpenLanguagesSettings = ::openLanguagesSettings,
+                    onOpenInputMethodPicker = ::openInputMethodPicker,
                     onThemeToggle = {
                         val nextThemeId = when (preferencesState.theme) {
                             KiebordPreferences.THEME_DEFAULT_DARK -> KiebordPreferences.THEME_AMOLED_BLACK
@@ -281,6 +292,48 @@ class KiebordService : InputMethodService() {
         super.onDestroy()
         serviceScope.cancel()
         lifecycleOwner.onDestroy()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        userDictionaryRepo.trimMemory(level)
+        clipboardManager?.purgeOldClips()
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
+            System.gc()
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        userDictionaryRepo.trimMemory(ComponentCallbacks2.TRIM_MEMORY_COMPLETE)
+        clipboardManager?.purgeOldClips()
+        System.gc()
+    }
+
+    fun switchToLayout(layoutId: String) {
+        finishComposing()
+        primaryAlphaLayout = PredefinedLayouts.fromId(layoutId)
+        if (!isSymbolsMode) {
+            activeLayout = primaryAlphaLayout
+        }
+        updateSuggestions()
+    }
+
+    fun openLanguagesSettings() {
+        try {
+            val intent = Intent(this, Class.forName("io.kiebord.app.MainActivity")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("navigate_to", "layouts")
+            }
+            startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    fun openInputMethodPicker() {
+        try {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.showInputMethodPicker()
+        } catch (_: Exception) {}
     }
 
     private fun finishComposing() {
@@ -530,8 +583,10 @@ class KiebordService : InputMethodService() {
     }
 
     private fun handleKeyLongPress(key: KeyDef) {
+        if (key.type == KeyType.SWITCH_LANGUAGE) {
+            return
+        }
         if (key.type == KeyType.SPACE) {
-            handleKeyTap(KeyDef(type = KeyType.SWITCH_LANGUAGE))
             return
         }
         if (key.type == KeyType.DELETE) {

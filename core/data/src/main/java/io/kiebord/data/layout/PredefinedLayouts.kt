@@ -253,4 +253,20 @@ object PredefinedLayouts {
             )
         )
     )
+
+    fun fromId(id: String): KeyboardLayoutDef {
+        return when (id) {
+            "bn_borno" -> BengaliBorno
+            "bn_probhat" -> BengaliProbhat
+            else -> EnglishQwerty
+        }
+    }
+
+    fun displayName(id: String): String {
+        return when (id) {
+            "bn_borno" -> "বাংলা (বর্ণ ফোনেটিক)"
+            "bn_probhat" -> "বাংলা (प्रभात)"
+            else -> "English (QWERTY)"
+        }
+    }
 }

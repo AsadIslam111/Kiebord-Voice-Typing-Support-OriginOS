@@ -68,7 +68,41 @@ class UserDictionaryRepository internal constructor(private val baseDir: File) {
             gestureWords.merge(cleanWord, 1) { old, v -> (old + v).coerceAtMost(100_000) }
         }
 
+        // Memory bounding: prune single-use transient entries if limits are exceeded
+        if (wordFrequencies.size > MAX_UNIGRAMS) {
+            val toRemove = wordFrequencies.entries.filter { it.value == 1 }.take(400)
+            toRemove.forEach { wordFrequencies.remove(it.key) }
+        }
+        if (bigramFrequencies.size > MAX_BIGRAM_PREVS) {
+            val toRemove = bigramFrequencies.entries.filter { it.value.size <= 1 }.take(300)
+            toRemove.forEach { bigramFrequencies.remove(it.key) }
+        }
+
         scheduleDebouncedSave()
+    }
+
+    /**
+     * Trims in-memory dictionaries under Android OS low memory pressure.
+     */
+    fun trimMemory(level: Int) {
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
+            if (wordFrequencies.size > 1500) {
+                val topWords = wordFrequencies.entries
+                    .sortedByDescending { it.value }
+                    .take(1500)
+                    .associate { it.key to it.value }
+                wordFrequencies.clear()
+                wordFrequencies.putAll(topWords)
+            }
+            if (bigramFrequencies.size > 1000) {
+                val topPrevs = bigramFrequencies.entries
+                    .sortedByDescending { it.value.values.sum() }
+                    .take(1000)
+                    .associate { it.key to it.value }
+                bigramFrequencies.clear()
+                bigramFrequencies.putAll(topPrevs)
+            }
+        }
     }
 
     /**
@@ -244,6 +278,9 @@ class UserDictionaryRepository internal constructor(private val baseDir: File) {
     }
 
     companion object {
+        private const val MAX_UNIGRAMS = 4000
+        private const val MAX_BIGRAM_PREVS = 3000
+
         @Volatile
         private var instance: UserDictionaryRepository? = null
 

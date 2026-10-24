@@ -57,9 +57,16 @@ import io.kiebord.feature.ime.ui.textedit.TextEditPanelView
 import io.kiebord.feature.ime.ui.suggestion.ExpandedSuggestionsPanelView
 import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
 import io.kiebord.feature.ime.ui.suggestion.SuggestionStripView
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import io.kiebord.feature.ime.ui.toolbar.ReorderableToolbar
 import io.kiebord.feature.ime.ui.toolbar.ToolbarAction
 import io.kiebord.feature.ime.ui.toolbar.ToolsDrawerView
+import io.kiebord.feature.ime.ui.dialog.LanguageSelectionDialog
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
 
 @Composable
@@ -92,6 +99,10 @@ fun KeyboardRootView(
     initialDrawerTools: List<ToolbarAction>? = null,
     onToolbarToolsChange: ((List<ToolbarAction>, List<ToolbarAction>) -> Unit)? = null,
     onHeightScaleChange: ((Float) -> Unit)? = null,
+    enabledLayoutIds: List<String> = emptyList(),
+    onSwitchToLayout: (String) -> Unit = {},
+    onOpenLanguagesSettings: () -> Unit = {},
+    onOpenInputMethodPicker: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -108,6 +119,35 @@ fun KeyboardRootView(
     var isSlidingSymbolMode by remember { mutableStateOf(false) }
     var dragStartPosInRoot by remember { mutableStateOf<Offset?>(null) }
     var gestureTrail by remember { mutableStateOf<List<Offset>>(emptyList()) }
+
+    var isLanguagePickerOpen by remember { mutableStateOf(false) }
+    var isSpacebarSwiping by remember { mutableStateOf(false) }
+    var spacebarSwipeDeltaX by remember { mutableFloatStateOf(0f) }
+
+    val effectiveLayoutList = remember(enabledLayoutIds, layout.id) {
+        val list = enabledLayoutIds.ifEmpty { listOf(layout.id) }
+        if (list.contains(layout.id)) list else list + layout.id
+    }
+    val currentLayoutIndex = remember(effectiveLayoutList, layout.id) {
+        effectiveLayoutList.indexOf(layout.id).coerceAtLeast(0)
+    }
+    val swipeStepPx = with(density) { 56.dp.toPx() }
+    val layoutOffsetSteps = if (isSpacebarSwiping) {
+        (spacebarSwipeDeltaX / swipeStepPx).toInt()
+    } else 0
+    val targetSwipeIndex = (currentLayoutIndex + layoutOffsetSteps).coerceIn(0, effectiveLayoutList.lastIndex)
+
+    var lastHapticIndex by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(isSpacebarSwiping, targetSwipeIndex) {
+        if (isSpacebarSwiping && lastHapticIndex != targetSwipeIndex) {
+            lastHapticIndex = targetSwipeIndex
+            try {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            } catch (_: Exception) {}
+        } else if (!isSpacebarSwiping) {
+            lastHapticIndex = null
+        }
+    }
 
     // Phase 5, 6 & 8: Toolbar, Emoji, Resizer, Number row, TextEdit, Clipboard, and Tools Drawer states
     val defaultPinned = listOf(
@@ -643,10 +683,43 @@ fun KeyboardRootView(
                                     .fillMaxHeight(),
                                 onKeyPress = onKeyPress,
                                 onKeyTap = onKeyTap,
-                                onKeyLongPress = onKeyLongPress,
+                                onKeyLongPress = { keyDef ->
+                                    if (keyDef.type == KeyType.SWITCH_LANGUAGE) {
+                                        isLanguagePickerOpen = true
+                                        try {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        } catch (_: Exception) {}
+                                    } else {
+                                        onKeyLongPress(keyDef)
+                                    }
+                                },
                                 onDeleteSwipeMove = onDeleteSwipeMove,
                                 onDeleteSwipeEnd = onDeleteSwipeEnd,
                                 onDeleteSwipeCancel = onDeleteSwipeCancel,
+                                onSpacebarSwipeMove = { deltaX ->
+                                    isSpacebarSwiping = true
+                                    spacebarSwipeDeltaX = deltaX
+                                },
+                                onSpacebarSwipeEnd = { finalDeltaX ->
+                                    if (isSpacebarSwiping) {
+                                        val finalSteps = (finalDeltaX / swipeStepPx).toInt()
+                                        val finalTarget = (currentLayoutIndex + finalSteps).coerceIn(0, effectiveLayoutList.lastIndex)
+                                        val newLayoutId = effectiveLayoutList.getOrNull(finalTarget)
+                                        if (newLayoutId != null && newLayoutId != layout.id) {
+                                            onSwitchToLayout(newLayoutId)
+                                            try {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            } catch (_: Exception) {}
+                                        }
+                                        isSpacebarSwiping = false
+                                        spacebarSwipeDeltaX = 0f
+                                    }
+                                },
+                                onSpacebarDwellReady = {
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    } catch (_: Exception) {}
+                                },
                                 onKeyPositioned = { k, coords ->
                                     keyCoordinatesMap[k] = coords
                                 },
@@ -953,17 +1026,103 @@ fun KeyboardRootView(
             )
         }
 
-        // 4. Single-colored Borno Keyboard-style Gesture Trail Overlay
+        // 4. Single-colored Gesture Trail Overlay
         GestureTrailOverlay(
             trail = gestureTrail,
             accentColor = colorScheme.accentColor,
             modifier = Modifier.matchParentSize()
         )
+
+        // 5. Spacebar Layout Slider Floating Popup Overlay
+        if (isSpacebarSwiping && effectiveLayoutList.size > 1) {
+            SpacebarLayoutSliderOverlay(
+                activeLayouts = effectiveLayoutList,
+                currentIndex = targetSwipeIndex,
+                modifier = Modifier.matchParentSize()
+            )
+        }
+
+        // 6. Language Selection Modal Dialog (Long-press on globe key)
+        if (isLanguagePickerOpen) {
+            LanguageSelectionDialog(
+                currentLayoutId = layout.id,
+                enabledLayoutIds = effectiveLayoutList,
+                onSelectLayout = { selectedId ->
+                    isLanguagePickerOpen = false
+                    onSwitchToLayout(selectedId)
+                },
+                onMoreLayouts = {
+                    isLanguagePickerOpen = false
+                    onOpenLanguagesSettings()
+                },
+                onOtherKeyboards = {
+                    isLanguagePickerOpen = false
+                    onOpenInputMethodPicker()
+                },
+                onDismiss = { isLanguagePickerOpen = false },
+                modifier = Modifier.matchParentSize()
+            )
+        }
     }
 }
 
 /**
- * Single-colored, smoothly tapering and fading gesture trail overlay styled like Borno Keyboard.
+ * Floating rounded pill overlay displayed when swiping horizontally on the spacebar
+ * to slide through active keyboard layouts.
+ */
+@Composable
+fun SpacebarLayoutSliderOverlay(
+    activeLayouts: List<String>,
+    currentIndex: Int,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = KiebordTheme.colorScheme
+
+    Box(
+        modifier = modifier.padding(bottom = 68.dp),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(colorScheme.containerBackground.copy(alpha = 0.96f))
+                .border(
+                    width = 1.dp,
+                    color = colorScheme.accentColor.copy(alpha = 0.45f),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            activeLayouts.forEachIndexed { index, layoutId ->
+                val isSelected = index == currentIndex
+                val displayName = PredefinedLayouts.displayName(layoutId)
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (isSelected) colorScheme.accentColor else Color.Transparent
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = displayName,
+                        color = if (isSelected) Color.White else colorScheme.keyForeground.copy(alpha = 0.65f),
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        fontFamily = KiebordTheme.fontFamily
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Single-colored, smoothly tapering and fading gesture trail overlay.
  * Renders an ink-ribbon comet trailing the fingertip that dynamically evaporates at the tail.
  */
 @Composable
@@ -1020,7 +1179,7 @@ fun GestureTrailOverlay(
             val p0 = points[i]
             val p1 = points[i + 1]
             val progress = (i + 1).toFloat() / (n - 1).toFloat()
-            // Quadratic easing gives that iconic slender Borno Keyboard comet tail and rounded fingertip
+            // Quadratic easing gives that slender comet tail and rounded fingertip
             val widthFactor = progress * progress
             val strokeWidth = tailWidthPx + widthFactor * (headWidthPx - tailWidthPx)
             val alpha = 0.08f + progress * 0.77f // 0.08 at tail -> 0.85 at head

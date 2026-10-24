@@ -68,6 +68,9 @@ fun KeycapView(
     onSlidingDragMove: (Offset) -> Unit = {},
     onSlidingDragEnd: (Offset) -> Unit = {},
     onSpacebarTrackpad: (Int) -> Unit = {},
+    onSpacebarSwipeMove: (Float) -> Unit = {},
+    onSpacebarSwipeEnd: (Float) -> Unit = {},
+    onSpacebarDwellReady: () -> Unit = {},
     onDeleteSwipeMove: (Float) -> Unit = {},
     onDeleteSwipeEnd: () -> Unit = {},
     onDeleteSwipeCancel: () -> Unit = {},
@@ -141,6 +144,9 @@ fun KeycapView(
     val currentOnSlidingMove = rememberUpdatedState(onSlidingDragMove)
     val currentOnSlidingEnd = rememberUpdatedState(onSlidingDragEnd)
     val currentOnSpacebarTrackpad = rememberUpdatedState(onSpacebarTrackpad)
+    val currentOnSpacebarSwipeMove = rememberUpdatedState(onSpacebarSwipeMove)
+    val currentOnSpacebarSwipeEnd = rememberUpdatedState(onSpacebarSwipeEnd)
+    val currentOnSpacebarDwellReady = rememberUpdatedState(onSpacebarDwellReady)
     val currentOnGestureStart = rememberUpdatedState(onGestureStart)
     val currentOnGestureMove = rememberUpdatedState(onGestureMove)
     val currentOnGestureEnd = rememberUpdatedState(onGestureEnd)
@@ -180,12 +186,22 @@ fun KeycapView(
                         currentOnKeyPress.value(initialKey)
                         var isMoreKeysActive = false
                         var isSlidingDrag = false
-                        var isSpacebarTrackpad = false
+                        var isSpacebarDwellReady = false
+                        var isSpacebarSwipingLayout = false
+                        var isSpacebarTrackpadActive = false
                         var isGestureTyping = false
                         var isDeleteSwipeActive = false
                         var gestureEnded = false
                         var lastTrackpadX = 0f
                         val trackpadStepPx = with(density) { 14.dp.toPx() }
+
+                        val spacebarDwellJob = if (initialKey.type == KeyType.SPACE) {
+                            launch {
+                                delay(220L)
+                                isSpacebarDwellReady = true
+                                currentOnSpacebarDwellReady.value()
+                            }
+                        } else null
 
                         var isDeleteLongPressActive = false
                         val longPressJob = launch {
@@ -197,6 +213,8 @@ fun KeycapView(
                                     currentOnLongPress.value(initialKey)
                                     delay(90L)
                                 }
+                            } else if (initialKey.type == KeyType.SPACE) {
+                                // Handled via spacebarDwellJob
                             } else if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
                                 isMoreKeysActive = true
                                 currentOnShowMoreKeys.value(initialKey, coords)
@@ -211,6 +229,7 @@ fun KeycapView(
 
                             if (!change.pressed) {
                                 // Touch released!
+                                spacebarDwellJob?.cancel()
                                 longPressJob.cancel()
                                 val delta = change.position - initialDownPos
                                 if (isDeleteSwipeActive) {
@@ -219,6 +238,12 @@ fun KeycapView(
                                     } else {
                                         currentOnDeleteSwipeCancel.value()
                                     }
+                                } else if (isSpacebarSwipingLayout) {
+                                    currentOnSpacebarSwipeEnd.value(delta.x)
+                                } else if (isSpacebarTrackpadActive) {
+                                    // Trackpad gesture completed, don't emit normal space tap
+                                } else if (isSpacebarDwellReady) {
+                                    // Held down space for cursor dwell without dragging
                                 } else if (isGestureTyping) {
                                     val coords = keyCoordinates
                                     if (coords != null && coords.isAttached) {
@@ -230,8 +255,6 @@ fun KeycapView(
                                     currentOnSlidingEnd.value(delta)
                                 } else if (isMoreKeysActive) {
                                     currentOnMoreKeysCommit.value()
-                                } else if (isSpacebarTrackpad) {
-                                    // Trackpad gesture completed, don't emit normal space tap
                                 } else if (isDeleteLongPressActive) {
                                     // Already handled during continuous repeat deletion
                                 } else {
@@ -260,22 +283,38 @@ fun KeycapView(
                                 }
                             }
 
-                            // Spacebar cursor trackpad gesture: horizontal slide moves caret
-                            if (initialKey.type == KeyType.SPACE && Math.abs(delta.x) > 16f) {
-                                longPressJob.cancel()
-                                isSpacebarTrackpad = true
-                                val diffFromLast = delta.x - lastTrackpadX
-                                if (diffFromLast > trackpadStepPx) {
-                                    val steps = (diffFromLast / trackpadStepPx).toInt()
-                                    lastTrackpadX += steps * trackpadStepPx
-                                    repeat(steps) {
-                                        currentOnSpacebarTrackpad.value(1)
+                            // Spacebar handling:
+                            // 1. Swiping immediately (before 220ms dwell) triggers active layout sliding switch!
+                            // 2. Holding still for 220ms (dwell ready) then sliding left/right activates cursor movement!
+                            if (initialKey.type == KeyType.SPACE) {
+                                if (!isSpacebarDwellReady) {
+                                    if (isSpacebarSwipingLayout || Math.abs(delta.x) > 16f) {
+                                        if (!isSpacebarSwipingLayout) {
+                                            spacebarDwellJob?.cancel()
+                                            longPressJob.cancel()
+                                            isSpacebarSwipingLayout = true
+                                            isPressed = false
+                                        }
+                                        change.consume()
+                                        currentOnSpacebarSwipeMove.value(delta.x)
                                     }
-                                } else if (diffFromLast < -trackpadStepPx) {
-                                    val steps = ((lastTrackpadX - delta.x) / trackpadStepPx).toInt()
-                                    lastTrackpadX -= steps * trackpadStepPx
-                                    repeat(steps) {
-                                        currentOnSpacebarTrackpad.value(-1)
+                                } else {
+                                    change.consume()
+                                    val diffFromLast = delta.x - lastTrackpadX
+                                    if (diffFromLast > trackpadStepPx) {
+                                        isSpacebarTrackpadActive = true
+                                        val steps = (diffFromLast / trackpadStepPx).toInt()
+                                        lastTrackpadX += steps * trackpadStepPx
+                                        repeat(steps) {
+                                            currentOnSpacebarTrackpad.value(1)
+                                        }
+                                    } else if (diffFromLast < -trackpadStepPx) {
+                                        isSpacebarTrackpadActive = true
+                                        val steps = ((lastTrackpadX - delta.x) / trackpadStepPx).toInt()
+                                        lastTrackpadX -= steps * trackpadStepPx
+                                        repeat(steps) {
+                                            currentOnSpacebarTrackpad.value(-1)
+                                        }
                                     }
                                 }
                             }

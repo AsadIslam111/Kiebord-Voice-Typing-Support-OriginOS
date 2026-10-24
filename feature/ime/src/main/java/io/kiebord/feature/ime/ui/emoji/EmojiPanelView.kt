@@ -105,6 +105,10 @@ object EmojiCatalog {
             )
         )
     )
+
+    val allEmojis: List<String> by lazy {
+        categories.flatMap { it.emojis }
+    }
 }
 
 @Composable
@@ -119,7 +123,7 @@ fun EmojiPanelView(
     var selectedCategoryIndex by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val allEmojis = remember { EmojiCatalog.categories.flatMap { it.emojis } }
+    val allEmojis = EmojiCatalog.allEmojis
     val displayedEmojis = remember(selectedCategoryIndex, searchQuery) {
         if (searchQuery.isNotBlank()) {
             allEmojis.filter { it.contains(searchQuery.trim(), ignoreCase = true) }
