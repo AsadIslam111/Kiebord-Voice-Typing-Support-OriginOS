@@ -669,8 +669,8 @@ fun KeyboardRootView(
                             )
 
                             val itemCount = keyDef.moreKeys.size
-                            val rowCount = if (itemCount > 6) 2 else 1
-                            val itemsPerRow = (itemCount + rowCount - 1) / rowCount
+                            val itemsPerRow = keyDef.moreKeysColumns ?: ((itemCount + (if (itemCount > 6) 2 else 1) - 1) / (if (itemCount > 6) 2 else 1))
+                            val rowCount = (itemCount + itemsPerRow - 1) / itemsPerRow
                             val chunkedRows = keyDef.moreKeys.chunked(itemsPerRow)
                             val maxCols = itemsPerRow
 
@@ -704,8 +704,8 @@ fun KeyboardRootView(
                         if (state != null && rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
                             val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
                             val itemCount = state.items.size
-                            val rowCount = if (itemCount > 6) 2 else 1
-                            val itemsPerRow = (itemCount + rowCount - 1) / rowCount
+                            val itemsPerRow = state.anchorKey.moreKeysColumns ?: ((itemCount + (if (itemCount > 6) 2 else 1) - 1) / (if (itemCount > 6) 2 else 1))
+                            val rowCount = (itemCount + itemsPerRow - 1) / itemsPerRow
                             val chunkedRows = state.items.chunked(itemsPerRow)
                             val maxCols = itemsPerRow
 

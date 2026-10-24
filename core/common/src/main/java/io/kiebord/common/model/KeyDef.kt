@@ -8,6 +8,7 @@ data class KeyDef(
     val widthWeight: Float = 1.0f,
     val flickUp: String? = null,
     val moreKeys: List<String> = emptyList(),
+    val moreKeysColumns: Int? = null,
     val slidingInput: Boolean = false
 ) {
     fun displayLabel(shiftState: ShiftState): String {

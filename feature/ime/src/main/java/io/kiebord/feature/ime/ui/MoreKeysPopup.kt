@@ -70,9 +70,9 @@ fun MoreKeysPopup(
     val colorScheme = KiebordTheme.colorScheme
 
     val itemCount = state.items.size
-    // Multi-row support: split into 2 rows if > 6 items
-    val rowCount = if (itemCount > 6) 2 else 1
-    val itemsPerRow = (itemCount + rowCount - 1) / rowCount
+    // Multi-row support: honor custom moreKeysColumns if defined, else split into 2 rows if > 6 items
+    val itemsPerRow = state.anchorKey.moreKeysColumns ?: ((itemCount + (if (itemCount > 6) 2 else 1) - 1) / (if (itemCount > 6) 2 else 1))
+    val rowCount = (itemCount + itemsPerRow - 1) / itemsPerRow
     val chunkedRows = state.items.chunked(itemsPerRow)
     val maxCols = itemsPerRow
 
