@@ -58,4 +58,44 @@ class UserDictionaryRepositoryTest {
         assertTrue(completions.contains("বাংলাদেশ"))
         assertTrue(completions.contains("বাঙালি"))
     }
+
+    @Test
+    fun testIsLearnedAndUnlearnWord() {
+        val repo = UserDictionaryRepository(tempFolder.root)
+
+        repo.recordWord("kiebord", prevWord = "antigravity")
+        repo.recordWord("swift", isGesture = true)
+
+        assertTrue(repo.isLearned("kiebord"))
+        assertTrue(repo.isLearned("swift"))
+        org.junit.Assert.assertFalse(repo.isLearned("nonexistent"))
+
+        // Bigram check
+        assertEquals(listOf("kiebord"), repo.getNextWords("antigravity"))
+
+        // Unlearn "kiebord"
+        repo.unlearnWord("kiebord")
+        org.junit.Assert.assertFalse(repo.isLearned("kiebord"))
+        assertTrue(repo.getNextWords("antigravity").isEmpty())
+
+        // Unlearn "swift"
+        repo.unlearnWord("swift")
+        org.junit.Assert.assertFalse(repo.isLearned("swift"))
+    }
+
+    @Test
+    fun testGetAllLearnedWords() {
+        val repo = UserDictionaryRepository(tempFolder.root)
+
+        repo.recordWord("apple")
+        repo.recordWord("banana")
+        repo.recordWord("banana")
+        repo.recordWord("cherry", isGesture = true)
+
+        val learned = repo.getAllLearnedWords()
+        assertTrue(learned.contains("apple"))
+        assertTrue(learned.contains("banana"))
+        assertTrue(learned.contains("cherry"))
+        assertEquals("banana", learned.first())
+    }
 }

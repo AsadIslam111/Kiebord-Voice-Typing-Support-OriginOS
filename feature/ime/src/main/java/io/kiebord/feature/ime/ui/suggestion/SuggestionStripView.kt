@@ -1,7 +1,9 @@
 package io.kiebord.feature.ime.ui.suggestion
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -32,13 +34,16 @@ import io.kiebord.theme.KiebordTheme
 data class SuggestionCandidate(
     val text: String,
     val isPrimary: Boolean = false,
-    val rawInput: String? = null
+    val rawInput: String? = null,
+    val isLearned: Boolean = false
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SuggestionStripView(
     candidates: List<SuggestionCandidate>,
     onCandidateClick: (SuggestionCandidate) -> Unit,
+    onCandidateLongClick: ((SuggestionCandidate) -> Unit)? = null,
     isExpanded: Boolean = false,
     onExpandToggle: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -83,7 +88,12 @@ fun SuggestionStripView(
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { onCandidateClick(candidate) }
+                        .combinedClickable(
+                            onClick = { onCandidateClick(candidate) },
+                            onLongClick = if (candidate.isLearned && onCandidateLongClick != null) {
+                                { onCandidateLongClick(candidate) }
+                            } else null
+                        )
                         .padding(horizontal = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {

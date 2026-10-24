@@ -162,6 +162,47 @@ class UserDictionaryRepository internal constructor(private val baseDir: File) {
     }
 
     /**
+     * Checks if a word exists in the user's learned dictionary.
+     */
+    fun isLearned(word: String): Boolean {
+        val clean = word.trim()
+        if (clean.isEmpty()) return false
+        return wordFrequencies.containsKey(clean) || gestureWords.containsKey(clean)
+    }
+
+    /**
+     * Unlearns and deletes a word from frequencies, gesture history, and bigram models.
+     */
+    fun unlearnWord(word: String) {
+        val clean = word.trim()
+        if (clean.isEmpty()) return
+        wordFrequencies.remove(clean)
+        gestureWords.remove(clean)
+        val cleanLower = clean.lowercase()
+        bigramFrequencies.remove(cleanLower)
+        bigramFrequencies.values.forEach { nextMap ->
+            nextMap.remove(clean)
+        }
+        scheduleDebouncedSave()
+    }
+
+    /**
+     * Retrieves all learned words (from both manual typing and gestures), sorted descending by usage.
+     */
+    fun getAllLearnedWords(limit: Int = 100): List<String> {
+        val combined = HashMap<String, Int>(wordFrequencies)
+        gestureWords.forEach { (w, count) ->
+            combined.merge(w, count) { old, v -> old + v }
+        }
+        return combined.entries
+            .asSequence()
+            .sortedByDescending { it.value }
+            .map { it.key }
+            .take(limit)
+            .toList()
+    }
+
+    /**
      * Clears all learned words, ngrams, and personalized prediction history from memory and disk.
      */
     fun clearAll() {

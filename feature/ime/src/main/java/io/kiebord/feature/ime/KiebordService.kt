@@ -197,6 +197,10 @@ class KiebordService : InputMethodService() {
                     onTextAction = ::handleTextAction,
                     suggestions = activeSuggestions,
                     onCandidateSelect = ::handleCandidateSelect,
+                    onUnlearnWord = { word ->
+                        userDictionaryRepo.unlearnWord(word)
+                        updateSuggestions()
+                    },
                     clipboardManager = clipboardManager,
                     onPasteClip = { clipText ->
                         val ic = currentInputConnection
@@ -1399,7 +1403,7 @@ class KiebordService : InputMethodService() {
             userDictionaryRepo.recordWord(candidateText, prevWord)
         }
 
-        val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion && !isUrlOrCodeField()
+        val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
         val textToCommit = if (shouldAutoSpace) "$candidateText " else candidateText
 
         if (lastGestureCommittedWord.isNotEmpty()) {
@@ -1434,14 +1438,14 @@ class KiebordService : InputMethodService() {
         if (trail.size < 2 || centroids.isEmpty()) return
 
         val lang = activeLayout.id
-        val learnedGestureWords = if (preferencesState.learnedWordsEnabled) {
-            userDictionaryRepo.getLearnedGestureWords(10)
+        val learnedWords = if (preferencesState.learnedWordsEnabled) {
+            userDictionaryRepo.getAllLearnedWords(50)
         } else emptyList()
 
-        val candidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, learnedGestureWords)
+        val candidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, learnedWords)
         if (candidates.isNotEmpty()) {
             val primary = candidates.first()
-            val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion && !isUrlOrCodeField()
+            val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
             val textToCommit = if (shouldAutoSpace) "${primary.text.trim()} " else primary.text.trim()
             val ic = currentInputConnection
             val prevWord = getPrecedingWord()
@@ -1455,9 +1459,16 @@ class KiebordService : InputMethodService() {
                 lastSpaceTapTime = SystemClock.uptimeMillis()
             }
 
-            activeSuggestions = candidates.take(12).mapIndexed { idx, cand ->
+            activeSuggestions = markLearnedCandidates(candidates.take(12).mapIndexed { idx, cand ->
                 cand.copy(isPrimary = idx == 0)
-            }
+            })
+        }
+    }
+
+    private fun markLearnedCandidates(candidates: List<SuggestionCandidate>): List<SuggestionCandidate> {
+        if (!preferencesState.learnedWordsEnabled) return candidates
+        return candidates.map { cand ->
+            if (cand.isLearned) cand else cand.copy(isLearned = userDictionaryRepo.isLearned(cand.text))
         }
     }
 
@@ -1504,7 +1515,7 @@ class KiebordService : InputMethodService() {
                     }
                 }
 
-                activeSuggestions = list.take(12)
+                activeSuggestions = markLearnedCandidates(list.take(12))
             } else {
                 val prev = getPrecedingWord()
                 val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
@@ -1512,9 +1523,9 @@ class KiebordService : InputMethodService() {
                 } else emptyList()
                 val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 10) else emptyList()
                 val merged = (learnedNext + predictions).distinct().take(12)
-                activeSuggestions = merged.mapIndexed { idx, word ->
+                activeSuggestions = markLearnedCandidates(merged.mapIndexed { idx, word ->
                     SuggestionCandidate(text = word, isPrimary = idx == 0)
-                }
+                })
             }
             return
         }
@@ -1528,13 +1539,13 @@ class KiebordService : InputMethodService() {
                     } else emptyList()
                     val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 12)
                     val merged = (learned + matches).distinct().take(12)
-                    activeSuggestions = if (merged.isNotEmpty()) {
+                    activeSuggestions = markLearnedCandidates(if (merged.isNotEmpty()) {
                         merged.mapIndexed { i, w ->
                             SuggestionCandidate(text = w, isPrimary = i == 0)
                         }
                     } else {
                         listOf(SuggestionCandidate(text = prefix, isPrimary = true))
-                    }
+                    })
                 } else {
                     val prev = getPrecedingWord()
                     val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
@@ -1542,9 +1553,9 @@ class KiebordService : InputMethodService() {
                     } else emptyList()
                     val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 10) else emptyList()
                     val merged = (learnedNext + predictions).distinct().take(12)
-                    activeSuggestions = merged.mapIndexed { idx, word ->
+                    activeSuggestions = markLearnedCandidates(merged.mapIndexed { idx, word ->
                         SuggestionCandidate(text = word, isPrimary = idx == 0)
-                    }
+                    })
                 }
             }
             "en_qwerty" -> {
@@ -1555,13 +1566,13 @@ class KiebordService : InputMethodService() {
                     } else emptyList()
                     val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 12)
                     val merged = (learned + matches).distinct().take(12)
-                    activeSuggestions = if (merged.isNotEmpty()) {
+                    activeSuggestions = markLearnedCandidates(if (merged.isNotEmpty()) {
                         merged.mapIndexed { i, w ->
                             SuggestionCandidate(text = w, isPrimary = i == 0)
                         }
                     } else {
                         listOf(SuggestionCandidate(text = prefix, isPrimary = true))
-                    }
+                    })
                 } else {
                     val prev = getPrecedingWord()
                     val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
@@ -1569,9 +1580,9 @@ class KiebordService : InputMethodService() {
                     } else emptyList()
                     val predictions = if (prev.isNotEmpty()) NativeEngine.queryNextWords(prev, activeLayout.id, 10) else emptyList()
                     val merged = (learnedNext + predictions).distinct().take(12)
-                    activeSuggestions = merged.mapIndexed { idx, word ->
+                    activeSuggestions = markLearnedCandidates(merged.mapIndexed { idx, word ->
                         SuggestionCandidate(text = word, isPrimary = idx == 0)
-                    }
+                    })
                 }
             }
             else -> {

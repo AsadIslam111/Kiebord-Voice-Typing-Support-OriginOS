@@ -58,7 +58,8 @@ object NativeEngine {
         keyCentroids: List<io.kiebord.feature.ime.gesture.KeyCentroid>,
         keyWidth: Float,
         lang: String,
-        maxResults: Int = 5
+        maxResults: Int = 5,
+        learnedWords: List<String> = emptyList()
     ): List<String> {
         if (!isLoaded || points.size < 2 || keyCentroids.isEmpty()) return emptyList()
         val xs = FloatArray(points.size) { points[it].x }
@@ -72,8 +73,12 @@ object NativeEngine {
             kxs[i] = keyCentroids[i].centerX
             kys[i] = keyCentroids[i].centerY
         }
+        val targetLang = if (learnedWords.isNotEmpty()) {
+            val encoded = learnedWords.take(50).joinToString("|")
+            "$lang;$encoded"
+        } else lang
         return try {
-            val raw = decodeGesture(xs, ys, chars.toString(), kxs, kys, keyWidth, lang, maxResults)
+            val raw = decodeGesture(xs, ys, chars.toString(), kxs, kys, keyWidth, targetLang, maxResults)
             if (raw.isEmpty()) emptyList() else raw.split("|").filter { it.isNotEmpty() }
         } catch (_: Throwable) {
             emptyList()

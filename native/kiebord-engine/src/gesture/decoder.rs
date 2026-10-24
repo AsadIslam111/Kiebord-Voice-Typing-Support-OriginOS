@@ -157,6 +157,18 @@ impl GestureDecoder {
         dict: &BinaryDict,
         limit: usize,
     ) -> Vec<GestureCandidate> {
+        Self::decode_with_learned(points, keys, key_width, dict, limit, &[])
+    }
+
+    /// Decodes a touch trajectory against keyboard key centroids, binary dictionary, and personalized learned words.
+    pub fn decode_with_learned(
+        points: &[GesturePoint],
+        keys: &[KeyCenter],
+        key_width: f32,
+        dict: &BinaryDict,
+        limit: usize,
+        learned_words: &[String],
+    ) -> Vec<GestureCandidate> {
         if points.len() < 2 || keys.is_empty() || key_width <= 0.0 {
             return Vec::new();
         }
@@ -217,11 +229,22 @@ impl GestureDecoder {
             }
         }
 
-        let mut word_scores: HashMap<String, f32> = HashMap::with_capacity(candidates.len());
+        let mut word_scores: HashMap<String, f32> = HashMap::with_capacity(candidates.len() + learned_words.len());
         for c in candidates {
             let slot = word_scores.entry(c.word).or_insert(f32::MIN);
             if c.score > *slot {
                 *slot = c.score;
+            }
+        }
+
+        for lw in learned_words {
+            let chars: Vec<char> = lw.chars().collect();
+            if let Some(score) = Self::evaluate_candidate(&chars, &key_map, &user_path, kw, 255) {
+                let slot = word_scores.entry(lw.clone()).or_insert(f32::MIN);
+                let boosted = score + 30.0;
+                if boosted > *slot {
+                    *slot = boosted;
+                }
             }
         }
 
@@ -460,6 +483,19 @@ impl GestureDecoder {
         transliterator: &dyn PhoneticTransliterator,
         limit: usize,
     ) -> Vec<GestureCandidate> {
+        Self::decode_phonetic_with_learned(points, keys, key_width, dict, transliterator, limit, &[])
+    }
+
+    /// Decodes a touch trajectory against keyboard key centroids for a phonetic layout, including learned words.
+    pub fn decode_phonetic_with_learned(
+        points: &[GesturePoint],
+        keys: &[KeyCenter],
+        key_width: f32,
+        dict: &BinaryDict,
+        transliterator: &dyn PhoneticTransliterator,
+        limit: usize,
+        learned_words: &[String],
+    ) -> Vec<GestureCandidate> {
         if points.len() < 2 || keys.is_empty() || key_width <= 0.0 {
             return Vec::new();
         }
@@ -525,6 +561,38 @@ impl GestureDecoder {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        // Also evaluate learned words
+        for lw in learned_words {
+            let variants = transliterator.to_phonetic_keys(lw);
+            if !variants.is_empty() {
+                for v in variants {
+                    if let Some(score) = Self::evaluate_candidate(
+                        &v,
+                        &key_map,
+                        &user_path,
+                        kw,
+                        255,
+                    ) {
+                        let norm = lw.replace("\u{0985}\u{09BE}", "আ");
+                        let slot = word_scores.entry(norm).or_insert(f32::MIN);
+                        let boosted = score + 30.0;
+                        if boosted > *slot {
+                            *slot = boosted;
+                        }
+                    }
+                }
+            } else {
+                let chars: Vec<char> = lw.chars().collect();
+                if let Some(score) = Self::evaluate_candidate(&chars, &key_map, &user_path, kw, 255) {
+                    let slot = word_scores.entry(lw.clone()).or_insert(f32::MIN);
+                    let boosted = score + 30.0;
+                    if boosted > *slot {
+                        *slot = boosted;
                     }
                 }
             }
@@ -765,5 +833,45 @@ mod tests {
         let results = GestureDecoder::decode_phonetic(&stroke_intarnet, &keys, 40.0, dict, &translit, 10);
         assert!(!results.is_empty(), "Results for intarnet should not be empty");
         assert_eq!(results[0].word, "ইন্টারনেট", "Expected 'ইন্টারনেট' to be top candidate for intarnet stroke: {:?}", results);
+    }
+
+    #[test]
+    fn test_decode_with_learned_words() {
+        let dict = get_en_binary_dict().expect("en dict");
+
+        let keys = vec![
+            KeyCenter { char_code: 'q', x: 20.0, y: 50.0 },
+            KeyCenter { char_code: 'w', x: 60.0, y: 50.0 },
+            KeyCenter { char_code: 'e', x: 100.0, y: 50.0 },
+            KeyCenter { char_code: 'r', x: 140.0, y: 50.0 },
+            KeyCenter { char_code: 't', x: 180.0, y: 50.0 },
+            KeyCenter { char_code: 'y', x: 220.0, y: 50.0 },
+            KeyCenter { char_code: 'u', x: 260.0, y: 50.0 },
+            KeyCenter { char_code: 'i', x: 300.0, y: 50.0 },
+            KeyCenter { char_code: 'o', x: 340.0, y: 50.0 },
+            KeyCenter { char_code: 'p', x: 380.0, y: 50.0 },
+            KeyCenter { char_code: 'a', x: 40.0, y: 120.0 },
+            KeyCenter { char_code: 's', x: 80.0, y: 120.0 },
+            KeyCenter { char_code: 'd', x: 120.0, y: 120.0 },
+            KeyCenter { char_code: 'f', x: 160.0, y: 120.0 },
+            KeyCenter { char_code: 'g', x: 200.0, y: 120.0 },
+            KeyCenter { char_code: 'h', x: 240.0, y: 120.0 },
+            KeyCenter { char_code: 'j', x: 280.0, y: 120.0 },
+            KeyCenter { char_code: 'k', x: 320.0, y: 120.0 },
+            KeyCenter { char_code: 'l', x: 360.0, y: 120.0 },
+        ];
+
+        let stroke = vec![
+            GesturePoint { x: 180.0, y: 50.0, timestamp_ms: 0 },
+            GesturePoint { x: 210.0, y: 85.0, timestamp_ms: 50 },
+            GesturePoint { x: 240.0, y: 120.0, timestamp_ms: 100 },
+            GesturePoint { x: 170.0, y: 85.0, timestamp_ms: 150 },
+            GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 200 },
+        ];
+
+        let learned = vec!["the".to_string(), "thy".to_string()];
+        let results = GestureDecoder::decode_with_learned(&stroke, &keys, 40.0, dict, 5, &learned);
+        assert!(!results.is_empty());
+        assert_eq!(results[0].word, "the");
     }
 }

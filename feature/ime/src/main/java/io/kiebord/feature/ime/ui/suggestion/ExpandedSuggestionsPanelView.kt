@@ -1,7 +1,9 @@
 package io.kiebord.feature.ime.ui.suggestion
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,11 +42,12 @@ import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun ExpandedSuggestionsPanelView(
     candidates: List<SuggestionCandidate>,
     onCandidateClick: (SuggestionCandidate) -> Unit,
+    onCandidateLongClick: ((SuggestionCandidate) -> Unit)? = null,
     onDelete: () -> Unit,
     onEnter: () -> Unit,
     height: Dp,
@@ -96,7 +99,12 @@ fun ExpandedSuggestionsPanelView(
                                         strokeWidth = 1.dp.toPx()
                                     )
                                 }
-                                .clickable { onCandidateClick(candidate) }
+                                .combinedClickable(
+                                    onClick = { onCandidateClick(candidate) },
+                                    onLongClick = if (candidate.isLearned && onCandidateLongClick != null) {
+                                        { onCandidateLongClick(candidate) }
+                                    } else null
+                                )
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             contentAlignment = Alignment.Center
                         ) {

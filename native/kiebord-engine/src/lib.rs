@@ -193,12 +193,24 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
         y,
     }).collect();
 
-    let lang_str: String = match env.get_string(&lang) {
+    let raw_lang_str: String = match env.get_string(&lang) {
         Ok(s) => s.into(),
         Err(_) => "en".to_string(),
     };
 
-    let translit_opt = translit::get_phonetic_transliterator(&lang_str);
+    let (lang_id, learned_words) = match raw_lang_str.split_once(';') {
+        Some((l, words_str)) => {
+            let list: Vec<String> = words_str
+                .split('|')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            (l.to_string(), list)
+        }
+        None => (raw_lang_str, Vec::new()),
+    };
+
+    let translit_opt = translit::get_phonetic_transliterator(&lang_id);
     let (dict_opt, is_phonetic) = match translit_opt {
         Some(t) => {
             let dict = match t.target_dict_lang() {
@@ -208,7 +220,7 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
             (dict, true)
         }
         None => {
-            let dict = match lang_str.as_str() {
+            let dict = match lang_id.as_str() {
                 "bn" | "bn_probhat" => dictionary::get_bn_binary_dict(),
                 _ => dictionary::get_en_binary_dict(),
             };
@@ -224,9 +236,9 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
     let limit = if max_results <= 0 { 5 } else { max_results as usize };
     let candidates = if is_phonetic {
         let t = translit_opt.unwrap();
-        gesture::decoder::GestureDecoder::decode_phonetic(&points, &keys, key_width, dict, t, limit)
+        gesture::decoder::GestureDecoder::decode_phonetic_with_learned(&points, &keys, key_width, dict, t, limit, &learned_words)
     } else {
-        gesture::decoder::GestureDecoder::decode(&points, &keys, key_width, dict, limit)
+        gesture::decoder::GestureDecoder::decode_with_learned(&points, &keys, key_width, dict, limit, &learned_words)
     };
     let words: Vec<String> = candidates.into_iter().map(|c| c.word).collect();
     let result = words.join("|");
