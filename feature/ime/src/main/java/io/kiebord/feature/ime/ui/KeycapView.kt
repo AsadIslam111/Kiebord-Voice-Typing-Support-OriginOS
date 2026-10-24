@@ -203,10 +203,12 @@ fun KeycapView(
                             }
                         } else null
 
+                        var isLongPressTriggered = false
                         var isDeleteLongPressActive = false
                         val longPressJob = launch {
                             delay(240L)
                             val coords = keyCoordinates
+                            isLongPressTriggered = true
                             if (initialKey.type == KeyType.DELETE) {
                                 isDeleteLongPressActive = true
                                 while (isActive) {
@@ -239,7 +241,13 @@ fun KeycapView(
                                         currentOnDeleteSwipeCancel.value()
                                     }
                                 } else if (isSpacebarSwipingLayout) {
-                                    currentOnSpacebarSwipeEnd.value(delta.x)
+                                    val swipeActivationPx = with(density) { 30.dp.toPx() }
+                                    val effectiveDeltaX = if (delta.x > 0) {
+                                        (delta.x - swipeActivationPx).coerceAtLeast(0f)
+                                    } else {
+                                        (delta.x + swipeActivationPx).coerceAtMost(0f)
+                                    }
+                                    currentOnSpacebarSwipeEnd.value(effectiveDeltaX)
                                 } else if (isSpacebarTrackpadActive) {
                                     // Trackpad gesture completed, don't emit normal space tap
                                 } else if (isSpacebarDwellReady) {
@@ -255,8 +263,8 @@ fun KeycapView(
                                     currentOnSlidingEnd.value(delta)
                                 } else if (isMoreKeysActive) {
                                     currentOnMoreKeysCommit.value()
-                                } else if (isDeleteLongPressActive) {
-                                    // Already handled during continuous repeat deletion
+                                } else if (isDeleteLongPressActive || isLongPressTriggered) {
+                                    // Handled during long-press, do NOT emit tap on release
                                 } else {
                                     currentOnTap.value(initialKey)
                                 }
@@ -288,7 +296,10 @@ fun KeycapView(
                             // 2. Holding still for 220ms (dwell ready) then sliding left/right activates cursor movement!
                             if (initialKey.type == KeyType.SPACE) {
                                 if (!isSpacebarDwellReady) {
-                                    if (isSpacebarSwipingLayout || Math.abs(delta.x) > 16f) {
+                                    val swipeActivationPx = with(density) { 30.dp.toPx() }
+                                    val absX = Math.abs(delta.x)
+                                    val absY = Math.abs(delta.y)
+                                    if (isSpacebarSwipingLayout || (absX > swipeActivationPx && absX > absY * 1.35f)) {
                                         if (!isSpacebarSwipingLayout) {
                                             spacebarDwellJob?.cancel()
                                             longPressJob.cancel()
@@ -296,7 +307,12 @@ fun KeycapView(
                                             isPressed = false
                                         }
                                         change.consume()
-                                        currentOnSpacebarSwipeMove.value(delta.x)
+                                        val effectiveDeltaX = if (delta.x > 0) {
+                                            delta.x - swipeActivationPx
+                                        } else {
+                                            delta.x + swipeActivationPx
+                                        }
+                                        currentOnSpacebarSwipeMove.value(effectiveDeltaX)
                                     }
                                 } else {
                                     change.consume()

@@ -15,14 +15,20 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -131,11 +137,17 @@ fun KeyboardRootView(
     val currentLayoutIndex = remember(effectiveLayoutList, layout.id) {
         effectiveLayoutList.indexOf(layout.id).coerceAtLeast(0)
     }
-    val swipeStepPx = with(density) { 56.dp.toPx() }
-    val layoutOffsetSteps = if (isSpacebarSwiping) {
-        (spacebarSwipeDeltaX / swipeStepPx).toInt()
-    } else 0
-    val targetSwipeIndex = (currentLayoutIndex + layoutOffsetSteps).coerceIn(0, effectiveLayoutList.lastIndex)
+    val commitThresholdPx = with(density) { 56.dp.toPx() }
+    val n = effectiveLayoutList.size
+    val targetSwipeIndex = if (isSpacebarSwiping && n > 1) {
+        if (spacebarSwipeDeltaX >= commitThresholdPx) {
+            (currentLayoutIndex + 1) % n
+        } else if (spacebarSwipeDeltaX <= -commitThresholdPx) {
+            (currentLayoutIndex - 1 + n) % n
+        } else {
+            currentLayoutIndex
+        }
+    } else currentLayoutIndex
 
     var lastHapticIndex by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(isSpacebarSwiping, targetSwipeIndex) {
@@ -701,9 +713,14 @@ fun KeyboardRootView(
                                     spacebarSwipeDeltaX = deltaX
                                 },
                                 onSpacebarSwipeEnd = { finalDeltaX ->
-                                    if (isSpacebarSwiping) {
-                                        val finalSteps = (finalDeltaX / swipeStepPx).toInt()
-                                        val finalTarget = (currentLayoutIndex + finalSteps).coerceIn(0, effectiveLayoutList.lastIndex)
+                                    if (isSpacebarSwiping && n > 1) {
+                                        val finalTarget = if (finalDeltaX >= commitThresholdPx) {
+                                            (currentLayoutIndex + 1) % n
+                                        } else if (finalDeltaX <= -commitThresholdPx) {
+                                            (currentLayoutIndex - 1 + n) % n
+                                        } else {
+                                            currentLayoutIndex
+                                        }
                                         val newLayoutId = effectiveLayoutList.getOrNull(finalTarget)
                                         if (newLayoutId != null && newLayoutId != layout.id) {
                                             onSwitchToLayout(newLayoutId)
@@ -1037,7 +1054,9 @@ fun KeyboardRootView(
         if (isSpacebarSwiping && effectiveLayoutList.size > 1) {
             SpacebarLayoutSliderOverlay(
                 activeLayouts = effectiveLayoutList,
-                currentIndex = targetSwipeIndex,
+                currentIndex = currentLayoutIndex,
+                swipeDeltaX = spacebarSwipeDeltaX,
+                commitThresholdPx = commitThresholdPx,
                 modifier = Modifier.matchParentSize()
             )
         }
@@ -1068,55 +1087,127 @@ fun KeyboardRootView(
 
 /**
  * Floating rounded pill overlay displayed when swiping horizontally on the spacebar
- * to slide through active keyboard layouts.
+ * to slide through active keyboard layouts. Displays a single layout name at a time,
+ * smoothly translating in 1:1 direct tracking with the thumb swipe, with clear commitment
+ * threshold and gentle rubber-band clamping.
  */
 @Composable
 fun SpacebarLayoutSliderOverlay(
     activeLayouts: List<String>,
     currentIndex: Int,
+    swipeDeltaX: Float,
+    commitThresholdPx: Float,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
+    val density = LocalDensity.current
+    val slotPx = with(density) { 140.dp.toPx() }
+    val n = activeLayouts.size
+    if (n <= 1) return
+
+    val isSwipingRight = swipeDeltaX >= 0f
+    val targetIndex = if (isSwipingRight) (currentIndex + 1) % n else (currentIndex - 1 + n) % n
+    val isCommitted = Math.abs(swipeDeltaX) >= commitThresholdPx
+
+    // Direct 1:1 translation with smooth rubber-band clamping beyond slotPx
+    val absDelta = Math.abs(swipeDeltaX)
+    val clampedOffset = if (absDelta <= slotPx) {
+        absDelta
+    } else {
+        slotPx + (absDelta - slotPx) * 0.22f
+    }
+    val signedOffset = if (isSwipingRight) clampedOffset else -clampedOffset
+
+    val primaryTranslationX = signedOffset
+    val secondaryTranslationX = if (isSwipingRight) {
+        -slotPx + signedOffset
+    } else {
+        slotPx + signedOffset
+    }
+
+    val progress = if (commitThresholdPx > 0f) (absDelta / commitThresholdPx).coerceIn(0f, 1f) else 0f
+    val primaryAlpha = (1f - progress * 0.7f).coerceIn(0.2f, 1f)
+    val secondaryAlpha = (0.25f + progress * 0.75f).coerceIn(0.25f, 1f)
 
     Box(
-        modifier = modifier.padding(bottom = 68.dp),
+        modifier = modifier.padding(bottom = 74.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(22.dp))
                 .background(colorScheme.containerBackground.copy(alpha = 0.96f))
                 .border(
                     width = 1.dp,
-                    color = colorScheme.accentColor.copy(alpha = 0.45f),
-                    shape = RoundedCornerShape(24.dp)
+                    color = colorScheme.accentColor.copy(alpha = if (isCommitted) 0.8f else 0.45f),
+                    shape = RoundedCornerShape(22.dp)
                 )
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .widthIn(min = 190.dp, max = 240.dp)
+                .height(40.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            activeLayouts.forEachIndexed { index, layoutId ->
-                val isSelected = index == currentIndex
-                val displayName = PredefinedLayouts.displayName(layoutId)
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                contentDescription = null,
+                tint = if (!isSwipingRight && isCommitted) {
+                    colorScheme.accentColor
+                } else {
+                    colorScheme.keyForeground.copy(alpha = 0.35f)
+                },
+                modifier = Modifier.size(18.dp)
+            )
 
-                Box(
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clipToBounds(),
+                contentAlignment = Alignment.Center
+            ) {
+                // Primary layout (current layout)
+                val primaryName = PredefinedLayouts.displayName(activeLayouts[currentIndex])
+                Text(
+                    text = primaryName,
+                    color = if (!isCommitted) colorScheme.accentColor else colorScheme.keyForeground,
+                    fontSize = 14.sp,
+                    fontWeight = if (!isCommitted) FontWeight.SemiBold else FontWeight.Normal,
+                    fontFamily = KiebordTheme.fontFamily,
+                    maxLines = 1,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(
-                            if (isSelected) colorScheme.accentColor else Color.Transparent
-                        )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = displayName,
-                        color = if (isSelected) Color.White else colorScheme.keyForeground.copy(alpha = 0.65f),
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        fontFamily = KiebordTheme.fontFamily
-                    )
-                }
+                        .graphicsLayer {
+                            translationX = primaryTranslationX
+                            alpha = primaryAlpha
+                        }
+                )
+
+                // Secondary layout (incoming adjacent layout)
+                val secondaryName = PredefinedLayouts.displayName(activeLayouts[targetIndex])
+                Text(
+                    text = secondaryName,
+                    color = if (isCommitted) colorScheme.accentColor else colorScheme.keyForeground,
+                    fontSize = 14.sp,
+                    fontWeight = if (isCommitted) FontWeight.SemiBold else FontWeight.Normal,
+                    fontFamily = KiebordTheme.fontFamily,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            translationX = secondaryTranslationX
+                            alpha = secondaryAlpha
+                        }
+                )
             }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                contentDescription = null,
+                tint = if (isSwipingRight && isCommitted) {
+                    colorScheme.accentColor
+                } else {
+                    colorScheme.keyForeground.copy(alpha = 0.35f)
+                },
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

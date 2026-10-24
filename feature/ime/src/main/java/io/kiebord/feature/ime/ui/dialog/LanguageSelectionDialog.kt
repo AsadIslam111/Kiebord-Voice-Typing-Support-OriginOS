@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -61,49 +62,49 @@ fun LanguageSelectionDialog(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.90f)
-                .clip(RoundedCornerShape(20.dp))
+                .widthIn(min = 250.dp, max = 290.dp)
+                .clip(RoundedCornerShape(18.dp))
                 .background(colorScheme.containerBackground)
                 .border(
                     width = 1.dp,
                     color = colorScheme.keyForeground.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(18.dp)
                 )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { /* Consume clicks to prevent dismissing dialog */ }
-                .padding(vertical = 18.dp, horizontal = 16.dp)
+                .padding(vertical = 14.dp, horizontal = 12.dp)
         ) {
             // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Language,
                     contentDescription = null,
                     tint = colorScheme.accentColor,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Select Keyboard Layout",
+                    text = "Select Layout",
                     color = colorScheme.keyForeground,
-                    fontSize = 17.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = KiebordTheme.fontFamily
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(
                 color = colorScheme.keyForeground.copy(alpha = 0.12f),
                 thickness = 0.5.dp
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Enabled Layouts list
             val layoutsToShow = enabledLayoutIds.ifEmpty { listOf("en_qwerty") }
@@ -114,26 +115,26 @@ fun LanguageSelectionDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .clickable {
                             onSelectLayout(layoutId)
                             onDismiss()
                         }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .padding(horizontal = 8.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = displayName,
                         color = if (isSelected) colorScheme.accentColor else colorScheme.keyForeground,
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         fontFamily = KiebordTheme.fontFamily
                     )
                     if (isSelected) {
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(20.dp)
                                 .clip(CircleShape)
                                 .background(colorScheme.accentColor.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
@@ -142,43 +143,43 @@ fun LanguageSelectionDialog(
                                 imageVector = Icons.Outlined.Check,
                                 contentDescription = "Active",
                                 tint = colorScheme.accentColor,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(13.dp)
                             )
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             HorizontalDivider(
                 color = colorScheme.keyForeground.copy(alpha = 0.12f),
                 thickness = 0.5.dp
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Action: More Layouts...
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .clickable {
                         onDismiss()
                         onMoreLayouts()
                     }
-                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Settings,
                     contentDescription = null,
                     tint = colorScheme.keyForeground.copy(alpha = 0.75f),
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(17.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "More Layouts...",
                     color = colorScheme.keyForeground.copy(alpha = 0.88f),
-                    fontSize = 15.sp,
+                    fontSize = 13.5.sp,
                     fontFamily = KiebordTheme.fontFamily
                 )
             }
@@ -187,25 +188,25 @@ fun LanguageSelectionDialog(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .clickable {
                         onDismiss()
                         onOtherKeyboards()
                     }
-                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Keyboard,
                     contentDescription = null,
                     tint = colorScheme.keyForeground.copy(alpha = 0.75f),
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(17.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "Other Keyboards",
                     color = colorScheme.keyForeground.copy(alpha = 0.88f),
-                    fontSize = 15.sp,
+                    fontSize = 13.5.sp,
                     fontFamily = KiebordTheme.fontFamily
                 )
             }
