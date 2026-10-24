@@ -43,10 +43,11 @@ data class KiebordPreferences(
     val autoSpaceAfterSuggestion: Boolean = true,
     val autoSpaceAfterPunctuation: Boolean = true,
     val removeSpaceBeforePunctuation: Boolean = true,
+    val traditionalMode: Boolean = false,
 
     // Toolbar rearrangement persistence
     val pinnedTools: List<String> = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"),
-    val drawerTools: List<String> = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS")
+    val drawerTools: List<String> = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE")
 ) {
     companion object {
         const val THEME_DEFAULT_DARK = "default_dark"

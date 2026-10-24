@@ -103,6 +103,8 @@ fun KeyboardRootView(
     onSecondaryKeysToggle: ((Boolean) -> Unit)? = null,
     defaultShowKeyPopups: Boolean = true,
     onKeyPopupsToggle: ((Boolean) -> Unit)? = null,
+    defaultTraditionalMode: Boolean = false,
+    onTraditionalModeToggle: ((Boolean) -> Unit)? = null,
     onKeyPress: (KeyDef) -> Unit = {},
     onDeleteSwipeMove: (Float) -> Unit = {},
     onDeleteSwipeEnd: () -> Unit = {},
@@ -311,6 +313,7 @@ fun KeyboardRootView(
     var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
     var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
     var showKeyPopups by remember(defaultShowKeyPopups) { mutableStateOf(defaultShowKeyPopups) }
+    var traditionalMode by remember(defaultTraditionalMode) { mutableStateOf(defaultTraditionalMode) }
     var chinPadding by remember(initialRowHeight) {
         val initialScale = (initialRowHeight.value / 58f).coerceIn(0.4f, 1.6f)
         mutableStateOf((8 * initialScale).dp)
@@ -442,6 +445,10 @@ fun KeyboardRootView(
                     context.startActivity(intent)
                 } catch (_: Exception) {}
             }
+            ToolbarAction.TRADITIONAL_MODE -> {
+                traditionalMode = !traditionalMode
+                onTraditionalModeToggle?.invoke(traditionalMode)
+            }
         }
     }
 
@@ -450,6 +457,7 @@ fun KeyboardRootView(
             ToolbarAction.NUMBER_ROW_TOGGLE -> showNumberRow
             ToolbarAction.SECONDARY_KEYS_TOGGLE -> showSecondaryKeys
             ToolbarAction.KEY_POPUP_TOGGLE -> showKeyPopups
+            ToolbarAction.TRADITIONAL_MODE -> traditionalMode
             ToolbarAction.ONE_HANDED -> oneHandedSide != "OFF"
             ToolbarAction.EMOJI -> isEmojiOpen
             ToolbarAction.RESIZER -> isResizerOpen
@@ -590,6 +598,7 @@ fun KeyboardRootView(
                             isOneHandedActive = oneHandedSide != "OFF",
                             isTextEditActive = isTextEditOpen,
                             isClipboardActive = isClipboardOpen,
+                            isTraditionalModeActive = traditionalMode,
                             isCustomizeMode = isToolsDrawerOpen,
                             scaleFactor = scaleFactor,
                             onDraggingStateChange = { action, fingerPos ->
@@ -898,19 +907,15 @@ fun KeyboardRootView(
                         }
 
                         row.keys.forEachIndexed { keyIndex, key ->
-                            val effectiveKey = when {
-                                key.type == KeyType.SPACE && key.label.isBlank() -> {
-                                    val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
-                                        "Space"
-                                    } else {
-                                        PredefinedLayouts.displayName(displayLayout.id)
-                                    }
-                                    key.copy(label = spaceLabel)
+                            val effectiveKey = if (key.type == KeyType.SPACE && key.label.isBlank()) {
+                                val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
+                                    "Space"
+                                } else {
+                                    PredefinedLayouts.displayName(displayLayout.id)
                                 }
-                                isSlidingSymbolMode && isBottomRow && keyIndex == 0 -> {
-                                    key.copy(slidingInput = true)
-                                }
-                                else -> key
+                                key.copy(label = spaceLabel)
+                            } else {
+                                key
                             }
 
                             key("cell_${rowIndex}_$keyIndex") {
@@ -1084,13 +1089,15 @@ fun KeyboardRootView(
                                     slidingDwellJob?.cancel()
                                     slidingDwellJob = null
 
+                                    val hasMoved = deltaFromDown.getDistance() > 24f
+                                    val keyToCommit = slidingHoveredKey
+
                                     if (moreKeysState != null) {
                                         handleMoreKeysCommit()
-                                    } else {
-                                        val keyToCommit = slidingHoveredKey
-                                        if (keyToCommit != null && keyToCommit.type != KeyType.SYMBOLS && (keyToCommit.label.isNotEmpty() || !keyToCommit.commitText.isNullOrEmpty())) {
-                                            onKeyTap(keyToCommit)
-                                        }
+                                    } else if (hasMoved && keyToCommit != null && keyToCommit.type != KeyType.SYMBOLS && (keyToCommit.label.isNotEmpty() || !keyToCommit.commitText.isNullOrEmpty())) {
+                                        onKeyTap(keyToCommit)
+                                    } else if (!hasMoved) {
+                                        onKeyTap(KeyDef("?123", type = KeyType.SYMBOLS))
                                     }
 
                                     slidingHoveredKey = null

@@ -216,6 +216,21 @@ fun KeycapView(
                         var lastTrackpadX = 0f
                         val trackpadStepPx = with(density) { 14.dp.toPx() }
 
+                        // Immediate layout modifier keys: ABC and =\< switch instantaneously on pointer down
+                        val isImmediateModifier = initialKey.type == KeyType.SYMBOLS && !initialKey.slidingInput
+                        var isHandledOnDown = false
+
+                        if (isImmediateModifier) {
+                            isHandledOnDown = true
+                            currentOnTap.value(initialKey)
+                        } else if (initialKey.slidingInput) {
+                            val coords = keyCoordinates
+                            if (coords != null && coords.isAttached) {
+                                isSlidingDrag = true
+                                currentOnSlidingStart.value(initialKey, coords, initialDownPos)
+                            }
+                        }
+
                         val spacebarDwellJob = if (initialKey.type == KeyType.SPACE) {
                             launch {
                                 delay(400L)
@@ -226,7 +241,7 @@ fun KeycapView(
 
                         var isLongPressTriggered = false
                         var isDeleteLongPressActive = false
-                        val longPressJob = launch {
+                        val longPressJob = if (isImmediateModifier || initialKey.slidingInput) null else launch {
                             delay(240L)
                             val coords = keyCoordinates
                             isLongPressTriggered = true
@@ -238,12 +253,6 @@ fun KeycapView(
                                 }
                             } else if (initialKey.type == KeyType.SPACE) {
                                 // Handled via spacebarDwellJob
-                            } else if (initialKey.slidingInput) {
-                                isSlidingDrag = true
-                                isPressed = false
-                                if (coords != null && coords.isAttached) {
-                                    currentOnSlidingStart.value(initialKey, coords, initialDownPos)
-                                }
                             } else if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
                                 isMoreKeysActive = true
                                 currentOnShowMoreKeys.value(initialKey, coords)
@@ -259,7 +268,10 @@ fun KeycapView(
                             if (!change.pressed) {
                                 // Touch released!
                                 spacebarDwellJob?.cancel()
-                                longPressJob.cancel()
+                                longPressJob?.cancel()
+                                if (isHandledOnDown) {
+                                    break
+                                }
                                 val wasMoreKeysActive = isMoreKeysActive
                                 isMoreKeysActive = false
                                 val delta = change.position - initialDownPos
@@ -304,7 +316,7 @@ fun KeycapView(
                                 if (delta.x < -14f) {
                                     if (!isDeleteSwipeActive) {
                                         isDeleteSwipeActive = true
-                                        longPressJob.cancel()
+                                        longPressJob?.cancel()
                                         isPressed = false
                                     }
                                     change.consume()
@@ -326,7 +338,7 @@ fun KeycapView(
                                     if (isSpacebarSwipingLayout || (absX > swipeActivationPx && absX > absY * 1.35f)) {
                                         if (!isSpacebarSwipingLayout) {
                                             spacebarDwellJob?.cancel()
-                                            longPressJob.cancel()
+                                            longPressJob?.cancel()
                                             isSpacebarSwipingLayout = true
                                             isPressed = false
                                             initialSpacebarSwipeX = delta.x
@@ -357,13 +369,16 @@ fun KeycapView(
                             }
 
                             // Sliding input detector for ?123
-                            if (initialKey.slidingInput && distance > 18f && !isSlidingDrag) {
-                                longPressJob.cancel()
-                                isSlidingDrag = true
-                                isPressed = false
-                                val coords = keyCoordinates
-                                if (coords != null && coords.isAttached) {
-                                    currentOnSlidingStart.value(initialKey, coords, initialDownPos)
+                            if (initialKey.slidingInput) {
+                                if (distance > 18f) {
+                                    isPressed = false
+                                }
+                                if (distance > 18f && !isSlidingDrag) {
+                                    isSlidingDrag = true
+                                    val coords = keyCoordinates
+                                    if (coords != null && coords.isAttached) {
+                                        currentOnSlidingStart.value(initialKey, coords, initialDownPos)
+                                    }
                                 }
                             }
 
@@ -371,7 +386,7 @@ fun KeycapView(
                             if (currentGestureTypingEnabled.value && initialKey.type == KeyType.CHARACTER && !isMoreKeysActive && !isSlidingDrag) {
                                 val gestureThresholdPx = with(density) { 28.dp.toPx() }
                                 if (!isGestureTyping && distance > gestureThresholdPx) {
-                                    longPressJob.cancel()
+                                    longPressJob?.cancel()
                                     isGestureTyping = true
                                     isPressed = false
                                     isMoreKeysActive = false

@@ -45,6 +45,8 @@ fun QuickSymbolDragOverlay(
     modifier: Modifier = Modifier
 ) {
     if (state == null) return
+    val dragDistance = (state.currentOffset - state.startOffset).getDistance()
+    if (dragDistance <= 20f && state.hoveredSymbol == null) return
 
     val colorScheme = KiebordTheme.colorScheme
     val accentColor = colorScheme.accentColor

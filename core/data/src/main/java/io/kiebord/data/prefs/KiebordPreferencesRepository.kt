@@ -52,6 +52,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val AUTO_SPACE_AFTER_SUGGESTION = booleanPreferencesKey("pref_auto_space_after_suggestion")
         val AUTO_SPACE_AFTER_PUNCTUATION = booleanPreferencesKey("pref_auto_space_after_punctuation")
         val REMOVE_SPACE_BEFORE_PUNCTUATION = booleanPreferencesKey("pref_remove_space_before_punctuation")
+        val TRADITIONAL_MODE = booleanPreferencesKey("pref_traditional_mode")
 
         val PINNED_TOOLS = stringPreferencesKey("pref_pinned_tools")
         val DRAWER_TOOLS = stringPreferencesKey("pref_drawer_tools")
@@ -102,12 +103,13 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 autoSpaceAfterSuggestion = prefs[PreferencesKeys.AUTO_SPACE_AFTER_SUGGESTION] ?: true,
                 autoSpaceAfterPunctuation = prefs[PreferencesKeys.AUTO_SPACE_AFTER_PUNCTUATION] ?: true,
                 removeSpaceBeforePunctuation = prefs[PreferencesKeys.REMOVE_SPACE_BEFORE_PUNCTUATION] ?: true,
+                traditionalMode = prefs[PreferencesKeys.TRADITIONAL_MODE] ?: false,
 
                 pinnedTools = run {
                     val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
                     val allActionNames = listOf(
                         "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
-                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE"
                     )
                     prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
                         raw.split(",").filter { it in allActionNames }.distinct()
@@ -115,10 +117,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 },
                 drawerTools = run {
                     val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
-                    val defaultDrawer = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS")
+                    val defaultDrawer = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE")
                     val allActionNames = listOf(
                         "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
-                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE"
                     )
                     val pinnedList = prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
                         raw.split(",").filter { it in allActionNames }.distinct()
@@ -278,11 +280,15 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         context.kiebordDataStore.edit { it[PreferencesKeys.REMOVE_SPACE_BEFORE_PUNCTUATION] = enabled }
     }
 
+    suspend fun updateTraditionalMode(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.TRADITIONAL_MODE] = enabled }
+    }
+
     suspend fun updateToolbarTools(pinned: List<String>, drawer: List<String>) {
         val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
         val allActionNames = listOf(
             "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
-            "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS"
+            "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE"
         )
         val sanitizedPinned = pinned.filter { it in allActionNames }.distinct()
         val pinnedSet = sanitizedPinned.toSet()

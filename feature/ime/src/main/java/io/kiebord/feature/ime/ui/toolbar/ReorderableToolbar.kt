@@ -23,9 +23,11 @@ import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Pin
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SmartButton
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,7 +65,8 @@ enum class ToolbarAction {
     KEY_POPUP_TOGGLE,
     EMOJI,
     ONE_HANDED,
-    SETTINGS
+    SETTINGS,
+    TRADITIONAL_MODE
 }
 
 data class ToolbarItem(
@@ -93,6 +96,7 @@ fun ReorderableToolbar(
     isOneHandedActive: Boolean = false,
     isTextEditActive: Boolean = false,
     isClipboardActive: Boolean = false,
+    isTraditionalModeActive: Boolean = false,
     isCustomizeMode: Boolean = false,
     scaleFactor: Float = 1.0f,
     onDraggingStateChange: (draggingAction: ToolbarAction?, fingerPosInRoot: Offset?) -> Unit = { _, _ -> }
@@ -116,9 +120,11 @@ fun ReorderableToolbar(
             ToolbarAction.RESIZER to ToolbarItem(ToolbarAction.RESIZER, Icons.Outlined.CropFree, "Resize Keyboard"),
             ToolbarAction.NUMBER_ROW_TOGGLE to ToolbarItem(ToolbarAction.NUMBER_ROW_TOGGLE, Icons.Outlined.Pin, "Number Row"),
             ToolbarAction.SECONDARY_KEYS_TOGGLE to ToolbarItem(ToolbarAction.SECONDARY_KEYS_TOGGLE, Icons.Outlined.Layers, "Key Hints"),
+            ToolbarAction.KEY_POPUP_TOGGLE to ToolbarItem(ToolbarAction.KEY_POPUP_TOGGLE, Icons.Outlined.SmartButton, "Key Popup"),
             ToolbarAction.EMOJI to ToolbarItem(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emojis"),
             ToolbarAction.ONE_HANDED to ToolbarItem(ToolbarAction.ONE_HANDED, Icons.Outlined.TouchApp, "One-Handed"),
-            ToolbarAction.SETTINGS to ToolbarItem(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings")
+            ToolbarAction.SETTINGS to ToolbarItem(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings"),
+            ToolbarAction.TRADITIONAL_MODE to ToolbarItem(ToolbarAction.TRADITIONAL_MODE, Icons.Outlined.Translate, "Traditional Mode")
         )
     }
 
@@ -167,6 +173,7 @@ fun ReorderableToolbar(
                         ToolbarAction.ONE_HANDED -> isOneHandedActive
                         ToolbarAction.TEXT_EDIT -> isTextEditActive
                         ToolbarAction.CLIPBOARD -> isClipboardActive
+                        ToolbarAction.TRADITIONAL_MODE -> isTraditionalModeActive
                         else -> false
                     }
                     val isDraggingThisItem = draggingAction == action

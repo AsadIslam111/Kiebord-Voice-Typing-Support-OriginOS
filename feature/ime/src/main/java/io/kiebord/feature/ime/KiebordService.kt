@@ -37,6 +37,7 @@ import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.feature.ime.gesture.CrossLanguageGestureDecoder
 import io.kiebord.feature.ime.gesture.KeyCentroid
 import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
+import io.kiebord.feature.ime.translit.BengaliBstiEngine
 import io.kiebord.feature.ime.translit.BornoTransliterationManager
 import io.kiebord.feature.ime.translit.TransliterationManager
 import androidx.compose.ui.unit.dp
@@ -225,6 +226,10 @@ class KiebordService : InputMethodService() {
                     onKeyPopupsToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateShowKeyPopups(enabled) }
                     },
+                    defaultTraditionalMode = preferencesState.traditionalMode,
+                    onTraditionalModeToggle = { enabled ->
+                        serviceScope.launch { preferencesRepo.updateTraditionalMode(enabled) }
+                    },
                     initialPinnedTools = pinnedToolbarActions,
                     initialDrawerTools = drawerToolbarActions,
                     onToolbarToolsChange = { newPinned, newDrawer ->
@@ -360,15 +365,21 @@ class KiebordService : InputMethodService() {
     private fun finishComposing() {
         val ic = currentInputConnection
         val translitMgr = getTransliterationManager()
+        var wasComposing = false
         if (translitMgr.isComposing) {
             ic?.commitText(translitMgr.currentTransliteration, 1)
             translitMgr.reset()
+            wasComposing = true
         }
         if (composingBuffer.isNotEmpty()) {
-            ic?.commitText(composingBuffer.toString(), 1)
+            val clean = BengaliBstiEngine.cleanPending(composingBuffer.toString())
+            ic?.commitText(clean, 1)
             composingBuffer.clear()
+            wasComposing = true
         }
-        ic?.finishComposingText()
+        if (wasComposing) {
+            ic?.finishComposingText()
+        }
     }
 
     private fun performKeyFeedback() {
@@ -460,8 +471,8 @@ class KiebordService : InputMethodService() {
                             commitCharacterWithPunctuationHandling(ic, text)
                         }
                     }
-                    // Bengali Probhat and National (BSTI) layouts
-                    activeLayout.id == "bn_probhat" || activeLayout.id == "bn_national" -> {
+                    // Bengali Probhat layout
+                    activeLayout.id == "bn_probhat" -> {
                         if (isBengaliChar(text)) {
                             composingBuffer.append(text)
                             ic.setComposingText(composingBuffer.toString(), 1)
@@ -469,6 +480,37 @@ class KiebordService : InputMethodService() {
                             if (preferencesState.learnedWordsEnabled && composingBuffer.isNotBlank()) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
                                 userDictionaryRepo.recordWord(composingBuffer.toString().trim(), prevWord)
+                            }
+                            finishComposing()
+                            commitCharacterWithPunctuationHandling(ic, text)
+                        }
+                    }
+                    // Bengali National (BSTI) layout
+                    activeLayout.id == "bn_national" -> {
+                        if (isBengaliChar(text)) {
+                            composingBuffer.append(text)
+                            val isTraditional = preferencesState.traditionalMode
+                            val transformed = if (text == "র্" && isTraditional) {
+                                BengaliBstiEngine.applyRephReordering(composingBuffer.toString())
+                            } else {
+                                var res = composingBuffer.toString()
+                                var idx = 0
+                                val isMacro = text.length > 1
+                                while (idx < text.length) {
+                                    val cp = text.codePointAt(idx)
+                                    res = BengaliBstiEngine.applyBstiRules(res, cp, isTraditional, isMacro)
+                                    idx += Character.charCount(cp)
+                                }
+                                res
+                            }
+                            composingBuffer.clear()
+                            composingBuffer.append(transformed)
+                            ic.setComposingText(composingBuffer.toString(), 1)
+                        } else {
+                            if (preferencesState.learnedWordsEnabled && composingBuffer.isNotBlank()) {
+                                val prevWord = getPrecedingWord(excludeComposing = true)
+                                val cleanWord = BengaliBstiEngine.cleanPending(composingBuffer.toString().trim())
+                                userDictionaryRepo.recordWord(cleanWord, prevWord)
                             }
                             finishComposing()
                             commitCharacterWithPunctuationHandling(ic, text)
@@ -516,9 +558,12 @@ class KiebordService : InputMethodService() {
                     updateSuggestions()
                     return
                 }
-                // If composing in English or Bengali Probhat
+                // If composing in English, Bengali Probhat or National
                 if (composingBuffer.isNotEmpty()) {
                     composingBuffer.deleteCharAt(composingBuffer.length - 1)
+                    if (composingBuffer.endsWith("\u200B")) {
+                        composingBuffer.deleteCharAt(composingBuffer.length - 1)
+                    }
                     if (composingBuffer.isEmpty()) {
                         ic.setComposingText("", 1)
                         ic.finishComposingText()
@@ -555,7 +600,7 @@ class KiebordService : InputMethodService() {
                     lastSpaceTapTime = SystemClock.uptimeMillis()
                 } else if (composingBuffer.isNotEmpty()) {
                     val prevWord = getPrecedingWord(excludeComposing = true)
-                    val committed = composingBuffer.toString()
+                    val committed = BengaliBstiEngine.cleanPending(composingBuffer.toString())
                     ic.commitText(committed + " ", 1)
                     if (preferencesState.learnedWordsEnabled && committed.isNotBlank()) {
                         userDictionaryRepo.recordWord(committed.trim(), prevWord)
@@ -641,7 +686,13 @@ class KiebordService : InputMethodService() {
                         }
                     }
                 }
-                updateSuggestions()
+                if (isSymbolsMode) {
+                    activeSuggestions = emptyList()
+                } else {
+                    serviceScope.launch {
+                        updateSuggestions()
+                    }
+                }
             }
             KeyType.SWITCH_LANGUAGE -> {
                 finishComposing()
@@ -660,7 +711,9 @@ class KiebordService : InputMethodService() {
                     if (!isSymbolsMode) {
                         activeLayout = primaryAlphaLayout
                     }
-                    updateSuggestions()
+                    serviceScope.launch {
+                        updateSuggestions()
+                    }
                 }
             }
             KeyType.MORE_KEYS -> {
@@ -1000,8 +1053,9 @@ class KiebordService : InputMethodService() {
 
     private fun isBengaliChar(text: String): Boolean {
         if (text.isEmpty()) return false
-        val cp = text.codePointAt(0)
-        return cp in 0x0980..0x09FF
+        return text.all { c ->
+            (c in '\u0980'..'\u09FF') || c == '\u200B' || c == '\u200C' || c == '\u200D'
+        }
     }
 
     private fun isWordSeparator(c: Char): Boolean {
@@ -1630,7 +1684,7 @@ class KiebordService : InputMethodService() {
 
         when (activeLayout.id) {
             "bn_probhat", "bn_national" -> {
-                val prefix = composingBuffer.toString()
+                val prefix = BengaliBstiEngine.cleanPending(composingBuffer.toString())
                 if (prefix.isNotEmpty()) {
                     val learned = if (preferencesState.learnedWordsEnabled) {
                         userDictionaryRepo.getCompletions(prefix, 4) { !containsLatinText(it) }
