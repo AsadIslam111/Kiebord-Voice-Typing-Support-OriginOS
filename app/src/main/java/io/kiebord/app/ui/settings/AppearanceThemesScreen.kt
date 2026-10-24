@@ -23,6 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.AspectRatio
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -136,6 +138,42 @@ fun AppearanceThemesScreen(
                     }
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SettingsCategoryHeader(title = "Dimensions & Key Styling")
+
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+            val heightScale = preferences.keyboardHeightScale
+            val heightLabel = when {
+                heightScale <= 0.88f -> "85% (Compact)"
+                heightScale <= 0.96f -> "95% (Slim)"
+                heightScale <= 1.05f -> "100% (Standard)"
+                heightScale <= 1.16f -> "115% (Comfortable)"
+                else -> "125% (Large)"
+            }
+
+            SettingsSliderItem(
+                title = "Keyboard Height",
+                subtitle = "Scale vertical height of keycaps and row spacing",
+                icon = Icons.Outlined.AspectRatio,
+                value = heightScale,
+                valueRange = 0.85f..1.25f,
+                steps = 7,
+                valueLabel = heightLabel,
+                position = GroupPosition.TOP,
+                onValueChange = onUpdateHeightScale
+            )
+
+            SettingsToggleItem(
+                title = "Key Borders",
+                subtitle = "Display subtle outline borders around individual keycaps",
+                icon = Icons.Outlined.Layers,
+                checked = preferences.showKeyBorders,
+                position = GroupPosition.BOTTOM,
+                onCheckedChange = onUpdateShowKeyBorders
+            )
         }
     }
 
@@ -319,32 +357,14 @@ private fun ThemePreviewBottomSheetContent(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
         ) {
-            // Key Border Toggle (located directly below real keyboard preview, clean without secondary text)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(colors.inputBackground)
-                    .clickable { onToggleKeyBorders(!showKeyBorders) }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Key borders",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.textPrimary,
-                    modifier = Modifier.weight(1f)
-                )
-                Switch(
+            SettingsGroup {
+                SettingsToggleItem(
+                    title = "Key Borders",
+                    subtitle = "Preview theme with keycap separation borders",
+                    icon = Icons.Outlined.Layers,
                     checked = showKeyBorders,
-                    onCheckedChange = onToggleKeyBorders,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = if (colors.isDark) Color(0xFF0F141C) else Color.White,
-                        checkedTrackColor = colors.accent,
-                        uncheckedThumbColor = colors.textSecondary,
-                        uncheckedTrackColor = colors.inputBorder
-                    )
+                    position = GroupPosition.ALONE,
+                    onCheckedChange = onToggleKeyBorders
                 )
             }
 
@@ -355,7 +375,7 @@ private fun ThemePreviewBottomSheetContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.accent
                 )

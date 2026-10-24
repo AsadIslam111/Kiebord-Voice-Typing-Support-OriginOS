@@ -103,12 +103,14 @@ fun CorrectionsSuggestionsScreen(
     ) {
         SettingsCategoryHeader(title = "Suggestion Strip & Intelligence")
 
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+            val stripPosition = if (preferences.suggestionsEnabled) GroupPosition.TOP else GroupPosition.ALONE
             SettingsToggleItem(
                 title = "Display Suggestion Strip",
                 subtitle = "Show candidate words and quick tools in the top bar",
                 icon = Icons.Outlined.Spellcheck,
                 checked = preferences.suggestionsEnabled,
+                position = stripPosition,
                 onCheckedChange = onUpdateSuggestionsEnabled
             )
 
@@ -118,6 +120,7 @@ fun CorrectionsSuggestionsScreen(
                     subtitle = "Predict subsequent words using bigram language models",
                     icon = Icons.Outlined.AutoAwesome,
                     checked = preferences.nextWordPrediction,
+                    position = GroupPosition.MIDDLE,
                     onCheckedChange = onUpdateNextWordPrediction
                 )
 
@@ -126,7 +129,7 @@ fun CorrectionsSuggestionsScreen(
                     subtitle = "Score and rank phonetic Bengali transliterations by usage frequency",
                     icon = Icons.Outlined.Translate,
                     checked = preferences.bengaliSmartPhonetic,
-                    showDivider = false,
+                    position = GroupPosition.BOTTOM,
                     onCheckedChange = onUpdateBengaliSmartPhonetic
                 )
             }
@@ -135,13 +138,13 @@ fun CorrectionsSuggestionsScreen(
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCategoryHeader(title = "Personalized Learning")
 
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsToggleItem(
                 title = "Learn from Typing",
                 subtitle = "Remember frequently typed words, valid candidate selections, and next-word ngrams",
                 icon = Icons.Outlined.AutoFixHigh,
                 checked = preferences.learnedWordsEnabled,
-                showDivider = true,
+                position = GroupPosition.TOP,
                 onCheckedChange = onUpdateLearnedWordsEnabled
             )
 
@@ -150,7 +153,7 @@ fun CorrectionsSuggestionsScreen(
                 subtitle = "Clear all personalized learned words, bigrams, and prediction history",
                 icon = Icons.Outlined.DeleteOutline,
                 iconTint = Color(0xFFFF5555),
-                showDivider = false,
+                position = GroupPosition.BOTTOM,
                 onClick = { showDeleteDialog = true }
             )
         }
@@ -158,12 +161,14 @@ fun CorrectionsSuggestionsScreen(
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCategoryHeader(title = "Glide & Gesture Typing")
 
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+            val glidePosition = if (preferences.gestureTypingEnabled) GroupPosition.TOP else GroupPosition.ALONE
             SettingsToggleItem(
                 title = "Enable Glide Typing",
                 subtitle = "Type words fluidly by swiping finger across keys without lifting",
                 icon = Icons.Outlined.Gesture,
                 checked = preferences.gestureTypingEnabled,
+                position = glidePosition,
                 onCheckedChange = onUpdateGestureTyping
             )
 
@@ -173,7 +178,7 @@ fun CorrectionsSuggestionsScreen(
                     subtitle = "Draw glowing dynamic comet trail tracing your glide trajectory",
                     icon = Icons.Outlined.Route,
                     checked = preferences.showGestureTrail,
-                    showDivider = false,
+                    position = GroupPosition.BOTTOM,
                     onCheckedChange = onUpdateShowGestureTrail
                 )
             }
@@ -182,12 +187,13 @@ fun CorrectionsSuggestionsScreen(
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCategoryHeader(title = "Text Corrections & Shortcuts")
 
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsToggleItem(
                 title = "Auto-Capitalization",
                 subtitle = "Automatically capitalize the first letter of each sentence",
                 icon = Icons.Outlined.TextFields,
                 checked = preferences.autoCapitalization,
+                position = GroupPosition.TOP,
                 onCheckedChange = onUpdateAutoCapitalization
             )
 
@@ -196,6 +202,7 @@ fun CorrectionsSuggestionsScreen(
                 subtitle = "Quickly double-tap the spacebar to insert a period followed by a space",
                 icon = Icons.Outlined.SpaceBar,
                 checked = preferences.doubleSpacePeriod,
+                position = GroupPosition.MIDDLE,
                 onCheckedChange = onUpdateDoubleSpacePeriod
             )
 
@@ -204,6 +211,7 @@ fun CorrectionsSuggestionsScreen(
                 subtitle = "Automatically insert a space after committing a word from the candidate strip",
                 icon = Icons.Outlined.AutoFixHigh,
                 checked = preferences.autoSpaceAfterSuggestion,
+                position = GroupPosition.MIDDLE,
                 onCheckedChange = onUpdateAutoSpaceAfterSuggestion
             )
 
@@ -212,6 +220,7 @@ fun CorrectionsSuggestionsScreen(
                 subtitle = "Automatically insert a space after comma, period, and sentence terminators",
                 icon = Icons.Outlined.SpaceBar,
                 checked = preferences.autoSpaceAfterPunctuation,
+                position = GroupPosition.MIDDLE,
                 onCheckedChange = onUpdateAutoSpaceAfterPunctuation
             )
 
@@ -220,7 +229,7 @@ fun CorrectionsSuggestionsScreen(
                 subtitle = "Automatically remove space before punctuation marks (except URL and code fields)",
                 icon = Icons.Outlined.Spellcheck,
                 checked = preferences.removeSpaceBeforePunctuation,
-                showDivider = false,
+                position = GroupPosition.BOTTOM,
                 onCheckedChange = onUpdateRemoveSpaceBeforePunctuation
             )
         }

@@ -118,6 +118,7 @@ fun KeyboardLayoutsScreen(
             cardData = englishCard,
             preferences = preferences,
             isEnabled = isEnglishEnabled,
+            position = GroupPosition.ALONE,
             onToggle = {
                 if (!isEnglishLastRemaining || !isEnglishEnabled) {
                     onToggleLayoutEnabled(englishCard.id, !isEnglishEnabled)
@@ -129,7 +130,10 @@ fun KeyboardLayoutsScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         // 2. Bangla Language Group Card (Expandable into separate real keyboard cards)
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsItemCard(
+            position = GroupPosition.ALONE,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        ) {
             val activeBanglaCount = banglaCards.count { preferences.enabledLayoutIds.contains(it.id) }
 
             Column {
@@ -167,7 +171,7 @@ fun KeyboardLayoutsScreen(
                             color = colors.textPrimary
                         )
                         Text(
-                            text = if (isBanglaExpanded) "Borno Phonetic • Probhat" else "$activeBanglaCount active layout(s) • tap to expand",
+                            text = if (isBanglaExpanded) "Borno Phonetic • Probhat • National" else "$activeBanglaCount active layout(s) • tap to expand",
                             fontSize = 12.sp,
                             color = colors.textSecondary
                         )
@@ -193,7 +197,7 @@ fun KeyboardLayoutsScreen(
                     }
                 }
 
-                // Expanded Section: Separate Real Keyboard Cards with Checkboxes
+                // Expanded Section: Separate Real Keyboard Cards with Checkboxes & GroupPosition radii
                 AnimatedVisibility(
                     visible = isBanglaExpanded,
                     enter = expandVertically() + fadeIn(),
@@ -203,16 +207,22 @@ fun KeyboardLayoutsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 14.dp, end = 14.dp, bottom = 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        banglaCards.forEach { cardData ->
+                        banglaCards.forEachIndexed { index, cardData ->
                             val isEnabled = preferences.enabledLayoutIds.contains(cardData.id)
                             val isLastRemaining = preferences.enabledLayoutIds.size == 1 && isEnabled
+                            val itemPos = when (index) {
+                                0 -> GroupPosition.TOP
+                                banglaCards.lastIndex -> GroupPosition.BOTTOM
+                                else -> GroupPosition.MIDDLE
+                            }
 
                             RealKeyboardPreviewCard(
                                 cardData = cardData,
                                 preferences = preferences,
                                 isEnabled = isEnabled,
+                                position = itemPos,
                                 onToggle = {
                                     if (!isLastRemaining || !isEnabled) {
                                         onToggleLayoutEnabled(cardData.id, !isEnabled)
@@ -233,11 +243,13 @@ private fun RealKeyboardPreviewCard(
     preferences: KiebordPreferences,
     isEnabled: Boolean,
     onToggle: () -> Unit,
+    position: GroupPosition = GroupPosition.ALONE,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalSettingsColors.current
     val borderColor = if (isEnabled) colors.accent else colors.cardBorder
     val cardBackground = colors.cardBackground
+    val shape = remember(position) { getGroupItemShape(position) }
 
     val currentScheme = when (preferences.theme) {
         KiebordPreferences.THEME_AMOLED_BLACK -> KeyboardColorScheme.AmoledBlack
@@ -250,12 +262,12 @@ private fun RealKeyboardPreviewCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(shape)
             .background(cardBackground)
             .border(
                 width = if (isEnabled) 1.5.dp else 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(14.dp)
+                shape = shape
             )
             .clickable(onClick = onToggle)
             .padding(12.dp)

@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Keyboard
@@ -31,17 +30,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,44 +50,27 @@ fun SettingsMainScreen(
     onNavigate: (SettingsScreen) -> Unit
 ) {
     val scrollState = rememberScrollState()
-    var testText by remember { mutableStateOf("") }
-
-    val themeBadge = when (preferences.theme) {
-        KiebordPreferences.THEME_AMOLED_BLACK -> "AMOLED"
-        KiebordPreferences.THEME_TOKYO_NIGHT -> "Tokyo Night"
-        KiebordPreferences.THEME_NORD -> "Nord"
-        KiebordPreferences.THEME_DEFAULT_LIGHT -> "Light"
-        else -> "Dark"
-    }
-
-    val layoutBadge = when (preferences.primaryLayoutId) {
-        KiebordPreferences.LAYOUT_BN_BORNO -> "Borno"
-        KiebordPreferences.LAYOUT_BN_PROBHAT -> "Probhat"
-        KiebordPreferences.LAYOUT_BN_NATIONAL -> "Jatiyo"
-        else -> "QWERTY"
-    }
+    val colors = LocalSettingsColors.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(horizontal = 20.dp, vertical = 20.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-        val colors = LocalSettingsColors.current
-
-        // Activation / Status Card (inspired by SetupStatusPreference)
+        // Activation / Status Banner (inspired by SetupStatusPreference)
         if (!isImeEnabled || !isImeSelected) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = colors.warningCardBg)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     Text(
                         text = if (!isImeEnabled) "Keyboard Disabled" else "Keyboard Not Active",
-                        fontSize = 15.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.warningCardText
                     )
@@ -105,19 +80,22 @@ fun SettingsMainScreen(
                         } else {
                             "Kiebord is enabled, but not set as your active input method."
                         },
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
                         color = colors.warningCardSubtext,
-                        modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
+                        modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Button(
                             onClick = if (!isImeEnabled) onOpenSettings else onSwitchIme,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp),
+                            shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = colors.warningBtnBg,
                                 contentColor = colors.warningBtnText
@@ -131,14 +109,15 @@ fun SettingsMainScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (!isImeEnabled) "Turn On" else "Switch Back",
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
                             )
                         }
 
                         Button(
                             onClick = { onNavigate(SettingsScreen.Onboarding) },
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.height(44.dp),
+                            shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = colors.iconBackground,
                                 contentColor = colors.textPrimary
@@ -156,41 +135,42 @@ fun SettingsMainScreen(
         } else {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = colors.activeCardBg)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.CheckCircle,
                         contentDescription = null,
                         tint = colors.activeCardIcon,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Kiebord is Active",
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = colors.activeCardText
                         )
                         Text(
                             text = "Ready to type in all applications",
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             color = colors.activeCardSubtext
                         )
                     }
                     Button(
                         onClick = { onNavigate(SettingsScreen.Onboarding) },
-                        shape = RoundedCornerShape(8.dp),
+                        shape = CircleShape,
+                        modifier = Modifier.height(36.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.activeCardBg,
-                            contentColor = colors.activeCardText
+                            containerColor = colors.iconBackground,
+                            contentColor = colors.textPrimary
                         )
                     ) {
                         Text(
@@ -203,86 +183,54 @@ fun SettingsMainScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         SettingsCategoryHeader(title = "Configuration")
 
-        SettingsCard {
+        SettingsGroup {
             SettingsNavigationItem(
                 title = "Appearance & Themes",
+                subtitle = "Themes, key borders & row height",
                 icon = Icons.Outlined.Palette,
-                badge = themeBadge,
+                position = GroupPosition.TOP,
                 onClick = { onNavigate(SettingsScreen.AppearanceThemes) }
             )
 
             SettingsNavigationItem(
                 title = "Keyboard Layouts",
+                subtitle = "English, Borno Phonetic, Probhat & National",
                 icon = Icons.Outlined.Keyboard,
-                badge = layoutBadge,
+                position = GroupPosition.MIDDLE,
                 onClick = { onNavigate(SettingsScreen.KeyboardLayouts) }
             )
 
             SettingsNavigationItem(
                 title = "Preferences",
+                subtitle = "Haptics, vibration, one-handed mode & sound",
                 icon = Icons.Outlined.Tune,
+                position = GroupPosition.MIDDLE,
                 onClick = { onNavigate(SettingsScreen.Preferences) }
             )
 
             SettingsNavigationItem(
                 title = "Corrections & Suggestions",
+                subtitle = "Next-word prediction, smart transliteration & suggestions",
                 icon = Icons.Outlined.Spellcheck,
-                showDivider = false,
+                position = GroupPosition.BOTTOM,
                 onClick = { onNavigate(SettingsScreen.CorrectionsSuggestions) }
             )
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
-        SettingsCategoryHeader(title = "System & Security")
+        Spacer(modifier = Modifier.height(20.dp))
+        SettingsCategoryHeader(title = "System & About")
 
-        SettingsCard {
+        SettingsGroup {
             SettingsNavigationItem(
                 title = "About Kiebord",
+                subtitle = "Version 0.1.0 • Privacy & open source",
                 icon = Icons.Outlined.Info,
-                badge = "v0.1.0",
-                showDivider = false,
+                position = GroupPosition.ALONE,
                 onClick = { onNavigate(SettingsScreen.About) }
             )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-        SettingsCategoryHeader(title = "Interactive Test Sandbox")
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = colors.cardBackground)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Tap below to test your settings live:",
-                    fontSize = 12.sp,
-                    color = colors.textSecondary
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                OutlinedTextField(
-                    value = testText,
-                    onValueChange = { testText = it },
-                    placeholder = {
-                        Text(text = "Try typing in English or বাংলা...", color = colors.textSecondary.copy(alpha = 0.7f))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = colors.inputBackground,
-                        unfocusedContainerColor = colors.inputBackground,
-                        focusedBorderColor = colors.accent,
-                        unfocusedBorderColor = colors.inputBorder,
-                        focusedTextColor = colors.textPrimary,
-                        unfocusedTextColor = colors.textPrimary
-                    )
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))

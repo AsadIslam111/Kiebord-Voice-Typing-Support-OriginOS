@@ -119,33 +119,69 @@ fun AboutScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // Reset Settings button
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        ) {
-            OutlinedButton(
-                onClick = { showResetDialog = true },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFFF7768E)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Reset All Settings to Defaults",
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+        SettingsCategoryHeader(title = "Privacy & Core Principles")
+
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SettingsNavigationItem(
+                title = "100% Offline & Private",
+                subtitle = "Zero internet permissions. Your keystrokes and data never leave your device.",
+                icon = Icons.Outlined.Lock,
+                position = GroupPosition.TOP,
+                onClick = {}
+            )
+
+            SettingsNavigationItem(
+                title = "Isolated Local Storage",
+                subtitle = "Learned dictionary and user data are securely kept in private app sandbox.",
+                icon = Icons.Outlined.Shield,
+                position = GroupPosition.MIDDLE,
+                onClick = {}
+            )
+
+            SettingsNavigationItem(
+                title = "Open Source Engine",
+                subtitle = "High-performance native transliteration core and bigram prediction models.",
+                icon = Icons.Outlined.Code,
+                position = GroupPosition.BOTTOM,
+                onClick = {}
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCategoryHeader(title = "Application Information")
+
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SettingsNavigationItem(
+                title = "Version & Build",
+                subtitle = "0.1.0 (Build 1) • Production Release",
+                icon = Icons.Outlined.Info,
+                position = GroupPosition.TOP,
+                onClick = {}
+            )
+
+            SettingsNavigationItem(
+                title = "License",
+                subtitle = "Free & Open Source Software (GPL-3.0 / Apache-2.0)",
+                icon = Icons.Outlined.CheckCircle,
+                position = GroupPosition.BOTTOM,
+                onClick = {}
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCategoryHeader(title = "Maintenance & Reset")
+
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SettingsNavigationItem(
+                title = "Reset All Settings to Defaults",
+                subtitle = "Restore all layout, theming, haptic, and suggestion options to factory state",
+                icon = Icons.Outlined.Refresh,
+                iconTint = Color(0xFFF7768E),
+                position = GroupPosition.ALONE,
+                onClick = { showResetDialog = true }
+            )
         }
     }
 

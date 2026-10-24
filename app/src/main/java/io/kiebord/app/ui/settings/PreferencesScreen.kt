@@ -66,91 +66,94 @@ fun PreferencesScreen(
     ) {
         SettingsCategoryHeader(title = "Haptic & Acoustic Feedback")
 
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsToggleItem(
                 title = "Vibrate on Keypress",
                 subtitle = "Subtle tactile feedback on key taps",
                 icon = Icons.Outlined.Vibration,
                 checked = preferences.vibrateOnKeypress,
+                position = GroupPosition.TOP,
                 onCheckedChange = onUpdateVibrate
             )
 
             if (preferences.vibrateOnKeypress) {
                 // Feedback Type Selector: Haptic vs Vibration
                 val colors = LocalSettingsColors.current
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val isHaptic = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_HAPTIC
-                    val hapticBg = if (isHaptic) (if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)) else colors.inputBackground
-                    val hapticBorder = if (isHaptic) colors.accent else colors.inputBorder
-                    val hapticTint = if (isHaptic) colors.accent else colors.textSecondary
-                    val hapticText = if (isHaptic) colors.accent else colors.textPrimary
-
-                    Box(
+                SettingsItemCard(position = GroupPosition.MIDDLE) {
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(hapticBg)
-                            .border(1.dp, hapticBorder, RoundedCornerShape(10.dp))
-                            .clickable { onUpdateVibrationType(KiebordPreferences.VIBRATION_TYPE_HAPTIC) }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        val isHaptic = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_HAPTIC
+                        val hapticBg = if (isHaptic) (if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)) else colors.inputBackground
+                        val hapticBorder = if (isHaptic) colors.accent else colors.inputBorder
+                        val hapticTint = if (isHaptic) colors.accent else colors.textSecondary
+                        val hapticText = if (isHaptic) colors.accent else colors.textPrimary
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(hapticBg)
+                                .border(1.dp, hapticBorder, RoundedCornerShape(10.dp))
+                                .clickable { onUpdateVibrationType(KiebordPreferences.VIBRATION_TYPE_HAPTIC) }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.TouchApp,
-                                contentDescription = null,
-                                tint = hapticTint,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "Haptic",
-                                fontSize = 13.sp,
-                                fontWeight = if (isHaptic) FontWeight.Bold else FontWeight.Medium,
-                                color = hapticText
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.TouchApp,
+                                    contentDescription = null,
+                                    tint = hapticTint,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Haptic",
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isHaptic) FontWeight.Bold else FontWeight.Medium,
+                                    color = hapticText
+                                )
+                            }
                         }
-                    }
 
-                    val isVibration = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_VIBRATION
-                    val vibrationBg = if (isVibration) (if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)) else colors.inputBackground
-                    val vibrationBorder = if (isVibration) colors.accent else colors.inputBorder
-                    val vibrationTint = if (isVibration) colors.accent else colors.textSecondary
-                    val vibrationText = if (isVibration) colors.accent else colors.textPrimary
+                        val isVibration = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_VIBRATION
+                        val vibrationBg = if (isVibration) (if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)) else colors.inputBackground
+                        val vibrationBorder = if (isVibration) colors.accent else colors.inputBorder
+                        val vibrationTint = if (isVibration) colors.accent else colors.textSecondary
+                        val vibrationText = if (isVibration) colors.accent else colors.textPrimary
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(vibrationBg)
-                            .border(1.dp, vibrationBorder, RoundedCornerShape(10.dp))
-                            .clickable { onUpdateVibrationType(KiebordPreferences.VIBRATION_TYPE_VIBRATION) }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(vibrationBg)
+                                .border(1.dp, vibrationBorder, RoundedCornerShape(10.dp))
+                                .clickable { onUpdateVibrationType(KiebordPreferences.VIBRATION_TYPE_VIBRATION) }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Vibration,
-                                contentDescription = null,
-                                tint = vibrationTint,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "Vibration",
-                                fontSize = 13.sp,
-                                fontWeight = if (isVibration) FontWeight.Bold else FontWeight.Medium,
-                                color = vibrationText
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Vibration,
+                                    contentDescription = null,
+                                    tint = vibrationTint,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Vibration",
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isVibration) FontWeight.Bold else FontWeight.Medium,
+                                    color = vibrationText
+                                )
+                            }
                         }
                     }
                 }
@@ -171,6 +174,7 @@ fun PreferencesScreen(
                         valueRange = 10f..100f,
                         steps = 8,
                         valueLabel = strengthLabel,
+                        position = GroupPosition.MIDDLE,
                         onValueChange = { onUpdateVibrationStrength(it.toInt()) }
                     )
                 }
@@ -181,7 +185,7 @@ fun PreferencesScreen(
                 subtitle = "Audible click feedback when typing",
                 icon = Icons.AutoMirrored.Outlined.VolumeUp,
                 checked = preferences.soundOnKeypress,
-                showDivider = false,
+                position = GroupPosition.BOTTOM,
                 onCheckedChange = onUpdateSound
             )
         }
@@ -189,12 +193,13 @@ fun PreferencesScreen(
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCategoryHeader(title = "Key Display & Popups")
 
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsToggleItem(
                 title = "Dedicated Number Row",
                 subtitle = "Display persistent 5th row of digits above letter keys",
                 icon = Icons.Outlined.Numbers,
                 checked = preferences.showNumberRow,
+                position = GroupPosition.TOP,
                 onCheckedChange = onUpdateShowNumberRow
             )
 
@@ -203,6 +208,7 @@ fun PreferencesScreen(
                 subtitle = "Show secondary symbol hints on the corner of keycaps",
                 icon = Icons.Outlined.Layers,
                 checked = preferences.showSecondaryKeys,
+                position = GroupPosition.MIDDLE,
                 onCheckedChange = onUpdateShowSecondaryKeys
             )
 
@@ -211,7 +217,7 @@ fun PreferencesScreen(
                 subtitle = "Show circular character preview popup when touching keys",
                 icon = Icons.Outlined.SmartButton,
                 checked = preferences.showKeyPopups,
-                showDivider = false,
+                position = GroupPosition.BOTTOM,
                 onCheckedChange = onUpdateShowKeyPopups
             )
         }
@@ -219,7 +225,7 @@ fun PreferencesScreen(
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCategoryHeader(title = "Key Touch & Timing")
 
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             val delayMs = preferences.longPressDelayMs
             val delayLabel = "$delayMs ms"
 
@@ -231,7 +237,7 @@ fun PreferencesScreen(
                 valueRange = 150f..600f,
                 steps = 8,
                 valueLabel = delayLabel,
-                showDivider = false,
+                position = GroupPosition.ALONE,
                 onValueChange = { onUpdateLongPressDelay(it.toInt()) }
             )
         }
@@ -239,12 +245,13 @@ fun PreferencesScreen(
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCategoryHeader(title = "Smart Gestures")
 
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsToggleItem(
                 title = "Long-Press Repeat Delete",
                 subtitle = "Holding backspace repeats deletion continuously like standard keyboard",
                 icon = Icons.AutoMirrored.Outlined.Backspace,
                 checked = preferences.longPressDeleteEnabled,
+                position = GroupPosition.TOP,
                 onCheckedChange = onUpdateLongPressDelete
             )
 
@@ -252,6 +259,7 @@ fun PreferencesScreen(
                 title = "Swipe Delete (Selective): By Word",
                 subtitle = "Swiping left from backspace selects and deletes text word-by-word",
                 selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD,
+                position = GroupPosition.MIDDLE,
                 onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_WORD) }
             )
 
@@ -259,6 +267,7 @@ fun PreferencesScreen(
                 title = "Swipe Delete (Selective): By Character",
                 subtitle = "Swiping left from backspace selects and deletes text character-by-character",
                 selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_CHARACTER,
+                position = GroupPosition.MIDDLE,
                 onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_CHARACTER) }
             )
 
@@ -267,7 +276,7 @@ fun PreferencesScreen(
                 subtitle = "Slide thumb horizontally across spacebar to position cursor",
                 icon = Icons.Outlined.TouchApp,
                 checked = preferences.cursorTrackpadEnabled,
-                showDivider = false,
+                position = GroupPosition.BOTTOM,
                 onCheckedChange = onUpdateCursorTrackpad
             )
         }
@@ -275,11 +284,12 @@ fun PreferencesScreen(
         Spacer(modifier = Modifier.height(8.dp))
         SettingsCategoryHeader(title = "Layout Alignment & Ergonomics")
 
-        SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsRadioOption(
                 title = "Standard Centered (Full Width)",
                 subtitle = "Full display width keyboard",
                 selected = preferences.oneHandedMode == KiebordPreferences.ONE_HANDED_OFF,
+                position = GroupPosition.TOP,
                 onSelect = { onUpdateOneHandedMode(KiebordPreferences.ONE_HANDED_OFF) }
             )
 
@@ -287,6 +297,7 @@ fun PreferencesScreen(
                 title = "One-Handed (Left Hand)",
                 subtitle = "Compact layout aligned toward left edge",
                 selected = preferences.oneHandedMode == KiebordPreferences.ONE_HANDED_LEFT,
+                position = GroupPosition.MIDDLE,
                 onSelect = { onUpdateOneHandedMode(KiebordPreferences.ONE_HANDED_LEFT) }
             )
 
@@ -294,7 +305,7 @@ fun PreferencesScreen(
                 title = "One-Handed (Right Hand)",
                 subtitle = "Compact layout aligned toward right edge",
                 selected = preferences.oneHandedMode == KiebordPreferences.ONE_HANDED_RIGHT,
-                showDivider = false,
+                position = GroupPosition.BOTTOM,
                 onSelect = { onUpdateOneHandedMode(KiebordPreferences.ONE_HANDED_RIGHT) }
             )
         }
