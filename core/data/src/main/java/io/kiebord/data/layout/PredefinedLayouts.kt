@@ -120,7 +120,7 @@ object PredefinedLayouts {
                     KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
                     KeyDef(",", flickUp = null, moreKeys = listOf("<", ">", "[", "]", "{", "}"), widthWeight = 1.0f),
                     KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
-                    KeyDef(".", flickUp = ">", widthWeight = 1.0f, moreKeysColumns = 9, moreKeys = listOf(",", ".", "?", "!", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "&")),
+                    KeyDef("।", flickUp = ">", widthWeight = 1.0f, moreKeysColumns = 9, moreKeys = listOf(",", ".", "?", "!", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "&")),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
             )
@@ -176,6 +176,66 @@ object PredefinedLayouts {
                     KeyDef("ৃ", "।", flickUp = "।", moreKeys = listOf("।")),
                     KeyDef("্", "ঁ", flickUp = "ঁ", moreKeys = listOf("ঁ", "়")),
                     KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.25f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("?১২৩", type = KeyType.SYMBOLS, widthWeight = 1.5f, slidingInput = true),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
+                    KeyDef(",", widthWeight = 1.0f, moreKeys = listOf(";", ":", "<", ">")),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
+                    KeyDef("।", flickUp = ">", widthWeight = 1.0f, moreKeysColumns = 9, moreKeys = listOf(",", ".", "?", "!", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "&")),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
+                )
+            )
+        )
+    )
+
+    val BengaliNational = KeyboardLayoutDef(
+        id = "bn_national",
+        name = "Bengali (Jatiyo / BSTI)",
+        language = "bn",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("ঙ", "ং", flickUp = "ং", moreKeys = listOf("ঙ্ক")),
+                    KeyDef("য", "য়", flickUp = "য়", moreKeys = listOf("ঞ্ঝ")),
+                    KeyDef("ড", "ঢ", flickUp = "ঢ"),
+                    KeyDef("প", "ফ", flickUp = "ফ"),
+                    KeyDef("ট", "ঠ", flickUp = "ঠ"),
+                    KeyDef("চ", "ছ", flickUp = "ছ", moreKeys = listOf("ঞ্ছ")),
+                    KeyDef("জ", "ঝ", flickUp = "ঝ", moreKeys = listOf("জ্ঞ")),
+                    KeyDef("হ", "ঞ", flickUp = "ঞ", moreKeys = listOf("ঞ্জ")),
+                    KeyDef("গ", "ঘ", flickUp = "ঘ", moreKeys = listOf("ঙ্গ")),
+                    KeyDef("ড়", "ঢ়", flickUp = "ঢ়")
+                )
+            ),
+            KeyRow(
+                keys = listOf(
+                    KeyDef("ৃ", "র্", flickUp = "র্", moreKeys = listOf("ঋ")),
+                    KeyDef("ু", "ূ", flickUp = "ূ", moreKeys = listOf("উ", "ঊ")),
+                    KeyDef("ি", "ী", flickUp = "ী", moreKeys = listOf("ই", "ঈ")),
+                    KeyDef("া", "অ", flickUp = "অ", moreKeys = listOf("আ")),
+                    KeyDef("্", "ঁ", flickUp = "ঁ", moreKeys = listOf("়")),
+                    KeyDef("ব", "ভ", flickUp = "ভ"),
+                    KeyDef("ক", "খ", flickUp = "খ", moreKeys = listOf("ক্ষ")),
+                    KeyDef("ত", "থ", flickUp = "থ", moreKeys = listOf("ৎ")),
+                    KeyDef("দ", "ধ", flickUp = "ধ")
+                ),
+                startPaddingWeight = 0.5f,
+                endPaddingWeight = 0.5f
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef(type = KeyType.SHIFT, icon = "shift", widthWeight = 1.5f),
+                    KeyDef("্য", "্য", flickUp = "্য", moreKeys = listOf("্র", "ACTION_SELECT_ALL")),
+                    KeyDef("ো", "ৌ", flickUp = "ৌ", moreKeys = listOf("ও", "ঔ", "ACTION_CUT")),
+                    KeyDef("ে", "ৈ", flickUp = "ৈ", moreKeys = listOf("এ", "ঐ", "ACTION_COPY")),
+                    KeyDef("র", "ল", flickUp = "ল", moreKeys = listOf("ব়্য", "র\u200d্য", "ACTION_PASTE")),
+                    KeyDef("ন", "ণ", flickUp = "ণ", moreKeys = listOf("ঞ্চ")),
+                    KeyDef("স", "ষ", flickUp = "ষ", moreKeys = listOf("ষ্ণ")),
+                    KeyDef("ম", "শ", flickUp = "শ", moreKeys = listOf("ঃ", "হ্ম")),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.5f)
                 )
             ),
             KeyRow(
@@ -313,15 +373,17 @@ object PredefinedLayouts {
         return when (id) {
             "bn_borno" -> BengaliBorno
             "bn_probhat" -> BengaliProbhat
+            "bn_national" -> BengaliNational
             else -> EnglishQwerty
         }
     }
 
     fun displayName(id: String): String {
         return when (id) {
-            "bn_borno" -> "বাংলা (বর্ণ ফোনেটিক)"
-            "bn_probhat" -> "বাংলা (प्रभात)"
-            else -> "English (QWERTY)"
+            "bn_borno" -> "বর্ণ ফোনেটিক"
+            "bn_probhat" -> "প্রভাত"
+            "bn_national" -> "জাতীয় (BSTI)"
+            else -> "English"
         }
     }
 }

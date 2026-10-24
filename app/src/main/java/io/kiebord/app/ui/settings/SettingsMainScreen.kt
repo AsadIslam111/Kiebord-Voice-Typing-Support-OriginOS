@@ -70,6 +70,7 @@ fun SettingsMainScreen(
     val layoutBadge = when (preferences.primaryLayoutId) {
         KiebordPreferences.LAYOUT_BN_BORNO -> "Borno"
         KiebordPreferences.LAYOUT_BN_PROBHAT -> "Probhat"
+        KiebordPreferences.LAYOUT_BN_NATIONAL -> "Jatiyo"
         else -> "QWERTY"
     }
 

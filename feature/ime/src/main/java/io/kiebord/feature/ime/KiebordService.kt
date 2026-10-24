@@ -116,7 +116,8 @@ class KiebordService : InputMethodService() {
                 val enabledIds = prefs.enabledLayoutIds.toList().filter { id ->
                     id == KiebordPreferences.LAYOUT_EN_QWERTY ||
                     id == KiebordPreferences.LAYOUT_BN_BORNO ||
-                    id == KiebordPreferences.LAYOUT_BN_PROBHAT
+                    id == KiebordPreferences.LAYOUT_BN_PROBHAT ||
+                    id == KiebordPreferences.LAYOUT_BN_NATIONAL
                 }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) }
 
                 val targetPrimaryId = if (enabledIds.contains(prefs.primaryLayoutId)) {
@@ -125,11 +126,7 @@ class KiebordService : InputMethodService() {
                     enabledIds.first()
                 }
 
-                val targetPrimary = when (targetPrimaryId) {
-                    KiebordPreferences.LAYOUT_BN_BORNO -> PredefinedLayouts.BengaliBorno
-                    KiebordPreferences.LAYOUT_BN_PROBHAT -> PredefinedLayouts.BengaliProbhat
-                    else -> PredefinedLayouts.EnglishQwerty
-                }
+                val targetPrimary = PredefinedLayouts.fromId(targetPrimaryId)
                 if (primaryAlphaLayout.id != targetPrimary.id || !enabledIds.contains(primaryAlphaLayout.id)) {
                     primaryAlphaLayout = targetPrimary
                     if (!isSymbolsMode) {
@@ -249,7 +246,8 @@ class KiebordService : InputMethodService() {
                     enabledLayoutIds = preferencesState.enabledLayoutIds.toList().filter { id ->
                         id == KiebordPreferences.LAYOUT_EN_QWERTY ||
                         id == KiebordPreferences.LAYOUT_BN_BORNO ||
-                        id == KiebordPreferences.LAYOUT_BN_PROBHAT
+                        id == KiebordPreferences.LAYOUT_BN_PROBHAT ||
+                        id == KiebordPreferences.LAYOUT_BN_NATIONAL
                     }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) },
                     onSwitchToLayout = ::switchToLayout,
                     onOpenLanguagesSettings = ::openLanguagesSettings,
@@ -462,8 +460,8 @@ class KiebordService : InputMethodService() {
                             commitCharacterWithPunctuationHandling(ic, text)
                         }
                     }
-                    // Bengali Probhat layout
-                    activeLayout.id == "bn_probhat" -> {
+                    // Bengali Probhat and National (BSTI) layouts
+                    activeLayout.id == "bn_probhat" || activeLayout.id == "bn_national" -> {
                         if (isBengaliChar(text)) {
                             composingBuffer.append(text)
                             ic.setComposingText(composingBuffer.toString(), 1)
@@ -650,18 +648,15 @@ class KiebordService : InputMethodService() {
                 val enabledIds = preferencesState.enabledLayoutIds.toList().filter { id ->
                     id == KiebordPreferences.LAYOUT_EN_QWERTY ||
                     id == KiebordPreferences.LAYOUT_BN_BORNO ||
-                    id == KiebordPreferences.LAYOUT_BN_PROBHAT
+                    id == KiebordPreferences.LAYOUT_BN_PROBHAT ||
+                    id == KiebordPreferences.LAYOUT_BN_NATIONAL
                 }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) }
 
                 if (enabledIds.size > 1) {
                     val currentIndex = enabledIds.indexOf(primaryAlphaLayout.id)
                     val nextIndex = if (currentIndex >= 0) (currentIndex + 1) % enabledIds.size else 0
                     val nextId = enabledIds[nextIndex]
-                    primaryAlphaLayout = when (nextId) {
-                        KiebordPreferences.LAYOUT_BN_BORNO -> PredefinedLayouts.BengaliBorno
-                        KiebordPreferences.LAYOUT_BN_PROBHAT -> PredefinedLayouts.BengaliProbhat
-                        else -> PredefinedLayouts.EnglishQwerty
-                    }
+                    primaryAlphaLayout = PredefinedLayouts.fromId(nextId)
                     if (!isSymbolsMode) {
                         activeLayout = primaryAlphaLayout
                     }
@@ -1592,7 +1587,7 @@ class KiebordService : InputMethodService() {
         }
 
         when (activeLayout.id) {
-            "bn_probhat" -> {
+            "bn_probhat", "bn_national" -> {
                 val prefix = composingBuffer.toString()
                 if (prefix.isNotEmpty()) {
                     val learned = if (preferencesState.learnedWordsEnabled) {

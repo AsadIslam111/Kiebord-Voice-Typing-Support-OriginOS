@@ -36,7 +36,7 @@ pub fn load_dictionary_path(lang: &str, path: &Path) -> bool {
     let static_slice: &'static [u8] = &mmap_ref[..];
     if let Ok(dict) = BinaryDict::from_bytes(static_slice) {
         match lang {
-            "bn" | "bn_borno" | "bn_probhat" => {
+            "bn" | "bn_borno" | "bn_probhat" | "bn_national" => {
                 let _ = BN_BINARY_DICT.set(dict);
                 true
             }

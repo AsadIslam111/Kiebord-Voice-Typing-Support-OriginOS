@@ -837,11 +837,10 @@ fun KeyboardRootView(
 
                         row.keys.forEach { key ->
                             val effectiveKey = if (key.type == KeyType.SPACE && key.label.isBlank()) {
-                                val spaceLabel = when {
-                                    displayLayout.id.startsWith("symbols") -> "Space"
-                                    displayLayout.id == "bn_borno" -> "বাংলা (Borno)"
-                                    displayLayout.id == "bn_probhat" -> "বাংলা (Probhat)"
-                                    else -> "English"
+                                val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
+                                    "Space"
+                                } else {
+                                    PredefinedLayouts.displayName(displayLayout.id)
                                 }
                                 key.copy(label = spaceLabel)
                             } else {

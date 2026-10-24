@@ -254,7 +254,7 @@ impl KeyProximity {
 
         // 3. Fallback to predefined layout proximities
         match layout_id {
-            "bn_borno" => BORNO_PROXIMITY.get_or_init(Self::borno_phonetic),
+            "bn_borno" | "bn_national" => BORNO_PROXIMITY.get_or_init(Self::borno_phonetic),
             "bn_probhat" => PROBHAT_PROXIMITY.get_or_init(Self::probhat),
             "bn" => BORNO_PROXIMITY.get_or_init(Self::borno_phonetic),
             "en_qwerty" | "en" => QWERTY_PROXIMITY.get_or_init(Self::qwerty),

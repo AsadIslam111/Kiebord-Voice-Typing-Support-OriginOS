@@ -92,6 +92,13 @@ fun KeyboardLayoutsScreen(
             badge = "প্রভাত",
             description = "",
             layoutDef = PredefinedLayouts.BengaliProbhat
+        ),
+        LayoutCardData(
+            id = KiebordPreferences.LAYOUT_BN_NATIONAL,
+            name = "National (Jatiyo)",
+            badge = "জাতীয়",
+            description = "National BSTI layout",
+            layoutDef = PredefinedLayouts.BengaliNational
         )
     )
 
