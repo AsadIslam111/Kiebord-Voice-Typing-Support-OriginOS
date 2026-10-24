@@ -351,9 +351,13 @@ fun KeyboardRootView(
     val isQwertyBasedLayout = displayLayout.id == "en_qwerty" || displayLayout.id == "bn_borno"
     val isEffectiveGestureTypingEnabled = gestureTypingEnabled && isQwertyBasedLayout
 
-    // Clear key coordinate cache whenever active layout changes to prevent stale hits
-    LaunchedEffect(isSlidingSymbolMode, displayLayout.id) {
+    // Clear key coordinate cache whenever primary active layout changes (not during sliding symbol mode)
+    LaunchedEffect(layout.id) {
         keyCoordinatesMap.clear()
+        gestureTrail = emptyList()
+    }
+
+    LaunchedEffect(isSlidingSymbolMode) {
         gestureTrail = emptyList()
         if (!isSlidingSymbolMode) {
             slidingDwellJob?.cancel()
@@ -683,11 +687,20 @@ fun KeyboardRootView(
                     }
 
                     val openMoreKeysForAnchor: (KeyDef, Rect) -> Unit = { keyDef, keyRect ->
+                        val itemWidthPx = with(density) { (42 * scaleFactor).dp.toPx() }
+                        val colGapPx = with(density) { (3 * scaleFactor).dp.toPx() }
+                        val layoutResult = MoreKeysLayoutHelper.computeLayout(
+                            itemCount = keyDef.moreKeys.size,
+                            columnsHint = keyDef.moreKeysColumns,
+                            anchorCenterX = keyRect.center.x,
+                            keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f,
+                            columnWidthPx = itemWidthPx + colGapPx
+                        )
                         moreKeysState = MoreKeysPopupState(
                             anchorKey = keyDef,
                             anchorRect = keyRect,
                             items = keyDef.moreKeys,
-                            selectedIndex = 0
+                            selectedIndex = layoutResult.defaultItemIndex
                         )
                     }
 
@@ -821,28 +834,19 @@ fun KeyboardRootView(
                         moreKeysState = null
                     }
 
-                    // Optional 5th Number Row at the top
-                    if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
-                        NumberRowBar(
-                            language = displayLayout.language,
-                            height = (44 * scaleFactor).dp,
-                            rowHeight = keyRowHeight,
-                            showKeyBorders = showKeyBorders,
-                            showKeyPopups = showKeyPopups,
-                            isInteractive = isKeysInteractive,
-                            onKeyPress = handleKeyPress,
-                            onKeyTap = onKeyTap,
-                            onKeyLongPress = onKeyLongPress,
-                            onShowMoreKeys = handleShowMoreKeys,
-                            onMoreKeysHover = handleMoreKeysHover,
-                            onMoreKeysCommit = handleMoreKeysCommit
-                        )
+                    val keyboardRows = remember(displayLayout, showNumberRow) {
+                        if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
+                            listOf(PredefinedLayouts.createNumberRow(displayLayout.language)) + displayLayout.rows
+                        } else {
+                            displayLayout.rows
+                        }
                     }
 
                     // Keyboard rows (stable layout without recomposition shifts)
-                    displayLayout.rows.forEachIndexed { rowIndex, row ->
-                        val isBottomRow = rowIndex == displayLayout.rows.lastIndex
-                        val currentRowHeight = if (displayLayout.id.startsWith("symbols") && displayLayout.rows.size == 5 && rowIndex == 0) {
+                    keyboardRows.forEachIndexed { rowIndex, row ->
+                        val isBottomRow = rowIndex == keyboardRows.lastIndex
+                        val isTopNumberRow = showNumberRow && rowIndex == 0
+                        val currentRowHeight = if (isTopNumberRow) {
                             (44 * scaleFactor).dp
                         } else {
                             keyRowHeight
@@ -851,6 +855,7 @@ fun KeyboardRootView(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(currentRowHeight)
+                                .then(if (isTopNumberRow) Modifier.padding(bottom = 2.dp) else Modifier)
                         ) {
                         if (row.startPaddingDp > 0f) {
                             Spacer(
@@ -867,16 +872,20 @@ fun KeyboardRootView(
                             )
                         }
 
-                        row.keys.forEach { key ->
-                            val effectiveKey = if (key.type == KeyType.SPACE && key.label.isBlank()) {
-                                val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
-                                    "Space"
-                                } else {
-                                    PredefinedLayouts.displayName(displayLayout.id)
+                        row.keys.forEachIndexed { keyIndex, key ->
+                            val effectiveKey = when {
+                                key.type == KeyType.SPACE && key.label.isBlank() -> {
+                                    val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
+                                        "Space"
+                                    } else {
+                                        PredefinedLayouts.displayName(displayLayout.id)
+                                    }
+                                    key.copy(label = spaceLabel)
                                 }
-                                key.copy(label = spaceLabel)
-                            } else {
-                                key
+                                isSlidingSymbolMode && isBottomRow && keyIndex == 0 -> {
+                                    key.copy(slidingInput = true)
+                                }
+                                else -> key
                             }
 
                             KeycapView(
@@ -983,7 +992,7 @@ fun KeyboardRootView(
 
                                     val currentMoreKeys = moreKeysState
                                     if (currentMoreKeys != null) {
-                                        val dismissThresholdPx = with(density) { (50 * scaleFactor).dp.toPx() }
+                                        val dismissThresholdPx = with(density) { (120 * scaleFactor).dp.toPx() }
                                         if (currentFingerInRoot.y > currentMoreKeys.anchorRect.bottom + dismissThresholdPx) {
                                             moreKeysState = null
                                         } else {

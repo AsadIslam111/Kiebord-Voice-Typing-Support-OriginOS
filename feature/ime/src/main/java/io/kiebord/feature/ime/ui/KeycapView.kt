@@ -238,6 +238,12 @@ fun KeycapView(
                                 }
                             } else if (initialKey.type == KeyType.SPACE) {
                                 // Handled via spacebarDwellJob
+                            } else if (initialKey.slidingInput) {
+                                isSlidingDrag = true
+                                isPressed = false
+                                if (coords != null && coords.isAttached) {
+                                    currentOnSlidingStart.value(initialKey, coords, initialDownPos)
+                                }
                             } else if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
                                 isMoreKeysActive = true
                                 currentOnShowMoreKeys.value(initialKey, coords)

@@ -71,6 +71,18 @@ fun QuickSymbolDragOverlay(
                 radius = 5.dp.toPx(),
                 center = start
             )
+
+            // Tactile drag handle circle at current finger position
+            drawCircle(
+                color = accentColor,
+                radius = 8.dp.toPx(),
+                center = current
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.95f),
+                radius = 3.5.dp.toPx(),
+                center = current
+            )
         }
 
         // 2. Standard circular key preview popup above the hovered key (if morekeys popup is not currently open)
