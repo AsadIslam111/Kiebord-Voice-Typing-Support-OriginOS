@@ -13,6 +13,7 @@ import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
 import android.view.Window
+import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
@@ -66,6 +67,8 @@ class KiebordService : InputMethodService() {
     private val composingBuffer = StringBuilder()
     private val gestureDecoder = CrossLanguageGestureDecoder()
     private var lastGestureCommittedWord: String = ""
+    private var lastSpaceTapTime: Long = 0L
+    private var lastAutoSpacePunctuationTime: Long = 0L
 
     private fun isTransliterationLayout(): Boolean {
         return TransliterationManagerFactory.isTransliterationLayout(activeLayout.id)
@@ -203,6 +206,8 @@ class KiebordService : InputMethodService() {
                         updateSuggestions()
                     },
                     onGestureCommit = ::handleGestureCommit,
+                    gestureTypingEnabled = preferencesState.gestureTypingEnabled,
+                    showGestureTrail = preferencesState.showGestureTrail,
                     initialRowHeight = (54 * preferencesState.keyboardHeightScale).dp,
                     defaultShowNumberRow = preferencesState.showNumberRow,
                     onNumberRowToggle = { enabled ->
@@ -278,12 +283,16 @@ class KiebordService : InputMethodService() {
         getTransliterationManager().reset()
         composingBuffer.clear()
         lastGestureCommittedWord = ""
+        lastSpaceTapTime = 0L
+        lastAutoSpacePunctuationTime = 0L
         updateSuggestions()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         finishComposing()
+        lastSpaceTapTime = 0L
+        lastAutoSpacePunctuationTime = 0L
         activeSuggestions = emptyList()
         lifecycleOwner.onStop()
     }
@@ -401,9 +410,14 @@ class KiebordService : InputMethodService() {
         if (key.type != KeyType.DELETE) {
             lastGestureCommittedWord = ""
         }
+        if (key.type != KeyType.SPACE) {
+            lastSpaceTapTime = 0L
+            lastAutoSpacePunctuationTime = 0L
+        }
 
         when (key.type) {
             KeyType.CHARACTER -> {
+                val initialShiftState = shiftState
                 val text = key.displayLabel(shiftState)
 
                 when {
@@ -411,8 +425,13 @@ class KiebordService : InputMethodService() {
                         if (isTransliterableChar(text)) {
                             getTransliterationManager().handleCharacter(text)
                         } else {
+                            val translitMgr = getTransliterationManager()
+                            if (preferencesState.learnedWordsEnabled && translitMgr.isComposing && translitMgr.currentTransliteration.isNotBlank()) {
+                                val prevWord = getPrecedingWord(excludeComposing = true)
+                                userDictionaryRepo.recordWord(translitMgr.currentTransliteration.trim(), prevWord)
+                            }
                             finishComposing()
-                            ic.commitText(text, 1)
+                            commitCharacterWithPunctuationHandling(ic, text)
                         }
                     }
                     // English Qwerty mode
@@ -421,8 +440,12 @@ class KiebordService : InputMethodService() {
                             composingBuffer.append(text)
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
+                            if (preferencesState.learnedWordsEnabled && composingBuffer.isNotBlank()) {
+                                val prevWord = getPrecedingWord(excludeComposing = true)
+                                userDictionaryRepo.recordWord(composingBuffer.toString().trim(), prevWord)
+                            }
                             finishComposing()
-                            ic.commitText(text, 1)
+                            commitCharacterWithPunctuationHandling(ic, text)
                         }
                     }
                     // Bengali Probhat layout
@@ -431,21 +454,29 @@ class KiebordService : InputMethodService() {
                             composingBuffer.append(text)
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
+                            if (preferencesState.learnedWordsEnabled && composingBuffer.isNotBlank()) {
+                                val prevWord = getPrecedingWord(excludeComposing = true)
+                                userDictionaryRepo.recordWord(composingBuffer.toString().trim(), prevWord)
+                            }
                             finishComposing()
-                            ic.commitText(text, 1)
+                            commitCharacterWithPunctuationHandling(ic, text)
                         }
                     }
                     // Other layouts (Symbols, etc.)
                     else -> {
+                        if (preferencesState.learnedWordsEnabled && composingBuffer.isNotBlank()) {
+                            val prevWord = getPrecedingWord(excludeComposing = true)
+                            userDictionaryRepo.recordWord(composingBuffer.toString().trim(), prevWord)
+                        }
                         finishComposing()
-                        ic.commitText(text, 1)
+                        commitCharacterWithPunctuationHandling(ic, text)
                     }
                 }
 
                 updateSuggestions()
 
-                // If in one-shot shift mode, revert to unshifted after one character
-                if (shiftState == ShiftState.ONE_SHOT) {
+                // If in one-shot shift mode, revert to unshifted after one character (unless a sentence terminator just set ONE_SHOT)
+                if (initialShiftState == ShiftState.ONE_SHOT && shiftState == ShiftState.ONE_SHOT && !isSentenceTerminator(text)) {
                     shiftState = ShiftState.UNSHIFTED
                 }
             }
@@ -509,6 +540,7 @@ class KiebordService : InputMethodService() {
                         userDictionaryRepo.recordWord(committed.trim(), prevWord)
                     }
                     translitMgr.reset()
+                    lastSpaceTapTime = SystemClock.uptimeMillis()
                 } else if (composingBuffer.isNotEmpty()) {
                     val prevWord = getPrecedingWord(excludeComposing = true)
                     val committed = composingBuffer.toString()
@@ -517,8 +549,54 @@ class KiebordService : InputMethodService() {
                         userDictionaryRepo.recordWord(committed.trim(), prevWord)
                     }
                     composingBuffer.clear()
+                    lastSpaceTapTime = SystemClock.uptimeMillis()
                 } else {
+                    val now = SystemClock.uptimeMillis()
+
+                    // If user reflexively presses space right after auto-spaced punctuation, consume redundant space tap
+                    if (lastAutoSpacePunctuationTime > 0L && (now - lastAutoSpacePunctuationTime) < 1500L) {
+                        val textBefore = ic.getTextBeforeCursor(2, 0)
+                        if (textBefore != null && textBefore.endsWith(" ")) {
+                            lastAutoSpacePunctuationTime = 0L
+                            lastSpaceTapTime = now
+                            updateSuggestions()
+                            return
+                        }
+                    }
+                    lastAutoSpacePunctuationTime = 0L
+
+                    val isDoubleSpace = preferencesState.doubleSpacePeriod &&
+                            !isUrlOrCodeField() &&
+                            (now - lastSpaceTapTime <= 500L)
+
+                    if (isDoubleSpace) {
+                        val textBefore = ic.getTextBeforeCursor(2, 0)
+                        if (textBefore != null && textBefore.endsWith(" ") && textBefore.length >= 2 &&
+                            !textBefore[textBefore.length - 2].isWhitespace() &&
+                            !isPunctuationChar(textBefore[textBefore.length - 2])
+                        ) {
+                            ic.deleteSurroundingText(1, 0)
+                            val puncToInsert = if (activeLayout.id.startsWith("bn_")) "। " else ". "
+                            ic.commitText(puncToInsert, 1)
+                            if (preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED) {
+                                shiftState = ShiftState.ONE_SHOT
+                            }
+                            lastSpaceTapTime = 0L
+                            updateSuggestions()
+                            return
+                        }
+                    }
+
+                    // Auto-capitalization if previous character was sentence-ending punctuation
+                    val textBefore = ic.getTextBeforeCursor(1, 0)
                     ic.commitText(" ", 1)
+                    lastSpaceTapTime = now
+                    if (preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED && textBefore != null) {
+                        val lastChar = textBefore.lastOrNull()
+                        if (lastChar != null && isSentenceTerminatorChar(lastChar)) {
+                            shiftState = ShiftState.ONE_SHOT
+                        }
+                    }
                 }
                 updateSuggestions()
             }
@@ -596,9 +674,9 @@ class KiebordService : InputMethodService() {
         val ic = currentInputConnection ?: return
         finishComposing()
         if (!key.flickUp.isNullOrEmpty()) {
-            ic.commitText(key.flickUp!!, 1)
+            commitCharacterWithPunctuationHandling(ic, key.flickUp!!)
         } else if (key.moreKeys.isNotEmpty()) {
-            ic.commitText(key.moreKeys.first(), 1)
+            commitCharacterWithPunctuationHandling(ic, key.moreKeys.first())
         }
         updateSuggestions()
     }
@@ -721,7 +799,7 @@ class KiebordService : InputMethodService() {
             return
         }
 
-        // 5. Normal continuous deletion like Borno Keyboard
+        // 5. Normal continuous deletion
         ic.deleteSurroundingText(1, 0)
         updateSuggestions()
     }
@@ -736,6 +814,176 @@ class KiebordService : InputMethodService() {
         if (text.length != 1) return false
         val c = text[0]
         return (c in 'a'..'z') || (c in 'A'..'Z') || c == '\''
+    }
+
+    private fun isUrlOrCodeField(): Boolean {
+        val info = currentInputEditorInfo ?: return false
+        val inputType = info.inputType
+        val inputClass = inputType and InputType.TYPE_MASK_CLASS
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        val flags = inputType and InputType.TYPE_MASK_FLAGS
+
+        // Non-text fields (Number, Phone, DateTime)
+        if (inputClass != InputType.TYPE_CLASS_TEXT) {
+            return true
+        }
+
+        // URI / URL fields
+        if (variation == InputType.TYPE_TEXT_VARIATION_URI) {
+            return true
+        }
+
+        // Email address fields
+        if (variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
+            variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
+        ) {
+            return true
+        }
+
+        // Password fields
+        if (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+            variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
+            variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+        ) {
+            return true
+        }
+
+        // Code / Terminal fields: typically have TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        if ((flags and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
+            return true
+        }
+
+        return false
+    }
+
+    private fun isDigitChar(c: Char): Boolean {
+        return (c in '0'..'9') || (c in '\u09E6'..'\u09EF')
+    }
+
+    private fun isPunctuationChar(c: Char): Boolean {
+        return c == '.' || c == ',' || c == '!' || c == '?' ||
+               c == ':' || c == ';' || c == '।' || c == '॥' ||
+               c == '-' || c == '/' || c == '(' || c == ')' ||
+               c == '[' || c == ']' || c == '{' || c == '}' ||
+               c == '"' || c == '\'' || c == '`' || c == '~' ||
+               c == '@' || c == '#' || c == '$' || c == '%' ||
+               c == '^' || c == '&' || c == '*' || c == '_' ||
+               c == '+' || c == '=' || c == '<' || c == '>' ||
+               c == '|' || c == '\\'
+    }
+
+    private fun isRemoveSpaceBeforePunctuation(str: String): Boolean {
+        if (str.length != 1) return false
+        val c = str[0]
+        return c == '.' || c == ',' || c == '!' || c == '?' ||
+               c == ':' || c == ';' || c == '।' || c == '॥' ||
+               c == ')' || c == ']' || c == '}' || c == '—' || c == '%'
+    }
+
+    private fun isAutoSpacePunctuation(str: String): Boolean {
+        if (str.length != 1) return false
+        val c = str[0]
+        return c == '.' || c == ',' || c == '!' || c == '?' ||
+               c == ':' || c == ';' || c == '।' || c == '॥'
+    }
+
+    private fun isSentenceTerminator(str: String): Boolean {
+        return str == "." || str == "!" || str == "?" || str == "।" || str == "॥"
+    }
+
+    private fun isSentenceTerminatorChar(c: Char): Boolean {
+        return c == '.' || c == '!' || c == '?' || c == '।' || c == '॥'
+    }
+
+    private fun shouldAutoSpaceAfterPunctuation(precedingChar: Char, puncText: String): Boolean {
+        // Do not auto-space if preceded by whitespace
+        if (precedingChar.isWhitespace()) return false
+
+        // Do not auto-space for decimal numbers, formatted thousands, or timestamps: e.g. 3.14, 1,000, 10:30, ৩.১৪
+        if (isDigitChar(precedingChar) && (puncText == "." || puncText == "," || puncText == ":")) {
+            return false
+        }
+
+        // Do not auto-space for repeated punctuation: e.g. .., ,, --
+        if (puncText.isNotEmpty() && precedingChar == puncText[0]) {
+            return false
+        }
+
+        // Do not auto-space between consecutive sentence terminators: e.g. ?!, !?, .!
+        if (isSentenceTerminatorChar(precedingChar) && isSentenceTerminator(puncText)) {
+            return false
+        }
+
+        // Do not auto-space for path/url-like prefixes: e.g. ./, ../
+        if (precedingChar == '/' || precedingChar == '\\' || precedingChar == '~') {
+            return false
+        }
+
+        return true
+    }
+
+    private fun commitCharacterWithPunctuationHandling(ic: InputConnection, text: String) {
+        val inUrlOrCode = isUrlOrCodeField()
+        val isRemovePunc = isRemoveSpaceBeforePunctuation(text)
+        val isAutoPunc = isAutoSpacePunctuation(text)
+
+        val canRemoveSpace = preferencesState.removeSpaceBeforePunctuation && !inUrlOrCode && isRemovePunc
+        val canAutoSpace = preferencesState.autoSpaceAfterPunctuation && !inUrlOrCode && isAutoPunc
+
+        val textBefore = ic.getTextBeforeCursor(4, 0)?.toString() ?: ""
+
+        if (textBefore.endsWith(" ")) {
+            val nonSpacePrefix = textBefore.trimEnd(' ')
+            val precedingChar = nonSpacePrefix.lastOrNull()
+
+            if (canRemoveSpace && precedingChar != null && !precedingChar.isWhitespace()) {
+                // Remove the space before the punctuation
+                ic.deleteSurroundingText(1, 0)
+
+                if (canAutoSpace && shouldAutoSpaceAfterPunctuation(precedingChar, text)) {
+                    ic.commitText(text + " ", 1)
+                    val now = SystemClock.uptimeMillis()
+                    lastSpaceTapTime = now
+                    lastAutoSpacePunctuationTime = now
+                    if (isSentenceTerminator(text) && preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED) {
+                        shiftState = ShiftState.ONE_SHOT
+                    }
+                    return
+                } else {
+                    ic.commitText(text, 1)
+                    lastAutoSpacePunctuationTime = 0L
+                    return
+                }
+            } else if (canAutoSpace && precedingChar != null && shouldAutoSpaceAfterPunctuation(precedingChar, text)) {
+                // Space before punctuation was not removed, but auto-space is enabled
+                ic.commitText(text + " ", 1)
+                val now = SystemClock.uptimeMillis()
+                lastSpaceTapTime = now
+                lastAutoSpacePunctuationTime = now
+                if (isSentenceTerminator(text) && preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED) {
+                    shiftState = ShiftState.ONE_SHOT
+                }
+                return
+            }
+        } else {
+            // Not preceded by a space (e.g. typing a punctuation immediately after a word)
+            if (canAutoSpace && textBefore.isNotEmpty()) {
+                val precedingChar = textBefore.last()
+                if (shouldAutoSpaceAfterPunctuation(precedingChar, text)) {
+                    ic.commitText(text + " ", 1)
+                    val now = SystemClock.uptimeMillis()
+                    lastSpaceTapTime = now
+                    lastAutoSpacePunctuationTime = now
+                    if (isSentenceTerminator(text) && preferencesState.autoCapitalization && shiftState == ShiftState.UNSHIFTED) {
+                        shiftState = ShiftState.ONE_SHOT
+                    }
+                    return
+                }
+            }
+        }
+
+        lastAutoSpacePunctuationTime = 0L
+        ic.commitText(text, 1)
     }
 
     private fun isBengaliChar(text: String): Boolean {
@@ -831,21 +1079,29 @@ class KiebordService : InputMethodService() {
         if (preferencesState.learnedWordsEnabled && candidateText.isNotEmpty()) {
             userDictionaryRepo.recordWord(candidateText, prevWord)
         }
+
+        val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion && !isUrlOrCodeField()
+        val textToCommit = if (shouldAutoSpace) "$candidateText " else candidateText
+
         if (lastGestureCommittedWord.isNotEmpty()) {
             ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
             lastGestureCommittedWord = ""
-            ic.commitText(candidate.text + " ", 1)
+            ic.commitText(textToCommit, 1)
+            if (shouldAutoSpace) lastSpaceTapTime = SystemClock.uptimeMillis()
             updateSuggestions()
             return
         }
         val translitMgr = getTransliterationManager()
         if (translitMgr.isComposing) {
-            translitMgr.commitCustom(candidate.text + " ")
+            translitMgr.commitCustom(textToCommit)
         } else if (composingBuffer.isNotEmpty()) {
-            ic.commitText(candidate.text + " ", 1)
+            ic.commitText(textToCommit, 1)
             composingBuffer.clear()
         } else {
-            ic.commitText(candidate.text + " ", 1)
+            ic.commitText(textToCommit, 1)
+        }
+        if (shouldAutoSpace) {
+            lastSpaceTapTime = SystemClock.uptimeMillis()
         }
         updateSuggestions()
     }
@@ -855,6 +1111,7 @@ class KiebordService : InputMethodService() {
         centroids: List<KeyCentroid>,
         keyWidthPx: Float
     ) {
+        if (!preferencesState.gestureTypingEnabled) return
         if (trail.size < 2 || centroids.isEmpty()) return
 
         val lang = activeLayout.id
@@ -865,7 +1122,8 @@ class KiebordService : InputMethodService() {
         val candidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, learnedGestureWords)
         if (candidates.isNotEmpty()) {
             val primary = candidates.first()
-            val textToCommit = primary.text + " "
+            val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion && !isUrlOrCodeField()
+            val textToCommit = if (shouldAutoSpace) "${primary.text.trim()} " else primary.text.trim()
             val ic = currentInputConnection
             val prevWord = getPrecedingWord()
             if (preferencesState.learnedWordsEnabled && primary.text.isNotBlank()) {
@@ -874,6 +1132,9 @@ class KiebordService : InputMethodService() {
             finishComposing()
             ic?.commitText(textToCommit, 1)
             lastGestureCommittedWord = textToCommit
+            if (shouldAutoSpace) {
+                lastSpaceTapTime = SystemClock.uptimeMillis()
+            }
 
             activeSuggestions = candidates.take(12).mapIndexed { idx, cand ->
                 cand.copy(isPrimary = idx == 0)

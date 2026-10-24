@@ -49,6 +49,9 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val SHOW_GESTURE_TRAIL = booleanPreferencesKey("pref_show_gesture_trail")
         val AUTO_CAPITALIZATION = booleanPreferencesKey("pref_auto_capitalization")
         val DOUBLE_SPACE_PERIOD = booleanPreferencesKey("pref_double_space_period")
+        val AUTO_SPACE_AFTER_SUGGESTION = booleanPreferencesKey("pref_auto_space_after_suggestion")
+        val AUTO_SPACE_AFTER_PUNCTUATION = booleanPreferencesKey("pref_auto_space_after_punctuation")
+        val REMOVE_SPACE_BEFORE_PUNCTUATION = booleanPreferencesKey("pref_remove_space_before_punctuation")
 
         val PINNED_TOOLS = stringPreferencesKey("pref_pinned_tools")
         val DRAWER_TOOLS = stringPreferencesKey("pref_drawer_tools")
@@ -96,6 +99,9 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 showGestureTrail = prefs[PreferencesKeys.SHOW_GESTURE_TRAIL] ?: true,
                 autoCapitalization = prefs[PreferencesKeys.AUTO_CAPITALIZATION] ?: true,
                 doubleSpacePeriod = prefs[PreferencesKeys.DOUBLE_SPACE_PERIOD] ?: true,
+                autoSpaceAfterSuggestion = prefs[PreferencesKeys.AUTO_SPACE_AFTER_SUGGESTION] ?: true,
+                autoSpaceAfterPunctuation = prefs[PreferencesKeys.AUTO_SPACE_AFTER_PUNCTUATION] ?: true,
+                removeSpaceBeforePunctuation = prefs[PreferencesKeys.REMOVE_SPACE_BEFORE_PUNCTUATION] ?: true,
 
                 pinnedTools = run {
                     val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
@@ -258,6 +264,18 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateDoubleSpacePeriod(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.DOUBLE_SPACE_PERIOD] = enabled }
+    }
+
+    suspend fun updateAutoSpaceAfterSuggestion(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.AUTO_SPACE_AFTER_SUGGESTION] = enabled }
+    }
+
+    suspend fun updateAutoSpaceAfterPunctuation(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.AUTO_SPACE_AFTER_PUNCTUATION] = enabled }
+    }
+
+    suspend fun updateRemoveSpaceBeforePunctuation(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.REMOVE_SPACE_BEFORE_PUNCTUATION] = enabled }
     }
 
     suspend fun updateToolbarTools(pinned: List<String>, drawer: List<String>) {

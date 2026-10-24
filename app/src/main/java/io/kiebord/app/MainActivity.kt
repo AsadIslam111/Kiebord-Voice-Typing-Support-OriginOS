@@ -330,6 +330,15 @@ fun KiebordSettingsApp(
                             onUpdateDoubleSpacePeriod = { enabled ->
                                 scope.launch { preferencesRepo.updateDoubleSpacePeriod(enabled) }
                             },
+                            onUpdateAutoSpaceAfterSuggestion = { enabled ->
+                                scope.launch { preferencesRepo.updateAutoSpaceAfterSuggestion(enabled) }
+                            },
+                            onUpdateAutoSpaceAfterPunctuation = { enabled ->
+                                scope.launch { preferencesRepo.updateAutoSpaceAfterPunctuation(enabled) }
+                            },
+                            onUpdateRemoveSpaceBeforePunctuation = { enabled ->
+                                scope.launch { preferencesRepo.updateRemoveSpaceBeforePunctuation(enabled) }
+                            },
                             onBack = navigateBack
                         )
                     }

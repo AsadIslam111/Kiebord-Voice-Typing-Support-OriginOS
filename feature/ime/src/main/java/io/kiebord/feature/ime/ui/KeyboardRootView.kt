@@ -109,6 +109,8 @@ fun KeyboardRootView(
     onSwitchToLayout: (String) -> Unit = {},
     onOpenLanguagesSettings: () -> Unit = {},
     onOpenInputMethodPicker: () -> Unit = {},
+    gestureTypingEnabled: Boolean = true,
+    showGestureTrail: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -690,6 +692,7 @@ fun KeyboardRootView(
                                 showSecondaryKeys = if (!isInteractive) false else showSecondaryKeys,
                                 isInteractive = isKeysInteractive,
                                 rowHeight = keyRowHeight,
+                                gestureTypingEnabled = gestureTypingEnabled,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)
                                     .fillMaxHeight(),
@@ -1044,11 +1047,13 @@ fun KeyboardRootView(
         }
 
         // 4. Single-colored Gesture Trail Overlay
-        GestureTrailOverlay(
-            trail = gestureTrail,
-            accentColor = colorScheme.accentColor,
-            modifier = Modifier.matchParentSize()
-        )
+        if (gestureTypingEnabled && showGestureTrail) {
+            GestureTrailOverlay(
+                trail = gestureTrail,
+                accentColor = colorScheme.accentColor,
+                modifier = Modifier.matchParentSize()
+            )
+        }
 
         // 5. Spacebar Layout Slider Floating Popup Overlay
         if (isSpacebarSwiping && effectiveLayoutList.size > 1) {

@@ -77,7 +77,8 @@ fun KeycapView(
     onGestureStart: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
     onGestureMove: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
     onGestureEnd: () -> Unit = {},
-    isInteractive: Boolean = true
+    isInteractive: Boolean = true,
+    gestureTypingEnabled: Boolean = true
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
@@ -347,7 +348,7 @@ fun KeycapView(
                             }
 
                             // Gesture typing detector on character keys
-                            if (initialKey.type == KeyType.CHARACTER && !isMoreKeysActive && !isSlidingDrag) {
+                            if (gestureTypingEnabled && initialKey.type == KeyType.CHARACTER && !isMoreKeysActive && !isSlidingDrag) {
                                 val gestureThresholdPx = with(density) { 28.dp.toPx() }
                                 if (!isGestureTyping && distance > gestureThresholdPx) {
                                     longPressJob.cancel()

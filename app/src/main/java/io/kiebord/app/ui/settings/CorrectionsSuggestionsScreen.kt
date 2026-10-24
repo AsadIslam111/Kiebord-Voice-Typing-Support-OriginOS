@@ -47,6 +47,9 @@ fun CorrectionsSuggestionsScreen(
     onUpdateShowGestureTrail: (Boolean) -> Unit,
     onUpdateAutoCapitalization: (Boolean) -> Unit,
     onUpdateDoubleSpacePeriod: (Boolean) -> Unit,
+    onUpdateAutoSpaceAfterSuggestion: (Boolean) -> Unit = {},
+    onUpdateAutoSpaceAfterPunctuation: (Boolean) -> Unit = {},
+    onUpdateRemoveSpaceBeforePunctuation: (Boolean) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
@@ -192,8 +195,32 @@ fun CorrectionsSuggestionsScreen(
                 subtitle = "Quickly double-tap the spacebar to insert a period followed by a space",
                 icon = Icons.Outlined.SpaceBar,
                 checked = preferences.doubleSpacePeriod,
-                showDivider = false,
                 onCheckedChange = onUpdateDoubleSpacePeriod
+            )
+
+            SettingsToggleItem(
+                title = "Auto-Space after Suggestions",
+                subtitle = "Automatically insert a space after committing a word from the candidate strip",
+                icon = Icons.Outlined.AutoFixHigh,
+                checked = preferences.autoSpaceAfterSuggestion,
+                onCheckedChange = onUpdateAutoSpaceAfterSuggestion
+            )
+
+            SettingsToggleItem(
+                title = "Auto-Space after Punctuation",
+                subtitle = "Automatically insert a space after comma, period, and sentence terminators",
+                icon = Icons.Outlined.SpaceBar,
+                checked = preferences.autoSpaceAfterPunctuation,
+                onCheckedChange = onUpdateAutoSpaceAfterPunctuation
+            )
+
+            SettingsToggleItem(
+                title = "Remove Space Before Punctuation",
+                subtitle = "Automatically remove space before punctuation marks (except URL and code fields)",
+                icon = Icons.Outlined.Spellcheck,
+                checked = preferences.removeSpaceBeforePunctuation,
+                showDivider = false,
+                onCheckedChange = onUpdateRemoveSpaceBeforePunctuation
             )
         }
     }

@@ -40,6 +40,9 @@ data class KiebordPreferences(
     val showGestureTrail: Boolean = true,
     val autoCapitalization: Boolean = true,
     val doubleSpacePeriod: Boolean = true,
+    val autoSpaceAfterSuggestion: Boolean = true,
+    val autoSpaceAfterPunctuation: Boolean = true,
+    val removeSpaceBeforePunctuation: Boolean = true,
 
     // Toolbar rearrangement persistence
     val pinnedTools: List<String> = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"),
