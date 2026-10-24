@@ -217,9 +217,22 @@ impl GestureDecoder {
             }
         }
 
-        candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
-        candidates.truncate(limit);
-        candidates
+        let mut word_scores: HashMap<String, f32> = HashMap::with_capacity(candidates.len());
+        for c in candidates {
+            let slot = word_scores.entry(c.word).or_insert(f32::MIN);
+            if c.score > *slot {
+                *slot = c.score;
+            }
+        }
+
+        let mut deduped: Vec<GestureCandidate> = word_scores
+            .into_iter()
+            .map(|(word, score)| GestureCandidate { word, score })
+            .collect();
+
+        deduped.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        deduped.truncate(limit);
+        deduped
     }
 
     /// Windowed Dynamic Time Warping distance between two sampled polyline sequences.
@@ -491,8 +504,7 @@ impl GestureDecoder {
 
         let index = get_or_build_phonetic_index(dict, transliterator);
 
-        let mut candidates: Vec<GestureCandidate> = Vec::new();
-        let mut seen_words: HashSet<String> = HashSet::new();
+        let mut word_scores: HashMap<String, f32> = HashMap::new();
 
         for &s in &start_keys {
             for &e in &end_keys {
@@ -507,12 +519,9 @@ impl GestureDecoder {
                         ) {
                             if let Some(word_str) = dict.word_at(entry.word_id) {
                                 let norm_word = word_str.replace("\u{0985}\u{09BE}", "আ");
-                                if !seen_words.contains(&norm_word) {
-                                    seen_words.insert(norm_word.clone());
-                                    candidates.push(GestureCandidate {
-                                        word: norm_word,
-                                        score,
-                                    });
+                                let slot = word_scores.entry(norm_word).or_insert(f32::MIN);
+                                if score > *slot {
+                                    *slot = score;
                                 }
                             }
                         }
@@ -520,6 +529,11 @@ impl GestureDecoder {
                 }
             }
         }
+
+        let mut candidates: Vec<GestureCandidate> = word_scores
+            .into_iter()
+            .map(|(word, score)| GestureCandidate { word, score })
+            .collect();
 
         candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
         candidates.truncate(limit);
@@ -700,5 +714,56 @@ mod tests {
         let results = GestureDecoder::decode(&stroke_milking, &keys, 40.0, dict, 10);
         assert!(!results.is_empty(), "Results should not be empty");
         assert_eq!(results[0].word, "milking", "Expected 'milking' to be the top candidate: {:?}", results);
+    }
+
+    #[test]
+    fn test_decode_intarnet_gesture() {
+        let dict = get_bn_binary_dict().expect("bn dict");
+        let translit = BornoPhoneticTransliterator;
+
+        let keys = vec![
+            KeyCenter { char_code: 'q', x: 20.0, y: 50.0 },
+            KeyCenter { char_code: 'w', x: 60.0, y: 50.0 },
+            KeyCenter { char_code: 'e', x: 100.0, y: 50.0 },
+            KeyCenter { char_code: 'r', x: 140.0, y: 50.0 },
+            KeyCenter { char_code: 't', x: 180.0, y: 50.0 },
+            KeyCenter { char_code: 'y', x: 220.0, y: 50.0 },
+            KeyCenter { char_code: 'u', x: 260.0, y: 50.0 },
+            KeyCenter { char_code: 'i', x: 300.0, y: 50.0 },
+            KeyCenter { char_code: 'o', x: 340.0, y: 50.0 },
+            KeyCenter { char_code: 'p', x: 380.0, y: 50.0 },
+            KeyCenter { char_code: 'a', x: 40.0, y: 120.0 },
+            KeyCenter { char_code: 's', x: 80.0, y: 120.0 },
+            KeyCenter { char_code: 'd', x: 120.0, y: 120.0 },
+            KeyCenter { char_code: 'f', x: 160.0, y: 120.0 },
+            KeyCenter { char_code: 'g', x: 200.0, y: 120.0 },
+            KeyCenter { char_code: 'h', x: 240.0, y: 120.0 },
+            KeyCenter { char_code: 'j', x: 280.0, y: 120.0 },
+            KeyCenter { char_code: 'k', x: 320.0, y: 120.0 },
+            KeyCenter { char_code: 'l', x: 360.0, y: 120.0 },
+            KeyCenter { char_code: 'z', x: 60.0, y: 190.0 },
+            KeyCenter { char_code: 'x', x: 100.0, y: 190.0 },
+            KeyCenter { char_code: 'c', x: 140.0, y: 190.0 },
+            KeyCenter { char_code: 'v', x: 180.0, y: 190.0 },
+            KeyCenter { char_code: 'b', x: 220.0, y: 190.0 },
+            KeyCenter { char_code: 'n', x: 260.0, y: 190.0 },
+            KeyCenter { char_code: 'm', x: 300.0, y: 190.0 },
+        ];
+
+        // Swipe: i -> n -> t -> a -> r -> n -> e -> t
+        let stroke_intarnet = vec![
+            GesturePoint { x: 300.0, y: 50.0, timestamp_ms: 0 },    // i
+            GesturePoint { x: 260.0, y: 190.0, timestamp_ms: 50 },  // n
+            GesturePoint { x: 180.0, y: 50.0, timestamp_ms: 100 },  // t
+            GesturePoint { x: 40.0, y: 120.0, timestamp_ms: 150 },  // a
+            GesturePoint { x: 140.0, y: 50.0, timestamp_ms: 200 },  // r
+            GesturePoint { x: 260.0, y: 190.0, timestamp_ms: 250 },  // n
+            GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 300 },  // e
+            GesturePoint { x: 180.0, y: 50.0, timestamp_ms: 350 },  // t
+        ];
+
+        let results = GestureDecoder::decode_phonetic(&stroke_intarnet, &keys, 40.0, dict, &translit, 10);
+        assert!(!results.is_empty(), "Results for intarnet should not be empty");
+        assert_eq!(results[0].word, "ইন্টারনেট", "Expected 'ইন্টারনেট' to be top candidate for intarnet stroke: {:?}", results);
     }
 }
