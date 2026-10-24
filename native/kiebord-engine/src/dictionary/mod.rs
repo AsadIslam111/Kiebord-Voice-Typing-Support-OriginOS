@@ -293,4 +293,37 @@ mod tests {
         let k_items: Vec<&str> = karon_sugs.split('|').filter(|s| !s.is_empty()).collect();
         assert!(k_items.contains(&"কারণ"), "Expected 'কারণ' in suggestions for 'কারন': {:?}", k_items);
     }
+
+    #[test]
+    fn test_contractions_without_apostrophe() {
+        let dict = get_en_binary_dict().expect("dict loaded");
+        let prox = get_en_proximity();
+
+        // "hell" should suggest both "hell" and "he'll" right at the top
+        let hell_sugs = dict.suggest("hell", 5, prox);
+        assert!(hell_sugs.contains(&"he'll".to_string()), "Expected 'he'll' in suggestions for 'hell': {:?}", hell_sugs);
+        assert!(hell_sugs.contains(&"hell".to_string()), "Expected 'hell' in suggestions for 'hell': {:?}", hell_sugs);
+        // he'll should be within top 2
+        let pos_hell = hell_sugs.iter().position(|w| w == "he'll").unwrap();
+        assert!(pos_hell <= 1, "'he'll' should be top 2, got index {}", pos_hell);
+
+        // "well" should suggest both "well" and "we'll" right at the top
+        let well_sugs = dict.suggest("well", 5, prox);
+        assert!(well_sugs.contains(&"we'll".to_string()), "Expected 'we'll' in suggestions for 'well': {:?}", well_sugs);
+        assert!(well_sugs.contains(&"well".to_string()), "Expected 'well' in suggestions for 'well': {:?}", well_sugs);
+        let pos_well = well_sugs.iter().position(|w| w == "we'll").unwrap();
+        assert!(pos_well <= 1, "'we'll' should be top 2, got index {}", pos_well);
+
+        // "cant" should suggest "can't" as #1
+        let cant_sugs = dict.suggest("cant", 5, prox);
+        assert_eq!(cant_sugs[0], "can't");
+
+        // "dont" should suggest "don't" as #1
+        let dont_sugs = dict.suggest("dont", 5, prox);
+        assert_eq!(dont_sugs[0], "don't");
+
+        // "wont" should suggest "won't" as #1
+        let wont_sugs = dict.suggest("wont", 5, prox);
+        assert_eq!(wont_sugs[0], "won't");
+    }
 }

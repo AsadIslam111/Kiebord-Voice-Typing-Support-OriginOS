@@ -634,15 +634,23 @@ impl<'a> BinaryDict<'a> {
                     let freq = self.freq(state.node);
                     let word_str = String::from_utf16_lossy(&state.accum);
                     let is_full_exact = state.cost == 0.0 && state.accum.len() == typed.len();
+                    let is_contraction_exact = (state.cost - 0.01).abs() < 1e-4 && state.accum.len() == typed.len() + 1;
                     let extra_len = (state.accum.len() as f32 - typed.len() as f32).max(0.0);
                     // Frequency-first scoring:
                     // For exact matches (cost == 0), frequency dominates completely.
                     // Full exact match gets a bonus so exact typed word stays on top.
+                    // Exact contractions (e.g. he'll for hell, we'll for well) also get high bonus.
                     // Slight length penalty (-0.001 * extra_len) only breaks ties among equal-frequency words.
                     // Typos (cost > 0) are penalized so common words with minor typos can surface,
                     // but will not outrank valid high-frequency exact prefix completions.
                     let score = (freq as f32)
-                        + if is_full_exact { 50.0 } else { 0.0 }
+                        + if is_full_exact {
+                            50.0
+                        } else if is_contraction_exact {
+                            48.0
+                        } else {
+                            0.0
+                        }
                         - (state.cost * 80.0)
                         - (0.001 * extra_len);
 
@@ -653,9 +661,9 @@ impl<'a> BinaryDict<'a> {
                 }
 
                 // Prefix completions (descend deeper)
-                // For exact matches, descend up to 10 extra characters.
+                // For exact matches and contractions, descend up to 10 extra characters.
                 // For typo corrections, only allow at most 1 extra character (e.g. plural 's') to avoid explosive branching.
-                let max_extra = if state.cost == 0.0 { 10 } else { 1 };
+                let max_extra = if state.cost <= 0.01 { 10 } else { 1 };
                 if state.accum.len() < typed.len() + max_extra {
                     let start = self.child_start(state.node as usize);
                     let count = self.child_count(state.node as usize);
@@ -700,6 +708,35 @@ impl<'a> BinaryDict<'a> {
                     cost: state.cost,
                     bound,
                 });
+            }
+
+            // 1b. Contraction apostrophe bypass (e.g. user typed 'hell' for 'he'll', 'well' for 'we'll', 'cant' for 'can't')
+            if !state.accum.is_empty() {
+                const APOSTROPHES: [u16; 2] = [b'\'' as u16, 0x2019];
+                for &ap in &APOSTROPHES {
+                    if let Some(ap_node) = self.child(state.node, ap) {
+                        if let Some(child_node) = self.child(ap_node, target) {
+                            let mut next_accum = state.accum.clone();
+                            next_accum.push(ap);
+                            next_accum.push(target);
+                            let child_mf = self.max_subtree_freq(child_node) as f32;
+                            let extra = (next_accum.len() as f32 - (state.typed_pos + 1) as f32).max(0.0);
+                            let is_exact = state.cost == 0.0;
+                            let child_cost = state.cost + 0.01;
+                            let bound = child_mf
+                                + if is_exact { 48.0 } else { 0.0 }
+                                - (child_cost * 80.0)
+                                - (0.001 * extra);
+                            heap.push(State {
+                                node: child_node,
+                                typed_pos: state.typed_pos + 1,
+                                accum: next_accum,
+                                cost: child_cost,
+                                bound,
+                            });
+                        }
+                    }
+                }
             }
 
             // 2. Proximity substitution
@@ -773,7 +810,7 @@ impl<'a> BinaryDict<'a> {
                 for e in start..start + count {
                     let child_node = Self::edge_child(e);
                     let label = self.edge_label(e);
-                    if label != target {
+                    if label != target && label != b'\'' as u16 && label != 0x2019 {
                         // Check if grandchild matches current target
                         if let Some(grandchild) = self.child(child_node, target) {
                             let mut next_accum = state.accum.clone();
