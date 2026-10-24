@@ -195,7 +195,7 @@ fun KeycapView(
                 )
                 .clip(keyShape)
                 .background(activeBackground)
-                .pointerInput(isInteractive, gestureTypingEnabled) {
+                .pointerInput(isInteractive) {
                     if (!isInteractive) return@pointerInput
                     coroutineScope {
                         awaitEachGesture {

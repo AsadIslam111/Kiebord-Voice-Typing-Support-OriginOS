@@ -51,36 +51,49 @@ fun QuickSymbolDragOverlay(
     val density = LocalDensity.current
 
     Box(modifier = modifier) {
-        // 1. Single-colored guideline matching gesture trail color (no key box highlight)
+        // 1. Single-colored semi-transparent guideline matching gesture trail style
         Canvas(modifier = Modifier.fillMaxSize()) {
             val start = state.startOffset
             val current = state.currentOffset
 
-            // Smooth single-colored connecting line matching gesture trail
+            val lineWidthPx = with(density) { (6.5f * scaleFactor).coerceIn(4.5f, 9f).dp.toPx() }
+            val lineAlpha = 0.55f
+
+            // Smooth semi-transparent connecting line
             drawLine(
-                color = accentColor,
+                color = accentColor.copy(alpha = lineAlpha),
                 start = start,
                 end = current,
-                strokeWidth = 3.5.dp.toPx(),
+                strokeWidth = lineWidthPx,
                 cap = StrokeCap.Round
             )
 
             // Anchor dot at start key (?123)
             drawCircle(
+                color = accentColor.copy(alpha = lineAlpha),
+                radius = with(density) { (6f * scaleFactor).coerceIn(4.5f, 8f).dp.toPx() },
+                center = start
+            )
+            drawCircle(
                 color = accentColor,
-                radius = 5.dp.toPx(),
+                radius = with(density) { (3f * scaleFactor).coerceIn(2f, 4f).dp.toPx() },
                 center = start
             )
 
             // Tactile drag handle circle at current finger position
             drawCircle(
+                color = accentColor.copy(alpha = 0.30f),
+                radius = with(density) { (12f * scaleFactor).coerceIn(9f, 15f).dp.toPx() },
+                center = current
+            )
+            drawCircle(
                 color = accentColor,
-                radius = 8.dp.toPx(),
+                radius = with(density) { (8.5f * scaleFactor).coerceIn(6.5f, 11f).dp.toPx() },
                 center = current
             )
             drawCircle(
                 color = Color.White.copy(alpha = 0.95f),
-                radius = 3.5.dp.toPx(),
+                radius = with(density) { (3.5f * scaleFactor).coerceIn(2.5f, 5f).dp.toPx() },
                 center = current
             )
         }

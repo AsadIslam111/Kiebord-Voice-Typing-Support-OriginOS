@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -359,6 +360,7 @@ fun KeyboardRootView(
 
     LaunchedEffect(isSlidingSymbolMode) {
         gestureTrail = emptyList()
+        keyCoordinatesMap.clear()
         if (!isSlidingSymbolMode) {
             slidingDwellJob?.cancel()
             slidingDwellJob = null
@@ -704,7 +706,7 @@ fun KeyboardRootView(
                         )
                     }
 
-                    val updateMoreKeysHoverFromRoot: (Offset) -> Unit = { fingerPosInRoot ->
+                    val updateMoreKeysHoverFromRoot: (Offset) -> Boolean = { fingerPosInRoot ->
                         val state = moreKeysState
                         if (state != null) {
                             val colGapPx = with(density) { (3 * scaleFactor).dp.toPx() }
@@ -737,32 +739,52 @@ fun KeyboardRootView(
                             val minTopPx = with(density) { minTopDp.toPx() }
                             val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
 
-                            val relX = fingerPosInRoot.x - (clampedLeft + horizontalPaddingPx)
-                            val relY = fingerPosInRoot.y - (popupTop + verticalPaddingPx)
+                            // Hit-test bounding box with slop
+                            val slopHorizontalPx = with(density) { (32 * scaleFactor).dp.toPx() }
+                            val slopTopPx = with(density) { (36 * scaleFactor).dp.toPx() }
+                            val slopBottomPx = with(density) { (40 * scaleFactor).dp.toPx() }
 
-                            val hoveredRow = if (layoutResult.numRows > 1) {
-                                (relY / (itemHeightPx + rowGapPx)).toInt().coerceIn(0, layoutResult.numRows - 1)
+                            val allowedLeft = minOf(clampedLeft, state.anchorRect.left) - slopHorizontalPx
+                            val allowedRight = maxOf(clampedLeft + totalWidthPx, state.anchorRect.right) + slopHorizontalPx
+                            val allowedTop = popupTop - slopTopPx
+                            val allowedBottom = state.anchorRect.bottom + slopBottomPx
+
+                            val isWithinBounds = fingerPosInRoot.x in allowedLeft..allowedRight &&
+                                fingerPosInRoot.y in allowedTop..allowedBottom
+
+                            if (!isWithinBounds) {
+                                false
                             } else {
-                                0
-                            }
+                                val relX = fingerPosInRoot.x - (clampedLeft + horizontalPaddingPx)
+                                val relY = fingerPosInRoot.y - (popupTop + verticalPaddingPx)
 
-                            val hoveredCol = (relX / (itemWidthPx + colGapPx)).toInt().coerceIn(0, layoutResult.numColumns - 1)
-
-                            val targetItemIndex = layoutResult.grid.getOrNull(hoveredRow)?.getOrNull(hoveredCol)
-                                ?: run {
-                                    val rowList = layoutResult.grid.getOrNull(hoveredRow) ?: emptyList()
-                                    rowList.filterNotNull().minByOrNull { itemIdx ->
-                                        val coords = layoutResult.itemPositions[itemIdx] ?: Pair(0, 0)
-                                        Math.abs(coords.second - hoveredCol)
-                                    }
+                                val hoveredRow = if (layoutResult.numRows > 1) {
+                                    (relY / (itemHeightPx + rowGapPx)).toInt().coerceIn(0, layoutResult.numRows - 1)
+                                } else {
+                                    0
                                 }
 
-                            if (targetItemIndex != null && targetItemIndex != state.selectedIndex) {
-                                moreKeysState = state.copy(selectedIndex = targetItemIndex)
-                                try {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                } catch (_: Exception) {}
+                                val hoveredCol = (relX / (itemWidthPx + colGapPx)).toInt().coerceIn(0, layoutResult.numColumns - 1)
+
+                                val targetItemIndex = layoutResult.grid.getOrNull(hoveredRow)?.getOrNull(hoveredCol)
+                                    ?: run {
+                                        val rowList = layoutResult.grid.getOrNull(hoveredRow) ?: emptyList()
+                                        rowList.filterNotNull().minByOrNull { itemIdx ->
+                                            val coords = layoutResult.itemPositions[itemIdx] ?: Pair(0, 0)
+                                            Math.abs(coords.second - hoveredCol)
+                                        }
+                                    }
+
+                                if (targetItemIndex != null && targetItemIndex != state.selectedIndex) {
+                                    moreKeysState = state.copy(selectedIndex = targetItemIndex)
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    } catch (_: Exception) {}
+                                }
+                                true
                             }
+                        } else {
+                            false
                         }
                     }
 
@@ -783,7 +805,10 @@ fun KeyboardRootView(
                         val rCoords = rootCoordinates
                         if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
                             val fingerPosInRoot = rCoords.localPositionOf(keyCoords, touchPosInKey)
-                            updateMoreKeysHoverFromRoot(fingerPosInRoot)
+                            val isInside = updateMoreKeysHoverFromRoot(fingerPosInRoot)
+                            if (!isInside) {
+                                moreKeysState = null
+                            }
                         }
                     }
 
@@ -888,7 +913,8 @@ fun KeyboardRootView(
                                 else -> key
                             }
 
-                            KeycapView(
+                            key("cell_${rowIndex}_$keyIndex") {
+                                KeycapView(
                                 key = effectiveKey,
                                 shiftState = shiftState,
                                 isBottomRow = isBottomRow,
@@ -971,6 +997,7 @@ fun KeyboardRootView(
                                         slidingHoveredKey = null
                                         slidingHoveredBounds = null
                                         moreKeysState = null
+                                        keyCoordinatesMap.clear()
 
                                         isSlidingSymbolMode = true
                                         val downInRoot = rCoords.localPositionOf(keyCoords, initialDownPos)
@@ -992,15 +1019,14 @@ fun KeyboardRootView(
 
                                     val currentMoreKeys = moreKeysState
                                     if (currentMoreKeys != null) {
-                                        val dismissThresholdPx = with(density) { (120 * scaleFactor).dp.toPx() }
-                                        if (currentFingerInRoot.y > currentMoreKeys.anchorRect.bottom + dismissThresholdPx) {
-                                            moreKeysState = null
-                                        } else {
-                                            updateMoreKeysHoverFromRoot(currentFingerInRoot)
+                                        val isInside = updateMoreKeysHoverFromRoot(currentFingerInRoot)
+                                        if (isInside) {
                                             quickDragState = quickDragState?.copy(
                                                 currentOffset = currentFingerInRoot
                                             )
                                             return@KeycapView
+                                        } else {
+                                            moreKeysState = null
                                         }
                                     }
 
@@ -1041,7 +1067,7 @@ fun KeyboardRootView(
                                         }
                                     }
 
-                                    val symbol = if (hoveredKey != null && hoveredKey.label.isNotEmpty()) {
+                                    val symbol = if (hoveredKey != null && hoveredKey.type != KeyType.SYMBOLS && hoveredKey.label.isNotEmpty()) {
                                         hoveredKey.label
                                     } else {
                                         null
@@ -1062,7 +1088,7 @@ fun KeyboardRootView(
                                         handleMoreKeysCommit()
                                     } else {
                                         val keyToCommit = slidingHoveredKey
-                                        if (keyToCommit != null && (keyToCommit.label.isNotEmpty() || !keyToCommit.commitText.isNullOrEmpty())) {
+                                        if (keyToCommit != null && keyToCommit.type != KeyType.SYMBOLS && (keyToCommit.label.isNotEmpty() || !keyToCommit.commitText.isNullOrEmpty())) {
                                             onKeyTap(keyToCommit)
                                         }
                                     }
@@ -1133,6 +1159,7 @@ fun KeyboardRootView(
                                 }
                             )
                         }
+                    }
 
                         if (row.endPaddingWeight > 0f) {
                             Spacer(
