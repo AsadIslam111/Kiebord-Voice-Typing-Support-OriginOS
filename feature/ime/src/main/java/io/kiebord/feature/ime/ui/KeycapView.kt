@@ -527,7 +527,8 @@ fun KeycapView(
         // Circular Keypress Preview Popup
         if (showCircularPopup) {
             val popupDiameter = (52 * scaleFactor).coerceIn(44f, 60f).dp
-            val defaultOffsetY = (-54 * scaleFactor).coerceIn(-64f, -46f).dp
+            val defaultGapDp = (12 * scaleFactor).coerceIn(8f, 16f).dp
+            val defaultOffsetY = -(popupDiameter + defaultGapDp)
 
             val coords = keyCoordinates
             val (clampedOffsetX, clampedOffsetY) = if (coords != null && coords.isAttached) {
@@ -564,13 +565,7 @@ fun KeycapView(
             }
 
             val isLight = colorScheme == KeyboardColorScheme.DefaultLight
-            val popupBg = when (colorScheme) {
-                KeyboardColorScheme.DefaultLight -> Color.White
-                KeyboardColorScheme.AmoledBlack -> Color(0xFF232328)
-                KeyboardColorScheme.TokyoNight -> Color(0xFF2E334B)
-                KeyboardColorScheme.Nord -> Color(0xFF434C5E)
-                else -> Color(0xFF38383F)
-            }
+            val popupBg = colorScheme.moreKeysBackground
 
             Box(
                 modifier = Modifier

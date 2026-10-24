@@ -674,12 +674,12 @@ fun KeyboardRootView(
                             val chunkedRows = keyDef.moreKeys.chunked(itemsPerRow)
                             val maxCols = itemsPerRow
 
-                            val horizontalPaddingPx = with(density) { 6.dp.toPx() }
-                            val colGapPx = with(density) { 3.dp.toPx() }
-                            val itemWidthPx = with(density) { 42.dp.toPx() }
+                            val horizontalPaddingPx = with(density) { (6 * scaleFactor).dp.toPx() }
+                            val colGapPx = with(density) { (3 * scaleFactor).dp.toPx() }
+                            val itemWidthPx = with(density) { (42 * scaleFactor).dp.toPx() }
                             val totalWidthPx = maxCols * itemWidthPx + (maxCols - 1) * colGapPx + horizontalPaddingPx * 2
 
-                            val minLeftPx = with(density) { 8.dp.toPx() }
+                            val minLeftPx = with(density) { (8 * scaleFactor).dp.toPx() }
                             val maxLeftPx = (rootWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
                             val clampedLeft = (keyRect.center.x - totalWidthPx / 2f).coerceIn(minLeftPx, maxLeftPx)
 
@@ -709,23 +709,25 @@ fun KeyboardRootView(
                             val chunkedRows = state.items.chunked(itemsPerRow)
                             val maxCols = itemsPerRow
 
-                            val horizontalPaddingPx = with(density) { 6.dp.toPx() }
-                            val verticalPaddingPx = with(density) { 6.dp.toPx() }
-                            val colGapPx = with(density) { 3.dp.toPx() }
-                            val rowGapPx = with(density) { 4.dp.toPx() }
-                            val itemWidthPx = with(density) { 42.dp.toPx() }
-                            val itemHeightPx = with(density) { 42.dp.toPx() }
+                            val horizontalPaddingPx = with(density) { (6 * scaleFactor).dp.toPx() }
+                            val verticalPaddingPx = with(density) { (5 * scaleFactor).dp.toPx() }
+                            val colGapPx = with(density) { (3 * scaleFactor).dp.toPx() }
+                            val rowGapPx = with(density) { (4 * scaleFactor).dp.toPx() }
+                            val itemWidthPx = with(density) { (42 * scaleFactor).dp.toPx() }
+                            val itemHeightPx = with(density) { (42 * scaleFactor).dp.toPx() }
 
                             val totalWidthPx = maxCols * itemWidthPx + (maxCols - 1) * colGapPx + horizontalPaddingPx * 2
                             val totalHeightPx = rowCount * itemHeightPx + (rowCount - 1) * rowGapPx + verticalPaddingPx * 2
 
-                            val minLeftPx = with(density) { 8.dp.toPx() }
+                            val minLeftPx = with(density) { (8 * scaleFactor).dp.toPx() }
                             val maxLeftPx = (rootWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
                             val clampedLeft = (state.anchorRect.center.x - totalWidthPx / 2f).coerceIn(minLeftPx, maxLeftPx)
 
-                            val gapPx = with(density) { 6.dp.toPx() }
+                            val gapDp = (12 * scaleFactor).coerceIn(8f, 16f).dp
+                            val gapPx = with(density) { gapDp.toPx() }
                             val idealTop = state.anchorRect.top - totalHeightPx - gapPx
-                            val minTopPx = with(density) { 10.dp.toPx() }
+                            val minTopDp = 6.dp
+                            val minTopPx = with(density) { minTopDp.toPx() }
                             val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
 
                             val relX = fingerPosInRoot.x - (clampedLeft + horizontalPaddingPx)
@@ -1057,7 +1059,8 @@ fun KeyboardRootView(
         // 2. Borno Keyboard rounded pill MoreKeys floating popup
         MoreKeysPopup(
             state = moreKeysState,
-            keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f
+            keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f,
+            scaleFactor = scaleFactor
         )
 
         // 3. Live Keyboard Resizer Overlay (Borno Keyboard 4-way drag handles)

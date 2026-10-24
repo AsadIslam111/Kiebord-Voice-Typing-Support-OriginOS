@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.common.model.KeyDef
+import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
 import kotlin.math.roundToInt
 
@@ -50,6 +52,7 @@ data class MoreKeysPopupState(
 fun MoreKeysPopup(
     state: MoreKeysPopupState?,
     keyboardWidthPx: Float,
+    scaleFactor: Float = 1.0f,
     modifier: Modifier = Modifier
 ) {
     if (state == null || state.items.isEmpty()) return
@@ -64,12 +67,12 @@ fun MoreKeysPopup(
     val chunkedRows = state.items.chunked(itemsPerRow)
     val maxCols = itemsPerRow
 
-    val horizontalPaddingDp = 6.dp
-    val verticalPaddingDp = 6.dp
-    val colGapDp = 3.dp
-    val rowGapDp = 4.dp
-    val itemWidthDp = 42.dp
-    val itemHeightDp = 42.dp
+    val horizontalPaddingDp = (6 * scaleFactor).dp
+    val verticalPaddingDp = (5 * scaleFactor).dp
+    val colGapDp = (3 * scaleFactor).dp
+    val rowGapDp = (4 * scaleFactor).dp
+    val itemWidthDp = (42 * scaleFactor).dp
+    val itemHeightDp = (42 * scaleFactor).dp
 
     val horizontalPaddingPx = with(density) { horizontalPaddingDp.toPx() }
     val verticalPaddingPx = with(density) { verticalPaddingDp.toPx() }
@@ -84,15 +87,17 @@ fun MoreKeysPopup(
     // 1. Safe horizontal clamping: at least 8dp from screen edges
     val anchorCenterX = state.anchorRect.center.x
     val idealLeft = anchorCenterX - totalWidthPx / 2f
-    val minLeftPx = with(density) { 8.dp.toPx() }
+    val minLeftPx = with(density) { (8 * scaleFactor).dp.toPx() }
     val maxLeftPx = (keyboardWidthPx - totalWidthPx - minLeftPx).coerceAtLeast(minLeftPx)
     val clampedLeft = idealLeft.coerceIn(minLeftPx, maxLeftPx)
 
     // 2. Safe vertical clamping: above anchor keycap, never off top of screen
     val anchorTop = state.anchorRect.top
-    val gapPx = with(density) { 6.dp.toPx() }
+    val gapDp = (12 * scaleFactor).coerceIn(8f, 16f).dp
+    val gapPx = with(density) { gapDp.toPx() }
     val idealTop = anchorTop - totalHeightPx - gapPx
-    val minTopPx = with(density) { 10.dp.toPx() }
+    val minTopDp = 6.dp
+    val minTopPx = with(density) { minTopDp.toPx() }
     val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
 
     // 3. Dynamic transform origin for smooth bloom originating right from anchor key
@@ -122,6 +127,8 @@ fun MoreKeysPopup(
         label = "pillY"
     )
 
+    val isLight = colorScheme == KeyboardColorScheme.DefaultLight
+
     // Outer Box holds the FIXED position so there is ZERO jumping
     Box(
         modifier = modifier
@@ -146,13 +153,18 @@ fun MoreKeysPopup(
                 modifier = Modifier
                     .wrapContentSize()
                     .shadow(
-                        elevation = 6.dp,
+                        elevation = (4 * scaleFactor).dp,
                         shape = RoundedCornerShape(20.dp),
                         ambientColor = Color(0x38000000),
                         spotColor = Color(0x30000000)
                     )
                     .clip(RoundedCornerShape(20.dp))
                     .background(colorScheme.moreKeysBackground)
+                    .border(
+                        width = 0.5.dp,
+                        color = if (isLight) Color(0x1A000000) else Color(0x22FFFFFF),
+                        shape = RoundedCornerShape(20.dp)
+                    )
                     .padding(horizontal = horizontalPaddingDp, vertical = verticalPaddingDp)
             ) {
                 // 1. Sliding Accent Highlight (glides smoothly under the selected key as a full circle)
@@ -192,7 +204,7 @@ fun MoreKeysPopup(
                                     Text(
                                         text = item,
                                         color = animatedTextColor,
-                                        fontSize = 19.sp,
+                                        fontSize = (19 * scaleFactor).sp,
                                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
                                     )
                                 }

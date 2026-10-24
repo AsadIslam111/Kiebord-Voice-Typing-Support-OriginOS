@@ -30,7 +30,7 @@ data class KeyboardColorScheme(
             actionKeyForeground = Color(0xFF04294E),
             shiftActiveColor = Color(0xFFA8C7FA),
             accentColor = Color(0xFFA8C7FA),
-            moreKeysBackground = Color(0xFF252529),
+            moreKeysBackground = Color(0xFF38383F),
             guidelineColor = Color(0xFFA8C7FA),
             suggestionBackground = Color(0xFF1B1B1F),
             suggestionForeground = Color(0xFFE3E2E6)
@@ -46,7 +46,7 @@ data class KeyboardColorScheme(
             actionKeyForeground = Color(0xFF04294E),
             shiftActiveColor = Color(0xFFA8C7FA),
             accentColor = Color(0xFFA8C7FA),
-            moreKeysBackground = Color(0xFF18181B),
+            moreKeysBackground = Color(0xFF232328),
             guidelineColor = Color(0xFFA8C7FA),
             suggestionBackground = Color(0xFF000000),
             suggestionForeground = Color(0xFFFFFFFF)
@@ -78,7 +78,7 @@ data class KeyboardColorScheme(
             actionKeyForeground = Color(0xFF1A1B26),
             shiftActiveColor = Color(0xFF7AA2F7),
             accentColor = Color(0xFF7AA2F7),
-            moreKeysBackground = Color(0xFF1F2335),
+            moreKeysBackground = Color(0xFF2E334B),
             guidelineColor = Color(0xFF7AA2F7),
             suggestionBackground = Color(0xFF1A1B26),
             suggestionForeground = Color(0xFFC0CAF5)
@@ -94,7 +94,7 @@ data class KeyboardColorScheme(
             actionKeyForeground = Color(0xFF2E3440),
             shiftActiveColor = Color(0xFF88C0D0),
             accentColor = Color(0xFF88C0D0),
-            moreKeysBackground = Color(0xFF2E3440),
+            moreKeysBackground = Color(0xFF434C5E),
             guidelineColor = Color(0xFF88C0D0),
             suggestionBackground = Color(0xFF2E3440),
             suggestionForeground = Color(0xFFECEFF4)
