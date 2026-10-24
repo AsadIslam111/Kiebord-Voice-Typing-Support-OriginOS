@@ -521,7 +521,13 @@ fun KeyboardRootView(
                             isSuggestionsExpanded = false
                             onCandidateSelect(candidate)
                         },
-                        onClose = { isSuggestionsExpanded = false },
+                        onDelete = {
+                            onKeyTap(KeyDef(type = KeyType.DELETE))
+                        },
+                        onEnter = {
+                            isSuggestionsExpanded = false
+                            onKeyTap(KeyDef(type = KeyType.ACTION))
+                        },
                         height = keyboardContentHeight
                     )
                 } else if (isToolsDrawerOpen) {
