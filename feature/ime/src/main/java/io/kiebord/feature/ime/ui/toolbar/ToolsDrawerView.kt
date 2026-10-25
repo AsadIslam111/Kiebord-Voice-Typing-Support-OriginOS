@@ -24,10 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CropFree
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
@@ -131,7 +128,6 @@ fun ToolsDrawerView(
 
     val numColumns = 3
     val addThresholdPx = with(density) { 30.dp.toPx() }
-    val isOverAddThreshold = draggingAction != null && accumulatedDragY < -addThresholdPx
 
     val scrollState = rememberScrollState()
 
@@ -151,85 +147,19 @@ fun ToolsDrawerView(
             },
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Subtitle or active drop zone banner
-        if (hoveredDrawerAction != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(
-                        width = 1.5.dp,
-                        color = colorScheme.accentColor,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .background(colorScheme.accentColor.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.SwapHoriz,
-                        contentDescription = null,
-                        tint = colorScheme.accentColor,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = "Drop to swap with ${allToolsMap[hoveredDrawerAction]?.label ?: "option"}",
-                        color = colorScheme.accentColor,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        } else if (isOverDrawerBlankSpace) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(
-                        width = 1.5.dp,
-                        color = colorScheme.accentColor,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .background(colorScheme.accentColor.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Add,
-                        contentDescription = null,
-                        tint = colorScheme.accentColor,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "Drop to move here from toolbar",
-                        color = colorScheme.accentColor,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Hold and drag to customize",
-                    color = colorScheme.keyForeground.copy(alpha = 0.8f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Normal
-                )
-            }
+        // Clean static subtitle - no jumping banners or layout flickering
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Hold and drag to customize",
+                color = colorScheme.keyForeground.copy(alpha = 0.6f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal
+            )
         }
 
         // 3-Column Balanced Grid container (exactly 3 items per row, perfectly centered)
@@ -250,7 +180,7 @@ fun ToolsDrawerView(
                         if (tool != null) {
                             key(action) {
                                 val isDraggingThisItem = draggingAction == action
-                                val isHoveredByToolbar = hoveredDrawerAction == action
+                                val isHovered = hoveredDrawerAction == action
                                 var itemCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
                             Box(
@@ -272,22 +202,9 @@ fun ToolsDrawerView(
                                         .graphicsLayer {
                                             translationX = if (isDraggingThisItem) accumulatedDragX else 0f
                                             translationY = if (isDraggingThisItem) accumulatedDragY else 0f
-                                            scaleX = if (isDraggingThisItem || isHoveredByToolbar) 1.15f else 1f
-                                            scaleY = if (isDraggingThisItem || isHoveredByToolbar) 1.15f else 1f
+                                            scaleX = if (isDraggingThisItem || isHovered) 1.08f else 1f
+                                            scaleY = if (isDraggingThisItem || isHovered) 1.08f else 1f
                                         }
-                                        .then(
-                                            if (isDraggingThisItem) {
-                                                Modifier.shadow(
-                                                    elevation = 12.dp,
-                                                    shape = RoundedCornerShape(16.dp),
-                                                    clip = false,
-                                                    ambientColor = Color.Black.copy(alpha = 0.45f),
-                                                    spotColor = Color.Black.copy(alpha = 0.65f)
-                                                )
-                                            } else {
-                                                Modifier
-                                            }
-                                        )
                                         .pointerInput(action) {
                                             detectDragGesturesAfterLongPress(
                                                 onDragStart = { localOffset ->
@@ -316,19 +233,29 @@ fun ToolsDrawerView(
                                                     val draggedAct = draggingAction
                                                     if (draggedAct != null) {
                                                         if (currentHoveredToolbarAction != null && currentHoveredToolbarAction != draggedAct) {
-                                                            // Hovered over specific toolbar option -> INTERCHANGE!
+                                                            // Hovered over specific toolbar option -> SWAP!
                                                             currentOnInterchange(draggedAct, currentHoveredToolbarAction!!)
                                                         } else if (accumulatedDragY < -addThresholdPx) {
-                                                            // Hovered over toolbar generally -> MOVE TO TOOLBAR!
+                                                            // Dragged up into toolbar gap/space -> MOVE TO TOOLBAR!
                                                             currentOnMoveToToolbar(draggedAct)
                                                         } else if (hoveredDrawerAction != null && hoveredDrawerAction != draggedAct) {
-                                                            // Reorder / swap within drawer!
+                                                            // Hovered over another drawer option -> SWAP!
                                                             val fromIndex = currentDrawerTools.indexOf(draggedAct)
                                                             val toIndex = currentDrawerTools.indexOf(hoveredDrawerAction)
                                                             if (fromIndex != -1 && toIndex != -1 && fromIndex != toIndex) {
                                                                 val mutable = currentDrawerTools.toMutableList()
+                                                                val target = mutable[toIndex]
+                                                                mutable[toIndex] = draggedAct
+                                                                mutable[fromIndex] = target
+                                                                currentOnOrderChange(mutable.distinct())
+                                                            }
+                                                        } else if (accumulatedDragY > addThresholdPx) {
+                                                            // Dragged down to empty gap at bottom of drawer -> PLACE AT END!
+                                                            val fromIndex = currentDrawerTools.indexOf(draggedAct)
+                                                            if (fromIndex != -1 && fromIndex != currentDrawerTools.lastIndex) {
+                                                                val mutable = currentDrawerTools.toMutableList()
                                                                 val moved = mutable.removeAt(fromIndex)
-                                                                mutable.add(toIndex, moved)
+                                                                mutable.add(moved)
                                                                 currentOnOrderChange(mutable.distinct())
                                                             }
                                                         }
@@ -352,8 +279,7 @@ fun ToolsDrawerView(
                                         tool = tool,
                                         isActive = isActionActive(tool.action),
                                         isDragging = isDraggingThisItem,
-                                        isOverAddThreshold = isOverAddThreshold,
-                                        isHoveredByToolbar = isHoveredByToolbar,
+                                        isHovered = isHovered,
                                         onClick = {
                                             if (draggingAction == null) {
                                                 onToolClick(tool.action)
@@ -384,8 +310,7 @@ private fun ToolGridItem(
     tool: DrawerTool,
     isActive: Boolean,
     isDragging: Boolean,
-    isOverAddThreshold: Boolean,
-    isHoveredByToolbar: Boolean,
+    isHovered: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -395,25 +320,22 @@ private fun ToolGridItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.clickable(onClick = onClick)
     ) {
-        // Tile container: Fixed 54dp compact squircle
+        // Tile container: Fixed 54dp compact squircle with keyBackground
         Box(
             modifier = Modifier
                 .size(54.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(
                     when {
-                        isHoveredByToolbar -> colorScheme.accentColor.copy(alpha = 0.25f)
+                        isHovered -> colorScheme.accentColor.copy(alpha = 0.25f)
                         isActive -> colorScheme.accentColor.copy(alpha = 0.20f)
-                        else -> colorScheme.actionKeyBackground
+                        else -> colorScheme.keyBackground
                     }
                 )
                 .border(
-                    width = if (isDragging || isHoveredByToolbar || isActive) 1.5.dp else 0.dp,
+                    width = if (isDragging || isHovered || isActive) 1.5.dp else 0.dp,
                     color = when {
-                        isHoveredByToolbar -> colorScheme.accentColor
-                        isOverAddThreshold -> colorScheme.accentColor
-                        isDragging -> colorScheme.accentColor.copy(alpha = 0.8f)
-                        isActive -> colorScheme.accentColor
+                        isHovered || isDragging || isActive -> colorScheme.accentColor
                         else -> Color.Transparent
                     },
                     shape = RoundedCornerShape(16.dp)
@@ -421,13 +343,9 @@ private fun ToolGridItem(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = when {
-                    isHoveredByToolbar -> Icons.Outlined.SwapHoriz
-                    isOverAddThreshold -> Icons.Outlined.KeyboardArrowUp
-                    else -> tool.icon
-                },
+                imageVector = if (isHovered) Icons.Outlined.SwapHoriz else tool.icon,
                 contentDescription = tool.label,
-                tint = if (isDragging || isOverAddThreshold || isHoveredByToolbar || isActive) {
+                tint = if (isDragging || isHovered || isActive) {
                     colorScheme.accentColor
                 } else {
                     colorScheme.keyForeground
@@ -440,18 +358,14 @@ private fun ToolGridItem(
 
         // Label below the tile
         Text(
-            text = when {
-                isHoveredByToolbar -> "Swap"
-                isOverAddThreshold -> "Add to top"
-                else -> tool.label
-            },
-            color = if (isOverAddThreshold || isHoveredByToolbar || isActive) {
+            text = if (isHovered) "Swap" else tool.label,
+            color = if (isHovered || isActive) {
                 colorScheme.accentColor
             } else {
                 colorScheme.keyForeground
             },
             fontSize = 12.sp,
-            fontWeight = if (isOverAddThreshold || isHoveredByToolbar || isActive) FontWeight.SemiBold else FontWeight.Normal,
+            fontWeight = if (isHovered || isActive) FontWeight.SemiBold else FontWeight.Normal,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

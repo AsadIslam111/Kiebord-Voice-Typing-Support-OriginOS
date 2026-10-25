@@ -334,16 +334,10 @@ fun KeyboardRootView(
 
     val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
         val finger = currentFingerInRoot!!
-        if (finger.y <= toolbarHeight.value * 3f && pinnedTools.isNotEmpty() && rootWidthPx > 0f) {
-            val slotWidth = rootWidthPx / pinnedTools.size
-            val slotIndex = (finger.x / slotWidth).toInt().coerceIn(0, pinnedTools.lastIndex)
-            pinnedTools.getOrNull(slotIndex)
-        } else {
-            val validToolbarBounds = toolbarItemBounds.filterKeys { it in pinnedTools && it != activeDraggingFromDrawer }
-            validToolbarBounds.entries.firstOrNull { (_, rect) ->
-                rect.inflate(24f).contains(finger)
-            }?.key
-        }
+        val validToolbarBounds = toolbarItemBounds.filterKeys { it in pinnedTools && it != activeDraggingFromDrawer }
+        validToolbarBounds.entries.firstOrNull { (_, rect) ->
+            rect.inflate(16f).contains(finger)
+        }?.key
     } else null
     val context = LocalContext.current
     var isClipboardOpen by remember { mutableStateOf(false) }

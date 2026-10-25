@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.CropFree
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
@@ -226,32 +225,7 @@ fun ReorderableToolbar(
                     val tileHeight = (34 * scaleFactor).dp
                     val tileShape = RoundedCornerShape((10 * scaleFactor).coerceAtLeast(4f).dp)
 
-                    // 1. Live Drop Target Placeholder
-                    if (isDropTargetSlot && !isDraggingThisItem) {
-                        Box(
-                            modifier = Modifier
-                                .size(tileWidth, tileHeight)
-                                .border(
-                                    width = (1.5f * scaleFactor).coerceAtLeast(1f).dp,
-                                    color = colorScheme.accentColor,
-                                    shape = tileShape
-                                )
-                                .background(
-                                    color = colorScheme.accentColor.copy(alpha = 0.18f),
-                                    shape = tileShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = colorScheme.accentColor,
-                                modifier = Modifier.size((16 * scaleFactor).coerceAtLeast(11f).dp)
-                            )
-                        }
-                    }
-
-                    // 2. The Tool Tile
+                    // The Tool Tile
                     Box(
                         modifier = Modifier
                             .size(tileWidth, tileHeight)
@@ -259,39 +233,23 @@ fun ReorderableToolbar(
                             .graphicsLayer {
                                 translationX = visualTranslationX
                                 translationY = visualTranslationY
-                                scaleX = if (isDraggingThisItem || isHoveredByDrawerItem) 1.15f else 1f
-                                scaleY = if (isDraggingThisItem || isHoveredByDrawerItem) 1.15f else 1f
+                                scaleX = if (isDraggingThisItem || isHoveredByDrawerItem) 1.08f else 1f
+                                scaleY = if (isDraggingThisItem || isHoveredByDrawerItem) 1.08f else 1f
                             }
-                            .then(
-                                if (isDraggingThisItem) {
-                                    Modifier.shadow(
-                                        elevation = 12.dp,
-                                        shape = tileShape,
-                                        clip = false,
-                                        ambientColor = Color.Black.copy(alpha = 0.45f),
-                                        spotColor = Color.Black.copy(alpha = 0.65f)
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
                             .clip(tileShape)
                             .background(
                                 when {
                                     isHoveredByDrawerItem -> colorScheme.accentColor.copy(alpha = 0.35f)
-                                    isDraggingThisItem -> colorScheme.actionKeyBackground
+                                    isDraggingThisItem -> colorScheme.keyBackground
                                     isActive -> colorScheme.accentColor.copy(alpha = 0.20f)
-                                    isCustomizeMode -> colorScheme.actionKeyBackground
+                                    isCustomizeMode -> colorScheme.keyBackground
                                     else -> Color.Transparent
                                 }
                             )
                             .border(
                                 width = if (isDraggingThisItem || isHoveredByDrawerItem || isActive) (1.5f * scaleFactor).coerceAtLeast(1f).dp else 0.dp,
                                 color = when {
-                                    isHoveredByDrawerItem -> colorScheme.accentColor
-                                    isOverRemoveThreshold -> colorScheme.accentColor.copy(alpha = 0.6f)
-                                    isDraggingThisItem -> colorScheme.accentColor
-                                    isActive -> colorScheme.accentColor
+                                    isHoveredByDrawerItem || isDraggingThisItem || isActive -> colorScheme.accentColor
                                     else -> Color.Transparent
                                 },
                                 shape = tileShape
@@ -323,8 +281,11 @@ fun ReorderableToolbar(
                                     onDragEnd = {
                                         val draggedAct = draggingAction
                                         if (draggedAct != null) {
-                                            if (accumulatedDragY > removeThresholdPx) {
-                                                // Dragged down to bottom/drawer -> REMOVE FROM TOP TOOLBAR & MOVE TO DRAWER!
+                                            if (currentHoveredDrawerAction != null && currentHoveredDrawerAction != draggedAct) {
+                                                // Dragged directly over a specific drawer item -> SWAP!
+                                                currentOnInterchange(draggedAct, currentHoveredDrawerAction!!)
+                                            } else if (accumulatedDragY > removeThresholdPx) {
+                                                // Dragged down to drawer gap or blank space -> PLACE IN DRAWER!
                                                 currentOnMoveToDrawer(draggedAct)
                                             } else {
                                                 val fromIndex = currentPinnedTools.indexOf(draggedAct)
