@@ -133,6 +133,7 @@ fun KeyboardRootView(
     onOpenInputMethodPicker: () -> Unit = {},
     gestureTypingEnabled: Boolean = true,
     showGestureTrail: Boolean = true,
+    inputSessionId: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -384,6 +385,19 @@ fun KeyboardRootView(
         }
     }
 
+    LaunchedEffect(inputSessionId) {
+        if (inputSessionId > 0) {
+            isToolsDrawerOpen = false
+            isToolbarOptionsVisible = false
+            isEmojiOpen = false
+            isTextEditOpen = false
+            isClipboardOpen = false
+            isResizerOpen = false
+            isSuggestionsExpanded = false
+            isLanguagePickerOpen = false
+        }
+    }
+
     val isKeysInteractive = isInteractive && !isResizerOpen
     val numberRowEffectiveHeight = if (showNumberRow) (44 * scaleFactor).dp else 0.dp
     val keyboardContentHeight = (keyRowHeight * 4) + numberRowEffectiveHeight
@@ -430,6 +444,14 @@ fun KeyboardRootView(
                 onKeyPopupsToggle?.invoke(showKeyPopups)
             }
             ToolbarAction.THEME_TOGGLE -> {
+                isToolsDrawerOpen = false
+                isToolbarOptionsVisible = false
+                isEmojiOpen = false
+                isTextEditOpen = false
+                isClipboardOpen = false
+                isResizerOpen = false
+                isSuggestionsExpanded = false
+                isLanguagePickerOpen = false
                 onOpenThemeSettings()
             }
             ToolbarAction.CLIPBOARD -> {
@@ -451,6 +473,14 @@ fun KeyboardRootView(
                 onOneHandedModeChange?.invoke(oneHandedSide)
             }
             ToolbarAction.SETTINGS -> {
+                isToolsDrawerOpen = false
+                isToolbarOptionsVisible = false
+                isEmojiOpen = false
+                isTextEditOpen = false
+                isClipboardOpen = false
+                isResizerOpen = false
+                isSuggestionsExpanded = false
+                isLanguagePickerOpen = false
                 try {
                     val intent = android.content.Intent(context, Class.forName("io.kiebord.app.MainActivity")).apply {
                         flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
@@ -1312,6 +1342,8 @@ fun KeyboardRootView(
                 },
                 onMoreLayouts = {
                     isLanguagePickerOpen = false
+                    isToolsDrawerOpen = false
+                    isToolbarOptionsVisible = false
                     onOpenLanguagesSettings()
                 },
                 onOtherKeyboards = {

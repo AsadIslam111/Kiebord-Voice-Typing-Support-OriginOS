@@ -125,7 +125,7 @@ fun KeycapView(
 
     val displaySymbolLabel = key.displayLabel(shiftState)
 
-    // Key shape: Enter key and Sym key (?123) are always rounded stadium pills like Borno Keyboard.
+    // Key shape: Enter key and Sym key (?123) are always rounded stadium pills.
     // In flat mode (!showKeyBorders), spacebar is also a stadium pill.
     // When key borders are enabled, spacebar and standard character keys use standard scaled corner radius.
     val isPillShape = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)

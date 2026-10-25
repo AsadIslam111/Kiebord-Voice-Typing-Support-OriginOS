@@ -108,6 +108,7 @@ class KiebordService : InputMethodService() {
     private lateinit var userDictionaryRepo: UserDictionaryRepository
     private var selectionAnchor: Int? = null
     private var selectionCursor: Int? = null
+    private var inputSessionId by mutableIntStateOf(0)
 
     override fun onCreate() {
         super.onCreate()
@@ -204,6 +205,7 @@ class KiebordService : InputMethodService() {
                 KeyboardRootView(
                     layout = activeLayout,
                     shiftState = shiftState,
+                    inputSessionId = inputSessionId,
                     navBarBottomInset = navBarBottomDp,
                     onKeyPress = { performKeyFeedback() },
                     onKeyTap = ::handleKeyTap,
@@ -309,6 +311,7 @@ class KiebordService : InputMethodService() {
             }
         }
         lifecycleOwner.onStart()
+        inputSessionId++
         isSymbolsMode = false
         activeLayout = primaryAlphaLayout
         val initialCaps = if (shouldAutoCapitalize() && info != null) {
