@@ -114,14 +114,21 @@ fun KeycapView(
     }
 
     val activeBackground = if (isPressed) {
-        if (key.type == KeyType.ACTION) colorScheme.accentColor.copy(alpha = 0.8f) else colorScheme.accentColor.copy(alpha = 0.28f)
+        if (key.type == KeyType.ACTION) {
+            colorScheme.accentColor.copy(alpha = 0.8f)
+        } else if (colorScheme.keyPressedBackground != Color.Unspecified) {
+            colorScheme.keyPressedBackground
+        } else {
+            colorScheme.accentColor.copy(alpha = 0.28f)
+        }
     } else {
         baseBackground
     }
 
     val foregroundColor = when {
-        key.type == KeyType.SHIFT && shiftState != ShiftState.UNSHIFTED -> colorScheme.shiftActiveColor
         key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
+        isPressed && colorScheme.keyPressedForeground != Color.Unspecified -> colorScheme.keyPressedForeground
+        key.type == KeyType.SHIFT && shiftState != ShiftState.UNSHIFTED -> colorScheme.shiftActiveColor
         else -> colorScheme.keyForeground
     }
 
@@ -438,7 +445,11 @@ fun KeycapView(
         if (showSecondaryKeys && !key.flickUp.isNullOrEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode) {
             Text(
                 text = key.flickUp!!,
-                color = colorScheme.keyForeground.copy(alpha = 0.5f),
+                color = if (isPressed && colorScheme.keyPressedForeground != Color.Unspecified) {
+                    colorScheme.keyPressedForeground.copy(alpha = 0.7f)
+                } else {
+                    colorScheme.keyForeground.copy(alpha = 0.5f)
+                },
                 fontSize = (11 * scaleFactor).coerceAtLeast(6.5f).sp,
                 fontWeight = FontWeight.Normal,
                 fontFamily = KiebordTheme.fontFamily,
@@ -515,7 +526,11 @@ fun KeycapView(
             KeyType.SPACE -> {
                 Text(
                     text = key.displayLabel(shiftState).ifEmpty { "English" },
-                    color = colorScheme.keyForeground.copy(alpha = 0.45f),
+                    color = if (isPressed && colorScheme.keyPressedForeground != Color.Unspecified) {
+                        colorScheme.keyPressedForeground
+                    } else {
+                        colorScheme.keyForeground.copy(alpha = 0.45f)
+                    },
                     fontSize = (15.5f * scaleFactor).coerceAtLeast(8f).sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = KiebordTheme.fontFamily

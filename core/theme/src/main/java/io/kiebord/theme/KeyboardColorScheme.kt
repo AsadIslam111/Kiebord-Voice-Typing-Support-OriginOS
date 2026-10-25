@@ -17,7 +17,9 @@ data class KeyboardColorScheme(
     val moreKeysBackground: Color,
     val guidelineColor: Color,
     val suggestionBackground: Color,
-    val suggestionForeground: Color
+    val suggestionForeground: Color,
+    val keyPressedBackground: Color = Color.Unspecified,
+    val keyPressedForeground: Color = Color.Unspecified
 ) {
     companion object {
         val DefaultDark = KeyboardColorScheme(
@@ -53,19 +55,21 @@ data class KeyboardColorScheme(
         )
 
         val DefaultLight = KeyboardColorScheme(
-            containerBackground = Color(0xFFF1F3F4),
+            containerBackground = Color(0xFFE8EAED),
             keyBackground = Color(0xFFFFFFFF),
-            keyForeground = Color(0xFF1F1F1F),
-            keyBorder = Color(0xFFD3D6DA),
+            keyForeground = Color(0xFF000000),
+            keyBorder = Color(0x00000000),
             keyShadow = Color(0x00000000),
-            actionKeyBackground = Color(0xFFE2E4E8),
+            actionKeyBackground = Color(0xFFCCCED6),
             actionKeyForeground = Color(0xFFFFFFFF),
-            shiftActiveColor = Color(0xFF0B57D0),
-            accentColor = Color(0xFF0B57D0),
-            moreKeysBackground = Color(0xFFFFFFFF),
-            guidelineColor = Color(0xFF0B57D0),
-            suggestionBackground = Color(0xFFF1F3F4),
-            suggestionForeground = Color(0xFF1F1F1F)
+            shiftActiveColor = Color(0xFF4999FD),
+            accentColor = Color(0xFF4999FD),
+            moreKeysBackground = Color(0xFFCCCED6),
+            guidelineColor = Color(0xFF4999FD),
+            suggestionBackground = Color(0xFFE8EAED),
+            suggestionForeground = Color(0xFF000000),
+            keyPressedBackground = Color(0xFFE8EAED),
+            keyPressedForeground = Color(0xFFA2A3A5)
         )
 
         val TokyoNight = KeyboardColorScheme(
