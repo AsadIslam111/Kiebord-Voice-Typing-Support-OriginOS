@@ -71,6 +71,7 @@ class KiebordService : InputMethodService() {
     private val composingBuffer = StringBuilder()
     private val gestureDecoder = CrossLanguageGestureDecoder()
     private var lastGestureCommittedWord: String = ""
+    private var isGestureAlternativeActive: Boolean = false
     private var lastSpaceTapTime: Long = 0L
     private var lastAutoSpacePunctuationTime: Long = 0L
 
@@ -247,12 +248,14 @@ class KiebordService : InputMethodService() {
                         val ic = currentInputConnection
                         finishComposing()
                         lastGestureCommittedWord = ""
+                        isGestureAlternativeActive = false
                         ic?.commitText(clipText, 1)
                         updateSuggestions()
                     },
                     onOpenClipboardSettings = ::openClipboardSettings,
                     lastDeletedBatch = lastDeletedBatchState,
                     onGestureCommit = ::handleGestureCommit,
+                    onGestureLivePredict = ::predictLiveGestureCandidate,
                     gestureTypingEnabled = preferencesState.gestureTypingEnabled && isQwertyBasedLayout(activeLayout.id),
                     showGestureTrail = preferencesState.showGestureTrail,
                     longPressDelayMs = preferencesState.longPressDelayMs.toLong(),
@@ -379,6 +382,7 @@ class KiebordService : InputMethodService() {
         getTransliterationManager().reset()
         composingBuffer.clear()
         lastGestureCommittedWord = ""
+        isGestureAlternativeActive = false
         lastSpaceTapTime = 0L
         lastAutoSpacePunctuationTime = 0L
         selectionAnchor = null
@@ -395,6 +399,16 @@ class KiebordService : InputMethodService() {
         candidatesEnd: Int
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        if (isGestureAlternativeActive && lastGestureCommittedWord.isNotEmpty()) {
+            val ic = currentInputConnection
+            val textBefore = ic?.getTextBeforeCursor(lastGestureCommittedWord.length + 1, 0)?.toString() ?: ""
+            if (textBefore.endsWith(lastGestureCommittedWord)) {
+                return
+            } else {
+                isGestureAlternativeActive = false
+                lastGestureCommittedWord = ""
+            }
+        }
         val translitMgr = getTransliterationManager()
         if (!translitMgr.isComposing && composingBuffer.isEmpty()) {
             updateSuggestions()
@@ -408,6 +422,8 @@ class KiebordService : InputMethodService() {
                 ?.removePrimaryClipChangedListener(clipboardListener)
         } catch (_: Exception) {}
         finishComposing()
+        lastGestureCommittedWord = ""
+        isGestureAlternativeActive = false
         lastSpaceTapTime = 0L
         lastAutoSpacePunctuationTime = 0L
         selectionAnchor = null
@@ -505,12 +521,21 @@ class KiebordService : InputMethodService() {
         val translitMgr = getTransliterationManager()
         var wasComposing = false
         if (translitMgr.isComposing) {
+            val word = translitMgr.currentTransliteration.trim()
+            if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
+                userDictionaryRepo.recordWord(word, prevWord)
+            }
             ic?.commitText(translitMgr.currentTransliteration, 1)
             translitMgr.reset()
             wasComposing = true
         }
         if (composingBuffer.isNotEmpty()) {
-            val clean = BengaliBstiEngine.cleanPending(composingBuffer.toString())
+            val clean = BengaliBstiEngine.cleanPending(composingBuffer.toString()).trim()
+            if (preferencesState.learnedWordsEnabled && clean.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
+                userDictionaryRepo.recordWord(clean, prevWord)
+            }
             ic?.commitText(clean, 1)
             composingBuffer.clear()
             wasComposing = true
@@ -576,6 +601,7 @@ class KiebordService : InputMethodService() {
 
         if (key.type != KeyType.DELETE) {
             lastGestureCommittedWord = ""
+            isGestureAlternativeActive = false
         }
         if (key.type != KeyType.SPACE) {
             lastSpaceTapTime = 0L
@@ -722,6 +748,7 @@ class KiebordService : InputMethodService() {
                 if (lastGestureCommittedWord.isNotEmpty()) {
                     ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
                     lastGestureCommittedWord = ""
+                    isGestureAlternativeActive = false
                     updateSuggestions()
                     return
                 }
@@ -766,25 +793,21 @@ class KiebordService : InputMethodService() {
                 if (translitMgr.isComposing) {
                     val committed = translitMgr.currentTransliteration
                     val cleanCommitted = committed.trim()
-                    val prevWord = if (preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
-                        getPrecedingWord(excludeComposing = true)
-                    } else null
-                    ic.commitText(committed + " ", 1)
-                    if (prevWord != null) {
+                    if (preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                        val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
                         userDictionaryRepo.recordWord(cleanCommitted, prevWord)
                     }
+                    ic.commitText(committed + " ", 1)
                     translitMgr.reset()
                     lastSpaceTapTime = SystemClock.uptimeMillis()
                 } else if (composingBuffer.isNotEmpty()) {
                     val committed = BengaliBstiEngine.cleanPending(composingBuffer.toString())
                     val cleanCommitted = committed.trim()
-                    val prevWord = if (preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
-                        getPrecedingWord(excludeComposing = true)
-                    } else null
-                    ic.commitText(committed + " ", 1)
-                    if (prevWord != null) {
+                    if (preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                        val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
                         userDictionaryRepo.recordWord(cleanCommitted, prevWord)
                     }
+                    ic.commitText(committed + " ", 1)
                     composingBuffer.clear()
                     lastSpaceTapTime = SystemClock.uptimeMillis()
                 } else {
@@ -1772,21 +1795,28 @@ class KiebordService : InputMethodService() {
         performKeyFeedback()
         val ic = currentInputConnection ?: return
         val candidateText = candidate.text.trim()
-        if (preferencesState.learnedWordsEnabled && candidateText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
-            val prevWord = getPrecedingWord(excludeComposing = true)
-            userDictionaryRepo.recordWord(candidateText, prevWord)
-        }
-
         val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
         val textToCommit = if (shouldAutoSpace) "$candidateText " else candidateText
 
-        if (lastGestureCommittedWord.isNotEmpty()) {
+        if (isGestureAlternativeActive && lastGestureCommittedWord.isNotEmpty()) {
+            val prevWord = getPrecedingWord(excludeComposing = true)
+            if (preferencesState.learnedWordsEnabled && candidateText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                repeat(3) {
+                    userDictionaryRepo.recordWord(candidateText, prevWord, isGesture = true)
+                }
+            }
             ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
             lastGestureCommittedWord = ""
+            isGestureAlternativeActive = false
             ic.commitText(textToCommit, 1)
             if (shouldAutoSpace) lastSpaceTapTime = SystemClock.uptimeMillis()
             updateSuggestions()
             return
+        }
+
+        if (preferencesState.learnedWordsEnabled && candidateText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+            val prevWord = getPrecedingWord(excludeComposing = true)
+            userDictionaryRepo.recordWord(candidateText, prevWord)
         }
         val translitMgr = getTransliterationManager()
         if (translitMgr.isComposing) {
@@ -1858,6 +1888,8 @@ class KiebordService : InputMethodService() {
         }
     }
 
+    private var gestureCommitJob: kotlinx.coroutines.Job? = null
+
     private fun handleGestureCommit(
         trail: List<androidx.compose.ui.geometry.Offset>,
         centroids: List<KeyCentroid>,
@@ -1866,37 +1898,57 @@ class KiebordService : InputMethodService() {
         if (!preferencesState.gestureTypingEnabled || !isQwertyBasedLayout(activeLayout.id)) return
         if (trail.size < 2 || centroids.isEmpty()) return
 
-        val lang = activeLayout.id
-        val learnedWords = if (preferencesState.learnedWordsEnabled) {
-            val all = userDictionaryRepo.getAllLearnedWords(50)
-            if (isBanglaLayout()) {
-                all.filter { !containsLatinText(it) }
-            } else {
-                all.filter { !containsBengaliText(it) }
-            }
-        } else emptyList()
+        gestureCommitJob?.cancel()
+        gestureCommitJob = serviceScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val lang = activeLayout.id
+            val learnedWords = if (preferencesState.learnedWordsEnabled) {
+                val all = userDictionaryRepo.getLearnedGestureWords(20)
+                if (isBanglaLayout()) {
+                    all.filter { !containsLatinText(it) }
+                } else {
+                    all.filter { !containsBengaliText(it) }
+                }
+            } else emptyList()
 
-        val rawCandidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, learnedWords)
-        val candidates = filterCandidatesForLayout(rawCandidates)
-        if (candidates.isNotEmpty()) {
-            val primary = candidates.first()
-            val primaryText = primary.text.trim()
-            val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
-            val textToCommit = if (shouldAutoSpace) "$primaryText " else primaryText
-            val ic = currentInputConnection
-            if (preferencesState.learnedWordsEnabled && primaryText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
-                val prevWord = getPrecedingWord()
-                userDictionaryRepo.recordWord(primaryText, prevWord, isGesture = true)
-            }
-            finishComposing()
-            ic?.commitText(textToCommit, 1)
-            lastGestureCommittedWord = textToCommit
-            if (shouldAutoSpace) {
-                lastSpaceTapTime = SystemClock.uptimeMillis()
-            }
+            val rawCandidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, learnedWords)
+            val candidates = filterCandidatesForLayout(rawCandidates)
 
-            activeSuggestions = filterAndMarkCandidates(candidates.take(12))
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (candidates.isNotEmpty()) {
+                    val primary = candidates.first()
+                    val primaryText = primary.text.trim()
+                    val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
+                    val textToCommit = if (shouldAutoSpace) "$primaryText " else primaryText
+                    val ic = currentInputConnection
+                    if (preferencesState.learnedWordsEnabled && primaryText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                        val prevWord = getPrecedingWord()
+                        userDictionaryRepo.recordWord(primaryText, prevWord, isGesture = false)
+                    }
+                    finishComposing()
+                    lastGestureCommittedWord = textToCommit
+                    isGestureAlternativeActive = true
+                    ic?.commitText(textToCommit, 1)
+                    if (shouldAutoSpace) {
+                        lastSpaceTapTime = SystemClock.uptimeMillis()
+                    }
+
+                    activeSuggestions = filterAndMarkCandidates(candidates.take(12))
+                }
+            }
         }
+    }
+
+    private fun predictLiveGestureCandidate(
+        trail: List<androidx.compose.ui.geometry.Offset>,
+        centroids: List<KeyCentroid>,
+        keyWidthPx: Float
+    ): String? {
+        if (!preferencesState.gestureTypingEnabled || !isQwertyBasedLayout(activeLayout.id)) return null
+        if (trail.size < 4 || centroids.isEmpty()) return null
+        val lang = activeLayout.id
+        val rawCandidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, emptyList())
+        val candidates = filterCandidatesForLayout(rawCandidates)
+        return candidates.firstOrNull()?.text?.trim()
     }
 
     private fun markLearnedCandidates(candidates: List<SuggestionCandidate>): List<SuggestionCandidate> {
@@ -1924,6 +1976,10 @@ class KiebordService : InputMethodService() {
             return
         }
 
+        if (isGestureAlternativeActive && lastGestureCommittedWord.isNotEmpty()) {
+            return
+        }
+
         if (isTransliterationLayout()) {
             val translitMgr = getTransliterationManager()
             if (translitMgr.isComposing) {
@@ -1945,65 +2001,62 @@ class KiebordService : InputMethodService() {
                     list.add(SuggestionCandidate(text = primaryWord, isPrimary = true, rawInput = raw))
                 }
 
-                if (preferencesState.bengaliSmartPhonetic) {
-                    // When Proximity & Dictionary Suggestions are ENABLED:
-                    // Suggestions must come from valid dictionary entries (bn.dict)
+                val phoneticAlts = if (raw.isNotBlank()) {
+                    NativeEngine.queryTransliterationAlternatives(activeLayout.id, raw)
+                        .filter { it.isNotEmpty() && it != primaryWord && !containsLatinText(it) }
+                } else emptyList()
+
+                // 3. User learned words matching primary transliteration prefix or phonetic alternatives
+                // Prioritize personalized learned vocabulary immediately after primary transliteration (like in English)
+                if (preferencesState.learnedWordsEnabled) {
+                    val learnedCandidates = mutableListOf<String>()
+
+                    // Match completions for primary transliteration prefix (e.g. "আম" -> "আমাদের", "আমার")
                     if (primaryWord.isNotEmpty()) {
-                        val dictMatches = NativeEngine.querySuggestions(primaryWord, activeLayout.id, 12)
-                            .filter { it != primaryWord && !containsLatinText(it) }
-
-                        for (match in dictMatches) {
-                            if (list.size < 12 && list.none { it.text == match }) {
-                                list.add(SuggestionCandidate(text = match, isPrimary = false))
-                            }
-                        }
+                        learnedCandidates.addAll(
+                            userDictionaryRepo.getCompletions(primaryWord, 5) { !containsLatinText(it) }
+                        )
                     }
 
-                    // Also evaluate phonetic transliteration alternatives for raw Latin input against dictionary
-                    if (raw.isNotBlank()) {
-                        val phoneticAlts = NativeEngine.queryTransliterationAlternatives(activeLayout.id, raw)
-                        for (alt in phoneticAlts) {
-                            if (alt.isNotEmpty() && alt != primaryWord && !containsLatinText(alt)) {
-                                if (list.size < 12 && list.none { it.text == alt }) {
-                                    val isDictWord = NativeEngine.querySuggestions(alt, "bn_exact", 1).contains(alt)
-                                    if (isDictWord) {
-                                        list.add(SuggestionCandidate(text = alt, isPrimary = false))
-                                    }
-                                }
-                            }
+                    // Check exact learned matches and prefix completions for phonetic alternatives
+                    for (alt in phoneticAlts) {
+                        if (userDictionaryRepo.isLearned(alt)) {
+                            learnedCandidates.add(alt)
                         }
+                        learnedCandidates.addAll(
+                            userDictionaryRepo.getCompletions(alt, 2) { !containsLatinText(it) }
+                        )
                     }
 
-                    // User learned words matching transliterated prefix
-                    if (preferencesState.learnedWordsEnabled && primaryWord.isNotEmpty()) {
-                        val learned = userDictionaryRepo.getCompletions(primaryWord, 4) { !containsLatinText(it) }
-                        for (w in learned) {
-                            if (list.size < 12 && list.none { it.text == w }) {
-                                list.add(SuggestionCandidate(text = w, isPrimary = false))
-                            }
+                    for (w in learnedCandidates.distinct()) {
+                        if (w != primaryWord && list.size < 12 && list.none { it.text == w }) {
+                            list.add(SuggestionCandidate(text = w, isPrimary = false))
                         }
                     }
-                } else {
-                    // When Proximity Suggestions are DISABLED:
-                    // Return suggestions based strictly on primary transliteration without proximity characters
-                    if (primaryWord.isNotEmpty()) {
-                        val exactMatches = NativeEngine.querySuggestions(primaryWord, "bn_exact", 12)
-                            .filter { it != primaryWord && !containsLatinText(it) }
+                }
 
-                        for (match in exactMatches) {
-                            if (list.size < 12 && list.none { it.text == match }) {
-                                list.add(SuggestionCandidate(text = match, isPrimary = false))
-                            }
+                // 4. Phonetic transliteration alternatives for raw Latin input
+                for (alt in phoneticAlts) {
+                    if (list.size < 12 && list.none { it.text == alt }) {
+                        val isLearned = userDictionaryRepo.isLearned(alt)
+                        val isDictWord = isLearned || NativeEngine.querySuggestions(alt, "bn_exact", 1).contains(alt)
+                        if (isDictWord) {
+                            list.add(SuggestionCandidate(text = alt, isPrimary = false))
                         }
                     }
+                }
 
-                    // User learned words matching primary transliterated prefix
-                    if (preferencesState.learnedWordsEnabled && primaryWord.isNotEmpty()) {
-                        val learned = userDictionaryRepo.getCompletions(primaryWord, 4) { !containsLatinText(it) }
-                        for (w in learned) {
-                            if (list.size < 12 && list.none { it.text == w }) {
-                                list.add(SuggestionCandidate(text = w, isPrimary = false))
-                            }
+                // 5. Dictionary completions from bn.dict matching primary transliteration prefix
+                if (primaryWord.isNotEmpty() && list.size < 12) {
+                    val dictMatches = if (preferencesState.bengaliSmartPhonetic) {
+                        NativeEngine.querySuggestions(primaryWord, activeLayout.id, 12)
+                    } else {
+                        NativeEngine.querySuggestions(primaryWord, "bn_exact", 12)
+                    }.filter { it != primaryWord && !containsLatinText(it) }
+
+                    for (match in dictMatches) {
+                        if (list.size < 12 && list.none { it.text == match }) {
+                            list.add(SuggestionCandidate(text = match, isPrimary = false))
                         }
                     }
                 }

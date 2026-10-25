@@ -26,7 +26,7 @@ pub struct GestureCandidate {
 
 #[derive(Clone)]
 pub struct PhoneticWordEntry {
-    pub word_id: u32,
+    pub word: Arc<str>,
     pub freq: u8,
     pub keys: Vec<char>,
 }
@@ -38,24 +38,32 @@ pub struct PhoneticIndex {
 impl PhoneticIndex {
     pub fn build(dict: &BinaryDict, transliterator: &dyn PhoneticTransliterator) -> Self {
         let mut buckets: HashMap<(char, char), Vec<PhoneticWordEntry>> = HashMap::with_capacity(700);
-        let word_count = dict.word_count();
+        let node_count = dict.node_count();
 
-        for id in 0..word_count {
-            if let Some(word) = dict.word_at(id) {
-                let freq = dict.word_freq(word);
-                let variants = transliterator.to_phonetic_keys(word);
-                for v in variants {
-                    if v.len() >= 2 {
-                        let first = v[0];
-                        let last = *v.last().unwrap();
-                        buckets.entry((first, last)).or_default().push(PhoneticWordEntry {
-                            word_id: id,
-                            freq,
-                            keys: v,
-                        });
+        for node in 1..node_count as u32 {
+            if dict.is_word(node) {
+                if let Some(word) = dict.word_at(node) {
+                    let freq = dict.freq(node);
+                    let variants = transliterator.to_phonetic_keys(&word);
+                    let word_arc: Arc<str> = Arc::from(word.as_str());
+                    for v in variants {
+                        if v.len() >= 2 {
+                            let first = v[0];
+                            let last = *v.last().unwrap();
+                            buckets.entry((first, last)).or_default().push(PhoneticWordEntry {
+                                word: Arc::clone(&word_arc),
+                                freq,
+                                keys: v,
+                            });
+                        }
                     }
                 }
             }
+        }
+
+        // Sort bucket entries by frequency descending so common words are prioritized
+        for entries in buckets.values_mut() {
+            entries.sort_by(|a, b| b.freq.cmp(&a.freq));
         }
 
         PhoneticIndex { buckets }
@@ -231,6 +239,12 @@ impl GestureDecoder {
 
         // 1. Sort dictionary candidates by score (prioritize dictionary words first)
         let mut dict_candidates = candidates;
+        let learned_set: HashSet<&String> = learned_words.iter().collect();
+        for dc in &mut dict_candidates {
+            if learned_set.contains(&dc.word) {
+                dc.score += 3.0; // Modest bonus for user-preferred gesture words
+            }
+        }
         dict_candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
 
         // 2. Strictly evaluate learned words: all characters in the learned word must be traversed by the gesture path
@@ -252,19 +266,19 @@ impl GestureDecoder {
 
         learned_matches.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
 
-        // 3. Blend: prioritize top dictionary word, but always include top matching learned words
+        // 3. Blend: prioritize top dictionary word, only include learned word if close enough!
         let mut results: Vec<GestureCandidate> = Vec::with_capacity(limit);
         if let Some(top_dict) = dict_candidates.first() {
             if let Some(top_learned) = learned_matches.first() {
-                if top_learned.score > top_dict.score + 15.0 {
+                if top_learned.score >= top_dict.score + 1.0 {
                     results.push(top_learned.clone());
                     results.push(top_dict.clone());
                 } else {
                     results.push(top_dict.clone());
-                    results.push(top_learned.clone());
-                }
-                for lm in learned_matches.iter().skip(1).take(1) {
-                    results.push(lm.clone());
+                    // Only include if genuinely close enough to predict
+                    if top_learned.score >= top_dict.score - 5.0 {
+                        results.push(top_learned.clone());
+                    }
                 }
             } else {
                 results.push(top_dict.clone());
@@ -351,7 +365,7 @@ impl GestureDecoder {
 
     /// Evaluates a personalized learned word strictly.
     /// Requires that EVERY key in the learned word was actually traversed along the user's gesture path
-    /// in temporal sequence, with endpoints closely anchored.
+    /// in temporal sequence, with endpoints closely anchored, path lengths proportional, and DTW distance small.
     pub fn evaluate_learned_candidate(
         ideal_chars: &[char],
         key_map: &HashMap<char, (f32, f32)>,
@@ -388,6 +402,24 @@ impl GestureDecoder {
         };
 
         if d_start > 1.35 || d_end > 1.35 {
+            return None;
+        }
+
+        // Path arc length check: prevents short learned words from matching long gestures (and vice versa)
+        let mut user_len = 0.0f32;
+        for i in 1..user_path.len() {
+            let dx = user_path[i].x - user_path[i - 1].x;
+            let dy = user_path[i].y - user_path[i - 1].y;
+            user_len += (dx * dx + dy * dy).sqrt();
+        }
+        let mut ideal_len = 0.0f32;
+        for i in 1..ideal_pts.len() {
+            let dx = ideal_pts[i].x - ideal_pts[i - 1].x;
+            let dy = ideal_pts[i].y - ideal_pts[i - 1].y;
+            ideal_len += (dx * dx + dy * dy).sqrt();
+        }
+
+        if user_len > 1.8 * ideal_len + 1.5 * kw || ideal_len > 2.0 * user_len + 1.5 * kw {
             return None;
         }
 
@@ -436,18 +468,25 @@ impl GestureDecoder {
 
         // Dynamic Time Warping (DTW) check
         let resampled_ideal = Self::resample_polyline(&ideal_pts, user_path.len());
-        let dtw_dist = Self::dtw_distance(user_path, &resampled_ideal, 4) / kw;
-        if dtw_dist > 1.8 {
+        let dtw_dist = Self::dtw_distance(user_path, &resampled_ideal, 6) / kw;
+        if dtw_dist > 1.35 {
             return None;
         }
 
-        let total_cost = dtw_dist + 0.5 * d_start + 0.5 * d_end + 0.5 * avg_key_miss;
-        if total_cost > 2.5 {
+        let miss_penalty = if max_key_miss > 1.0 {
+            (max_key_miss - 1.0) * 2.0
+        } else {
+            0.0
+        };
+
+        let total_cost = dtw_dist + 0.5 * d_start + 0.5 * d_end + 0.4 * avg_key_miss + miss_penalty;
+        if total_cost > 2.0 {
             return None;
         }
 
-        let shape_score = (-total_cost * 1.2).exp();
-        Some(100.0 * shape_score)
+        let shape_score = (-total_cost * 1.5).exp();
+        let score = 100.0 * shape_score + 10.0;
+        Some(score)
     }
 
     /// Evaluates shape match and scoring of a candidate word path against the user's touch trajectory.
@@ -489,7 +528,7 @@ impl GestureDecoder {
         };
 
         // If start or end key is too far from gesture endpoints, reject
-        if d_start > 2.2 || d_end > 2.2 {
+        if d_start > 2.4 || d_end > 2.4 {
             return None;
         }
 
@@ -513,8 +552,8 @@ impl GestureDecoder {
             total_key_miss += norm_d;
         }
 
-        // Candidates containing keys never visited (e.g. > 1.6 key widths away) are eliminated
-        if max_key_miss > 1.6 {
+        // Candidates containing keys never visited (e.g. > 1.85 key widths away) are eliminated
+        if max_key_miss > 1.85 {
             return None;
         }
 
@@ -524,16 +563,16 @@ impl GestureDecoder {
         let resampled_ideal = Self::resample_polyline(&ideal_pts, user_path.len());
         let dtw_dist = Self::dtw_distance(user_path, &resampled_ideal, 6) / kw;
 
-        // Key miss penalty for keys that were relatively far (> 1.15 key width)
-        let miss_penalty = if max_key_miss > 1.15 {
-            (max_key_miss - 1.15) * 2.5
+        // Key miss penalty for keys that were relatively far (> 1.2 key width)
+        let miss_penalty = if max_key_miss > 1.2 {
+            (max_key_miss - 1.2) * 2.0
         } else {
             0.0
         };
 
         let total_cost = dtw_dist + 0.5 * d_start + 0.5 * d_end + 0.4 * avg_key_miss + miss_penalty;
 
-        if total_cost > 3.0 {
+        if total_cost > 3.2 {
             return None;
         }
 
@@ -687,12 +726,10 @@ impl GestureDecoder {
                             kw,
                             entry.freq,
                         ) {
-                            if let Some(word_str) = dict.word_at(entry.word_id) {
-                                let norm_word = word_str.replace("\u{0985}\u{09BE}", "আ");
-                                let slot = word_scores.entry(norm_word).or_insert(f32::MIN);
-                                if score > *slot {
-                                    *slot = score;
-                                }
+                            let norm_word = entry.word.replace("\u{0985}\u{09BE}", "আ");
+                            let slot = word_scores.entry(norm_word).or_insert(f32::MIN);
+                            if score > *slot {
+                                *slot = score;
                             }
                         }
                     }
@@ -700,37 +737,38 @@ impl GestureDecoder {
             }
         }
 
-        // Also evaluate learned words
+        // Modest boost for dictionary words that are in the user's learned words
+        let learned_set: HashSet<String> = learned_words
+            .iter()
+            .map(|w| w.replace("\u{0985}\u{09BE}", "আ"))
+            .collect();
+        for (w, score) in word_scores.iter_mut() {
+            if learned_set.contains(w) {
+                *score += 3.0; // Modest bonus so user preference breaks close ties
+            }
+        }
+
+        let top_dict_score = word_scores.values().copied().fold(f32::MIN, f32::max);
+
+        // Also strictly evaluate custom learned words: they must genuinely match the gesture trajectory!
         for lw in learned_words {
             let variants = transliterator.to_phonetic_keys(lw);
-            if !variants.is_empty() {
-                for v in variants {
-                    if let Some(score) = Self::evaluate_candidate(
-                        &v,
-                        &key_map,
-                        &user_path,
-                        kw,
-                        255,
-                    ) {
-                        let norm = lw.replace("\u{0985}\u{09BE}", "আ");
-                        let slot = word_scores.entry(norm).or_insert(f32::MIN);
-                        let boosted = score + 30.0;
-                        if boosted > *slot {
-                            *slot = boosted;
-                        }
+            for v in variants {
+                if let Some(score) = Self::evaluate_learned_candidate(
+                    &v,
+                    &key_map,
+                    &user_path,
+                    kw,
+                ) {
+                    // Only accept learned candidate if it's genuinely close to the gesture!
+                    // If dictionary candidates exist, a learned word must not lag more than 5.0 points behind top dict score
+                    if top_dict_score > f32::MIN && score < top_dict_score - 5.0 {
+                        continue;
                     }
-                }
-            } else {
-                let is_bengali = lw.chars().any(|c| ('\u{0980}'..='\u{09FF}').contains(&c));
-                let has_ascii = lw.chars().any(|c| c.is_ascii_alphabetic());
-                if is_bengali && !has_ascii {
-                    let chars: Vec<char> = lw.chars().collect();
-                    if let Some(score) = Self::evaluate_candidate(&chars, &key_map, &user_path, kw, 255) {
-                        let slot = word_scores.entry(lw.clone()).or_insert(f32::MIN);
-                        let boosted = score + 30.0;
-                        if boosted > *slot {
-                            *slot = boosted;
-                        }
+                    let norm = lw.replace("\u{0985}\u{09BE}", "আ");
+                    let slot = word_scores.entry(norm).or_insert(f32::MIN);
+                    if score > *slot {
+                        *slot = score;
                     }
                 }
             }
@@ -876,6 +914,76 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_borno_phonetic_with_learned_words() {
+        let dict = match get_bn_binary_dict() {
+            Some(d) => d,
+            None => return,
+        };
+        let translit = BornoPhoneticTransliterator;
+
+        let keys = vec![
+            KeyCenter { char_code: 'q', x: 20.0, y: 50.0 },
+            KeyCenter { char_code: 'w', x: 60.0, y: 50.0 },
+            KeyCenter { char_code: 'e', x: 100.0, y: 50.0 },
+            KeyCenter { char_code: 'r', x: 140.0, y: 50.0 },
+            KeyCenter { char_code: 't', x: 180.0, y: 50.0 },
+            KeyCenter { char_code: 'y', x: 220.0, y: 50.0 },
+            KeyCenter { char_code: 'u', x: 260.0, y: 50.0 },
+            KeyCenter { char_code: 'i', x: 300.0, y: 50.0 },
+            KeyCenter { char_code: 'o', x: 340.0, y: 50.0 },
+            KeyCenter { char_code: 'p', x: 380.0, y: 50.0 },
+            KeyCenter { char_code: 'a', x: 40.0, y: 120.0 },
+            KeyCenter { char_code: 's', x: 80.0, y: 120.0 },
+            KeyCenter { char_code: 'd', x: 120.0, y: 120.0 },
+            KeyCenter { char_code: 'f', x: 160.0, y: 120.0 },
+            KeyCenter { char_code: 'g', x: 200.0, y: 120.0 },
+            KeyCenter { char_code: 'h', x: 240.0, y: 120.0 },
+            KeyCenter { char_code: 'j', x: 280.0, y: 120.0 },
+            KeyCenter { char_code: 'k', x: 320.0, y: 120.0 },
+            KeyCenter { char_code: 'l', x: 360.0, y: 120.0 },
+            KeyCenter { char_code: 'z', x: 60.0, y: 190.0 },
+            KeyCenter { char_code: 'x', x: 100.0, y: 190.0 },
+            KeyCenter { char_code: 'c', x: 140.0, y: 190.0 },
+            KeyCenter { char_code: 'v', x: 180.0, y: 190.0 },
+            KeyCenter { char_code: 'b', x: 220.0, y: 190.0 },
+            KeyCenter { char_code: 'n', x: 260.0, y: 190.0 },
+            KeyCenter { char_code: 'm', x: 300.0, y: 190.0 },
+        ];
+
+        let stroke_amir = vec![
+            GesturePoint { x: 40.0, y: 120.0, timestamp_ms: 0 },
+            GesturePoint { x: 170.0, y: 155.0, timestamp_ms: 50 },
+            GesturePoint { x: 300.0, y: 190.0, timestamp_ms: 100 },
+            GesturePoint { x: 300.0, y: 120.0, timestamp_ms: 150 },
+            GesturePoint { x: 300.0, y: 50.0, timestamp_ms: 200 },
+            GesturePoint { x: 220.0, y: 50.0, timestamp_ms: 250 },
+            GesturePoint { x: 140.0, y: 50.0, timestamp_ms: 300 },
+        ];
+
+        let learned = vec!["আমির".to_string(), "মা".to_string()];
+        let results = GestureDecoder::decode_phonetic_with_learned(&stroke_amir, &keys, 40.0, dict, &translit, 5, &learned);
+        assert!(!results.is_empty());
+        assert_eq!(results[0].word, "আমির");
+
+        // Now test when user gestures "আমাদের" (a -> m -> a -> d -> e -> r)
+        // Even if user previously learned "আমির" and "মা", neither should win over "আমাদের"!
+        let stroke_amader = vec![
+            GesturePoint { x: 40.0, y: 120.0, timestamp_ms: 0 },
+            GesturePoint { x: 170.0, y: 155.0, timestamp_ms: 50 },
+            GesturePoint { x: 300.0, y: 190.0, timestamp_ms: 100 },
+            GesturePoint { x: 170.0, y: 155.0, timestamp_ms: 150 },
+            GesturePoint { x: 40.0, y: 120.0, timestamp_ms: 200 },
+            GesturePoint { x: 120.0, y: 120.0, timestamp_ms: 250 },
+            GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 300 },
+            GesturePoint { x: 140.0, y: 50.0, timestamp_ms: 350 },
+        ];
+        let results_amader = GestureDecoder::decode_phonetic_with_learned(&stroke_amader, &keys, 40.0, dict, &translit, 5, &learned);
+        assert!(!results_amader.is_empty(), "Results for 'amader' should not be empty");
+        assert_eq!(results_amader[0].word, "আমাদের", "Expected 'আমাদের' to win even when 'আমির' and 'মা' are learned: {:?}", results_amader);
+        assert!(!results_amader.iter().any(|c| c.word == "মা"), "'মা' should not be predicted for long 'amader' gesture");
+    }
+
+    #[test]
     fn test_decode_milking_gesture() {
         let dict = get_en_binary_dict().expect("en dict");
         let keys = vec![
@@ -972,6 +1080,22 @@ mod tests {
         let results = GestureDecoder::decode_phonetic(&stroke_intarnet, &keys, 40.0, dict, &translit, 10);
         assert!(!results.is_empty(), "Results for intarnet should not be empty");
         assert_eq!(results[0].word, "ইন্টারনেট", "Expected 'ইন্টারনেট' to be top candidate for intarnet stroke: {:?}", results);
+
+        // Swipe: i -> n -> t -> e -> r -> n -> e -> t (English spelling of internet on QWERTY)
+        let stroke_internet = vec![
+            GesturePoint { x: 300.0, y: 50.0, timestamp_ms: 0 },    // i
+            GesturePoint { x: 260.0, y: 190.0, timestamp_ms: 50 },  // n
+            GesturePoint { x: 180.0, y: 50.0, timestamp_ms: 100 },  // t
+            GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 150 },  // e
+            GesturePoint { x: 140.0, y: 50.0, timestamp_ms: 200 },  // r
+            GesturePoint { x: 260.0, y: 190.0, timestamp_ms: 250 },  // n
+            GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 300 },  // e
+            GesturePoint { x: 180.0, y: 50.0, timestamp_ms: 350 },  // t
+        ];
+
+        let results_en = GestureDecoder::decode_phonetic(&stroke_internet, &keys, 40.0, dict, &translit, 10);
+        assert!(!results_en.is_empty(), "Results for internet stroke should not be empty");
+        assert_eq!(results_en[0].word, "ইন্টারনেট", "Expected 'ইন্টারনেট' to be top candidate (and not 'ইন্টেন্ট') for internet stroke: {:?}", results_en);
     }
 
     #[test]

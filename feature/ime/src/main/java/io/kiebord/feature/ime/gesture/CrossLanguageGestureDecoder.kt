@@ -47,41 +47,25 @@ class CrossLanguageGestureDecoder {
 
         val learnedSet = sanitizedLearned.toSet()
 
-        // Prioritize dictionary decoded words first!
-        val sortedWords = if (sanitizedLearned.isNotEmpty()) {
-            val decodedSet = decodedWords.toSet()
-            val matchingLearned = if (keyCentroids.isNotEmpty()) {
-                val keyMap = HashMap<Char, Offset>(keyCentroids.size)
-                for (k in keyCentroids) {
-                    if (k.character.isNotEmpty()) {
-                        keyMap[k.character[0].lowercaseChar()] = Offset(k.centerX, k.centerY)
-                    }
-                }
-                sanitizedLearned
-                    .filter { !decodedSet.contains(it) }
-                    .mapNotNull { lw ->
-                        val score = scoreLearnedWord(lw, points, keyMap, kw)
-                        if (score != null) lw to score else null
-                    }
-                    .sortedByDescending { it.second }
-                    .map { it.first }
-            } else emptyList()
-
-            if (matchingLearned.isNotEmpty()) {
-                if (decodedWords.isNotEmpty()) {
-                    val list = mutableListOf<String>()
-                    list.add(decodedWords.first())
-                    list.addAll(matchingLearned.take(2))
-                    list.addAll(decodedWords.drop(1))
-                    list.distinct().take(8)
-                } else {
-                    matchingLearned.take(8)
-                }
-            } else {
-                decodedWords
-            }
-        } else {
+        val sortedWords = if (decodedWords.isNotEmpty()) {
             decodedWords
+        } else if (sanitizedLearned.isNotEmpty() && keyCentroids.isNotEmpty()) {
+            val keyMap = HashMap<Char, Offset>(keyCentroids.size)
+            for (k in keyCentroids) {
+                if (k.character.isNotEmpty()) {
+                    keyMap[k.character[0].lowercaseChar()] = Offset(k.centerX, k.centerY)
+                }
+            }
+            sanitizedLearned
+                .mapNotNull { lw ->
+                    val score = scoreLearnedWord(lw, points, keyMap, kw)
+                    if (score != null) lw to score else null
+                }
+                .sortedByDescending { it.second }
+                .map { it.first }
+                .take(8)
+        } else {
+            emptyList()
         }
 
         if (sortedWords.isNotEmpty()) {
@@ -189,6 +173,20 @@ class CrossLanguageGestureDecoder {
         val dEnd = hypot(endPt.x - endKey.x, endPt.y - endKey.y) / kw
         if (dStart > 1.35f || dEnd > 1.35f) return null
 
+        var userLen = 0f
+        for (i in 1 until points.size) {
+            userLen += hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
+        }
+        var idealLen = 0f
+        for (i in 1 until chars.size) {
+            val p1 = keyMap[chars[i - 1]] ?: continue
+            val p2 = keyMap[chars[i]] ?: continue
+            idealLen += hypot(p2.x - p1.x, p2.y - p1.y)
+        }
+        if (userLen > 1.8f * idealLen + 1.5f * kw || idealLen > 2.0f * userLen + 1.5f * kw) {
+            return null
+        }
+
         var maxMiss = 0f
         var totalMiss = 0f
         var lastPointIdx = 0
@@ -218,8 +216,9 @@ class CrossLanguageGestureDecoder {
 
         val avgMiss = totalMiss / chars.size
         if (avgMiss > 1.15f) return null
-        val cost = dStart * 0.4f + dEnd * 0.4f + avgMiss * 0.6f + maxMiss * 0.4f
-        if (cost > 2.5f) return null
-        return (100f * kotlin.math.exp(-cost * 1.2f)).coerceIn(0f, 100f)
+        val missPenalty = if (maxMiss > 1.0f) (maxMiss - 1.0f) * 2.0f else 0.0f
+        val cost = dStart * 0.5f + dEnd * 0.5f + avgMiss * 0.4f + missPenalty
+        if (cost > 2.0f) return null
+        return (100f * kotlin.math.exp(-cost * 1.5f) + 10f).coerceIn(0f, 100f)
     }
 }

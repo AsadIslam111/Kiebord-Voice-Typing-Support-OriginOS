@@ -719,6 +719,22 @@ impl BornoPhonetic {
             let next = chars.get(i + 1).copied();
 
             if Self::is_kar_sign(c) {
+                if c as u32 == 0x09BE && paths.len() <= 2 {
+                    let mut alt_paths = Vec::with_capacity(paths.len() * 2);
+                    for p in &paths {
+                        let mut p1 = p.clone();
+                        p1.push('a');
+                        alt_paths.push(p1);
+
+                        let mut p2 = p.clone();
+                        p2.push('e');
+                        alt_paths.push(p2);
+                    }
+                    paths = alt_paths;
+                    i += 1;
+                    continue;
+                }
+
                 let kar_keys = match c as u32 {
                     0x09BE => vec!['a'],
                     0x09BF | 0x09C0 => vec!['i'],
@@ -837,14 +853,26 @@ impl BornoPhonetic {
                 if is_followed_by_consonant && paths.len() < 4 {
                     let mut alt_paths = Vec::with_capacity(paths.len() * 2);
                     for p in &paths {
-                        let mut p1 = p.clone();
-                        p1.extend(&c_variants[0]);
-                        p1.push('o');
-                        alt_paths.push(p1);
+                        for v in &c_variants {
+                            let mut p1 = p.clone();
+                            p1.extend(v);
+                            p1.push('o');
+                            alt_paths.push(p1);
 
-                        let mut p2 = p.clone();
-                        p2.extend(&c_variants[0]);
-                        alt_paths.push(p2);
+                            let mut p2 = p.clone();
+                            p2.extend(v);
+                            alt_paths.push(p2);
+                        }
+                    }
+                    paths = alt_paths;
+                } else if c_variants.len() > 1 && paths.len() <= 2 {
+                    let mut alt_paths = Vec::with_capacity(paths.len() * c_variants.len());
+                    for p in &paths {
+                        for v in &c_variants {
+                            let mut p_copy = p.clone();
+                            p_copy.extend(v);
+                            alt_paths.push(p_copy);
+                        }
                     }
                     paths = alt_paths;
                 } else {
@@ -877,8 +905,32 @@ impl BornoPhonetic {
             i += 1;
         }
 
+        // If word ends in a consonant (without hasanta), also generate alternate path with 'o'
+        let last_char = *chars.last().unwrap();
+        let mut final_paths = paths.clone();
+        if Self::is_bengali_consonant(last_char) && chars.get(chars.len().saturating_sub(2)) != Some(&'\u{09CD}') {
+            for p in &paths {
+                if final_paths.len() >= 8 {
+                    break;
+                }
+                let mut with_o = p.clone();
+                with_o.push('o');
+                final_paths.push(with_o);
+            }
+        } else if last_char == '\u{09CB}' { // ো-কার
+            for p in &paths {
+                if final_paths.len() >= 8 {
+                    break;
+                }
+                if p.last() == Some(&'o') && p.len() > 2 {
+                    let without_o = p[..p.len() - 1].to_vec();
+                    final_paths.push(without_o);
+                }
+            }
+        }
+
         let mut unique: Vec<Vec<char>> = Vec::new();
-        for p in paths {
+        for p in final_paths {
             if p.len() >= 2 && !unique.contains(&p) {
                 unique.push(p);
             }
@@ -1112,7 +1164,7 @@ mod tests {
         assert_eq!(ami_keys, vec![vec!['a', 'm', 'i']]);
 
         let amader_keys = BornoPhonetic::to_phonetic_keys("আমাদের");
-        assert_eq!(amader_keys, vec![vec!['a', 'm', 'a', 'd', 'e', 'r']]);
+        assert!(amader_keys.contains(&vec!['a', 'm', 'a', 'd', 'e', 'r']));
 
         let tumi_keys = BornoPhonetic::to_phonetic_keys("তুমি");
         assert_eq!(tumi_keys, vec![vec!['t', 'u', 'm', 'i']]);
@@ -1130,7 +1182,7 @@ mod tests {
             || dhonyobad_keys.contains(&vec!['d', 'h', 'n', 'y', 'b', 'a', 'd']));
 
         let bangla_keys = BornoPhonetic::to_phonetic_keys("বাংলা");
-        assert_eq!(bangla_keys, vec![vec!['b', 'a', 'n', 'g', 'l', 'a']]);
+        assert!(bangla_keys.contains(&vec!['b', 'a', 'n', 'g', 'l', 'a']));
     }
 
     #[test]

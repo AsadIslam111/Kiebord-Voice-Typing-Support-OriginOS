@@ -1,5 +1,7 @@
 package io.kiebord.feature.ime.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -59,9 +61,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import android.os.SystemClock
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -127,6 +132,7 @@ fun KeyboardRootView(
     onOpenClipboardSettings: () -> Unit = {},
     lastDeletedBatch: String? = null,
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
+    onGestureLivePredict: ((List<Offset>, List<KeyCentroid>, Float) -> String?)? = null,
     initialRowHeight: Dp = 58.dp,
     defaultShowNumberRow: Boolean = false,
     onNumberRowToggle: ((Boolean) -> Unit)? = null,
@@ -179,6 +185,14 @@ fun KeyboardRootView(
     var slidingHoveredBounds by remember { mutableStateOf<Rect?>(null) }
     var slidingDwellJob by remember { mutableStateOf<Job?>(null) }
     var gestureTrail by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    var fadingTrail by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    val trailFadeAlpha = remember { Animatable(1f) }
+    var fadingTrailJob by remember { mutableStateOf<Job?>(null) }
+    var cachedCentroids by remember { mutableStateOf<List<KeyCentroid>>(emptyList()) }
+    var cachedKeyWidthPx by remember { mutableFloatStateOf(60f) }
+    var liveGestureCandidate by remember { mutableStateOf<String?>(null) }
+    var livePredictJob by remember { mutableStateOf<Job?>(null) }
+    var lastPredictTimeMs by remember { mutableStateOf(0L) }
 
     var isLanguagePickerOpen by remember { mutableStateOf(false) }
     var unlearnCandidateTarget by remember { mutableStateOf<SuggestionCandidate?>(null) }
@@ -452,6 +466,34 @@ fun KeyboardRootView(
 
     val isQwertyBasedLayout = displayLayout.id == "en_qwerty" || displayLayout.id == "bn_borno"
     val isEffectiveGestureTypingEnabled = gestureTypingEnabled && isQwertyBasedLayout
+
+    val extractCentroids: (LayoutCoordinates) -> Pair<List<KeyCentroid>, Float> = { rCoords ->
+        val centroids = mutableListOf<KeyCentroid>()
+        var totalWidth = 0f
+        var count = 0
+        for (r in keyboardRows.indices) {
+            val row = keyboardRows[r]
+            for (c in row.keys.indices) {
+                val k = row.keys[c]
+                val coords = cellCoordinatesMap[Pair(r, c)]
+                if (k.type == KeyType.CHARACTER && coords != null && coords.isAttached) {
+                    val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
+                    val width = coords.size.width.toFloat()
+                    val height = coords.size.height.toFloat()
+                    val cx = topLeft.x + width / 2f
+                    val cy = topLeft.y + height / 2f
+                    val ch = if (k.label.isNotEmpty()) k.label.lowercase() else ""
+                    if (ch.isNotEmpty()) {
+                        centroids.add(KeyCentroid(ch, cx, cy))
+                        totalWidth += width
+                        count++
+                    }
+                }
+            }
+        }
+        val keyWidthPx = if (count > 0) totalWidth / count else 60f
+        Pair(centroids, keyWidthPx)
+    }
 
     // Clear key coordinate cache whenever primary active layout changes (not during sliding symbol mode)
     LaunchedEffect(layout.id) {
@@ -735,12 +777,22 @@ fun KeyboardRootView(
                         }
                     }
 
-                    Spacer(modifier = Modifier.width((4 * scaleFactor).coerceAtLeast(2f).dp))
+                    val isGesturing = gestureTrail.isNotEmpty() || (fadingTrail.isNotEmpty() && suggestions.isEmpty())
+                    val displayedSuggestions = when {
+                        isGesturing -> {
+                            if (liveGestureCandidate != null) {
+                                listOf(SuggestionCandidate(text = liveGestureCandidate!!, isPrimary = true))
+                            } else {
+                                emptyList()
+                            }
+                        }
+                        else -> suggestions
+                    }
 
                     // 2. Main content: Suggestion Strip OR Quick Paste/Undo Pill OR Toolbar Options
-                    if (suggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
+                    if (displayedSuggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
                         SuggestionStripView(
-                            candidates = suggestions,
+                            candidates = displayedSuggestions,
                             onCandidateClick = { candidate ->
                                 isSuggestionsExpanded = false
                                 undoActionPillState = null
@@ -770,7 +822,7 @@ fun KeyboardRootView(
                                 .weight(1f)
                                 .fillMaxHeight()
                         )
-                    } else if (!isToolbarOptionsVisible && !isToolsDrawerOpen && (quickPasteClip != null || undoActionPillState != null)) {
+                    } else if (!isGesturing && !isToolbarOptionsVisible && !isToolsDrawerOpen && (quickPasteClip != null || undoActionPillState != null)) {
                         Row(
                             modifier = Modifier
                                 .weight(1f)
@@ -1326,7 +1378,7 @@ fun KeyboardRootView(
                                 onShowMoreKeys = handleShowMoreKeys,
                                 onMoreKeysHover = handleMoreKeysHover,
                                 onMoreKeysCommit = handleMoreKeysCommit,
-                                onSlidingDragStart = { initiatorKey, keyCoords, initialDownPos ->
+                                onSlidingDragStart = { initiatorKey: KeyDef, keyCoords: LayoutCoordinates, initialDownPos: Offset ->
                                     val rCoords = rootCoordinates
                                     if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
                                         slidingDwellJob?.cancel()
@@ -1348,7 +1400,7 @@ fun KeyboardRootView(
                                         val downInRoot = rCoords.localPositionOf(keyCoords, initialDownPos)
                                         val keyCenterInRoot = rCoords.localPositionOf(
                                             keyCoords,
-                                            Offset(keyCoords.size.width / 2f, keyCoords.size.height / 2f)
+                                            Offset(keyCoords.size.width.toFloat() / 2f, keyCoords.size.height.toFloat() / 2f)
                                         )
                                         dragStartPosInRoot = downInRoot
                                         quickDragState = QuickSymbolDragState(
@@ -1357,25 +1409,24 @@ fun KeyboardRootView(
                                         )
                                     }
                                 },
-                                onSlidingDragMove = { deltaFromDown ->
-                                    val rCoords = rootCoordinates ?: return@KeycapView
-                                    val startPos = dragStartPosInRoot ?: return@KeycapView
-                                    val currentFingerInRoot = startPos + deltaFromDown
+                                onSlidingDragMove = { deltaFromDown: Offset ->
+                                    val rCoords = rootCoordinates
+                                    val startPos = dragStartPosInRoot
+                                    if (rCoords != null && startPos != null) {
+                                        val currentFingerInRoot = startPos + deltaFromDown
 
-                                    val currentMoreKeys = moreKeysState
-                                    if (currentMoreKeys != null) {
-                                        val isInside = updateMoreKeysHoverFromRoot(currentFingerInRoot)
-                                        if (isInside) {
-                                            quickDragState = quickDragState?.copy(
-                                                currentOffset = currentFingerInRoot
-                                            )
-                                            return@KeycapView
+                                        val currentMoreKeys = moreKeysState
+                                        if (currentMoreKeys != null) {
+                                            val isInside = updateMoreKeysHoverFromRoot(currentFingerInRoot)
+                                            if (isInside) {
+                                                quickDragState = quickDragState?.copy(
+                                                    currentOffset = currentFingerInRoot
+                                                )
+                                            } else {
+                                                moreKeysState = null
+                                            }
                                         } else {
-                                            moreKeysState = null
-                                        }
-                                    }
-
-                                    // Find hovered key in root by inspecting the currently displayed keyboard rows
+                                            // Find hovered key in root by inspecting the currently displayed keyboard rows
                                     var hoveredKey: KeyDef? = null
                                     var hoveredBounds: Rect? = null
                                     for (r in keyboardRows.indices) {
@@ -1441,14 +1492,16 @@ fun KeyboardRootView(
                                         null
                                     }
 
-                                    quickDragState = quickDragState?.copy(
-                                        currentOffset = currentFingerInRoot,
-                                        hoveredKey = hoveredKey,
-                                        hoveredKeyBounds = hoveredBounds,
-                                        hoveredSymbol = symbol
-                                    )
+                                            quickDragState = quickDragState?.copy(
+                                                currentOffset = currentFingerInRoot,
+                                                hoveredKey = hoveredKey,
+                                                hoveredKeyBounds = hoveredBounds,
+                                                hoveredSymbol = symbol
+                                            )
+                                        }
+                                    }
                                 },
-                                onSlidingDragEnd = { deltaFromDown ->
+                                onSlidingDragEnd = { deltaFromDown: Offset ->
                                     slidingDwellJob?.cancel()
                                     slidingDwellJob = null
 
@@ -1493,66 +1546,101 @@ fun KeyboardRootView(
                                         cellCoordinatesMap.clear()
                                     }
                                 },
-                                onGestureStart = { keyCoords, posInKey ->
-                                    if (!isEffectiveGestureTypingEnabled) return@KeycapView
-                                    val rCoords = rootCoordinates
-                                    if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
-                                        val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
-                                        gestureTrail = listOf(rootPos)
-                                    }
-                                },
-                                onGestureMove = { keyCoords, posInKey ->
-                                    if (!isEffectiveGestureTypingEnabled) return@KeycapView
-                                    val rCoords = rootCoordinates
-                                    if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
-                                        val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
-                                        val lastPos = gestureTrail.lastOrNull()
-                                        if (lastPos == null || (rootPos - lastPos).getDistance() >= 4f) {
-                                            gestureTrail = gestureTrail + rootPos
+                                onGestureStart = { keyCoords: LayoutCoordinates, posInKey: Offset ->
+                                    if (isEffectiveGestureTypingEnabled) {
+                                        val rCoords = rootCoordinates
+                                        if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                                            val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
+                                            fadingTrailJob?.cancel()
+                                            fadingTrailJob = null
+                                            fadingTrail = emptyList()
+                                            coroutineScope.launch { trailFadeAlpha.snapTo(1f) }
+                                            livePredictJob?.cancel()
+                                            livePredictJob = null
+                                            liveGestureCandidate = null
+                                            val (c, kw) = extractCentroids(rCoords)
+                                            cachedCentroids = c
+                                            cachedKeyWidthPx = kw
+                                            gestureTrail = listOf(rootPos)
                                         }
                                     }
                                 },
-                                onGestureEnd = {
-                                    if (!isEffectiveGestureTypingEnabled) {
-                                        gestureTrail = emptyList()
-                                        return@KeycapView
-                                    }
-                                    val trail = gestureTrail
-                                    gestureTrail = emptyList()
-                                    // Require intentional swipe path: at least 4 points and minimum length of 48.dp
-                                    var totalDist = 0f
-                                    for (i in 1 until trail.size) {
-                                        totalDist += (trail[i] - trail[i - 1]).getDistance()
-                                    }
-                                    val minGestureDistPx = with(density) { 48.dp.toPx() }
-                                    if (trail.size >= 4 && totalDist >= minGestureDistPx) {
+                                onGestureMove = { keyCoords: LayoutCoordinates, posInKey: Offset ->
+                                    if (isEffectiveGestureTypingEnabled) {
                                         val rCoords = rootCoordinates
-                                        if (rCoords != null && rCoords.isAttached) {
-                                            val centroids = mutableListOf<KeyCentroid>()
-                                            var totalWidth = 0f
-                                            var count = 0
-                                            for (r in keyboardRows.indices) {
-                                                val row = keyboardRows[r]
-                                                for (c in row.keys.indices) {
-                                                    val k = row.keys[c]
-                                                    val coords = cellCoordinatesMap[Pair(r, c)]
-                                                    if (k.type == KeyType.CHARACTER && coords != null && coords.isAttached) {
-                                                        val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
-                                                        val width = coords.size.width.toFloat()
-                                                        val height = coords.size.height.toFloat()
-                                                        val cx = topLeft.x + width / 2f
-                                                        val cy = topLeft.y + height / 2f
-                                                        val ch = if (k.label.isNotEmpty()) k.label.lowercase() else ""
-                                                        if (ch.isNotEmpty()) {
-                                                            centroids.add(KeyCentroid(ch, cx, cy))
-                                                            totalWidth += width
-                                                            count++
+                                        if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
+                                            val rootPos = rCoords.localPositionOf(keyCoords, posInKey)
+                                            val lastPos = gestureTrail.lastOrNull()
+                                            if (lastPos == null || (rootPos - lastPos).getDistance() >= 8f) {
+                                                val updatedTrail = gestureTrail + rootPos
+                                                gestureTrail = updatedTrail
+
+                                                if (onGestureLivePredict != null && updatedTrail.size >= 4) {
+                                                    val now = SystemClock.uptimeMillis()
+                                                    if (now - lastPredictTimeMs >= 50L && (livePredictJob == null || livePredictJob?.isCompleted == true)) {
+                                                        lastPredictTimeMs = now
+                                                        val centroids = cachedCentroids
+                                                        val kw = cachedKeyWidthPx
+                                                        if (centroids.isNotEmpty()) {
+                                                            livePredictJob = coroutineScope.launch(Dispatchers.Default) {
+                                                                if (gestureTrail.isNotEmpty() && updatedTrail.size >= 4) {
+                                                                    val predicted = onGestureLivePredict(updatedTrail, centroids, kw)
+                                                                    if (predicted != null && gestureTrail.isNotEmpty()) {
+                                                                        withContext(Dispatchers.Main) {
+                                                                            if (gestureTrail.isNotEmpty()) {
+                                                                                liveGestureCandidate = predicted
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
-                                            val keyWidthPx = if (count > 0) totalWidth / count else 60f
-                                            onGestureCommit(trail, centroids, keyWidthPx)
+                                        }
+                                    }
+                                },
+                                onGestureEnd = {
+                                    livePredictJob?.cancel()
+                                    livePredictJob = null
+                                    val trail = gestureTrail
+                                    gestureTrail = emptyList()
+
+                                    if (trail.size >= 2) {
+                                        fadingTrail = trail
+                                        fadingTrailJob?.cancel()
+                                        fadingTrailJob = coroutineScope.launch {
+                                            trailFadeAlpha.snapTo(1f)
+                                            trailFadeAlpha.animateTo(
+                                                targetValue = 0f,
+                                                animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing)
+                                            )
+                                            fadingTrail = emptyList()
+                                            liveGestureCandidate = null
+                                        }
+                                    } else {
+                                        liveGestureCandidate = null
+                                    }
+
+                                    if (isEffectiveGestureTypingEnabled) {
+                                        var totalDist = 0f
+                                        for (i in 1 until trail.size) {
+                                            totalDist += (trail[i] - trail[i - 1]).getDistance()
+                                        }
+                                        val minGestureDistPx = with(density) { 48.dp.toPx() }
+                                        if (trail.size >= 4 && totalDist >= minGestureDistPx) {
+                                            val centroids = cachedCentroids
+                                            val keyWidthPx = cachedKeyWidthPx
+                                            if (centroids.isNotEmpty()) {
+                                                onGestureCommit(trail, centroids, keyWidthPx)
+                                            } else {
+                                                val rCoords = rootCoordinates
+                                                if (rCoords != null && rCoords.isAttached) {
+                                                    val (c, kw) = extractCentroids(rCoords)
+                                                    onGestureCommit(trail, c, kw)
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1719,13 +1807,20 @@ fun KeyboardRootView(
             )
         }
 
-        // 4. Single-colored Gesture Trail Overlay
+        // 4. Single-colored Gesture Trail Overlay with smooth fade-out
         if (isEffectiveGestureTypingEnabled && showGestureTrail) {
-            GestureTrailOverlay(
-                trail = gestureTrail,
-                accentColor = colorScheme.accentColor,
-                modifier = Modifier.matchParentSize()
-            )
+            val active = gestureTrail
+            val fading = fadingTrail
+            val currentAlpha = if (active.isNotEmpty()) 1f else trailFadeAlpha.value
+            val currentTrail = if (active.isNotEmpty()) active else fading
+            if (currentTrail.size >= 2 && currentAlpha > 0f) {
+                GestureTrailOverlay(
+                    trail = currentTrail,
+                    accentColor = colorScheme.accentColor,
+                    fadeAlpha = currentAlpha,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
         }
 
         // 5. Spacebar Layout Slider Floating Popup Overlay
@@ -2067,13 +2162,17 @@ fun SpacebarLayoutSliderOverlay(
 fun GestureTrailOverlay(
     trail: List<Offset>,
     accentColor: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fadeAlpha: Float = 1f
 ) {
-    if (trail.size < 2) return
+    if (trail.size < 2 || fadeAlpha <= 0f) return
 
     val maxTrailDistance = with(LocalDensity.current) { 220.dp.toPx() }
-    val headWidthPx = with(LocalDensity.current) { 9.dp.toPx() }
-    val tailWidthPx = with(LocalDensity.current) { 1.5.dp.toPx() }
+    val baseHeadWidthPx = with(LocalDensity.current) { 9.dp.toPx() }
+    val baseTailWidthPx = with(LocalDensity.current) { 1.5.dp.toPx() }
+
+    val headWidthPx = baseHeadWidthPx * (0.35f + 0.65f * fadeAlpha)
+    val tailWidthPx = baseTailWidthPx * (0.35f + 0.65f * fadeAlpha)
 
     androidx.compose.foundation.Canvas(modifier = modifier) {
         // Collect visible trailing points backwards from current fingertip up to maxTrailDistance
@@ -2120,7 +2219,7 @@ fun GestureTrailOverlay(
             // Quadratic easing gives that slender comet tail and rounded fingertip
             val widthFactor = progress * progress
             val strokeWidth = tailWidthPx + widthFactor * (headWidthPx - tailWidthPx)
-            val alpha = 0.08f + progress * 0.77f // 0.08 at tail -> 0.85 at head
+            val alpha = (0.08f + progress * 0.77f) * fadeAlpha
 
             drawLine(
                 color = accentColor.copy(alpha = alpha),
@@ -2134,7 +2233,7 @@ fun GestureTrailOverlay(
         // Smooth rounded fingertip at the head
         val headPoint = points.last()
         drawCircle(
-            color = accentColor.copy(alpha = 0.85f),
+            color = accentColor.copy(alpha = 0.85f * fadeAlpha),
             radius = headWidthPx / 2f,
             center = headPoint
         )
