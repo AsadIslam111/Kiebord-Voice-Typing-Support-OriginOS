@@ -41,6 +41,8 @@ import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.ui.text.style.TextOverflow
 import io.kiebord.feature.ime.ui.onehanded.OneHandedSideBar
 import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.ui.res.painterResource
+import io.kiebord.feature.ime.R
 import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
@@ -713,20 +715,26 @@ fun KeyboardRootView(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = when {
-                                isToolsExpanded -> Icons.AutoMirrored.Outlined.ArrowBack
-                                else -> Icons.Outlined.GridView
-                            },
-                            contentDescription = when {
-                                isSuggestionsExpanded -> "Collapse Suggestions"
-                                isToolsDrawerOpen -> "Close Tools"
-                                isToolbarOptionsVisible -> "Show Suggestions"
-                                else -> "All Tools"
-                            },
-                            tint = if (isToolsExpanded) colorScheme.keyForeground else colorScheme.keyForeground.copy(alpha = 0.85f),
-                            modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(16f).dp)
-                        )
+                        if (isToolsExpanded) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = when {
+                                    isSuggestionsExpanded -> "Collapse Suggestions"
+                                    isToolsDrawerOpen -> "Close Tools"
+                                    isToolbarOptionsVisible -> "Show Suggestions"
+                                    else -> "All Tools"
+                                },
+                                tint = colorScheme.keyForeground,
+                                modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(16f).dp)
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_kiebord_top),
+                                contentDescription = "All Tools",
+                                tint = colorScheme.keyForeground,
+                                modifier = Modifier.size((29 * scaleFactor).coerceAtLeast(21f).dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width((4 * scaleFactor).coerceAtLeast(2f).dp))

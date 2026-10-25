@@ -29,8 +29,8 @@ import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Pin
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.SmartButton
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.TextFields
@@ -60,6 +60,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,11 +68,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import io.kiebord.feature.ime.R
 import io.kiebord.theme.KiebordTheme
 
 data class DrawerTool(
     val action: ToolbarAction,
-    val icon: ImageVector,
+    val icon: ImageVector? = null,
+    val iconResId: Int? = null,
     val label: String
 )
 
@@ -106,19 +109,19 @@ fun ToolsDrawerView(
 
     val allToolsMap = remember {
         mapOf(
-            ToolbarAction.TEXT_EDIT to DrawerTool(ToolbarAction.TEXT_EDIT, Icons.Outlined.TextFields, "Text editing"),
-            ToolbarAction.CLIPBOARD to DrawerTool(ToolbarAction.CLIPBOARD, Icons.AutoMirrored.Outlined.Assignment, "Clipboard"),
-            ToolbarAction.THEME_TOGGLE to DrawerTool(ToolbarAction.THEME_TOGGLE, Icons.Outlined.Palette, "Theme"),
-            ToolbarAction.RESIZER to DrawerTool(ToolbarAction.RESIZER, Icons.Outlined.CropFree, "Resize"),
-            ToolbarAction.NUMBER_ROW_TOGGLE to DrawerTool(ToolbarAction.NUMBER_ROW_TOGGLE, Icons.Outlined.Pin, "Number row"),
-            ToolbarAction.SECONDARY_KEYS_TOGGLE to DrawerTool(ToolbarAction.SECONDARY_KEYS_TOGGLE, Icons.Outlined.Layers, "Key hints"),
-            ToolbarAction.KEY_POPUP_TOGGLE to DrawerTool(ToolbarAction.KEY_POPUP_TOGGLE, Icons.Outlined.SmartButton, "Key popup"),
-            ToolbarAction.EMOJI to DrawerTool(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emoji"),
-            ToolbarAction.ONE_HANDED to DrawerTool(ToolbarAction.ONE_HANDED, Icons.Outlined.TouchApp, "One-handed"),
-            ToolbarAction.SETTINGS to DrawerTool(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings"),
-            ToolbarAction.TRADITIONAL_MODE to DrawerTool(ToolbarAction.TRADITIONAL_MODE, Icons.Outlined.Translate, "Traditional"),
-            ToolbarAction.UNDO to DrawerTool(ToolbarAction.UNDO, Icons.AutoMirrored.Outlined.Undo, "Undo"),
-            ToolbarAction.REDO to DrawerTool(ToolbarAction.REDO, Icons.AutoMirrored.Outlined.Redo, "Redo")
+            ToolbarAction.TEXT_EDIT to DrawerTool(ToolbarAction.TEXT_EDIT, iconResId = R.drawable.ic_text_edit, label = "Text editing"),
+            ToolbarAction.CLIPBOARD to DrawerTool(ToolbarAction.CLIPBOARD, icon = Icons.AutoMirrored.Outlined.Assignment, label = "Clipboard"),
+            ToolbarAction.THEME_TOGGLE to DrawerTool(ToolbarAction.THEME_TOGGLE, icon = Icons.Outlined.Palette, label = "Theme"),
+            ToolbarAction.RESIZER to DrawerTool(ToolbarAction.RESIZER, iconResId = R.drawable.ic_resize, label = "Resize"),
+            ToolbarAction.NUMBER_ROW_TOGGLE to DrawerTool(ToolbarAction.NUMBER_ROW_TOGGLE, icon = Icons.Filled.Pin, label = "Number row"),
+            ToolbarAction.SECONDARY_KEYS_TOGGLE to DrawerTool(ToolbarAction.SECONDARY_KEYS_TOGGLE, iconResId = R.drawable.ic_key_hints, label = "Key hints"),
+            ToolbarAction.KEY_POPUP_TOGGLE to DrawerTool(ToolbarAction.KEY_POPUP_TOGGLE, icon = Icons.Outlined.SmartButton, label = "Key popup"),
+            ToolbarAction.EMOJI to DrawerTool(ToolbarAction.EMOJI, icon = Icons.Outlined.Mood, label = "Emoji"),
+            ToolbarAction.ONE_HANDED to DrawerTool(ToolbarAction.ONE_HANDED, iconResId = R.drawable.ic_one_handed, label = "One-handed"),
+            ToolbarAction.SETTINGS to DrawerTool(ToolbarAction.SETTINGS, icon = Icons.Filled.Settings, label = "Settings"),
+            ToolbarAction.TRADITIONAL_MODE to DrawerTool(ToolbarAction.TRADITIONAL_MODE, iconResId = R.drawable.ic_traditional, label = "Traditional"),
+            ToolbarAction.UNDO to DrawerTool(ToolbarAction.UNDO, iconResId = R.drawable.ic_undo, label = "Undo"),
+            ToolbarAction.REDO to DrawerTool(ToolbarAction.REDO, iconResId = R.drawable.ic_redo, label = "Redo")
         )
     }
 
@@ -358,16 +361,33 @@ private fun ToolGridItem(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = if (isHovered) Icons.Outlined.SwapHoriz else tool.icon,
-                contentDescription = tool.label,
-                tint = if (isDragging || isHovered || isActive) {
-                    colorScheme.accentColor
-                } else {
-                    colorScheme.keyForeground
-                },
-                modifier = Modifier.size(24.dp)
-            )
+            val iconTint = if (isDragging || isHovered || isActive) {
+                colorScheme.accentColor
+            } else {
+                colorScheme.keyForeground
+            }
+            if (isHovered) {
+                Icon(
+                    imageVector = Icons.Outlined.SwapHoriz,
+                    contentDescription = tool.label,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else if (tool.iconResId != null) {
+                Icon(
+                    painter = painterResource(tool.iconResId),
+                    contentDescription = tool.label,
+                    tint = iconTint,
+                    modifier = Modifier.size(28.dp)
+                )
+            } else if (tool.icon != null) {
+                Icon(
+                    imageVector = tool.icon,
+                    contentDescription = tool.label,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(6.dp))

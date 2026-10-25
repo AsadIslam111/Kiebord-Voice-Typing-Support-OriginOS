@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.res.painterResource
+import io.kiebord.feature.ime.R
 import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.ShiftState
@@ -128,7 +130,6 @@ fun KeycapView(
     val foregroundColor = when {
         key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
         isPressed && colorScheme.keyPressedForeground != Color.Unspecified -> colorScheme.keyPressedForeground
-        key.type == KeyType.SHIFT && shiftState != ShiftState.UNSHIFTED -> colorScheme.shiftActiveColor
         else -> colorScheme.keyForeground
     }
 
@@ -468,39 +469,31 @@ fun KeycapView(
         val actionIconSize = (22 * scaleFactor).coerceAtLeast(12f).dp
         when (key.type) {
             KeyType.SHIFT -> {
+                val shiftIconSize = (25.5f * scaleFactor).coerceAtLeast(14f).dp
                 when (shiftState) {
                     ShiftState.UNSHIFTED -> {
                         Icon(
-                            imageVector = Icons.Outlined.ArrowUpward,
+                            painter = painterResource(R.drawable.ic_shift),
                             contentDescription = "Shift",
                             tint = foregroundColor,
-                            modifier = Modifier.size(actionIconSize)
+                            modifier = Modifier.size(shiftIconSize)
                         )
                     }
                     ShiftState.ONE_SHOT -> {
                         Icon(
-                            imageVector = Icons.Filled.ArrowUpward,
+                            painter = painterResource(R.drawable.ic_shift_active),
                             contentDescription = "Shift One-Shot",
-                            tint = colorScheme.shiftActiveColor,
-                            modifier = Modifier.size(actionIconSize)
+                            tint = foregroundColor,
+                            modifier = Modifier.size(shiftIconSize)
                         )
                     }
                     ShiftState.CAPS_LOCK -> {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowUpward,
-                                contentDescription = "Caps Lock",
-                                tint = colorScheme.shiftActiveColor,
-                                modifier = Modifier.size(actionIconSize)
-                            )
-                            // Underline bar for Caps Lock
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .size(width = (18 * scaleFactor).dp, height = (2.5f * scaleFactor).coerceAtLeast(1.5f).dp)
-                                    .background(colorScheme.shiftActiveColor)
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(R.drawable.ic_caps_lock),
+                            contentDescription = "Caps Lock",
+                            tint = foregroundColor,
+                            modifier = Modifier.size(shiftIconSize)
+                        )
                     }
                 }
             }

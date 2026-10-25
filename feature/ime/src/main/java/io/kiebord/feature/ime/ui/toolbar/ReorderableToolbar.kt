@@ -21,8 +21,8 @@ import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Pin
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.SmartButton
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.TextFields
@@ -57,6 +57,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.res.painterResource
+import io.kiebord.feature.ime.R
 import io.kiebord.theme.KiebordTheme
 
 enum class ToolbarAction {
@@ -77,7 +79,8 @@ enum class ToolbarAction {
 
 data class ToolbarItem(
     val action: ToolbarAction,
-    val icon: ImageVector,
+    val icon: ImageVector? = null,
+    val iconResId: Int? = null,
     val description: String
 )
 
@@ -139,19 +142,19 @@ fun ReorderableToolbar(
 
     val allActionMap = remember {
         mapOf(
-            ToolbarAction.TEXT_EDIT to ToolbarItem(ToolbarAction.TEXT_EDIT, Icons.Outlined.TextFields, "Text Edit"),
-            ToolbarAction.CLIPBOARD to ToolbarItem(ToolbarAction.CLIPBOARD, Icons.AutoMirrored.Outlined.Assignment, "Clipboard"),
-            ToolbarAction.THEME_TOGGLE to ToolbarItem(ToolbarAction.THEME_TOGGLE, Icons.Outlined.Palette, "Themes"),
-            ToolbarAction.RESIZER to ToolbarItem(ToolbarAction.RESIZER, Icons.Outlined.CropFree, "Resize Keyboard"),
-            ToolbarAction.NUMBER_ROW_TOGGLE to ToolbarItem(ToolbarAction.NUMBER_ROW_TOGGLE, Icons.Outlined.Pin, "Number Row"),
-            ToolbarAction.SECONDARY_KEYS_TOGGLE to ToolbarItem(ToolbarAction.SECONDARY_KEYS_TOGGLE, Icons.Outlined.Layers, "Key Hints"),
-            ToolbarAction.KEY_POPUP_TOGGLE to ToolbarItem(ToolbarAction.KEY_POPUP_TOGGLE, Icons.Outlined.SmartButton, "Key Popup"),
-            ToolbarAction.EMOJI to ToolbarItem(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emojis"),
-            ToolbarAction.ONE_HANDED to ToolbarItem(ToolbarAction.ONE_HANDED, Icons.Outlined.TouchApp, "One-Handed"),
-            ToolbarAction.SETTINGS to ToolbarItem(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings"),
-            ToolbarAction.TRADITIONAL_MODE to ToolbarItem(ToolbarAction.TRADITIONAL_MODE, Icons.Outlined.Translate, "Traditional Mode"),
-            ToolbarAction.UNDO to ToolbarItem(ToolbarAction.UNDO, Icons.AutoMirrored.Outlined.Undo, "Undo"),
-            ToolbarAction.REDO to ToolbarItem(ToolbarAction.REDO, Icons.AutoMirrored.Outlined.Redo, "Redo")
+            ToolbarAction.TEXT_EDIT to ToolbarItem(ToolbarAction.TEXT_EDIT, iconResId = R.drawable.ic_text_edit, description = "Text Edit"),
+            ToolbarAction.CLIPBOARD to ToolbarItem(ToolbarAction.CLIPBOARD, icon = Icons.AutoMirrored.Outlined.Assignment, description = "Clipboard"),
+            ToolbarAction.THEME_TOGGLE to ToolbarItem(ToolbarAction.THEME_TOGGLE, icon = Icons.Outlined.Palette, description = "Themes"),
+            ToolbarAction.RESIZER to ToolbarItem(ToolbarAction.RESIZER, iconResId = R.drawable.ic_resize, description = "Resize Keyboard"),
+            ToolbarAction.NUMBER_ROW_TOGGLE to ToolbarItem(ToolbarAction.NUMBER_ROW_TOGGLE, icon = Icons.Filled.Pin, description = "Number Row"),
+            ToolbarAction.SECONDARY_KEYS_TOGGLE to ToolbarItem(ToolbarAction.SECONDARY_KEYS_TOGGLE, iconResId = R.drawable.ic_key_hints, description = "Key Hints"),
+            ToolbarAction.KEY_POPUP_TOGGLE to ToolbarItem(ToolbarAction.KEY_POPUP_TOGGLE, icon = Icons.Outlined.SmartButton, description = "Key Popup"),
+            ToolbarAction.EMOJI to ToolbarItem(ToolbarAction.EMOJI, icon = Icons.Outlined.Mood, description = "Emojis"),
+            ToolbarAction.ONE_HANDED to ToolbarItem(ToolbarAction.ONE_HANDED, iconResId = R.drawable.ic_one_handed, description = "One-Handed"),
+            ToolbarAction.SETTINGS to ToolbarItem(ToolbarAction.SETTINGS, icon = Icons.Filled.Settings, description = "Settings"),
+            ToolbarAction.TRADITIONAL_MODE to ToolbarItem(ToolbarAction.TRADITIONAL_MODE, iconResId = R.drawable.ic_traditional, description = "Traditional Mode"),
+            ToolbarAction.UNDO to ToolbarItem(ToolbarAction.UNDO, iconResId = R.drawable.ic_undo, description = "Undo"),
+            ToolbarAction.REDO to ToolbarItem(ToolbarAction.REDO, iconResId = R.drawable.ic_redo, description = "Redo")
         )
     }
 
@@ -351,15 +354,39 @@ fun ReorderableToolbar(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = if (isHoveredByDrawerItem) Icons.Outlined.SwapHoriz else item.icon,
-                            contentDescription = item.description,
-                            tint = when {
-                                isDraggingThisItem || isActive || isHoveredByDrawerItem -> colorScheme.accentColor
-                                else -> colorScheme.keyForeground.copy(alpha = 0.85f)
-                            },
-                            modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(15f).dp)
-                        )
+                        val isCustomIcon = item.iconResId != null
+                        val iconSizeDp = if (isCustomIcon) {
+                            (25.5f * scaleFactor).coerceAtLeast(18f)
+                        } else {
+                            (22f * scaleFactor).coerceAtLeast(15f)
+                        }
+                        val iconModifier = Modifier.size(iconSizeDp.dp)
+                        val iconTint = when {
+                            isDraggingThisItem || isActive || isHoveredByDrawerItem -> colorScheme.accentColor
+                            else -> colorScheme.keyForeground.copy(alpha = 0.85f)
+                        }
+                        if (isHoveredByDrawerItem) {
+                            Icon(
+                                imageVector = Icons.Outlined.SwapHoriz,
+                                contentDescription = item.description,
+                                tint = iconTint,
+                                modifier = iconModifier
+                            )
+                        } else if (item.iconResId != null) {
+                            Icon(
+                                painter = painterResource(item.iconResId),
+                                contentDescription = item.description,
+                                tint = iconTint,
+                                modifier = iconModifier
+                            )
+                        } else if (item.icon != null) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.description,
+                                tint = iconTint,
+                                modifier = iconModifier
+                            )
+                        }
                     }
                 }
             }
