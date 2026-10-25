@@ -139,7 +139,7 @@ fun ToolsDrawerView(
             .height(height)
             .background(colorScheme.containerBackground)
             .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .onGloballyPositioned { coords ->
                 rootCoordinates?.let { root ->
                     if (coords.isAttached && root.isAttached) {
@@ -328,10 +328,10 @@ private fun ToolGridItem(
             onClick = onClick
         )
     ) {
-        // Tile container: Fixed 54dp compact squircle with keyBackground
+        // Tile container: Wide 78dp x 48dp button with keyBackground
         Box(
             modifier = Modifier
-                .size(54.dp)
+                .size(width = 78.dp, height = 48.dp)
                 .onGloballyPositioned { tileCoords ->
                     onCoordinatesPositioned?.invoke(tileCoords)
                     rootCoordinates?.let { root ->
@@ -340,7 +340,7 @@ private fun ToolGridItem(
                         }
                     }
                 }
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(14.dp))
                 .background(
                     when {
                         isHovered -> colorScheme.accentColor.copy(alpha = 0.25f)
@@ -354,7 +354,7 @@ private fun ToolGridItem(
                         isHovered || isDragging || isActive -> colorScheme.accentColor
                         else -> Color.Transparent
                     },
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
