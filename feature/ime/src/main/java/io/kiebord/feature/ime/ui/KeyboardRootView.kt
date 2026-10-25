@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -591,6 +592,9 @@ fun KeyboardRootView(
                             .clickable {
                                 when {
                                     isSuggestionsExpanded -> {
+                                        try {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        } catch (_: Exception) {}
                                         isSuggestionsExpanded = false
                                     }
                                     isToolsDrawerOpen || isToolbarOptionsVisible -> {
@@ -636,6 +640,9 @@ fun KeyboardRootView(
                             },
                             isExpanded = isSuggestionsExpanded,
                             onExpandToggle = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                } catch (_: Exception) {}
                                 isSuggestionsExpanded = !isSuggestionsExpanded
                                 if (isSuggestionsExpanded) {
                                     isToolsDrawerOpen = false
@@ -694,76 +701,18 @@ fun KeyboardRootView(
                     }
                 }
 
-                // Switch between Expanded Suggestions Panel, Tools Drawer, Clipboard Panel, Emoji Panel, and Keyboard Keys
-                if (isSuggestionsExpanded && suggestions.isNotEmpty()) {
-                    ExpandedSuggestionsPanelView(
-                        candidates = suggestions,
-                        onCandidateClick = { candidate ->
-                            isSuggestionsExpanded = false
-                            onCandidateSelect(candidate)
-                        },
-                        onCandidateLongClick = { candidate ->
-                            unlearnCandidateTarget = candidate
-                        },
-                        onDelete = {
-                            onKeyTap(KeyDef(type = KeyType.DELETE))
-                        },
-                        onEnter = {
-                            isSuggestionsExpanded = false
-                            onKeyTap(KeyDef(type = KeyType.ACTION))
-                        },
-                        height = keyboardContentHeight
-                    )
-                } else if (isToolsDrawerOpen) {
-                    ToolsDrawerView(
-                        drawerTools = drawerTools,
-                        onDrawerToolsChange = { updateTools(pinnedTools, it) },
-                        onInterchangeWithToolbar = { drawerAct, toolbarAct ->
-                            interchangeTools(drawerAct, toolbarAct)
-                        },
-                        onMoveToToolbar = { drawerAct ->
-                            moveDrawerToToolbar(drawerAct)
-                        },
-                        onToolClick = handleToolbarAction,
-                        height = keyboardContentHeight,
-                        rootCoordinates = rootCoordinates,
-                        onReportItemBounds = { act, bounds -> drawerItemBounds[act] = bounds },
-                        onReportContainerBounds = { bounds -> drawerContainerBounds = bounds },
-                        hoveredDrawerAction = hoveredDrawerAction,
-                        isOverDrawerBlankSpace = isOverDrawerBlankSpace,
-                        hoveredToolbarAction = hoveredToolbarAction,
-                        isActionActive = isActionActive,
-                        onDraggingStateChange = { action, fingerPos ->
-                            activeDraggingFromDrawer = action
-                            currentFingerInRoot = fingerPos
-                        }
-                    )
-                } else if (isClipboardOpen) {
-                    ClipboardPanelView(
-                        clips = clipboardManager?.clips ?: emptyList(),
-                        onClipClick = { clip ->
-                            onPasteClip(clip.text)
-                            isClipboardOpen = false
-                        },
-                        onTogglePin = { clip -> clipboardManager?.togglePin(clip) },
-                        onDeleteClip = { clip -> clipboardManager?.deleteClip(clip) },
-                        onClearAll = { clipboardManager?.clearAllUnpinned() },
-                        onClose = { isClipboardOpen = false },
-                        modifier = Modifier.height(keyboardContentHeight)
-                    )
-                } else if (isEmojiOpen) {
-                    EmojiPanelView(
-                        onEmojiSelected = { emoji ->
-                            onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
-                        },
-                        onDelete = {
-                            onKeyTap(KeyDef(type = KeyType.DELETE))
-                        },
-                        onClose = { isEmojiOpen = false },
-                        height = keyboardContentHeight
-                    )
-                } else {
-                    // Shared MoreKeys & key press handlers for NumberRowBar and keyboard rows
+                // Main content area below the top bar (height = keyboardContentHeight)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(keyboardContentHeight)
+                ) {
+                    val isAnyPanelOpen = (isSuggestionsExpanded && suggestions.isNotEmpty()) || isToolsDrawerOpen || isClipboardOpen || isEmojiOpen
+                    val areKeysInteractive = isKeysInteractive && !isAnyPanelOpen
+
+                    // 1. Keyboard rows (ALWAYS retained in the composition tree for instant zero-lag collapse!)
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Shared MoreKeys & key press handlers for NumberRowBar and keyboard rows
                     val handleKeyPress: (KeyDef) -> Unit = { keyDef ->
                         if (moreKeysState != null) {
                             moreKeysState = null
@@ -1001,7 +950,7 @@ fun KeyboardRootView(
                                 showKeyBorders = showKeyBorders,
                                 showSecondaryKeys = showSecondaryKeys && !isTopNumberRow,
                                 showKeyPopups = showKeyPopups,
-                                isInteractive = isKeysInteractive,
+                                isInteractive = areKeysInteractive,
                                 rowHeight = currentRowHeight,
                                 gestureTypingEnabled = isEffectiveGestureTypingEnabled,
                                 longPressDelayMs = longPressDelayMs,
@@ -1322,8 +1271,85 @@ fun KeyboardRootView(
                     }
                 }
             }
+
+            // 2. Full-screen panels (Tools Drawer, Clipboard, Emoji)
+            if (isToolsDrawerOpen) {
+                ToolsDrawerView(
+                    drawerTools = drawerTools,
+                    onDrawerToolsChange = { updateTools(pinnedTools, it) },
+                    onInterchangeWithToolbar = { drawerAct, toolbarAct ->
+                        interchangeTools(drawerAct, toolbarAct)
+                    },
+                    onMoveToToolbar = { drawerAct ->
+                        moveDrawerToToolbar(drawerAct)
+                    },
+                    onToolClick = handleToolbarAction,
+                    height = keyboardContentHeight,
+                    rootCoordinates = rootCoordinates,
+                    onReportItemBounds = { act, bounds -> drawerItemBounds[act] = bounds },
+                    onReportContainerBounds = { bounds -> drawerContainerBounds = bounds },
+                    hoveredDrawerAction = hoveredDrawerAction,
+                    isOverDrawerBlankSpace = isOverDrawerBlankSpace,
+                    hoveredToolbarAction = hoveredToolbarAction,
+                    isActionActive = isActionActive,
+                    onDraggingStateChange = { action, fingerPos ->
+                        activeDraggingFromDrawer = action
+                        currentFingerInRoot = fingerPos
+                    }
+                )
+            } else if (isClipboardOpen) {
+                ClipboardPanelView(
+                    clips = clipboardManager?.clips ?: emptyList(),
+                    onClipClick = { clip ->
+                        onPasteClip(clip.text)
+                        isClipboardOpen = false
+                    },
+                    onTogglePin = { clip -> clipboardManager?.togglePin(clip) },
+                    onDeleteClip = { clip -> clipboardManager?.deleteClip(clip) },
+                    onClearAll = { clipboardManager?.clearAllUnpinned() },
+                    onClose = { isClipboardOpen = false },
+                    modifier = Modifier.height(keyboardContentHeight)
+                )
+            } else if (isEmojiOpen) {
+                EmojiPanelView(
+                    onEmojiSelected = { emoji ->
+                        onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                    },
+                    onDelete = {
+                        onKeyTap(KeyDef(type = KeyType.DELETE))
+                    },
+                    onClose = { isEmojiOpen = false },
+                    height = keyboardContentHeight
+                )
+            }
+
+            // 3. Expanded Suggestions Panel: overlay on top of keyboard keys
+            if (isSuggestionsExpanded && suggestions.isNotEmpty()) {
+                ExpandedSuggestionsPanelView(
+                    candidates = suggestions,
+                    onCandidateClick = { candidate ->
+                        isSuggestionsExpanded = false
+                        onCandidateSelect(candidate)
+                    },
+                    onCandidateLongClick = { candidate ->
+                        unlearnCandidateTarget = candidate
+                    },
+                    onDelete = {
+                        onKeyTap(KeyDef(type = KeyType.DELETE))
+                    },
+                    onEnter = {
+                        isSuggestionsExpanded = false
+                        onKeyTap(KeyDef(type = KeyType.ACTION))
+                    },
+                    height = keyboardContentHeight,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(10f)
+                )
+            }
         }
     }
+}
 }
 
         // 1. Guideline overlay for sliding symbol input (matchParentSize prevents shifting)

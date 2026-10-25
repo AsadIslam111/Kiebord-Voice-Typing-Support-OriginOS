@@ -26,7 +26,10 @@ import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +60,7 @@ fun ExpandedSuggestionsPanelView(
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
+    val panelInteractionSource = remember { MutableInteractionSource() }
 
     val scrollStepPx = with(density) { 54.dp.toPx() }
     val dividerColor = colorScheme.keyForeground.copy(alpha = 0.12f)
@@ -66,6 +70,10 @@ fun ExpandedSuggestionsPanelView(
             .fillMaxWidth()
             .height(height)
             .background(colorScheme.containerBackground)
+            .clickable(
+                interactionSource = panelInteractionSource,
+                indication = null
+            ) { /* Absorb clicks on empty space so they never pass through to underlying keys */ }
     ) {
         Row(
             modifier = Modifier
@@ -83,43 +91,50 @@ fun ExpandedSuggestionsPanelView(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     candidates.forEach { candidate ->
-                        val isPrimary = candidate.isPrimary
-                        val isRaw = candidate.rawInput != null && candidate.text == candidate.rawInput
+                        key(candidate.text) {
+                            val isPrimary = candidate.isPrimary
+                            val isRaw = candidate.rawInput != null && candidate.text == candidate.rawInput
+                            val isLearnedWithAction = candidate.isLearned && onCandidateLongClick != null
 
-                        Box(
-                            modifier = Modifier
-                                .drawBehind {
-                                    // Clean vertical divider centered vertically, matching suggestion bar aesthetic
-                                    val dividerHeightPx = 18.dp.toPx()
-                                    val startY = (size.height - dividerHeightPx) / 2f
-                                    drawLine(
-                                        color = dividerColor,
-                                        start = Offset(size.width, startY),
-                                        end = Offset(size.width, startY + dividerHeightPx),
-                                        strokeWidth = 1.dp.toPx()
-                                    )
-                                }
-                                .combinedClickable(
+                            val chipClickModifier = if (isLearnedWithAction) {
+                                Modifier.combinedClickable(
                                     onClick = { onCandidateClick(candidate) },
-                                    onLongClick = if (candidate.isLearned && onCandidateLongClick != null) {
-                                        { onCandidateLongClick(candidate) }
-                                    } else null
+                                    onLongClick = { onCandidateLongClick(candidate) }
                                 )
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = candidate.text,
-                                color = when {
-                                    isPrimary -> colorScheme.accentColor
-                                    isRaw -> colorScheme.keyForeground.copy(alpha = 0.9f)
-                                    else -> colorScheme.keyForeground.copy(alpha = 0.78f)
-                                },
-                                fontSize = if (isPrimary) 20.sp else 19.sp,
-                                fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
-                                fontFamily = KiebordTheme.fontFamily,
-                                textAlign = TextAlign.Center
-                            )
+                            } else {
+                                Modifier.clickable { onCandidateClick(candidate) }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .drawBehind {
+                                        // Clean vertical divider centered vertically, matching suggestion bar aesthetic
+                                        val dividerHeightPx = 18.dp.toPx()
+                                        val startY = (size.height - dividerHeightPx) / 2f
+                                        drawLine(
+                                            color = dividerColor,
+                                            start = Offset(size.width, startY),
+                                            end = Offset(size.width, startY + dividerHeightPx),
+                                            strokeWidth = 1.dp.toPx()
+                                        )
+                                    }
+                                    .then(chipClickModifier)
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = candidate.text,
+                                    color = when {
+                                        isPrimary -> colorScheme.accentColor
+                                        isRaw -> colorScheme.keyForeground.copy(alpha = 0.9f)
+                                        else -> colorScheme.keyForeground.copy(alpha = 0.78f)
+                                    },
+                                    fontSize = if (isPrimary) 20.sp else 19.sp,
+                                    fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
+                                    fontFamily = KiebordTheme.fontFamily,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                 }
