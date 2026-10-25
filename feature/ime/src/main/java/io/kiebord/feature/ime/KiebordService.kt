@@ -1,5 +1,7 @@
 package io.kiebord.feature.ime
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
@@ -106,6 +108,9 @@ class KiebordService : InputMethodService() {
     private var navBarInsetBottomPx by mutableIntStateOf(0)
     private var activeSuggestions by mutableStateOf<List<SuggestionCandidate>>(emptyList())
     private lateinit var clipboardManager: SandboxedClipboardManager
+    private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
+        clipboardManager.syncFromSystemClipboard(this, forceNotify = true)
+    }
     private lateinit var userDictionaryRepo: UserDictionaryRepository
     private var selectionAnchor: Int? = null
     private var selectionCursor: Int? = null
@@ -321,11 +326,23 @@ class KiebordService : InputMethodService() {
 
     override fun onWindowShown() {
         super.onWindowShown()
+        try {
+            (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                ?.addPrimaryClipChangedListener(clipboardListener)
+        } catch (_: Exception) {}
         clipboardManager.syncFromSystemClipboard(this)
         serviceScope.launch {
             delay(150)
             clipboardManager.syncFromSystemClipboard(this@KiebordService)
         }
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        try {
+            (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                ?.removePrimaryClipChangedListener(clipboardListener)
+        } catch (_: Exception) {}
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -370,6 +387,10 @@ class KiebordService : InputMethodService() {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        try {
+            (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                ?.removePrimaryClipChangedListener(clipboardListener)
+        } catch (_: Exception) {}
         finishComposing()
         lastSpaceTapTime = 0L
         lastAutoSpacePunctuationTime = 0L
@@ -381,6 +402,10 @@ class KiebordService : InputMethodService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        try {
+            (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                ?.removePrimaryClipChangedListener(clipboardListener)
+        } catch (_: Exception) {}
         serviceScope.cancel()
         lifecycleOwner.onDestroy()
     }
@@ -1538,11 +1563,29 @@ class KiebordService : InputMethodService() {
                 val selected = ic.getSelectedText(0)?.toString()
                 if (!selected.isNullOrEmpty()) {
                     clipboardManager.addClip(selected)
+                    try {
+                        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                        cm?.setPrimaryClip(ClipData.newPlainText("text", selected))
+                    } catch (_: Exception) {}
+                    ic.performContextMenuAction(android.R.id.cut)
+                } else {
+                    // If not selected explicitly, select all text then cut
+                    val before = ic.getTextBeforeCursor(100000, 0)?.toString() ?: ""
+                    val after = ic.getTextAfterCursor(100000, 0)?.toString() ?: ""
+                    val fullText = before + after
+                    if (fullText.isNotEmpty()) {
+                        clipboardManager.addClip(fullText)
+                        try {
+                            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                            cm?.setPrimaryClip(ClipData.newPlainText("text", fullText))
+                        } catch (_: Exception) {}
+                        ic.performContextMenuAction(android.R.id.selectAll)
+                        ic.performContextMenuAction(android.R.id.cut)
+                    }
                 }
-                ic.performContextMenuAction(android.R.id.cut)
                 serviceScope.launch {
                     delay(80)
-                    clipboardManager.syncFromSystemClipboard(this@KiebordService)
+                    clipboardManager.syncFromSystemClipboard(this@KiebordService, forceNotify = true)
                 }
                 true
             }
@@ -1550,11 +1593,36 @@ class KiebordService : InputMethodService() {
                 val selected = ic.getSelectedText(0)?.toString()
                 if (!selected.isNullOrEmpty()) {
                     clipboardManager.addClip(selected)
+                    try {
+                        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                        cm?.setPrimaryClip(ClipData.newPlainText("text", selected))
+                    } catch (_: Exception) {}
+                    ic.performContextMenuAction(android.R.id.copy)
+                } else {
+                    // If not selected explicitly, select all text then copy
+                    val before = ic.getTextBeforeCursor(100000, 0)?.toString() ?: ""
+                    val after = ic.getTextAfterCursor(100000, 0)?.toString() ?: ""
+                    val fullText = before + after
+                    if (fullText.isNotEmpty()) {
+                        val originalCursor = before.length
+                        clipboardManager.addClip(fullText)
+                        try {
+                            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                            cm?.setPrimaryClip(ClipData.newPlainText("text", fullText))
+                        } catch (_: Exception) {}
+                        ic.performContextMenuAction(android.R.id.selectAll)
+                        ic.performContextMenuAction(android.R.id.copy)
+                        // Unselect text after copying by restoring cursor position
+                        ic.setSelection(originalCursor, originalCursor)
+                        serviceScope.launch {
+                            delay(40)
+                            ic.setSelection(originalCursor, originalCursor)
+                        }
+                    }
                 }
-                ic.performContextMenuAction(android.R.id.copy)
                 serviceScope.launch {
                     delay(80)
-                    clipboardManager.syncFromSystemClipboard(this@KiebordService)
+                    clipboardManager.syncFromSystemClipboard(this@KiebordService, forceNotify = true)
                 }
                 true
             }

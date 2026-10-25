@@ -241,7 +241,7 @@ fun TextEditPanelView(
                 ) {
                     Text(
                         text = "Copy",
-                        color = if (isSelecting) buttonFg else buttonFg.copy(alpha = 0.35f),
+                        color = buttonFg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Normal
                     )

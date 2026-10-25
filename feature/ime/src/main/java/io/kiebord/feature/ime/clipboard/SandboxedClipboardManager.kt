@@ -31,19 +31,12 @@ class SandboxedClipboardManager(context: Context) {
     private var lastSyncedText: String? = null
     private var lastSyncedTimestamp: Long = 0L
 
-    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener {
-        syncFromSystemClipboard()
-    }
-
     init {
         loadClipsFromDisk()
-        try {
-            systemClipboard?.addPrimaryClipChangedListener(clipListener)
-        } catch (_: Exception) {}
         syncFromSystemClipboard()
     }
 
-    fun syncFromSystemClipboard(callingContext: Context? = null) {
+    fun syncFromSystemClipboard(callingContext: Context? = null, forceNotify: Boolean = false) {
         try {
             purgeExpiredOtps()
             val cm = (callingContext?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
@@ -88,16 +81,7 @@ class SandboxedClipboardManager(context: Context) {
                         0L
                     }
 
-                    val now = System.currentTimeMillis()
-                    val isNewCopy = if (clipTimestamp > 0L) {
-                        if (lastSyncedTimestamp == 0L) {
-                            (now - clipTimestamp) < 60_000L
-                        } else {
-                            clipTimestamp != lastSyncedTimestamp
-                        }
-                    } else {
-                        lastSyncedText != trimmed
-                    }
+                    val isNewCopy = forceNotify || (trimmed != lastSyncedText) || (clipTimestamp > 0L && clipTimestamp != lastSyncedTimestamp)
 
                     if (clipTimestamp > 0L) {
                         lastSyncedTimestamp = clipTimestamp
@@ -125,12 +109,13 @@ class SandboxedClipboardManager(context: Context) {
         val entry = if (existingIndex >= 0) {
             val existing = clips[existingIndex]
             clips.removeAt(existingIndex)
-            val updated = existing.copy(timestamp = System.currentTimeMillis())
+            val updated = existing.copy(id = java.util.UUID.randomUUID().toString(), timestamp = System.currentTimeMillis())
             clips.add(0, updated)
             updated
         } else {
             val isOtp = isPotentialOtp(trimmed)
             val newEntry = ClipboardEntry(
+                id = java.util.UUID.randomUUID().toString(),
                 text = trimmed,
                 timestamp = System.currentTimeMillis(),
                 isOtp = isOtp

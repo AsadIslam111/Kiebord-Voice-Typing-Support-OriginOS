@@ -342,12 +342,19 @@ fun KeyboardRootView(
     val context = LocalContext.current
     var isClipboardOpen by remember { mutableStateOf(false) }
     var undoActionPillState by remember { mutableStateOf<UndoRedoPillState?>(null) }
-    var clipboardQuickPaste by remember { mutableStateOf<String?>(null) }
+    val quickPasteClip = clipboardManager?.quickPasteClip
 
-    LaunchedEffect(clipboardManager?.quickPasteClip) {
-        val clip = clipboardManager?.quickPasteClip
-        if (clip != null) {
-            clipboardQuickPaste = clip.text
+    LaunchedEffect(quickPasteClip) {
+        if (quickPasteClip != null) {
+            delay(8000)
+            clipboardManager?.clearQuickPaste()
+        }
+    }
+
+    LaunchedEffect(undoActionPillState) {
+        if (undoActionPillState != null) {
+            delay(8000)
+            undoActionPillState = null
         }
     }
 
@@ -360,7 +367,7 @@ fun KeyboardRootView(
     LaunchedEffect(lastDeletedBatch) {
         if (!lastDeletedBatch.isNullOrEmpty()) {
             undoActionPillState = UndoRedoPillState.CanUndo(text = lastDeletedBatch, isBatchDelete = true)
-            clipboardQuickPaste = null
+            clipboardManager?.clearQuickPaste()
         }
     }
 
@@ -625,10 +632,8 @@ fun KeyboardRootView(
                     clips = clipboardManager?.clips ?: emptyList(),
                     onClipClick = { clip ->
                         onPasteClip(clip.text)
-                        clipboardQuickPaste = null
                         clipboardManager?.clearQuickPaste()
                         undoActionPillState = UndoRedoPillState.CanUndo(text = clip.text, isPaste = true)
-                        isClipboardOpen = false
                     },
                     onTogglePin = { clip -> clipboardManager?.togglePin(clip) },
                     onDeleteClip = { clip -> clipboardManager?.deleteClip(clip) },
@@ -653,6 +658,7 @@ fun KeyboardRootView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible || isSuggestionsExpanded
+                    val leadingNavWidth = (36 * scaleFactor).coerceAtLeast(26f).dp + (4 * scaleFactor).coerceAtLeast(2f).dp
 
                     // 1. Expand / Back / Toggle button on far left
                     Box(
@@ -700,14 +706,14 @@ fun KeyboardRootView(
 
                     Spacer(modifier = Modifier.width((4 * scaleFactor).coerceAtLeast(2f).dp))
 
-                    // 2. Main content: Suggestion Strip INSTEAD OF Toolbar Options in the exact same row
+                    // 2. Main content: Suggestion Strip OR Quick Paste/Undo Pill OR Toolbar Options
                     if (suggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
                         SuggestionStripView(
                             candidates = suggestions,
                             onCandidateClick = { candidate ->
                                 isSuggestionsExpanded = false
                                 undoActionPillState = null
-                                clipboardQuickPaste = null
+                                clipboardManager?.clearQuickPaste()
                                 onCandidateSelect(candidate)
                             },
                             onCandidateLongClick = { candidate ->
@@ -733,60 +739,56 @@ fun KeyboardRootView(
                                 .weight(1f)
                                 .fillMaxHeight()
                         )
-                    } else if (!isToolbarOptionsVisible && !isToolsDrawerOpen && (clipboardQuickPaste != null || undoActionPillState != null)) {
+                    } else if (!isToolbarOptionsVisible && !isToolsDrawerOpen && (quickPasteClip != null || undoActionPillState != null)) {
                         Row(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
                         ) {
-                            // Quick Paste Pill
-                            if (clipboardQuickPaste != null) {
-                                val textToPaste = clipboardQuickPaste!!
-                                val ellipsized = if (textToPaste.length > 25) textToPaste.take(25) + "…" else textToPaste
+                            // SHOW ONLY ONE PILL AT A TIME (never beside each other)
+                            if (quickPasteClip != null) {
+                                val textToPaste = quickPasteClip.text
+                                val ellipsized = if (textToPaste.length > 20) textToPaste.take(20) + "…" else textToPaste
                                 Row(
                                     modifier = Modifier
+                                        .height(35.dp)
                                         .clip(CircleShape)
-                                        .background(colorScheme.accentColor.copy(alpha = 0.22f))
-                                        .border(BorderStroke(1.dp, colorScheme.accentColor.copy(alpha = 0.45f)), CircleShape)
+                                        .background(colorScheme.keyBackground)
                                         .clickable {
                                             onPasteClip(textToPaste)
-                                            clipboardQuickPaste = null
                                             clipboardManager?.clearQuickPaste()
                                             undoActionPillState = UndoRedoPillState.CanUndo(text = textToPaste, isPaste = true)
                                         }
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                        .padding(horizontal = 14.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(7.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Outlined.Assignment,
                                         contentDescription = "Quick paste",
-                                        tint = colorScheme.accentColor,
-                                        modifier = Modifier.size(16.dp)
+                                        tint = colorScheme.keyForeground,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                     Text(
                                         text = ellipsized,
                                         color = colorScheme.keyForeground,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
-                            }
-
-                            // Undo / Redo Pill
-                            if (undoActionPillState != null) {
+                            } else if (undoActionPillState != null) {
                                 when (val state = undoActionPillState!!) {
                                     is UndoRedoPillState.CanUndo -> {
                                         Row(
                                             modifier = Modifier
+                                                .height(35.dp)
                                                 .clip(CircleShape)
-                                                .background(colorScheme.actionKeyBackground)
-                                                .border(BorderStroke(1.dp, Color(0x22FFFFFF)), CircleShape)
+                                                .background(colorScheme.keyBackground)
                                                 .clickable {
                                                     if (state.isBatchDelete) {
                                                         onPasteClip(state.text)
@@ -799,20 +801,20 @@ fun KeyboardRootView(
                                                         isBatchDelete = state.isBatchDelete
                                                     )
                                                 }
-                                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                                .padding(horizontal = 14.dp),
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(7.dp)
                                         ) {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Outlined.Undo,
                                                 contentDescription = "Undo",
                                                 tint = colorScheme.keyForeground,
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(18.dp)
                                             )
                                             Text(
                                                 text = "Undo",
                                                 color = colorScheme.keyForeground,
-                                                fontSize = 13.sp,
+                                                fontSize = 14.sp,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         }
@@ -820,9 +822,9 @@ fun KeyboardRootView(
                                     is UndoRedoPillState.CanRedo -> {
                                         Row(
                                             modifier = Modifier
+                                                .height(35.dp)
                                                 .clip(CircleShape)
                                                 .background(colorScheme.actionKeyBackground)
-                                                .border(BorderStroke(1.dp, Color(0x22FFFFFF)), CircleShape)
                                                 .clickable {
                                                     if (state.isBatchDelete) {
                                                         onTextAction(TextAction.UNDO, false)
@@ -835,29 +837,29 @@ fun KeyboardRootView(
                                                         isBatchDelete = state.isBatchDelete
                                                     )
                                                 }
-                                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                                .padding(horizontal = 14.dp),
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(7.dp)
                                         ) {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Outlined.Redo,
                                                 contentDescription = "Redo",
                                                 tint = colorScheme.keyForeground,
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(18.dp)
                                             )
                                             Text(
                                                 text = "Redo",
                                                 color = colorScheme.keyForeground,
-                                                fontSize = 13.sp,
+                                                fontSize = 14.sp,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         }
                                     }
                                 }
                             }
-
-                            Spacer(modifier = Modifier.weight(1f))
                         }
+                        // Balance the left leading button so the pill is exactly centered relative to the whole bar
+                        Spacer(modifier = Modifier.width(leadingNavWidth))
                     } else {
                         ReorderableToolbar(
                             pinnedTools = pinnedTools,
@@ -920,6 +922,8 @@ fun KeyboardRootView(
                         if (moreKeysState != null) {
                             moreKeysState = null
                         }
+                        undoActionPillState = null
+                        clipboardManager?.clearQuickPaste()
                         onKeyPress(keyDef)
                     }
 

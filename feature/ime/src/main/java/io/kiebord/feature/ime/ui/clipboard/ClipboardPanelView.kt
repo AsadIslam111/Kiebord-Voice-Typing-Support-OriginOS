@@ -6,12 +6,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -300,8 +302,13 @@ fun ClipboardPanelView(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f))
-                    .clickable { previewEntry = null }
+                    .background(colorScheme.containerBackground.copy(alpha = 0.88f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        previewEntry = null
+                    }
                     .padding(12.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -309,7 +316,10 @@ fun ClipboardPanelView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
-                        .clickable(enabled = false) {}, // Prevent dismiss when tapping dialog itself
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {}, // Prevent dismiss when tapping dialog itself
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -347,10 +357,10 @@ fun ClipboardPanelView(
                         }
                     }
 
-                    // Right Column: Three buttons stacked vertically (Material 3 grouped edge radii with space)
+                    // Right Column: Three buttons stacked vertically (same color as card, icon and text side by side)
                     Column(
                         modifier = Modifier
-                            .width(96.dp)
+                            .width(116.dp)
                             .fillMaxHeight(),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -362,25 +372,27 @@ fun ClipboardPanelView(
                             },
                             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 6.dp, bottomEnd = 6.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = colorScheme.accentColor,
-                                contentColor = Color.White
+                                containerColor = colorScheme.keyBackground,
+                                contentColor = colorScheme.keyForeground
                             ),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                            border = BorderStroke(1.dp, Color(0x26FFFFFF)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.ContentPaste,
                                     contentDescription = null,
+                                    tint = colorScheme.keyForeground,
                                     modifier = Modifier.size(17.dp)
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(text = "Paste", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = "Paste", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.keyForeground)
                             }
                         }
 
@@ -392,17 +404,18 @@ fun ClipboardPanelView(
                             },
                             shape = RoundedCornerShape(6.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = colorScheme.actionKeyBackground,
+                                containerColor = colorScheme.keyBackground,
                                 contentColor = colorScheme.keyForeground
                             ),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                            border = BorderStroke(1.dp, Color(0x26FFFFFF)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.PushPin,
@@ -410,11 +423,12 @@ fun ClipboardPanelView(
                                     tint = if (entry.isPinned) colorScheme.accentColor else colorScheme.keyForeground,
                                     modifier = Modifier.size(17.dp)
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = if (entry.isPinned) "Unpin" else "Pin",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colorScheme.keyForeground
                                 )
                             }
                         }
@@ -427,25 +441,27 @@ fun ClipboardPanelView(
                             },
                             shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0x33FF5252),
-                                contentColor = Color(0xFFFF5252)
+                                containerColor = colorScheme.keyBackground,
+                                contentColor = colorScheme.keyForeground
                             ),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                            border = BorderStroke(1.dp, Color(0x26FFFFFF)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Delete,
                                     contentDescription = null,
+                                    tint = colorScheme.keyForeground,
                                     modifier = Modifier.size(17.dp)
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(text = "Delete", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = "Delete", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.keyForeground)
                             }
                         }
                     }
@@ -469,6 +485,7 @@ private fun ClipboardCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .defaultMinSize(minHeight = 54.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(colorScheme.keyBackground)
             .border(BorderStroke(1.dp, Color(0x18FFFFFF)), RoundedCornerShape(14.dp))
@@ -476,52 +493,17 @@ private fun ClipboardCard(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (entry.isOtp) {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(colorScheme.accentColor.copy(alpha = 0.18f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "OTP",
-                            color = colorScheme.accentColor,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                } else {
-                    Spacer(modifier = Modifier.size(1.dp))
-                }
-
-                // Top-right Pin icon button
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(if (entry.isPinned) colorScheme.accentColor.copy(alpha = 0.15f) else Color.Transparent)
-                        .clickable { onTogglePin() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.PushPin,
-                        contentDescription = if (entry.isPinned) "Unpin" else "Pin",
-                        tint = if (entry.isPinned) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.4f),
-                        modifier = Modifier.size(15.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
+        // Vertically centered clip text with padding on the right for the pin icon
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 24.dp, top = if (entry.isOtp) 14.dp else 0.dp)
+                .align(Alignment.CenterStart),
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
                 text = entry.text,
                 color = colorScheme.keyForeground,
@@ -529,6 +511,41 @@ private fun ClipboardCard(
                 lineHeight = 17.sp,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        if (entry.isOtp) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .clip(CircleShape)
+                    .background(colorScheme.accentColor.copy(alpha = 0.18f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "OTP",
+                    color = colorScheme.accentColor,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // Top-right Pin icon button
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(if (entry.isPinned) colorScheme.accentColor.copy(alpha = 0.15f) else Color.Transparent)
+                .clickable { onTogglePin() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.PushPin,
+                contentDescription = if (entry.isPinned) "Unpin" else "Pin",
+                tint = if (entry.isPinned) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.4f),
+                modifier = Modifier.size(15.dp)
             )
         }
     }
