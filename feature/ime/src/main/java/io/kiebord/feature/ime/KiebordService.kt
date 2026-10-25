@@ -1579,6 +1579,7 @@ class KiebordService : InputMethodService() {
             TextAction.CUT -> {
                 selectionAnchor = null
                 selectionCursor = null
+                finishComposing()
                 val selected = ic.getSelectedText(0)?.toString()
                 if (!selected.isNullOrEmpty()) {
                     clipboardManager.addClip(selected)
@@ -1609,6 +1610,9 @@ class KiebordService : InputMethodService() {
                 true
             }
             TextAction.COPY -> {
+                selectionAnchor = null
+                selectionCursor = null
+                finishComposing()
                 val selected = ic.getSelectedText(0)?.toString()
                 if (!selected.isNullOrEmpty()) {
                     clipboardManager.addClip(selected)

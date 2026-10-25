@@ -189,6 +189,7 @@ fun KeycapView(
                     coroutineScope {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
+                            down.consume()
                             val initialKey = currentKey.value
                             val initialDownPos = down.position
                             isPressed = true
@@ -196,68 +197,57 @@ fun KeycapView(
                             currentOnKeyPress.value(initialKey)
                             var isSlidingDrag = false
                             var isSpacebarDwellReady = false
-                        var isSpacebarSwipingLayout = false
-                        var initialSpacebarSwipeX = 0f
-                        var isSpacebarTrackpadActive = false
-                        var isGestureTyping = false
-                        var isDeleteSwipeActive = false
-                        var gestureEnded = false
-                        var lastTrackpadX = 0f
-                        val trackpadStepPx = with(density) { 14.dp.toPx() }
+                            var isSpacebarSwipingLayout = false
+                            var initialSpacebarSwipeX = 0f
+                            var isSpacebarTrackpadActive = false
+                            var isGestureTyping = false
+                            var isDeleteSwipeActive = false
+                            var gestureEnded = false
+                            var lastTrackpadX = 0f
+                            val trackpadStepPx = with(density) { 14.dp.toPx() }
 
-                        // Immediate layout modifier keys: ABC and =\< switch instantaneously on pointer down
-                        val isImmediateModifier = initialKey.type == KeyType.SYMBOLS && !initialKey.slidingInput
-                        val isSlidingInitiator = initialKey.slidingInput || initialKey.type == KeyType.SHIFT
-                        var isHandledOnDown = false
+                            val isSlidingInitiator = initialKey.slidingInput || initialKey.type == KeyType.SHIFT
 
-                        if (isImmediateModifier) {
-                            isHandledOnDown = true
-                            currentOnTap.value(initialKey)
-                        }
+                            val spacebarDwellJob = if (initialKey.type == KeyType.SPACE) {
+                                launch {
+                                    delay(400L)
+                                    isSpacebarDwellReady = true
+                                    currentOnSpacebarDwellReady.value()
+                                }
+                            } else null
 
-                        val spacebarDwellJob = if (initialKey.type == KeyType.SPACE) {
-                            launch {
-                                delay(400L)
-                                isSpacebarDwellReady = true
-                                currentOnSpacebarDwellReady.value()
-                            }
-                        } else null
-
-                        var isLongPressTriggered = false
-                        var isDeleteLongPressActive = false
-                        val longPressJob = if (isImmediateModifier || isSlidingInitiator) null else launch {
-                            delay(currentLongPressDelay.value)
-                            val coords = keyCoordinates
-                            isLongPressTriggered = true
-                            if (initialKey.type == KeyType.DELETE) {
-                                isDeleteLongPressActive = true
-                                while (isActive) {
+                            var isLongPressTriggered = false
+                            var isDeleteLongPressActive = false
+                            val longPressJob = if (isSlidingInitiator) null else launch {
+                                delay(currentLongPressDelay.value)
+                                val coords = keyCoordinates
+                                isLongPressTriggered = true
+                                if (initialKey.type == KeyType.DELETE) {
+                                    isDeleteLongPressActive = true
+                                    while (isActive) {
+                                        currentOnLongPress.value(initialKey)
+                                        delay(90L)
+                                    }
+                                } else if (initialKey.type == KeyType.SPACE) {
+                                    // Handled via spacebarDwellJob
+                                } else if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
+                                    isMoreKeysActive = true
+                                    currentOnShowMoreKeys.value(initialKey, coords)
+                                } else {
                                     currentOnLongPress.value(initialKey)
-                                    delay(90L)
                                 }
-                            } else if (initialKey.type == KeyType.SPACE) {
-                                // Handled via spacebarDwellJob
-                            } else if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
-                                isMoreKeysActive = true
-                                currentOnShowMoreKeys.value(initialKey, coords)
-                            } else {
-                                currentOnLongPress.value(initialKey)
                             }
-                        }
 
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
 
-                            if (!change.pressed) {
-                                // Touch released!
-                                spacebarDwellJob?.cancel()
-                                longPressJob?.cancel()
-                                if (isHandledOnDown) {
-                                    break
-                                }
-                                val wasMoreKeysActive = isMoreKeysActive
-                                isMoreKeysActive = false
+                                if (!change.pressed) {
+                                    // Touch released!
+                                    spacebarDwellJob?.cancel()
+                                    longPressJob?.cancel()
+                                    val wasMoreKeysActive = isMoreKeysActive
+                                    isMoreKeysActive = false
                                 val delta = change.position - initialDownPos
                                 if (isDeleteSwipeActive) {
                                     if (delta.x < -18f) {

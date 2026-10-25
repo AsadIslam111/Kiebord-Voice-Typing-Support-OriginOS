@@ -951,8 +951,9 @@ fun KeyboardRootView(
                                 if (!areKeysInteractive) return@pointerInput
                                 awaitEachGesture {
                                     val down = awaitFirstDown(requireUnconsumed = true)
+                                    if (moreKeysState != null) return@awaitEachGesture
                                     val up = waitForUpOrCancellation()
-                                    if (up != null && !up.isConsumed) {
+                                    if (up != null && !up.isConsumed && moreKeysState == null) {
                                         up.consume()
                                         val rCoords = rootCoordinates ?: return@awaitEachGesture
                                         val cCoords = keyboardColumnCoords ?: return@awaitEachGesture
