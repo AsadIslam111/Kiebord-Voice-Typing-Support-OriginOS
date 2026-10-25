@@ -102,6 +102,7 @@ fun ToolsDrawerView(
     val currentOnMoveToToolbar by rememberUpdatedState(onMoveToToolbar)
     val currentOnDraggingStateChange by rememberUpdatedState(onDraggingStateChange)
     val currentHoveredToolbarAction by rememberUpdatedState(hoveredToolbarAction)
+    val currentHoveredDrawerAction by rememberUpdatedState(hoveredDrawerAction)
 
     val allToolsMap = remember {
         mapOf(
@@ -231,10 +232,10 @@ fun ToolsDrawerView(
                                                         } else if (accumulatedDragY < -addThresholdPx) {
                                                             // Dragged up into toolbar gap/space -> MOVE TO TOOLBAR!
                                                             currentOnMoveToToolbar(draggedAct)
-                                                        } else if (hoveredDrawerAction != null && hoveredDrawerAction != draggedAct) {
+                                                        } else if (currentHoveredDrawerAction != null && currentHoveredDrawerAction != draggedAct) {
                                                             // Hovered over another drawer option -> SWAP!
                                                             val fromIndex = currentDrawerTools.indexOf(draggedAct)
-                                                            val toIndex = currentDrawerTools.indexOf(hoveredDrawerAction)
+                                                            val toIndex = currentDrawerTools.indexOf(currentHoveredDrawerAction)
                                                             if (fromIndex != -1 && toIndex != -1 && fromIndex != toIndex) {
                                                                 val mutable = currentDrawerTools.toMutableList()
                                                                 val target = mutable[toIndex]

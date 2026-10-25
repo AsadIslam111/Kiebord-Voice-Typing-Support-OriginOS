@@ -233,7 +233,7 @@ fun KeyboardRootView(
         ToolbarAction.SETTINGS
     )
     var pinnedTools by remember(initialPinnedTools) {
-        val pinned = (initialPinnedTools ?: defaultPinned).distinct().ifEmpty { defaultPinned }
+        val pinned = (initialPinnedTools ?: defaultPinned).distinct()
         mutableStateOf(pinned)
     }
     var drawerTools by remember(initialDrawerTools, initialPinnedTools) {
@@ -915,14 +915,6 @@ fun KeyboardRootView(
                             onDraggingStateChange = { action, fingerPos ->
                                 activeDraggingFromToolbar = action
                                 currentFingerInRoot = fingerPos
-                                if (action != null && fingerPos != null && !isToolsDrawerOpen) {
-                                    val drawerRect = drawerContainerBounds
-                                    if (drawerRect != null && fingerPos.y >= drawerRect.top - 20) {
-                                        isToolsDrawerOpen = true
-                                    } else if (fingerPos.y >= toolbarHeight.value * 2) {
-                                        isToolsDrawerOpen = true
-                                    }
-                                }
                             },
                             modifier = Modifier
                                 .weight(1f)

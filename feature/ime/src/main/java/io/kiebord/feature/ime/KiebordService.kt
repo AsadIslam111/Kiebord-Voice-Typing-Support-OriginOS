@@ -103,6 +103,7 @@ class KiebordService : InputMethodService() {
     private var primaryAlphaLayout: KeyboardLayoutDef = PredefinedLayouts.EnglishQwerty
     private var activeLayout by mutableStateOf(PredefinedLayouts.EnglishQwerty)
     private var shiftState by mutableStateOf(ShiftState.UNSHIFTED)
+    private var lastShiftTapTime: Long = 0L
     private var isSymbolsMode by mutableStateOf(false)
     private var colorScheme by mutableStateOf(KeyboardColorScheme.DefaultDark)
     private var navBarInsetBottomPx by mutableIntStateOf(0)
@@ -218,7 +219,7 @@ class KiebordService : InputMethodService() {
             val defaultPinnedActions = listOf(ToolbarAction.TEXT_EDIT, ToolbarAction.CLIPBOARD, ToolbarAction.THEME_TOGGLE, ToolbarAction.RESIZER)
             val pinnedToolbarActions = preferencesState.pinnedTools.mapNotNull { name ->
                 try { ToolbarAction.valueOf(name) } catch (_: Exception) { null }
-            }.distinct().ifEmpty { defaultPinnedActions }
+            }.distinct()
             val pinnedSet = pinnedToolbarActions.toSet()
             val drawerToolbarActions = (preferencesState.drawerTools.mapNotNull { name ->
                 try { ToolbarAction.valueOf(name) } catch (_: Exception) { null }
@@ -565,6 +566,9 @@ class KiebordService : InputMethodService() {
             lastSpaceTapTime = 0L
             lastAutoSpacePunctuationTime = 0L
         }
+        if (key.type != KeyType.SHIFT) {
+            lastShiftTapTime = 0L
+        }
 
         when (key.type) {
             KeyType.CHARACTER -> {
@@ -669,10 +673,25 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.SHIFT -> {
-                shiftState = when (shiftState) {
-                    ShiftState.UNSHIFTED -> ShiftState.ONE_SHOT
-                    ShiftState.ONE_SHOT -> ShiftState.CAPS_LOCK
-                    ShiftState.CAPS_LOCK -> ShiftState.UNSHIFTED
+                val now = SystemClock.uptimeMillis()
+                val isDoubleTap = (now - lastShiftTapTime) <= 350L
+                shiftState = when {
+                    shiftState == ShiftState.CAPS_LOCK -> {
+                        lastShiftTapTime = 0L
+                        ShiftState.UNSHIFTED
+                    }
+                    shiftState == ShiftState.ONE_SHOT && isDoubleTap -> {
+                        lastShiftTapTime = 0L
+                        ShiftState.CAPS_LOCK
+                    }
+                    shiftState == ShiftState.ONE_SHOT -> {
+                        lastShiftTapTime = now
+                        ShiftState.UNSHIFTED
+                    }
+                    else -> {
+                        lastShiftTapTime = now
+                        ShiftState.ONE_SHOT
+                    }
                 }
             }
             KeyType.DELETE -> {
@@ -1629,7 +1648,19 @@ class KiebordService : InputMethodService() {
             TextAction.PASTE -> {
                 selectionAnchor = null
                 selectionCursor = null
-                ic.performContextMenuAction(android.R.id.paste)
+                finishComposing()
+                lastGestureCommittedWord = ""
+                val sysClip = (getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager)
+                    ?.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString()
+                val textToPaste = sysClip ?: clipboardManager.clips.firstOrNull()?.text
+                if (!textToPaste.isNullOrEmpty()) {
+                    ic.commitText(textToPaste, 1)
+                    finishComposing()
+                } else {
+                    ic.performContextMenuAction(android.R.id.paste)
+                    finishComposing()
+                }
+                updateSuggestions()
                 true
             }
             TextAction.UNDO -> {

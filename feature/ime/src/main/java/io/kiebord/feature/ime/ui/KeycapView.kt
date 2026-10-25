@@ -282,8 +282,10 @@ fun KeycapView(
                                 } else if (isSlidingDrag) {
                                     currentOnSlidingEnd.value(delta)
                                 } else if (wasMoreKeysActive) {
+                                    change.consume()
                                     currentOnMoreKeysCommit.value()
                                 } else if (isDeleteLongPressActive || isLongPressTriggered) {
+                                    change.consume()
                                     // Handled during long-press, do NOT emit tap on release
                                 } else {
                                     change.consume()

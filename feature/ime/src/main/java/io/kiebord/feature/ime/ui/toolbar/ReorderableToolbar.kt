@@ -31,6 +31,8 @@ import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -115,6 +117,25 @@ fun ReorderableToolbar(
     val currentOnDraggingStateChange by rememberUpdatedState(onDraggingStateChange)
     val currentHoveredDrawerAction by rememberUpdatedState(hoveredDrawerAction)
     val currentIsOverBlankSpace by rememberUpdatedState(isOverDrawerBlankSpace)
+    val currentIsCustomizeMode by rememberUpdatedState(isCustomizeMode)
+
+    if (pinnedTools.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .fillMaxHeight(),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isCustomizeMode) {
+                Text(
+                    text = "Drag tools here",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.keyForeground.copy(alpha = 0.45f)
+                )
+            }
+        }
+        return
+    }
 
     val allActionMap = remember {
         mapOf(
@@ -142,7 +163,7 @@ fun ReorderableToolbar(
     var toolbarWidthPx by remember { mutableFloatStateOf(0f) }
 
     val removeThresholdPx = with(density) { 36.dp.toPx() }
-    val isOverRemoveThreshold = draggingAction != null && accumulatedDragY > removeThresholdPx
+    val isOverRemoveThreshold = currentIsCustomizeMode && draggingAction != null && accumulatedDragY > removeThresholdPx
     val isDraggingInsideToolbar = draggingAction != null && !isOverRemoveThreshold
 
     val slotWidthPx = if (pinnedTools.isNotEmpty() && toolbarWidthPx > 0f) {
@@ -151,7 +172,7 @@ fun ReorderableToolbar(
         with(density) { 58.dp.toPx() }
     }
 
-    val hoveredSlot = if (draggingAction != null && slotWidthPx > 0f) {
+    val hoveredSlot = if (draggingAction != null && slotWidthPx > 0f && pinnedTools.isNotEmpty()) {
         val fingerCenterX = (dragStartIndex + 0.5f) * slotWidthPx + accumulatedDragX
         (fingerCenterX / slotWidthPx).toInt().coerceIn(0, pinnedTools.lastIndex)
     } else {
@@ -282,19 +303,25 @@ fun ReorderableToolbar(
                                     onDragEnd = {
                                         val draggedAct = draggingAction
                                         if (draggedAct != null) {
-                                            if (currentHoveredDrawerAction != null && currentHoveredDrawerAction != draggedAct) {
+                                            val currentPinned = currentPinnedTools
+                                            val fromIndex = currentPinned.indexOf(draggedAct)
+                                            val targetSlot = if (slotWidthPx > 0f && currentPinned.isNotEmpty()) {
+                                                val fingerCenterX = (fromIndex.coerceAtLeast(0) + 0.5f) * slotWidthPx + accumulatedDragX
+                                                (fingerCenterX / slotWidthPx).toInt().coerceIn(0, currentPinned.lastIndex)
+                                            } else fromIndex
+
+                                            if (currentIsCustomizeMode && currentHoveredDrawerAction != null && currentHoveredDrawerAction != draggedAct) {
                                                 // Dragged directly over a specific drawer item -> SWAP!
                                                 currentOnInterchange(draggedAct, currentHoveredDrawerAction!!)
-                                            } else if (accumulatedDragY > removeThresholdPx) {
+                                            } else if (currentIsCustomizeMode && (currentIsOverBlankSpace || accumulatedDragY > removeThresholdPx)) {
                                                 // Dragged down to drawer gap or blank space -> PLACE IN DRAWER!
                                                 currentOnMoveToDrawer(draggedAct)
                                             } else {
-                                                val fromIndex = currentPinnedTools.indexOf(draggedAct)
-                                                if (fromIndex != -1 && hoveredSlot in 0..currentPinnedTools.lastIndex && fromIndex != hoveredSlot) {
+                                                if (fromIndex != -1 && targetSlot in 0..currentPinned.lastIndex && fromIndex != targetSlot) {
                                                     // Reorder within toolbar with safe distinct list
-                                                    val mutable = currentPinnedTools.toMutableList()
+                                                    val mutable = currentPinned.toMutableList()
                                                     val moved = mutable.removeAt(fromIndex)
-                                                    mutable.add(hoveredSlot, moved)
+                                                    mutable.add(targetSlot, moved)
                                                     currentOnPinnedChange(mutable.distinct())
                                                 }
                                             }
