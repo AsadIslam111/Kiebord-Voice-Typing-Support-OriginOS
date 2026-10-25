@@ -418,6 +418,9 @@ fun KiebordSettingsApp(
                             onUpdateBengaliSmartPhonetic = { enabled ->
                                 scope.launch { preferencesRepo.updateBengaliSmartPhonetic(enabled) }
                             },
+                            onUpdateBengaliShowRawInputCandidate = { enabled ->
+                                scope.launch { preferencesRepo.updateBengaliShowRawInputCandidate(enabled) }
+                            },
                             onUpdateLearnedWordsEnabled = { enabled ->
                                 scope.launch { preferencesRepo.updateLearnedWordsEnabled(enabled) }
                             },

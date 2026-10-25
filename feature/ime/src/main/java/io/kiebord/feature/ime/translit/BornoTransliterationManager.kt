@@ -46,7 +46,11 @@ open class GenericTransliterationManager(
         if (!isComposing) return false
         val ic = inputConnectionProvider() ?: return false
 
-        buffer.deleteCharAt(buffer.length - 1)
+        if (buffer.isNotEmpty()) {
+            val codePoint = buffer.codePointBefore(buffer.length)
+            val charCount = Character.charCount(codePoint)
+            buffer.delete(buffer.length - charCount, buffer.length)
+        }
         if (buffer.isEmpty()) {
             ic.setComposingText("", 1)
             ic.finishComposingText()

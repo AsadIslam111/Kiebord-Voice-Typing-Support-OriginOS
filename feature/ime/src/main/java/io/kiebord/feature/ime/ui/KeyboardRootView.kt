@@ -145,11 +145,13 @@ fun KeyboardRootView(
     var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var rootWidthPx by remember { mutableFloatStateOf(0f) }
 
-    val keyCoordinatesMap = remember { mutableMapOf<KeyDef, LayoutCoordinates>() }
+    val cellCoordinatesMap = remember { mutableMapOf<Pair<Int, Int>, LayoutCoordinates>() }
 
     var moreKeysState by remember { mutableStateOf<MoreKeysPopupState?>(null) }
     var quickDragState by remember { mutableStateOf<QuickSymbolDragState?>(null) }
     var isSlidingSymbolMode by remember { mutableStateOf(false) }
+    var isSlidingShiftMode by remember { mutableStateOf(false) }
+    var slidingInitiatorKey by remember { mutableStateOf<KeyDef?>(null) }
     var dragStartPosInRoot by remember { mutableStateOf<Offset?>(null) }
     val coroutineScope = rememberCoroutineScope()
     var slidingHoveredKey by remember { mutableStateOf<KeyDef?>(null) }
@@ -367,19 +369,27 @@ fun KeyboardRootView(
         }
     }
 
+    val keyboardRows = remember(displayLayout, showNumberRow) {
+        if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
+            listOf(PredefinedLayouts.createNumberRow(displayLayout.language)) + displayLayout.rows
+        } else {
+            displayLayout.rows
+        }
+    }
+
     val isQwertyBasedLayout = displayLayout.id == "en_qwerty" || displayLayout.id == "bn_borno"
     val isEffectiveGestureTypingEnabled = gestureTypingEnabled && isQwertyBasedLayout
 
     // Clear key coordinate cache whenever primary active layout changes (not during sliding symbol mode)
     LaunchedEffect(layout.id) {
-        keyCoordinatesMap.clear()
+        cellCoordinatesMap.clear()
         gestureTrail = emptyList()
     }
 
-    LaunchedEffect(isSlidingSymbolMode) {
+    LaunchedEffect(isSlidingSymbolMode, isSlidingShiftMode) {
         gestureTrail = emptyList()
-        keyCoordinatesMap.clear()
-        if (!isSlidingSymbolMode) {
+        cellCoordinatesMap.clear()
+        if (!isSlidingSymbolMode && !isSlidingShiftMode) {
             slidingDwellJob?.cancel()
             slidingDwellJob = null
             slidingHoveredKey = null
@@ -389,6 +399,10 @@ fun KeyboardRootView(
 
     LaunchedEffect(inputSessionId) {
         if (inputSessionId > 0) {
+            isSlidingSymbolMode = false
+            isSlidingShiftMode = false
+            slidingInitiatorKey = null
+            quickDragState = null
             isToolsDrawerOpen = false
             isToolbarOptionsVisible = false
             isEmojiOpen = false
@@ -932,13 +946,6 @@ fun KeyboardRootView(
                         moreKeysState = null
                     }
 
-                    val keyboardRows = remember(displayLayout, showNumberRow) {
-                        if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
-                            listOf(PredefinedLayouts.createNumberRow(displayLayout.language)) + displayLayout.rows
-                        } else {
-                            displayLayout.rows
-                        }
-                    }
 
                     // Keyboard rows (stable layout without recomposition shifts)
                     keyboardRows.forEachIndexed { rowIndex, row ->
@@ -982,14 +989,17 @@ fun KeyboardRootView(
                                 key
                             }
 
+                            val effectiveShiftState = if (isSlidingShiftMode) ShiftState.ONE_SHOT else shiftState
+
                             key("cell_${rowIndex}_$keyIndex") {
                                 KeycapView(
                                 key = effectiveKey,
-                                shiftState = shiftState,
+                                shiftState = effectiveShiftState,
                                 isBottomRow = isBottomRow,
                                 isSlidingSymbolMode = isSlidingSymbolMode,
+                                isSlidingShiftMode = isSlidingShiftMode,
                                 showKeyBorders = showKeyBorders,
-                                showSecondaryKeys = showSecondaryKeys,
+                                showSecondaryKeys = showSecondaryKeys && !isTopNumberRow,
                                 showKeyPopups = showKeyPopups,
                                 isInteractive = isKeysInteractive,
                                 rowHeight = currentRowHeight,
@@ -1042,8 +1052,8 @@ fun KeyboardRootView(
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     } catch (_: Exception) {}
                                 },
-                                onKeyPositioned = { k, coords ->
-                                    keyCoordinatesMap[k] = coords
+                                onKeyPositioned = { _, coords ->
+                                    cellCoordinatesMap[Pair(rowIndex, keyIndex)] = coords
                                 },
                                 onSpacebarTrackpad = { direction ->
                                     if (cursorTrackpadEnabled) {
@@ -1061,7 +1071,7 @@ fun KeyboardRootView(
                                 onShowMoreKeys = handleShowMoreKeys,
                                 onMoreKeysHover = handleMoreKeysHover,
                                 onMoreKeysCommit = handleMoreKeysCommit,
-                                onSlidingDragStart = { _, keyCoords, initialDownPos ->
+                                onSlidingDragStart = { initiatorKey, keyCoords, initialDownPos ->
                                     val rCoords = rootCoordinates
                                     if (rCoords != null && rCoords.isAttached && keyCoords.isAttached) {
                                         slidingDwellJob?.cancel()
@@ -1069,9 +1079,17 @@ fun KeyboardRootView(
                                         slidingHoveredKey = null
                                         slidingHoveredBounds = null
                                         moreKeysState = null
-                                        keyCoordinatesMap.clear()
 
-                                        isSlidingSymbolMode = true
+                                        slidingInitiatorKey = initiatorKey
+                                        if (initiatorKey.type == KeyType.SHIFT) {
+                                            isSlidingShiftMode = true
+                                            isSlidingSymbolMode = false
+                                        } else {
+                                            isSlidingSymbolMode = true
+                                            isSlidingShiftMode = false
+                                            cellCoordinatesMap.clear()
+                                        }
+
                                         val downInRoot = rCoords.localPositionOf(keyCoords, initialDownPos)
                                         val keyCenterInRoot = rCoords.localPositionOf(
                                             keyCoords,
@@ -1080,7 +1098,7 @@ fun KeyboardRootView(
                                         dragStartPosInRoot = downInRoot
                                         quickDragState = QuickSymbolDragState(
                                             startOffset = keyCenterInRoot,
-                                            currentOffset = downInRoot
+                                            currentOffset = keyCenterInRoot
                                         )
                                     }
                                 },
@@ -1102,22 +1120,38 @@ fun KeyboardRootView(
                                         }
                                     }
 
-                                    // Find hovered key in root
+                                    // Find hovered key in root by inspecting the currently displayed keyboard rows
                                     var hoveredKey: KeyDef? = null
                                     var hoveredBounds: Rect? = null
-                                    for ((k, coords) in keyCoordinatesMap) {
-                                        if (coords.isAttached) {
-                                            val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
-                                            val rect = Rect(
-                                                topLeft,
-                                                Size(coords.size.width.toFloat(), coords.size.height.toFloat())
-                                            )
-                                            if (rect.contains(currentFingerInRoot)) {
-                                                hoveredKey = k
-                                                hoveredBounds = rect
-                                                break
+                                    for (r in keyboardRows.indices) {
+                                        val row = keyboardRows[r]
+                                        for (c in row.keys.indices) {
+                                            val coords = cellCoordinatesMap[Pair(r, c)]
+                                            if (coords != null && coords.isAttached) {
+                                                val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
+                                                val rect = Rect(
+                                                    topLeft,
+                                                    Size(coords.size.width.toFloat(), coords.size.height.toFloat())
+                                                )
+                                                if (rect.contains(currentFingerInRoot)) {
+                                                    val rawKey = row.keys[c]
+                                                    val effectiveKey = if (rawKey.type == KeyType.SPACE && rawKey.label.isBlank()) {
+                                                        val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
+                                                            "Space"
+                                                        } else {
+                                                            PredefinedLayouts.displayName(displayLayout.id)
+                                                        }
+                                                        rawKey.copy(label = spaceLabel)
+                                                    } else {
+                                                        rawKey
+                                                    }
+                                                    hoveredKey = effectiveKey
+                                                    hoveredBounds = rect
+                                                    break
+                                                }
                                             }
                                         }
+                                        if (hoveredKey != null) break
                                     }
 
                                     if (hoveredKey != slidingHoveredKey) {
@@ -1139,8 +1173,15 @@ fun KeyboardRootView(
                                         }
                                     }
 
-                                    val symbol = if (hoveredKey != null && hoveredKey.type != KeyType.SYMBOLS && hoveredKey.label.isNotEmpty()) {
-                                        hoveredKey.label
+                                    val isShiftDrag = isSlidingShiftMode || slidingInitiatorKey?.type == KeyType.SHIFT
+                                    val symbol = if (hoveredKey != null && hoveredKey.type != KeyType.SYMBOLS && hoveredKey.type != KeyType.SHIFT) {
+                                        if (isShiftDrag) {
+                                            if (hoveredKey.type == KeyType.CHARACTER) {
+                                                hoveredKey.displayLabel(ShiftState.ONE_SHOT)
+                                            } else null
+                                        } else {
+                                            if (hoveredKey.label.isNotEmpty()) hoveredKey.label else null
+                                        }
                                     } else {
                                         null
                                     }
@@ -1158,20 +1199,44 @@ fun KeyboardRootView(
 
                                     val hasMoved = deltaFromDown.getDistance() > 24f
                                     val keyToCommit = slidingHoveredKey
+                                    val initiator = slidingInitiatorKey
+                                    val isShiftDrag = isSlidingShiftMode || initiator?.type == KeyType.SHIFT
 
                                     if (moreKeysState != null) {
                                         handleMoreKeysCommit()
-                                    } else if (hasMoved && keyToCommit != null && keyToCommit.type != KeyType.SYMBOLS && (keyToCommit.label.isNotEmpty() || !keyToCommit.commitText.isNullOrEmpty())) {
-                                        onKeyTap(keyToCommit)
+                                    } else if (hasMoved && keyToCommit != null && (keyToCommit.label.isNotEmpty() || !keyToCommit.commitText.isNullOrEmpty())) {
+                                        if (isShiftDrag) {
+                                            if (keyToCommit.type == KeyType.CHARACTER) {
+                                                val shiftedKey = keyToCommit.copy(
+                                                    commitText = keyToCommit.textToCommit(ShiftState.ONE_SHOT),
+                                                    label = keyToCommit.displayLabel(ShiftState.ONE_SHOT)
+                                                )
+                                                onKeyTap(shiftedKey)
+                                            }
+                                        } else {
+                                            if (keyToCommit.type != KeyType.SYMBOLS) {
+                                                onKeyTap(keyToCommit)
+                                            }
+                                        }
                                     } else if (!hasMoved) {
-                                        onKeyTap(KeyDef("?123", type = KeyType.SYMBOLS))
+                                        if (isShiftDrag) {
+                                            onKeyTap(initiator ?: KeyDef(type = KeyType.SHIFT))
+                                        } else {
+                                            onKeyTap(initiator ?: KeyDef("?123", type = KeyType.SYMBOLS))
+                                        }
                                     }
 
                                     slidingHoveredKey = null
                                     slidingHoveredBounds = null
+                                    slidingInitiatorKey = null
+                                    val wasSymbolSliding = isSlidingSymbolMode
                                     isSlidingSymbolMode = false
+                                    isSlidingShiftMode = false
                                     quickDragState = null
                                     dragStartPosInRoot = null
+                                    if (wasSymbolSliding) {
+                                        cellCoordinatesMap.clear()
+                                    }
                                 },
                                 onGestureStart = { keyCoords, posInKey ->
                                     if (!isEffectiveGestureTypingEnabled) return@KeycapView
@@ -1211,18 +1276,23 @@ fun KeyboardRootView(
                                             val centroids = mutableListOf<KeyCentroid>()
                                             var totalWidth = 0f
                                             var count = 0
-                                            for ((k, coords) in keyCoordinatesMap) {
-                                                if (k.type == KeyType.CHARACTER && coords.isAttached) {
-                                                    val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
-                                                    val width = coords.size.width.toFloat()
-                                                    val height = coords.size.height.toFloat()
-                                                    val cx = topLeft.x + width / 2f
-                                                    val cy = topLeft.y + height / 2f
-                                                    val ch = if (k.label.isNotEmpty()) k.label.lowercase() else ""
-                                                    if (ch.isNotEmpty()) {
-                                                        centroids.add(KeyCentroid(ch, cx, cy))
-                                                        totalWidth += width
-                                                        count++
+                                            for (r in keyboardRows.indices) {
+                                                val row = keyboardRows[r]
+                                                for (c in row.keys.indices) {
+                                                    val k = row.keys[c]
+                                                    val coords = cellCoordinatesMap[Pair(r, c)]
+                                                    if (k.type == KeyType.CHARACTER && coords != null && coords.isAttached) {
+                                                        val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
+                                                        val width = coords.size.width.toFloat()
+                                                        val height = coords.size.height.toFloat()
+                                                        val cx = topLeft.x + width / 2f
+                                                        val cy = topLeft.y + height / 2f
+                                                        val ch = if (k.label.isNotEmpty()) k.label.lowercase() else ""
+                                                        if (ch.isNotEmpty()) {
+                                                            centroids.add(KeyCentroid(ch, cx, cy))
+                                                            totalWidth += width
+                                                            count++
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1319,7 +1389,17 @@ fun KeyboardRootView(
 
         // 5. Spacebar Layout Slider Floating Popup Overlay
         if (isSpacebarSwiping && effectiveLayoutList.size > 1) {
-            val spaceKeyCoords = keyCoordinatesMap.entries.firstOrNull { it.key.type == KeyType.SPACE }?.value
+            val spaceKeyCoords = run {
+                for (r in keyboardRows.indices) {
+                    val row = keyboardRows[r]
+                    for (c in row.keys.indices) {
+                        if (row.keys[c].type == KeyType.SPACE) {
+                            return@run cellCoordinatesMap[Pair(r, c)]
+                        }
+                    }
+                }
+                null
+            }
             SpacebarLayoutSliderOverlay(
                 activeLayouts = effectiveLayoutList,
                 currentIndex = currentLayoutIndex,

@@ -41,6 +41,7 @@ fun CorrectionsSuggestionsScreen(
     onUpdateSuggestionsEnabled: (Boolean) -> Unit,
     onUpdateNextWordPrediction: (Boolean) -> Unit,
     onUpdateBengaliSmartPhonetic: (Boolean) -> Unit,
+    onUpdateBengaliShowRawInputCandidate: (Boolean) -> Unit = {},
     onUpdateLearnedWordsEnabled: (Boolean) -> Unit = {},
     onDeleteLearnedWords: () -> Unit = {},
     onUpdateGestureTyping: (Boolean) -> Unit,
@@ -129,8 +130,17 @@ fun CorrectionsSuggestionsScreen(
                     subtitle = "Suggest dictionary words and proximity corrections while typing phonetically",
                     icon = Icons.Outlined.Translate,
                     checked = preferences.bengaliSmartPhonetic,
-                    position = GroupPosition.BOTTOM,
+                    position = GroupPosition.MIDDLE,
                     onCheckedChange = onUpdateBengaliSmartPhonetic
+                )
+
+                SettingsToggleItem(
+                    title = "Show English Input Candidate",
+                    subtitle = "Display raw typed English word as first candidate in Borno Phonetic layout",
+                    icon = Icons.Outlined.TextFields,
+                    checked = preferences.bengaliShowRawInputCandidate,
+                    position = GroupPosition.BOTTOM,
+                    onCheckedChange = onUpdateBengaliShowRawInputCandidate
                 )
             }
         }

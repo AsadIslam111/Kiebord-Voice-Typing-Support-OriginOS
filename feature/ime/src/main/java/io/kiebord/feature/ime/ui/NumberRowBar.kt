@@ -46,6 +46,7 @@ fun NumberRowBar(
                 shiftState = ShiftState.UNSHIFTED,
                 showKeyBorders = showKeyBorders,
                 showKeyPopups = showKeyPopups,
+                showSecondaryKeys = false,
                 rowHeight = rowHeight,
                 isInteractive = isInteractive,
                 modifier = Modifier

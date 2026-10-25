@@ -379,10 +379,12 @@ impl BornoPhonetic {
             }
 
             if !matched {
-                if let Some(single) = text.get(i..i + 1) {
-                    tokens.push(single.to_string());
+                if let Some(ch) = text[i..].chars().next() {
+                    tokens.push(ch.to_string());
+                    i += ch.len_utf8();
+                } else {
+                    i += 1;
                 }
-                i += 1;
             }
         }
 
@@ -1185,5 +1187,11 @@ mod tests {
         // krri should suggest "ক্রি" (র ফলা and ি-kar)
         let krri_sugs = BornoPhonetic::suggest_transliterations("krri");
         assert!(krri_sugs.contains(&"ক্রি".to_string()), "Expected 'ক্রি' in suggestions for 'krri': {:?}", krri_sugs);
+
+        // Direct Bengali diacritics / characters within transliteration input: ৎ, ঁ, ঃ
+        assert_eq!(BornoPhonetic::convert("caঁd"), "চাঁদ");
+        assert_eq!(BornoPhonetic::convert("uৎsob"), "উৎসব");
+        assert_eq!(BornoPhonetic::convert("duঃkho"), "দুঃখ");
+        assert_eq!(BornoPhonetic::convert("hoThaৎ"), "হঠাৎ");
     }
 }

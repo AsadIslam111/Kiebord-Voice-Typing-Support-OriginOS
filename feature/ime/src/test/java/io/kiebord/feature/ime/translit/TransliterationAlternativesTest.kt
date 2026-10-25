@@ -33,4 +33,26 @@ class TransliterationAlternativesTest {
         assertNotNull(jaboAlts)
         assertTrue("Expected candidates for jabo, got $jaboAlts", jaboAlts.isNotEmpty())
     }
+
+    @Test
+    fun testRawInputCandidateRepresentation() {
+        val rawInput = "karon"
+        val rawCandidate = io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate(
+            text = rawInput,
+            isPrimary = false,
+            rawInput = rawInput
+        )
+        assertTrue(rawCandidate.rawInput != null && rawCandidate.text == rawCandidate.rawInput)
+
+        val primaryCandidate = io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate(
+            text = "কারণ",
+            isPrimary = true,
+            rawInput = rawInput
+        )
+        val list = listOf(rawCandidate, primaryCandidate)
+        org.junit.Assert.assertEquals("karon", list[0].text)
+        org.junit.Assert.assertEquals("কারণ", list[1].text)
+        org.junit.Assert.assertFalse(list[0].isPrimary)
+        assertTrue(list[1].isPrimary)
+    }
 }

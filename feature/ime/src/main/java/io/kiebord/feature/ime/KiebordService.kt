@@ -119,6 +119,15 @@ class KiebordService : InputMethodService() {
         NativeEngine.ensureInitialized(this, "en")
         NativeEngine.ensureInitialized(this, "bn")
 
+        val cachedLayoutId = try {
+            getSharedPreferences("kiebord_runtime", Context.MODE_PRIVATE)
+                .getString("last_active_layout_id", null)
+        } catch (_: Exception) { null }
+        if (cachedLayoutId != null) {
+            primaryAlphaLayout = PredefinedLayouts.fromId(cachedLayoutId)
+            activeLayout = primaryAlphaLayout
+        }
+
         serviceScope.launch {
             preferencesRepo.preferencesFlow.collect { prefs ->
                 preferencesState = prefs
@@ -149,6 +158,12 @@ class KiebordService : InputMethodService() {
                         activeLayout = targetPrimary
                     }
                 }
+                try {
+                    getSharedPreferences("kiebord_runtime", Context.MODE_PRIVATE)
+                        .edit()
+                        .putString("last_active_layout_id", primaryAlphaLayout.id)
+                        .apply()
+                } catch (_: Exception) {}
                 updateSuggestions()
             }
         }
@@ -316,6 +331,13 @@ class KiebordService : InputMethodService() {
         lifecycleOwner.onStart()
         inputSessionId++
         isSymbolsMode = false
+        val cachedLayoutId = try {
+            getSharedPreferences("kiebord_runtime", Context.MODE_PRIVATE)
+                .getString("last_active_layout_id", null)
+        } catch (_: Exception) { null }
+        if (cachedLayoutId != null && cachedLayoutId != primaryAlphaLayout.id) {
+            primaryAlphaLayout = PredefinedLayouts.fromId(cachedLayoutId)
+        }
         activeLayout = primaryAlphaLayout
         val initialCaps = if (shouldAutoCapitalize() && info != null) {
             info.initialCapsMode
@@ -372,6 +394,15 @@ class KiebordService : InputMethodService() {
         }
         if (!shouldAutoCapitalize()) {
             shiftState = ShiftState.UNSHIFTED
+        }
+        try {
+            getSharedPreferences("kiebord_runtime", Context.MODE_PRIVATE)
+                .edit()
+                .putString("last_active_layout_id", layoutId)
+                .apply()
+        } catch (_: Exception) {}
+        serviceScope.launch {
+            preferencesRepo.updatePrimaryLayoutId(layoutId)
         }
         updateSuggestions()
     }
@@ -492,7 +523,7 @@ class KiebordService : InputMethodService() {
 
                 when {
                     isTransliterationLayout() -> {
-                        if (isTransliterableChar(text)) {
+                        if (isTransliterableChar(text) || isBengaliOrModifier(text)) {
                             getTransliterationManager().handleCharacter(text)
                         } else {
                             val translitMgr = getTransliterationManager()
@@ -766,7 +797,6 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.SWITCH_LANGUAGE -> {
-                finishComposing()
                 val enabledIds = preferencesState.enabledLayoutIds.toList().filter { id ->
                     id == KiebordPreferences.LAYOUT_EN_QWERTY ||
                     id == KiebordPreferences.LAYOUT_BN_BORNO ||
@@ -778,16 +808,7 @@ class KiebordService : InputMethodService() {
                     val currentIndex = enabledIds.indexOf(primaryAlphaLayout.id)
                     val nextIndex = if (currentIndex >= 0) (currentIndex + 1) % enabledIds.size else 0
                     val nextId = enabledIds[nextIndex]
-                    primaryAlphaLayout = PredefinedLayouts.fromId(nextId)
-                    if (!isSymbolsMode) {
-                        activeLayout = primaryAlphaLayout
-                    }
-                    if (!shouldAutoCapitalize()) {
-                        shiftState = ShiftState.UNSHIFTED
-                    }
-                    serviceScope.launch {
-                        updateSuggestions()
-                    }
+                    switchToLayout(nextId)
                 }
             }
             KeyType.MORE_KEYS -> {
@@ -808,11 +829,18 @@ class KiebordService : InputMethodService() {
             return
         }
         val ic = currentInputConnection ?: return
-        finishComposing()
-        if (!key.flickUp.isNullOrEmpty()) {
-            commitCharacterWithPunctuationHandling(ic, key.flickUp!!)
-        } else if (key.moreKeys.isNotEmpty()) {
-            commitCharacterWithPunctuationHandling(ic, key.moreKeys.first())
+        val charToInsert = when {
+            key.moreKeys.isNotEmpty() -> key.moreKeys.first()
+            !key.flickUp.isNullOrEmpty() -> key.flickUp!!
+            else -> ""
+        }
+        if (charToInsert.isEmpty()) return
+
+        if (isTransliterationLayout() && (isTransliterableChar(charToInsert) || isBengaliOrModifier(charToInsert))) {
+            getTransliterationManager().handleCharacter(charToInsert)
+        } else {
+            finishComposing()
+            commitCharacterWithPunctuationHandling(ic, charToInsert)
         }
         updateSuggestions()
     }
@@ -1620,6 +1648,8 @@ class KiebordService : InputMethodService() {
     }
 
     private fun isBengaliChar(c: Char): Boolean = c in '\u0980'..'\u09FF'
+    private fun isBengaliOrModifier(text: String): Boolean =
+        text.isNotEmpty() && text.all { c -> isBengaliChar(c) || c == '\u200C' || c == '\u200D' }
     private fun isLatinChar(c: Char): Boolean = (c in 'a'..'z') || (c in 'A'..'Z')
 
     private fun containsBengaliText(text: String): Boolean = text.any { isBengaliChar(it) }
@@ -1643,10 +1673,14 @@ class KiebordService : InputMethodService() {
         val isEnglish = isEnglishLayout()
         return candidates.filter { cand ->
             val text = cand.text
-            when {
-                isBangla -> !containsLatinText(text)
-                isEnglish -> !containsBengaliText(text)
-                else -> true
+            if (cand.rawInput != null && cand.text == cand.rawInput) {
+                true
+            } else {
+                when {
+                    isBangla -> !containsLatinText(text)
+                    isEnglish -> !containsBengaliText(text)
+                    else -> true
+                }
             }
         }
     }
@@ -1655,8 +1689,13 @@ class KiebordService : InputMethodService() {
         val filtered = filterCandidatesForLayout(candidates)
         if (filtered.isEmpty()) return emptyList()
         val marked = markLearnedCandidates(filtered)
-        return marked.mapIndexed { idx, cand ->
-            if (cand.isPrimary != (idx == 0)) cand.copy(isPrimary = (idx == 0)) else cand
+        val hasExplicitPrimary = marked.any { it.isPrimary }
+        return if (hasExplicitPrimary) {
+            marked
+        } else {
+            marked.mapIndexed { idx, cand ->
+                if (cand.isPrimary != (idx == 0)) cand.copy(isPrimary = (idx == 0)) else cand
+            }
         }
     }
 
@@ -1725,7 +1764,12 @@ class KiebordService : InputMethodService() {
 
                 val list = mutableListOf<SuggestionCandidate>()
 
-                // 1. Primary transliterated word (strictly non-Latin/Bengali)
+                // 1. Raw typed English word as first candidate if toggle is enabled
+                if (preferencesState.bengaliShowRawInputCandidate && raw.isNotBlank()) {
+                    list.add(SuggestionCandidate(text = raw, isPrimary = false, rawInput = raw))
+                }
+
+                // 2. Primary transliterated word (strictly non-Latin/Bengali)
                 if (primaryWord.isNotEmpty()) {
                     list.add(SuggestionCandidate(text = primaryWord, isPrimary = true, rawInput = raw))
                 }

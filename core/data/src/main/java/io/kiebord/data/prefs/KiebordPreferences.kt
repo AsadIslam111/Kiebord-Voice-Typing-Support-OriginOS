@@ -35,6 +35,7 @@ data class KiebordPreferences(
     val suggestionsEnabled: Boolean = true,
     val nextWordPrediction: Boolean = true,
     val bengaliSmartPhonetic: Boolean = true,
+    val bengaliShowRawInputCandidate: Boolean = true,
     val learnedWordsEnabled: Boolean = true,
     val gestureTypingEnabled: Boolean = true,
     val showGestureTrail: Boolean = true,

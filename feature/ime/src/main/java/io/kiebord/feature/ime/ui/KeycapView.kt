@@ -62,6 +62,7 @@ fun KeycapView(
     modifier: Modifier = Modifier,
     isBottomRow: Boolean = false,
     isSlidingSymbolMode: Boolean = false,
+    isSlidingShiftMode: Boolean = false,
     showKeyBorders: Boolean = true,
     showSecondaryKeys: Boolean = true,
     showKeyPopups: Boolean = true,
@@ -165,7 +166,7 @@ fun KeycapView(
     val currentGestureTypingEnabled = rememberUpdatedState(gestureTypingEnabled)
     val currentLongPressDelay = rememberUpdatedState(longPressDelayMs)
 
-    val showCircularPopup = showKeyPopups && isPressed && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isMoreKeysActive
+    val showCircularPopup = showKeyPopups && isPressed && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode && !isMoreKeysActive
 
     // Key styling: cleanly toggles between keyborder mode (keycap boxes) and flat mode (no boxes except accent pills)
     Box(
@@ -220,12 +221,13 @@ fun KeycapView(
 
                         // Immediate layout modifier keys: ABC and =\< switch instantaneously on pointer down
                         val isImmediateModifier = initialKey.type == KeyType.SYMBOLS && !initialKey.slidingInput
+                        val isSlidingInitiator = initialKey.slidingInput || initialKey.type == KeyType.SHIFT
                         var isHandledOnDown = false
 
                         if (isImmediateModifier) {
                             isHandledOnDown = true
                             currentOnTap.value(initialKey)
-                        } else if (initialKey.slidingInput) {
+                        } else if (isSlidingInitiator) {
                             val coords = keyCoordinates
                             if (coords != null && coords.isAttached) {
                                 isSlidingDrag = true
@@ -243,7 +245,7 @@ fun KeycapView(
 
                         var isLongPressTriggered = false
                         var isDeleteLongPressActive = false
-                        val longPressJob = if (isImmediateModifier || initialKey.slidingInput) null else launch {
+                        val longPressJob = if (isImmediateModifier || isSlidingInitiator) null else launch {
                             delay(currentLongPressDelay.value)
                             val coords = keyCoordinates
                             isLongPressTriggered = true
@@ -370,8 +372,8 @@ fun KeycapView(
                                 }
                             }
 
-                            // Sliding input detector for ?123
-                            if (initialKey.slidingInput) {
+                            // Sliding input detector for ?123 and Shift
+                            if (isSlidingInitiator) {
                                 if (distance > 18f) {
                                     isPressed = false
                                 }
@@ -432,8 +434,8 @@ fun KeycapView(
             },
         contentAlignment = Alignment.Center
     ) {
-        // Flick up preview badge in top right corner (hidden when sliding symbol mode is active or secondary keys disabled)
-        if (showSecondaryKeys && !key.flickUp.isNullOrEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode) {
+        // Flick up preview badge in top right corner (hidden when sliding symbol/shift mode is active or secondary keys disabled)
+        if (showSecondaryKeys && !key.flickUp.isNullOrEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode) {
             Text(
                 text = key.flickUp!!,
                 color = colorScheme.keyForeground.copy(alpha = 0.5f),

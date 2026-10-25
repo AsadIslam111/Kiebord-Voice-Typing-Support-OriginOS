@@ -174,4 +174,19 @@ class PredefinedLayoutsTest {
         // Row 4 is ABC...
         assertEquals("ABC", withExtra.rows[4].keys[0].label)
     }
+
+    @Test
+    fun testNumberRowsHaveNoSecondaryFlickUp() {
+        val bnRow = PredefinedLayouts.createNumberRow("bn")
+        assertEquals(10, bnRow.keys.size)
+        for (k in bnRow.keys) {
+            org.junit.Assert.assertNull("Bengali number row key ${k.label} should not have flickUp", k.flickUp)
+        }
+
+        val enRow = PredefinedLayouts.createNumberRow("en")
+        assertEquals(10, enRow.keys.size)
+        for (k in enRow.keys) {
+            org.junit.Assert.assertNull("English number row key ${k.label} should not have flickUp", k.flickUp)
+        }
+    }
 }
