@@ -1,5 +1,6 @@
 package io.kiebord.app.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,7 +72,8 @@ fun SettingsMainScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = colors.warningCardBg)
+                colors = CardDefaults.cardColors(containerColor = colors.warningCardBg),
+                border = BorderStroke(1.dp, colors.warningCardBorder)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
@@ -125,9 +127,10 @@ fun SettingsMainScreen(
                             modifier = Modifier.height(44.dp),
                             shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = colors.iconBackground,
-                                contentColor = colors.textPrimary
-                            )
+                                containerColor = colors.warningSecondaryBtnBg,
+                                contentColor = colors.warningSecondaryBtnText
+                            ),
+                            border = BorderStroke(1.dp, colors.warningSecondaryBtnBorder)
                         ) {
                             Text(
                                 text = "Setup Wizard",
@@ -142,7 +145,8 @@ fun SettingsMainScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = colors.activeCardBg)
+                colors = CardDefaults.cardColors(containerColor = colors.activeCardBg),
+                border = BorderStroke(1.dp, colors.activeCardBorder)
             ) {
                 Row(
                     modifier = Modifier
@@ -174,9 +178,10 @@ fun SettingsMainScreen(
                         shape = CircleShape,
                         modifier = Modifier.height(36.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.iconBackground,
-                            contentColor = colors.textPrimary
-                        )
+                            containerColor = colors.activeBtnBg,
+                            contentColor = colors.activeBtnText
+                        ),
+                        border = BorderStroke(1.dp, colors.activeBtnBorder)
                     ) {
                         Text(
                             text = "Wizard",
