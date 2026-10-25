@@ -1,10 +1,12 @@
 package io.kiebord.app.ui.settings
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,10 +47,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.kiebord.app.R
 
 @Immutable
 data class SettingsColors(
@@ -167,20 +171,13 @@ fun SettingsUnifiedTopBar(
             label = "TopBarIconTransition"
         ) { mainState ->
             if (mainState) {
-                Box(
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher),
+                    contentDescription = "Kiebord Logo",
                     modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(colors.iconBackground),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Keyboard,
-                        contentDescription = null,
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                )
             } else {
                 IconButton(
                     onClick = onBack,
@@ -340,10 +337,59 @@ fun SettingsCard(
 }
 
 @Composable
+private fun SettingsItemIcon(
+    icon: ImageVector? = null,
+    @DrawableRes iconResId: Int? = null,
+    iconTint: Color,
+    size: Dp = 40.dp,
+    iconSize: Dp = 22.dp
+) {
+    if (icon == null && iconResId == null) return
+
+    val colors = LocalSettingsColors.current
+    val isAppIcon = iconResId == R.drawable.ic_launcher || iconResId == R.drawable.ic_launcher_foreground
+
+    if (isAppIcon) {
+        Image(
+            painter = painterResource(iconResId!!),
+            contentDescription = null,
+            modifier = Modifier
+                .size(size)
+                .clip(RoundedCornerShape(size * 0.25f))
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(colors.iconBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            if (iconResId != null) {
+                Icon(
+                    painter = painterResource(iconResId),
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(iconSize)
+                )
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(iconSize)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun SettingsNavigationItem(
     title: String,
     subtitle: String? = null,
-    icon: ImageVector,
+    icon: ImageVector? = null,
+    @DrawableRes iconResId: Int? = null,
     iconTint: Color? = null,
     badge: String? = null,
     position: GroupPosition? = null,
@@ -370,22 +416,16 @@ fun SettingsNavigationItem(
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(colors.iconBackground),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = effectiveTint,
-                        modifier = Modifier.size(22.dp)
+                if (icon != null || iconResId != null) {
+                    SettingsItemIcon(
+                        icon = icon,
+                        iconResId = iconResId,
+                        iconTint = effectiveTint,
+                        size = 40.dp,
+                        iconSize = 22.dp
                     )
+                    Spacer(modifier = Modifier.width(16.dp))
                 }
-
-                Spacer(modifier = Modifier.width(16.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -443,22 +483,16 @@ fun SettingsNavigationItem(
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(colors.iconBackground),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = effectiveTint,
-                        modifier = Modifier.size(22.dp)
+                if (icon != null || iconResId != null) {
+                    SettingsItemIcon(
+                        icon = icon,
+                        iconResId = iconResId,
+                        iconTint = effectiveTint,
+                        size = 40.dp,
+                        iconSize = 22.dp
                     )
+                    Spacer(modifier = Modifier.width(16.dp))
                 }
-
-                Spacer(modifier = Modifier.width(16.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -542,6 +576,7 @@ fun SettingsToggleItem(
     title: String,
     subtitle: String? = null,
     icon: ImageVector? = null,
+    @DrawableRes iconResId: Int? = null,
     iconTint: Color? = null,
     checked: Boolean,
     position: GroupPosition? = null,
@@ -567,21 +602,14 @@ fun SettingsToggleItem(
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (icon != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(colors.iconBackground),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = effectiveTint,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
+                if (icon != null || iconResId != null) {
+                    SettingsItemIcon(
+                        icon = icon,
+                        iconResId = iconResId,
+                        iconTint = effectiveTint,
+                        size = 40.dp,
+                        iconSize = 22.dp
+                    )
                     Spacer(modifier = Modifier.width(16.dp))
                 }
 
@@ -627,21 +655,14 @@ fun SettingsToggleItem(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (icon != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(colors.iconBackground),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = effectiveTint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                if (icon != null || iconResId != null) {
+                    SettingsItemIcon(
+                        icon = icon,
+                        iconResId = iconResId,
+                        iconTint = effectiveTint,
+                        size = 36.dp,
+                        iconSize = 20.dp
+                    )
                     Spacer(modifier = Modifier.width(14.dp))
                 }
 
@@ -693,6 +714,7 @@ fun SettingsSliderItem(
     title: String,
     subtitle: String? = null,
     icon: ImageVector? = null,
+    @DrawableRes iconResId: Int? = null,
     iconTint: Color? = null,
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
@@ -723,21 +745,14 @@ fun SettingsSliderItem(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (icon != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(colors.iconBackground),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                tint = effectiveTint,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                    if (icon != null || iconResId != null) {
+                        SettingsItemIcon(
+                            icon = icon,
+                            iconResId = iconResId,
+                            iconTint = effectiveTint,
+                            size = 40.dp,
+                            iconSize = 22.dp
+                        )
                         Spacer(modifier = Modifier.width(16.dp))
                     }
 
@@ -800,21 +815,14 @@ fun SettingsSliderItem(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (icon != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(colors.iconBackground),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                tint = effectiveTint,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                    if (icon != null || iconResId != null) {
+                        SettingsItemIcon(
+                            icon = icon,
+                            iconResId = iconResId,
+                            iconTint = effectiveTint,
+                            size = 36.dp,
+                            iconSize = 20.dp
+                        )
                         Spacer(modifier = Modifier.width(14.dp))
                     }
 

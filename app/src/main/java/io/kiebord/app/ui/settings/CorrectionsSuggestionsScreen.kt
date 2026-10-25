@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.data.prefs.KiebordPreferences
+import io.kiebord.feature.ime.R as ImeR
 
 @Composable
 fun CorrectionsSuggestionsScreen(
@@ -129,7 +130,7 @@ fun CorrectionsSuggestionsScreen(
                 SettingsToggleItem(
                     title = "Show Proximity Suggestions in Phonetic Layout",
                     subtitle = "Suggest dictionary words and proximity corrections while typing phonetically",
-                    icon = Icons.Outlined.Translate,
+                    iconResId = ImeR.drawable.ic_traditional,
                     checked = preferences.bengaliSmartPhonetic,
                     position = GroupPosition.MIDDLE,
                     onCheckedChange = onUpdateBengaliSmartPhonetic
@@ -138,7 +139,7 @@ fun CorrectionsSuggestionsScreen(
                 SettingsToggleItem(
                     title = "Show English Input Candidate",
                     subtitle = "Display raw typed English word as first candidate in Borno Phonetic layout",
-                    icon = Icons.Outlined.TextFields,
+                    iconResId = ImeR.drawable.ic_text_edit,
                     checked = preferences.bengaliShowRawInputCandidate,
                     position = GroupPosition.BOTTOM,
                     onCheckedChange = onUpdateBengaliShowRawInputCandidate
@@ -225,7 +226,7 @@ fun CorrectionsSuggestionsScreen(
             SettingsToggleItem(
                 title = "Auto-Capitalization",
                 subtitle = "Automatically capitalize the first letter of each sentence",
-                icon = Icons.Outlined.TextFields,
+                iconResId = ImeR.drawable.ic_shift,
                 checked = preferences.autoCapitalization,
                 position = GroupPosition.TOP,
                 onCheckedChange = onUpdateAutoCapitalization

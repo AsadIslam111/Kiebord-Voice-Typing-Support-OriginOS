@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Info
@@ -42,9 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.kiebord.app.R
 
 @Composable
 fun AboutScreen(
@@ -68,20 +71,13 @@ fun AboutScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
+            Image(
+                painter = painterResource(R.drawable.ic_launcher),
+                contentDescription = "Kiebord Logo",
                 modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(colors.iconBackground),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Keyboard,
-                    contentDescription = null,
-                    tint = colors.accent,
-                    modifier = Modifier.size(42.dp)
-                )
-            }
+                    .size(76.dp)
+                    .clip(RoundedCornerShape(18.dp))
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 

@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Info
@@ -35,10 +37,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.kiebord.app.R
 import io.kiebord.data.prefs.KiebordPreferences
 
 @Composable
@@ -103,7 +108,7 @@ fun SettingsMainScreen(
                             )
                         ) {
                             Icon(
-                                imageVector = if (!isImeEnabled) Icons.Outlined.Settings else Icons.Outlined.SwapHoriz,
+                                imageVector = if (!isImeEnabled) Icons.Filled.Settings else Icons.Outlined.SwapHoriz,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -145,11 +150,12 @@ fun SettingsMainScreen(
                         .padding(horizontal = 18.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = null,
-                        tint = colors.activeCardIcon,
-                        modifier = Modifier.size(22.dp)
+                    Image(
+                        painter = painterResource(R.drawable.ic_launcher),
+                        contentDescription = "Kiebord Logo",
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -236,7 +242,7 @@ fun SettingsMainScreen(
             SettingsNavigationItem(
                 title = "About Kiebord",
                 subtitle = "Version 0.1.0 • Privacy & open source",
-                icon = Icons.Outlined.Info,
+                iconResId = R.drawable.ic_launcher,
                 position = GroupPosition.ALONE,
                 onClick = { onNavigate(SettingsScreen.About) }
             )

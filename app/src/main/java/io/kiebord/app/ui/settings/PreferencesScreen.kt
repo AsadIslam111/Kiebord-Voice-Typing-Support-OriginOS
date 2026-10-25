@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Numbers
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.data.prefs.KiebordPreferences
+import io.kiebord.feature.ime.R as ImeR
 
 @Composable
 fun PreferencesScreen(
@@ -197,7 +199,7 @@ fun PreferencesScreen(
             SettingsToggleItem(
                 title = "Dedicated Number Row",
                 subtitle = "Display persistent 5th row of digits above letter keys",
-                icon = Icons.Outlined.Numbers,
+                icon = Icons.Filled.Pin,
                 checked = preferences.showNumberRow,
                 position = GroupPosition.TOP,
                 onCheckedChange = onUpdateShowNumberRow
@@ -206,7 +208,7 @@ fun PreferencesScreen(
             SettingsToggleItem(
                 title = "Secondary Key Hints",
                 subtitle = "Show secondary symbol hints on the corner of keycaps",
-                icon = Icons.Outlined.Layers,
+                iconResId = ImeR.drawable.ic_key_hints,
                 checked = preferences.showSecondaryKeys,
                 position = GroupPosition.MIDDLE,
                 onCheckedChange = onUpdateShowSecondaryKeys
