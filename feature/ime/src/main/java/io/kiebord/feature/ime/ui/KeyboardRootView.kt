@@ -133,6 +133,8 @@ fun KeyboardRootView(
     onOpenInputMethodPicker: () -> Unit = {},
     gestureTypingEnabled: Boolean = true,
     showGestureTrail: Boolean = true,
+    longPressDelayMs: Long = 300L,
+    cursorTrackpadEnabled: Boolean = true,
     inputSessionId: Int = 0,
     modifier: Modifier = Modifier
 ) {
@@ -992,6 +994,7 @@ fun KeyboardRootView(
                                 isInteractive = isKeysInteractive,
                                 rowHeight = currentRowHeight,
                                 gestureTypingEnabled = isEffectiveGestureTypingEnabled,
+                                longPressDelayMs = longPressDelayMs,
                                 modifier = Modifier
                                     .weight(effectiveKey.widthWeight)
                                     .fillMaxHeight(),
@@ -1043,14 +1046,16 @@ fun KeyboardRootView(
                                     keyCoordinatesMap[k] = coords
                                 },
                                 onSpacebarTrackpad = { direction ->
-                                    val didMove = onTextAction(
-                                        if (direction > 0) TextAction.MOVE_RIGHT else TextAction.MOVE_LEFT,
-                                        false
-                                    )
-                                    if (didMove) {
-                                        try {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        } catch (_: Exception) {}
+                                    if (cursorTrackpadEnabled) {
+                                        val didMove = onTextAction(
+                                            if (direction > 0) TextAction.MOVE_RIGHT else TextAction.MOVE_LEFT,
+                                            false
+                                        )
+                                        if (didMove) {
+                                            try {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            } catch (_: Exception) {}
+                                        }
                                     }
                                 },
                                 onShowMoreKeys = handleShowMoreKeys,

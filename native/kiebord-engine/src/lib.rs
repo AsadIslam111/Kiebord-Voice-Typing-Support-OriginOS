@@ -297,9 +297,35 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_isPhoneticLayout
 }
 
 #[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_getTransliterationAlternatives(
+    mut env: JNIEnv,
+    _class: JClass,
+    layout_id: JString,
+    raw_input: JString,
+) -> jstring {
+    let layout: String = match env.get_string(&layout_id) {
+        Ok(s) => s.into(),
+        Err(_) => String::new(),
+    };
+    let input: String = match env.get_string(&raw_input) {
+        Ok(s) => s.into(),
+        Err(_) => String::new(),
+    };
+
+    if layout == "bn_borno" {
+        let alts = BornoPhonetic::suggest_transliterations(&input);
+        let joined = alts.join("|");
+        env.new_string(joined).unwrap().into_raw()
+    } else {
+        env.new_string("").unwrap().into_raw()
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_ping(
     _env: JNIEnv,
     _class: JClass,
 ) -> jboolean {
     1
 }
+

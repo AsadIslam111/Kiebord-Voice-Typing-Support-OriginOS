@@ -36,6 +36,9 @@ object NativeEngine {
     external fun getSuggestions(prefix: String, lang: String, maxResults: Int): String
 
     @JvmStatic
+    external fun getTransliterationAlternatives(layoutId: String, rawInput: String): String
+
+    @JvmStatic
     external fun predictNextWords(prevWord: String, lang: String, maxResults: Int): String
 
     @JvmStatic
@@ -146,4 +149,68 @@ object NativeEngine {
             emptyList()
         }
     }
+
+    fun queryTransliterationAlternatives(layoutId: String, rawInput: String): List<String> {
+        if (rawInput.isBlank()) return emptyList()
+        if (isLoaded) {
+            try {
+                val raw = getTransliterationAlternatives(layoutId, rawInput)
+                if (raw.isNotEmpty()) {
+                    val list = raw.split("|").filter { it.isNotEmpty() }
+                    if (list.isNotEmpty()) return list
+                }
+            } catch (_: Throwable) {}
+        }
+        return generateFallbackTransliterationAlternatives(layoutId, rawInput)
+    }
+
+    private fun generateFallbackTransliterationAlternatives(layoutId: String, rawInput: String): List<String> {
+        if (!isLoaded) return listOf(rawInput)
+        return try {
+            val canonical = transliterate(layoutId, rawInput)
+            val results = mutableListOf<String>()
+            if (canonical.isNotEmpty()) {
+                results.add(canonical)
+            }
+
+            val chars = rawInput.toCharArray()
+            for (i in chars.indices) {
+                val c = chars[i]
+                val flipped = when (c) {
+                    't' -> charArrayOf('T')
+                    'T' -> charArrayOf('t')
+                    'e' -> charArrayOf('a')
+                    'a' -> charArrayOf('e')
+                    'j' -> charArrayOf('z')
+                    'z' -> charArrayOf('j')
+                    'n' -> charArrayOf('N')
+                    'N' -> charArrayOf('n')
+                    'd' -> charArrayOf('D')
+                    'D' -> charArrayOf('d')
+                    's' -> charArrayOf('S')
+                    'S' -> charArrayOf('s')
+                    'r' -> charArrayOf('R')
+                    'R' -> charArrayOf('r')
+                    'i' -> charArrayOf('I')
+                    'I' -> charArrayOf('i')
+                    'u' -> charArrayOf('U')
+                    'U' -> charArrayOf('u')
+                    else -> charArrayOf()
+                }
+                for (f in flipped) {
+                    val alt = chars.clone()
+                    alt[i] = f
+                    val altStr = String(alt)
+                    val translit = transliterate(layoutId, altStr)
+                    if (translit.isNotEmpty() && !results.contains(translit)) {
+                        results.add(translit)
+                    }
+                }
+            }
+            results
+        } catch (_: Throwable) {
+            listOf(rawInput)
+        }
+    }
 }
+

@@ -636,13 +636,27 @@ impl<'a> BinaryDict<'a> {
                     let is_full_exact = state.cost == 0.0 && state.accum.len() == typed.len();
                     let is_contraction_exact = (state.cost - 0.01).abs() < 1e-4 && state.accum.len() == typed.len() + 1;
                     let extra_len = (state.accum.len() as f32 - typed.len() as f32).max(0.0);
+
+                    let target_first_ch = search_input.chars().next();
+                    let target_second_ch = search_input.chars().nth(1);
+                    let is_first_mismatch = match (target_first_ch, word_str.chars().next()) {
+                        (Some(fc), Some(ac)) if fc == ac || prox.is_case_pair(fc, ac) => false,
+                        (Some(fc), Some(ac)) => {
+                            if let (Some(sc), Some(a_sc)) = (target_second_ch, word_str.chars().nth(1)) {
+                                !((ac == sc || prox.is_case_pair(sc, ac)) && (a_sc == fc || prox.is_case_pair(fc, a_sc)))
+                            } else {
+                                true
+                            }
+                        }
+                        _ => false,
+                    };
+
                     // Frequency-first scoring:
                     // For exact matches (cost == 0), frequency dominates completely.
                     // Full exact match gets a bonus so exact typed word stays on top.
                     // Exact contractions (e.g. he'll for hell, we'll for well) also get high bonus.
-                    // Slight length penalty (-0.001 * extra_len) only breaks ties among equal-frequency words.
-                    // Typos (cost > 0) are penalized so common words with minor typos can surface,
-                    // but will not outrank valid high-frequency exact prefix completions.
+                    // Raw mapping case pairs (lower vs upper) have minimal penalty (0.10).
+                    // Unrelated first-character physical slips receive heavy penalty (-75.0).
                     let score = (freq as f32)
                         + if is_full_exact {
                             50.0
@@ -652,6 +666,7 @@ impl<'a> BinaryDict<'a> {
                             0.0
                         }
                         - (state.cost * 80.0)
+                        - if is_first_mismatch { 75.0 } else { 0.0 }
                         - (0.001 * extra_len);
 
                     let entry = candidates.entry(word_str).or_insert((f32::NEG_INFINITY, 0));
@@ -740,16 +755,18 @@ impl<'a> BinaryDict<'a> {
             }
 
             // 2. Proximity substitution
-            if state.cost + 0.35 <= max_cost {
-                if let Some(target_ch) = char::from_u32(target as u32) {
-                    for &neighbor in prox.get_neighbors(target_ch) {
-                        let n_u16 = neighbor as u16;
-                        if n_u16 != target {
-                            if let Some(child_node) = self.child(state.node, n_u16) {
+            if let Some(target_ch) = char::from_u32(target as u32) {
+                for &neighbor in prox.get_neighbors(target_ch) {
+                    let n_u16 = neighbor as u16;
+                    if n_u16 != target {
+                        if let Some(child_node) = self.child(state.node, n_u16) {
+                            let is_case = prox.is_case_pair(target_ch, neighbor);
+                            let sub_cost = if is_case { 0.10 } else { 0.40 };
+                            if state.cost + sub_cost <= max_cost {
                                 let mut next_accum = state.accum.clone();
                                 next_accum.push(n_u16);
                                 let child_mf = self.max_subtree_freq(child_node) as f32;
-                                let child_cost = state.cost + 0.35;
+                                let child_cost = state.cost + sub_cost;
                                 heap.push(State {
                                     node: child_node,
                                     typed_pos: state.typed_pos + 1,
@@ -844,7 +861,6 @@ impl<'a> BinaryDict<'a> {
             }
         }
 
-        // Rank candidates strictly by score descending, breaking ties with frequency descending
         let mut ranked: Vec<(String, f32, u8)> = candidates.into_iter().map(|(w, (s, f))| (w, s, f)).collect();
         ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal).then_with(|| b.2.cmp(&a.2)));
 

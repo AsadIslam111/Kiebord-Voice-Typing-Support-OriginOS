@@ -132,6 +132,134 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
     if let Some(dict) = dict_opt {
         let mut words = dict.suggest(input, max_results, prox);
 
+        // If Bengali layout, check for Reph substitution (র + consonant -> র্ + consonant)
+        if is_bn && input.contains('\u{09B0}') {
+            let input_chars: Vec<char> = input.chars().collect();
+            for i in 0..input_chars.len() {
+                if input_chars[i] == '\u{09B0}' && i + 1 < input_chars.len() {
+                    let next = input_chars[i + 1];
+                    if ('\u{0995}'..='\u{09B9}').contains(&next) {
+                        let mut reph_chars = input_chars.clone();
+                        reph_chars.insert(i + 1, '\u{09CD}'); // র + ্ = র্ (Reph)
+                        let reph_word: String = reph_chars.into_iter().collect();
+                        if dict.contains_word(&reph_word) && !words.contains(&reph_word) {
+                            words.insert(0, reph_word);
+                            if words.len() > max_results {
+                                words.truncate(max_results);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Bengali Dental na vs Retroflex na (ন <-> ণ) substitution
+        if is_bn && (input.contains('\u{09A8}') || input.contains('\u{09A3}')) {
+            let n_alt: String = input
+                .chars()
+                .map(|c| match c {
+                    '\u{09A8}' => '\u{09A3}', // ন -> ণ
+                    '\u{09A3}' => '\u{09A8}', // ণ -> ন
+                    other => other,
+                })
+                .collect();
+            if dict.contains_word(&n_alt) && !words.contains(&n_alt) {
+                let insert_pos = if !dict.contains_word(input) { 0 } else if words.len() > 1 { 1 } else { words.len() };
+                words.insert(insert_pos, n_alt);
+                if words.len() > max_results {
+                    words.truncate(max_results);
+                }
+            }
+        }
+
+        // Bengali o <-> O (ো-কার) substitution: e.g. যাব -> যাবো, যাবনা -> যাবোনা
+        if is_bn {
+            let input_chars: Vec<char> = input.chars().collect();
+            let mut okar_candidates: Vec<String> = Vec::new();
+
+            // 1. Append ো-কার to ending consonant (e.g. যাব -> যাবো, করব -> করবো)
+            if let Some(&last_char) = input_chars.last() {
+                if ('\u{0995}'..='\u{09B9}').contains(&last_char) {
+                    let mut cand = input.to_string();
+                    cand.push('\u{09CB}'); // ো
+                    okar_candidates.push(cand);
+                }
+            }
+
+            // 2. Insert ো-কার after non-final consonant without vowel sign (e.g. যাবনা -> যাবোনা)
+            for i in 0..input_chars.len() {
+                let c = input_chars[i];
+                if ('\u{0995}'..='\u{09B9}').contains(&c) && i + 1 < input_chars.len() {
+                    let next = input_chars[i + 1];
+                    // If next is consonant, insert ো
+                    if ('\u{0995}'..='\u{09B9}').contains(&next) {
+                        let mut cand_chars = input_chars.clone();
+                        cand_chars.insert(i + 1, '\u{09CB}');
+                        okar_candidates.push(cand_chars.into_iter().collect());
+                    }
+                }
+            }
+
+            // 3. Remove ো-কার if present (e.g. যাবো -> যাব)
+            if input.contains('\u{09CB}') {
+                let cand: String = input.chars().filter(|&c| c != '\u{09CB}').collect();
+                okar_candidates.push(cand);
+            }
+
+            for cand in okar_candidates {
+                if dict.contains_word(&cand) && !words.contains(&cand) {
+                    let insert_pos = if !dict.contains_word(input) { 0 } else if words.len() > 1 { 1 } else { words.len() };
+                    words.insert(insert_pos, cand);
+                    if words.len() > max_results {
+                        words.truncate(max_results);
+                    }
+                }
+            }
+        }
+
+        // Bengali ri <-> rri (র ফলা + ি-কার <-> ঋ-কার / ঋ) substitution
+        if is_bn {
+            let mut ri_candidates: Vec<String> = Vec::new();
+
+            // র ফলা + ি-কার (্ + র + ি) -> ঋ-কার (ৃ) e.g. ক্রি -> কৃ, ম্রিত -> মৃত
+            if input.contains("\u{09CD}\u{09B0}\u{09BF}") {
+                ri_candidates.push(input.replace("\u{09CD}\u{09B0}\u{09BF}", "\u{09C3}"));
+            }
+            // ঋ-কার (ৃ) -> র ফলা + ি-কার (্ + র + ি)
+            if input.contains('\u{09C3}') {
+                ri_candidates.push(input.replace('\u{09C3}', "\u{09CD}\u{09B0}\u{09BF}"));
+            }
+
+            // Word-initial রি (র + ি) -> ঋ e.g. রিশি -> ঋষি, রিন -> ঋণ, রিতু -> ঋতু
+            if input.starts_with("\u{09B0}\u{09BF}") {
+                let rest = &input["\u{09B0}\u{09BF}".len()..];
+                ri_candidates.push(format!("\u{098B}{}", rest));
+                // Combined with শ -> ষ (e.g. রিশি -> ঋষি)
+                if rest.contains('\u{09B6}') {
+                    ri_candidates.push(format!("\u{098B}{}", rest.replace('\u{09B6}', "\u{09B7}")));
+                }
+                // Combined with ন -> ণ (e.g. রিন -> ঋণ)
+                if rest.contains('\u{09A8}') {
+                    ri_candidates.push(format!("\u{098B}{}", rest.replace('\u{09A8}', "\u{09A3}")));
+                }
+            }
+            // Word-initial ঋ -> রি (র + ি)
+            if input.starts_with('\u{098B}') {
+                let rest = &input['\u{098B}'.len_utf8()..];
+                ri_candidates.push(format!("\u{09B0}\u{09BF}{}", rest));
+            }
+
+            for cand in ri_candidates {
+                if dict.contains_word(&cand) && !words.contains(&cand) {
+                    let insert_pos = if !dict.contains_word(input) { 0 } else if words.len() > 1 { 1 } else { words.len() };
+                    words.insert(insert_pos, cand);
+                    if words.len() > max_results {
+                        words.truncate(max_results);
+                    }
+                }
+            }
+        }
+
         // If Borno Phonetic layout and room remains, also evaluate phonetic transliteration alternatives
         if words.len() < max_results && lang_or_layout == "bn_borno" {
             let alts = crate::translit::borno_phonetic::BornoPhonetic::suggest_transliterations(input);
@@ -288,10 +416,44 @@ mod tests {
         let items: Vec<&str> = tumi_sugs.split('|').filter(|s| !s.is_empty()).collect();
         assert!(items.contains(&"তুমি"), "Expected 'তুমি' in suggestions for 'টুমি': {:?}", items);
 
+        let litar_sugs = get_suggestions("লিতার", "bn_borno", 5);
+        let lt_items: Vec<&str> = litar_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert_eq!(lt_items.first(), Some(&"লিটার"), "Expected 'লিটার' as top substitution suggestion for 'লিতার': {:?}", lt_items);
+
         // 'কারন' (typed with lowercase n) should suggest 'কারণ' (with uppercase N) in Borno Phonetic layout
         let karon_sugs = get_suggestions("কারন", "bn_borno", 5);
         let k_items: Vec<&str> = karon_sugs.split('|').filter(|s| !s.is_empty()).collect();
         assert!(k_items.contains(&"কারণ"), "Expected 'কারণ' in suggestions for 'কারন': {:?}", k_items);
+
+        // "করম" (typed as kormo) should suggest "কর্ম" via Reph substitution
+        let kormo_sugs = get_suggestions("করম", "bn_borno", 5);
+        let km_items: Vec<&str> = kormo_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(km_items.contains(&"কর্ম"), "Expected 'কর্ম' in suggestions for 'করম': {:?}", km_items);
+
+        // "যাব" (typed as jabo) should suggest "যাবো" via O-kar substitution
+        let jabo_sugs = get_suggestions("যাব", "bn_borno", 5);
+        let j_items: Vec<&str> = jabo_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(j_items.contains(&"যাবো"), "Expected 'যাবো' in suggestions for 'যাব': {:?}", j_items);
+
+        // "যাবনা" (typed as jabona) should suggest "যাবোনা" via O-kar insertion
+        let jabona_sugs = get_suggestions("যাবনা", "bn_borno", 5);
+        let jn_items: Vec<&str> = jabona_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(jn_items.contains(&"যাবোনা"), "Expected 'যাবোনা' in suggestions for 'যাবনা': {:?}", jn_items);
+
+        // "রিশি" (typed as rishi) should suggest "ঋষি" via ri -> rri (ঋ-kar) substitution
+        let rishi_sugs = get_suggestions("রিশি", "bn_borno", 5);
+        let rs_items: Vec<&str> = rishi_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(rs_items.contains(&"ঋষি"), "Expected 'ঋষি' in suggestions for 'রিশি': {:?}", rs_items);
+
+        // "রিন" (typed as rin) should suggest "ঋণ" via ri -> rri and n -> N substitution
+        let rin_sugs = get_suggestions("রিন", "bn_borno", 5);
+        let rn_items: Vec<&str> = rin_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(rn_items.contains(&"ঋণ"), "Expected 'ঋণ' in suggestions for 'রিন': {:?}", rn_items);
+
+        // "ম্রিত" (typed as mrit) should suggest "মৃত" via ri -> rri substitution
+        let mrit_sugs = get_suggestions("ম্রিত", "bn_borno", 5);
+        let mr_items: Vec<&str> = mrit_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(mr_items.contains(&"মৃত"), "Expected 'মৃত' in suggestions for 'ম্রিত': {:?}", mr_items);
     }
 
     #[test]

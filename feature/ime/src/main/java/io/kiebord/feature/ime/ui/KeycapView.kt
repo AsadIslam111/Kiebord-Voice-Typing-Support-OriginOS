@@ -87,7 +87,8 @@ fun KeycapView(
     onGestureMove: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
     onGestureEnd: () -> Unit = {},
     isInteractive: Boolean = true,
-    gestureTypingEnabled: Boolean = true
+    gestureTypingEnabled: Boolean = true,
+    longPressDelayMs: Long = 300L
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
@@ -162,6 +163,7 @@ fun KeycapView(
     val currentOnGestureMove = rememberUpdatedState(onGestureMove)
     val currentOnGestureEnd = rememberUpdatedState(onGestureEnd)
     val currentGestureTypingEnabled = rememberUpdatedState(gestureTypingEnabled)
+    val currentLongPressDelay = rememberUpdatedState(longPressDelayMs)
 
     val showCircularPopup = showKeyPopups && isPressed && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isMoreKeysActive
 
@@ -242,7 +244,7 @@ fun KeycapView(
                         var isLongPressTriggered = false
                         var isDeleteLongPressActive = false
                         val longPressJob = if (isImmediateModifier || initialKey.slidingInput) null else launch {
-                            delay(240L)
+                            delay(currentLongPressDelay.value)
                             val coords = keyCoordinates
                             isLongPressTriggered = true
                             if (initialKey.type == KeyType.DELETE) {

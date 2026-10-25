@@ -149,6 +149,7 @@ class KiebordService : InputMethodService() {
                         activeLayout = targetPrimary
                     }
                 }
+                updateSuggestions()
             }
         }
     }
@@ -228,6 +229,8 @@ class KiebordService : InputMethodService() {
                     onGestureCommit = ::handleGestureCommit,
                     gestureTypingEnabled = preferencesState.gestureTypingEnabled && isQwertyBasedLayout(activeLayout.id),
                     showGestureTrail = preferencesState.showGestureTrail,
+                    longPressDelayMs = preferencesState.longPressDelayMs.toLong(),
+                    cursorTrackpadEnabled = preferencesState.cursorTrackpadEnabled,
                     initialRowHeight = (58 * preferencesState.keyboardHeightScale).dp,
                     defaultShowNumberRow = preferencesState.showNumberRow,
                     onNumberRowToggle = { enabled ->
@@ -421,6 +424,12 @@ class KiebordService : InputMethodService() {
     }
 
     private fun performKeyFeedback() {
+        if (preferencesState.soundOnKeypress) {
+            try {
+                val am = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+                am?.playSoundEffect(android.media.AudioManager.FX_KEYPRESS_STANDARD)
+            } catch (_: Exception) {}
+        }
         if (!preferencesState.vibrateOnKeypress) return
         try {
             if (preferencesState.vibrationType == KiebordPreferences.VIBRATION_TYPE_HAPTIC) {
@@ -1700,7 +1709,7 @@ class KiebordService : InputMethodService() {
     }
 
     private fun updateSuggestions() {
-        if (!NativeEngine.isAvailable() || isSymbolsMode) {
+        if (!preferencesState.suggestionsEnabled || !NativeEngine.isAvailable() || isSymbolsMode) {
             activeSuggestions = emptyList()
             return
         }
@@ -1710,35 +1719,86 @@ class KiebordService : InputMethodService() {
             if (translitMgr.isComposing) {
                 val raw = translitMgr.currentRawInput
                 val translit = translitMgr.currentTransliteration
-                val dictMatches = NativeEngine.querySuggestions(translit, activeLayout.id, 12)
-                    .filter { it != translit && !containsLatinText(it) }
+                val primaryWord = if (translit.isNotEmpty() && !containsLatinText(translit)) {
+                    translit
+                } else ""
 
                 val list = mutableListOf<SuggestionCandidate>()
 
-                // Primary transliterated word (strictly non-Latin/Bengali)
-                if (translit.isNotEmpty() && !containsLatinText(translit)) {
-                    list.add(SuggestionCandidate(text = translit, isPrimary = true, rawInput = raw))
+                // 1. Primary transliterated word (strictly non-Latin/Bengali)
+                if (primaryWord.isNotEmpty()) {
+                    list.add(SuggestionCandidate(text = primaryWord, isPrimary = true, rawInput = raw))
                 }
 
-                // User learned words matching transliterated prefix (strictly non-Latin/Bengali)
-                if (preferencesState.learnedWordsEnabled && translit.isNotEmpty() && !containsLatinText(translit)) {
-                    val learned = userDictionaryRepo.getCompletions(translit, 4) { !containsLatinText(it) }
-                    for (w in learned) {
-                        if (list.size < 12 && list.none { it.text == w }) {
-                            list.add(SuggestionCandidate(text = w, isPrimary = false))
+                if (preferencesState.bengaliSmartPhonetic) {
+                    // When Proximity & Dictionary Suggestions are ENABLED:
+                    // Suggestions must come from valid dictionary entries (bn.dict)
+                    if (primaryWord.isNotEmpty()) {
+                        val dictMatches = NativeEngine.querySuggestions(primaryWord, activeLayout.id, 12)
+                            .filter { it != primaryWord && !containsLatinText(it) }
+
+                        for (match in dictMatches) {
+                            if (list.size < 12 && list.none { it.text == match }) {
+                                list.add(SuggestionCandidate(text = match, isPrimary = false))
+                            }
                         }
                     }
-                }
 
-                // Additional dictionary completions & alternatives
-                for (match in dictMatches) {
-                    if (list.size < 12 && list.none { it.text == match }) {
-                        list.add(SuggestionCandidate(text = match, isPrimary = false))
+                    // Also evaluate phonetic transliteration alternatives for raw Latin input against dictionary
+                    if (raw.isNotBlank()) {
+                        val phoneticAlts = NativeEngine.queryTransliterationAlternatives(activeLayout.id, raw)
+                        for (alt in phoneticAlts) {
+                            if (alt.isNotEmpty() && alt != primaryWord && !containsLatinText(alt)) {
+                                if (list.size < 12 && list.none { it.text == alt }) {
+                                    val isDictWord = NativeEngine.querySuggestions(alt, "bn_exact", 1).contains(alt)
+                                    if (isDictWord) {
+                                        list.add(SuggestionCandidate(text = alt, isPrimary = false))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // User learned words matching transliterated prefix
+                    if (preferencesState.learnedWordsEnabled && primaryWord.isNotEmpty()) {
+                        val learned = userDictionaryRepo.getCompletions(primaryWord, 4) { !containsLatinText(it) }
+                        for (w in learned) {
+                            if (list.size < 12 && list.none { it.text == w }) {
+                                list.add(SuggestionCandidate(text = w, isPrimary = false))
+                            }
+                        }
+                    }
+                } else {
+                    // When Proximity Suggestions are DISABLED:
+                    // Return suggestions based strictly on primary transliteration without proximity characters
+                    if (primaryWord.isNotEmpty()) {
+                        val exactMatches = NativeEngine.querySuggestions(primaryWord, "bn_exact", 12)
+                            .filter { it != primaryWord && !containsLatinText(it) }
+
+                        for (match in exactMatches) {
+                            if (list.size < 12 && list.none { it.text == match }) {
+                                list.add(SuggestionCandidate(text = match, isPrimary = false))
+                            }
+                        }
+                    }
+
+                    // User learned words matching primary transliterated prefix
+                    if (preferencesState.learnedWordsEnabled && primaryWord.isNotEmpty()) {
+                        val learned = userDictionaryRepo.getCompletions(primaryWord, 4) { !containsLatinText(it) }
+                        for (w in learned) {
+                            if (list.size < 12 && list.none { it.text == w }) {
+                                list.add(SuggestionCandidate(text = w, isPrimary = false))
+                            }
+                        }
                     }
                 }
 
                 activeSuggestions = filterAndMarkCandidates(list.take(12))
             } else {
+                if (!preferencesState.nextWordPrediction) {
+                    activeSuggestions = emptyList()
+                    return
+                }
                 val prev = getPrecedingWord()
                 val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
                     userDictionaryRepo.getNextWords(prev, 5) { !containsLatinText(it) }
@@ -1774,6 +1834,10 @@ class KiebordService : InputMethodService() {
                         } else emptyList()
                     })
                 } else {
+                    if (!preferencesState.nextWordPrediction) {
+                        activeSuggestions = emptyList()
+                        return
+                    }
                     val prev = getPrecedingWord()
                     val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
                         userDictionaryRepo.getNextWords(prev, 5) { !containsLatinText(it) }
@@ -1806,6 +1870,10 @@ class KiebordService : InputMethodService() {
                         } else emptyList()
                     })
                 } else {
+                    if (!preferencesState.nextWordPrediction) {
+                        activeSuggestions = emptyList()
+                        return
+                    }
                     val prev = getPrecedingWord()
                     val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
                         userDictionaryRepo.getNextWords(prev, 5) { !containsBengaliText(it) }

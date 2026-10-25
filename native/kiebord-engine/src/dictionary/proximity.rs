@@ -5,17 +5,20 @@ use std::sync::{OnceLock, RwLock};
 #[derive(Clone, Debug, Default)]
 pub struct KeyProximity {
     neighbors: HashMap<char, HashSet<char>>,
+    case_pairs: HashSet<(char, char)>,
 }
 
 static QWERTY_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
 static PROBHAT_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
 static BORNO_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
+static EMPTY_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
 static DYNAMIC_LAYOUT_PROXIMITIES: OnceLock<RwLock<HashMap<String, &'static KeyProximity>>> = OnceLock::new();
 
 impl KeyProximity {
     pub fn new() -> Self {
         Self {
             neighbors: HashMap::new(),
+            case_pairs: HashSet::new(),
         }
     }
 
@@ -26,10 +29,23 @@ impl KeyProximity {
         }
     }
 
+    pub fn add_case_pair(&mut self, a: char, b: char) {
+        if a != b {
+            self.case_pairs.insert((a, b));
+            self.case_pairs.insert((b, a));
+            self.add_neighbor_bidirectional(a, b);
+        }
+    }
+
+    pub fn is_case_pair(&self, a: char, b: char) -> bool {
+        self.case_pairs.contains(&(a, b))
+    }
+
     pub fn add_confusion_group(&mut self, group: &[char]) {
         for &c1 in group {
             for &c2 in group {
                 if c1 != c2 {
+                    self.case_pairs.insert((c1, c2));
                     self.neighbors.entry(c1).or_default().insert(c2);
                 }
             }
@@ -75,7 +91,10 @@ impl KeyProximity {
             }
         }
 
-        Self { neighbors }
+        Self {
+            neighbors,
+            case_pairs: HashSet::new(),
+        }
     }
 
     /// English QWERTY key proximity.
@@ -163,7 +182,7 @@ impl KeyProximity {
         ];
 
         for &(c1, c2) in phonetic_pairs {
-            prox.add_neighbor_bidirectional(c1, c2);
+            prox.add_case_pair(c1, c2);
         }
 
         // Triplet clusters
@@ -236,6 +255,10 @@ impl KeyProximity {
     /// Supports "bn_borno", "bn_probhat", "en_qwerty", registered custom layouts,
     /// or layouts implementing PhoneticTransliterator::proximity.
     pub fn for_layout(layout_id: &str) -> &'static KeyProximity {
+        if layout_id.ends_with("_exact") {
+            return EMPTY_PROXIMITY.get_or_init(Self::new);
+        }
+
         // 1. Check custom dynamically registered layout proximities first
         if let Some(registry) = DYNAMIC_LAYOUT_PROXIMITIES.get() {
             if let Ok(guard) = registry.read() {

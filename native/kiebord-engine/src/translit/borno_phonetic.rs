@@ -912,6 +912,8 @@ impl BornoPhonetic {
                 'z' => &['j'],
                 'n' => &['N'],
                 'N' => &['n'],
+                'o' => &['O'],
+                'O' => &['o'],
                 'd' => &['D'],
                 'D' => &['d'],
                 's' => &['S'],
@@ -932,6 +934,99 @@ impl BornoPhonetic {
                 let translit = Self::convert(&alt_str);
                 if !translit.is_empty() && !results.contains(&translit) {
                     results.push(translit);
+                }
+            }
+        }
+
+        // If 'r' is followed by a consonant, also suggest Reph ('rr' -> র্)
+        for i in 0..len {
+            if chars[i] == 'r' && i + 1 < len {
+                let next = chars[i + 1];
+                let is_consonant = match next {
+                    'k' | 'g' | 'c' | 'j' | 't' | 'T' | 'd' | 'D' | 'n' | 'N' |
+                    'p' | 'f' | 'b' | 'v' | 'm' | 'z' | 's' | 'S' | 'l' | 'h' => true,
+                    _ => false,
+                };
+                if is_consonant {
+                    let mut alt = chars.clone();
+                    alt.insert(i + 1, 'r');
+                    let alt_str: String = alt.into_iter().collect();
+                    let translit = Self::convert(&alt_str);
+                    if !translit.is_empty() && !results.contains(&translit) {
+                        results.push(translit);
+                    }
+                }
+            }
+        }
+
+        // ri <-> rri substitution (case-sensitive) for র-ফলা and ঋ-কার
+        // e.g. kri -> krri (কৃ), rishi -> rrishi (ঋষি), rin -> rrin (ঋণ), mrit -> mrrit (মৃত)
+        if input.contains("ri") {
+            let alt_rri = input.replace("ri", "rri");
+            let translit = Self::convert(&alt_rri);
+            if !translit.is_empty() && !results.contains(&translit) {
+                results.push(translit);
+            }
+            // Combined with n <-> N (e.g. rin -> rriN -> ঋণ)
+            if alt_rri.contains('n') {
+                let alt_rri_n = alt_rri.replace('n', "N");
+                let translit_n = Self::convert(&alt_rri_n);
+                if !translit_n.is_empty() && !results.contains(&translit_n) {
+                    results.push(translit_n);
+                }
+            }
+            // Combined with sh <-> Sh (e.g. rishi -> rriShi -> ঋষি)
+            if alt_rri.contains("sh") {
+                let alt_rri_sh = alt_rri.replace("sh", "Sh");
+                let translit_sh = Self::convert(&alt_rri_sh);
+                if !translit_sh.is_empty() && !results.contains(&translit_sh) {
+                    results.push(translit_sh);
+                }
+            }
+            // Combined with s <-> Sh (e.g. sristi -> srriSTi -> সৃষ্টি)
+            if alt_rri.contains("st") {
+                let alt_rri_st = alt_rri.replace("st", "ST");
+                let translit_st = Self::convert(&alt_rri_st);
+                if !translit_st.is_empty() && !results.contains(&translit_st) {
+                    results.push(translit_st);
+                }
+            }
+        }
+        if input.contains("rri") {
+            let alt_ri = input.replace("rri", "ri");
+            let translit = Self::convert(&alt_ri);
+            if !translit.is_empty() && !results.contains(&translit) {
+                results.push(translit);
+            }
+        }
+
+        // o <-> O variations (both middle of word e.g. jabona -> যাবোনা, and ending e.g. jabo -> যাবো)
+        // Also combine with j <-> z (e.g. jabona -> zabOna -> যাবোনা, jabo -> zabO -> যাবো)
+        if input.contains('o') {
+            let alt_o = input.replace('o', "O");
+            let translit = Self::convert(&alt_o);
+            if !translit.is_empty() && !results.contains(&translit) {
+                results.push(translit);
+            }
+            if alt_o.contains('j') {
+                let alt_zo = alt_o.replace('j', "z");
+                let translit_zo = Self::convert(&alt_zo);
+                if !translit_zo.is_empty() && !results.contains(&translit_zo) {
+                    results.push(translit_zo);
+                }
+            }
+        }
+        if input.contains('O') {
+            let alt_small_o = input.replace('O', "o");
+            let translit = Self::convert(&alt_small_o);
+            if !translit.is_empty() && !results.contains(&translit) {
+                results.push(translit);
+            }
+            if alt_small_o.contains('j') {
+                let alt_zo = alt_small_o.replace('j', "z");
+                let translit_zo = Self::convert(&alt_zo);
+                if !translit_zo.is_empty() && !results.contains(&translit_zo) {
+                    results.push(translit_zo);
                 }
             }
         }
@@ -1057,5 +1152,38 @@ mod tests {
         let dekha_sugs = BornoPhonetic::suggest_transliterations("dekha");
         assert!(dekha_sugs.contains(&"দেখা".to_string()));
         assert!(dekha_sugs.contains(&"দাখা".to_string()));
+
+        // jabo (all lowercase) should suggest both "যাব" and "যাবো"
+        let jabo_lower = BornoPhonetic::suggest_transliterations("jabo");
+        assert!(jabo_lower.contains(&"যাব".to_string()));
+        assert!(jabo_lower.contains(&"যাবো".to_string()));
+
+        // kormo should suggest "কর্ম" via Reph substitution
+        let kormo_sugs = BornoPhonetic::suggest_transliterations("kormo");
+        assert!(kormo_sugs.contains(&"কর্ম".to_string()));
+
+        // jabona should suggest "যাবোনা"
+        let jabona_sugs = BornoPhonetic::suggest_transliterations("jabona");
+        assert!(jabona_sugs.contains(&"যাবোনা".to_string()), "Expected 'যাবোনা' in suggestions for 'jabona': {:?}", jabona_sugs);
+
+        // kri should suggest "কৃ" (ঋ-kar)
+        let kri_sugs = BornoPhonetic::suggest_transliterations("kri");
+        assert!(kri_sugs.contains(&"কৃ".to_string()), "Expected 'কৃ' in suggestions for 'kri': {:?}", kri_sugs);
+
+        // rishi should suggest "ঋষি"
+        let rishi_sugs = BornoPhonetic::suggest_transliterations("rishi");
+        assert!(rishi_sugs.contains(&"ঋষি".to_string()), "Expected 'ঋষি' in suggestions for 'rishi': {:?}", rishi_sugs);
+
+        // rin should suggest "ঋণ"
+        let rin_sugs = BornoPhonetic::suggest_transliterations("rin");
+        assert!(rin_sugs.contains(&"ঋণ".to_string()), "Expected 'ঋণ' in suggestions for 'rin': {:?}", rin_sugs);
+
+        // mrit should suggest "মৃত"
+        let mrit_sugs = BornoPhonetic::suggest_transliterations("mrit");
+        assert!(mrit_sugs.contains(&"মৃত".to_string()), "Expected 'মৃত' in suggestions for 'mrit': {:?}", mrit_sugs);
+
+        // krri should suggest "ক্রি" (র ফলা and ি-kar)
+        let krri_sugs = BornoPhonetic::suggest_transliterations("krri");
+        assert!(krri_sugs.contains(&"ক্রি".to_string()), "Expected 'ক্রি' in suggestions for 'krri': {:?}", krri_sugs);
     }
 }

@@ -125,8 +125,8 @@ fun CorrectionsSuggestionsScreen(
                 )
 
                 SettingsToggleItem(
-                    title = "Bengali Frequency Ranking",
-                    subtitle = "Score and rank phonetic Bengali transliterations by usage frequency",
+                    title = "Show Proximity Suggestions in Phonetic Layout",
+                    subtitle = "Suggest dictionary words and proximity corrections while typing phonetically",
                     icon = Icons.Outlined.Translate,
                     checked = preferences.bengaliSmartPhonetic,
                     position = GroupPosition.BOTTOM,
