@@ -213,12 +213,6 @@ fun KeycapView(
                         if (isImmediateModifier) {
                             isHandledOnDown = true
                             currentOnTap.value(initialKey)
-                        } else if (isSlidingInitiator) {
-                            val coords = keyCoordinates
-                            if (coords != null && coords.isAttached) {
-                                isSlidingDrag = true
-                                currentOnSlidingStart.value(initialKey, coords, initialDownPos)
-                            }
                         }
 
                         val spacebarDwellJob = if (initialKey.type == KeyType.SPACE) {
@@ -359,16 +353,29 @@ fun KeycapView(
                                 }
                             }
 
-                            // Sliding input detector for ?123 and Shift
+                            // Sliding input detector for ?123 and Shift:
+                            // Only active if dragged outside the key boundaries and covered at least the key length minimum
                             if (isSlidingInitiator) {
-                                if (distance > 18f) {
-                                    isPressed = false
+                                val coords = keyCoordinates
+                                val keyWidth = coords?.size?.width?.toFloat() ?: with(density) { 50.dp.toPx() }
+                                val keyHeight = coords?.size?.height?.toFloat() ?: with(density) { 44.dp.toPx() }
+                                val minKeyLength = minOf(keyWidth, keyHeight)
+
+                                val isOutsideKey = if (coords != null && coords.isAttached) {
+                                    currentPos.x < 0f || currentPos.x > keyWidth ||
+                                    currentPos.y < 0f || currentPos.y > keyHeight
+                                } else {
+                                    distance >= minKeyLength
                                 }
-                                if (distance > 18f && !isSlidingDrag) {
-                                    isSlidingDrag = true
-                                    val coords = keyCoordinates
-                                    if (coords != null && coords.isAttached) {
-                                        currentOnSlidingStart.value(initialKey, coords, initialDownPos)
+
+                                if (isOutsideKey && distance >= minKeyLength) {
+                                    if (!isSlidingDrag) {
+                                        isSlidingDrag = true
+                                        isPressed = false
+                                        longPressJob?.cancel()
+                                        if (coords != null && coords.isAttached) {
+                                            currentOnSlidingStart.value(initialKey, coords, initialDownPos)
+                                        }
                                     }
                                 }
                             }
