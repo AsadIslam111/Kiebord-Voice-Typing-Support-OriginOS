@@ -487,9 +487,10 @@ class KiebordService : InputMethodService() {
                             getTransliterationManager().handleCharacter(text)
                         } else {
                             val translitMgr = getTransliterationManager()
-                            if (preferencesState.learnedWordsEnabled && translitMgr.isComposing && translitMgr.currentTransliteration.isNotBlank()) {
+                            val word = translitMgr.currentTransliteration.trim()
+                            if (preferencesState.learnedWordsEnabled && translitMgr.isComposing && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
-                                userDictionaryRepo.recordWord(translitMgr.currentTransliteration.trim(), prevWord)
+                                userDictionaryRepo.recordWord(word, prevWord)
                             }
                             finishComposing()
                             commitCharacterWithPunctuationHandling(ic, text)
@@ -501,9 +502,10 @@ class KiebordService : InputMethodService() {
                             composingBuffer.append(text)
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
-                            if (preferencesState.learnedWordsEnabled && composingBuffer.isNotBlank()) {
+                            val word = composingBuffer.toString().trim()
+                            if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
-                                userDictionaryRepo.recordWord(composingBuffer.toString().trim(), prevWord)
+                                userDictionaryRepo.recordWord(word, prevWord)
                             }
                             finishComposing()
                             commitCharacterWithPunctuationHandling(ic, text)
@@ -515,9 +517,10 @@ class KiebordService : InputMethodService() {
                             composingBuffer.append(text)
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
-                            if (preferencesState.learnedWordsEnabled && composingBuffer.isNotBlank()) {
+                            val word = composingBuffer.toString().trim()
+                            if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
-                                userDictionaryRepo.recordWord(composingBuffer.toString().trim(), prevWord)
+                                userDictionaryRepo.recordWord(word, prevWord)
                             }
                             finishComposing()
                             commitCharacterWithPunctuationHandling(ic, text)
@@ -545,9 +548,9 @@ class KiebordService : InputMethodService() {
                             composingBuffer.append(transformed)
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
-                            if (preferencesState.learnedWordsEnabled && composingBuffer.isNotBlank()) {
+                            val cleanWord = BengaliBstiEngine.cleanPending(composingBuffer.toString().trim())
+                            if (preferencesState.learnedWordsEnabled && cleanWord.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
-                                val cleanWord = BengaliBstiEngine.cleanPending(composingBuffer.toString().trim())
                                 userDictionaryRepo.recordWord(cleanWord, prevWord)
                             }
                             finishComposing()
@@ -556,9 +559,10 @@ class KiebordService : InputMethodService() {
                     }
                     // Other layouts (Symbols, etc.)
                     else -> {
-                        if (preferencesState.learnedWordsEnabled && composingBuffer.isNotBlank()) {
+                        val word = composingBuffer.toString().trim()
+                        if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                             val prevWord = getPrecedingWord(excludeComposing = true)
-                            userDictionaryRepo.recordWord(composingBuffer.toString().trim(), prevWord)
+                            userDictionaryRepo.recordWord(word, prevWord)
                         }
                         finishComposing()
                         commitCharacterWithPunctuationHandling(ic, text)
@@ -636,20 +640,26 @@ class KiebordService : InputMethodService() {
             KeyType.SPACE -> {
                 val translitMgr = getTransliterationManager()
                 if (translitMgr.isComposing) {
-                    val prevWord = getPrecedingWord(excludeComposing = true)
                     val committed = translitMgr.currentTransliteration
+                    val cleanCommitted = committed.trim()
+                    val prevWord = if (preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                        getPrecedingWord(excludeComposing = true)
+                    } else null
                     ic.commitText(committed + " ", 1)
-                    if (preferencesState.learnedWordsEnabled && committed.isNotBlank()) {
-                        userDictionaryRepo.recordWord(committed.trim(), prevWord)
+                    if (prevWord != null) {
+                        userDictionaryRepo.recordWord(cleanCommitted, prevWord)
                     }
                     translitMgr.reset()
                     lastSpaceTapTime = SystemClock.uptimeMillis()
                 } else if (composingBuffer.isNotEmpty()) {
-                    val prevWord = getPrecedingWord(excludeComposing = true)
                     val committed = BengaliBstiEngine.cleanPending(composingBuffer.toString())
+                    val cleanCommitted = committed.trim()
+                    val prevWord = if (preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                        getPrecedingWord(excludeComposing = true)
+                    } else null
                     ic.commitText(committed + " ", 1)
-                    if (preferencesState.learnedWordsEnabled && committed.isNotBlank()) {
-                        userDictionaryRepo.recordWord(committed.trim(), prevWord)
+                    if (prevWord != null) {
+                        userDictionaryRepo.recordWord(cleanCommitted, prevWord)
                     }
                     composingBuffer.clear()
                     lastSpaceTapTime = SystemClock.uptimeMillis()
@@ -1565,9 +1575,9 @@ class KiebordService : InputMethodService() {
     private fun handleCandidateSelect(candidate: SuggestionCandidate) {
         performKeyFeedback()
         val ic = currentInputConnection ?: return
-        val prevWord = getPrecedingWord(excludeComposing = true)
         val candidateText = candidate.text.trim()
-        if (preferencesState.learnedWordsEnabled && candidateText.isNotEmpty()) {
+        if (preferencesState.learnedWordsEnabled && candidateText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+            val prevWord = getPrecedingWord(excludeComposing = true)
             userDictionaryRepo.recordWord(candidateText, prevWord)
         }
 
@@ -1663,12 +1673,13 @@ class KiebordService : InputMethodService() {
         val candidates = filterCandidatesForLayout(rawCandidates)
         if (candidates.isNotEmpty()) {
             val primary = candidates.first()
+            val primaryText = primary.text.trim()
             val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
-            val textToCommit = if (shouldAutoSpace) "${primary.text.trim()} " else primary.text.trim()
+            val textToCommit = if (shouldAutoSpace) "$primaryText " else primaryText
             val ic = currentInputConnection
-            val prevWord = getPrecedingWord()
-            if (preferencesState.learnedWordsEnabled && primary.text.isNotBlank()) {
-                userDictionaryRepo.recordWord(primary.text.trim(), prevWord, isGesture = true)
+            if (preferencesState.learnedWordsEnabled && primaryText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                val prevWord = getPrecedingWord()
+                userDictionaryRepo.recordWord(primaryText, prevWord, isGesture = true)
             }
             finishComposing()
             ic?.commitText(textToCommit, 1)
