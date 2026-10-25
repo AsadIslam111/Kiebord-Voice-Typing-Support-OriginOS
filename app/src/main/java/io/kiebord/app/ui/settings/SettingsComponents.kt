@@ -189,7 +189,7 @@ fun SettingsUnifiedTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 26.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AnimatedContent(
@@ -202,24 +202,25 @@ fun SettingsUnifiedTopBar(
                     painter = painterResource(R.drawable.ic_launcher),
                     contentDescription = "Kiebord Logo",
                     modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(9.dp))
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
                 )
             } else {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.size(42.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = colors.textPrimary
+                        tint = colors.textPrimary,
+                        modifier = Modifier.size(26.dp)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.width(14.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
         AnimatedContent(
             targetState = title to subtitle,
@@ -230,15 +231,17 @@ fun SettingsUnifiedTopBar(
             Column {
                 Text(
                     text = t,
-                    fontSize = 20.sp,
+                    fontSize = if (isMain) 28.sp else 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary
+                    color = colors.textPrimary,
+                    lineHeight = if (isMain) 34.sp else 28.sp
                 )
                 if (!s.isNullOrBlank()) {
                     Text(
                         text = s,
-                        fontSize = 12.sp,
-                        color = colors.textSecondary
+                        fontSize = 13.sp,
+                        color = colors.textSecondary,
+                        lineHeight = 18.sp
                     )
                 }
             }
@@ -256,31 +259,37 @@ fun SettingsTopAppBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 26.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.size(48.dp)
+        ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                tint = colors.textPrimary
+                tint = colors.textPrimary,
+                modifier = Modifier.size(26.dp)
             )
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
         Column {
             Text(
                 text = title,
-                fontSize = 20.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = colors.textPrimary
+                color = colors.textPrimary,
+                lineHeight = 28.sp
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
-                    fontSize = 12.sp,
-                    color = colors.textSecondary
+                    fontSize = 13.sp,
+                    color = colors.textSecondary,
+                    lineHeight = 18.sp
                 )
             }
         }
