@@ -51,6 +51,7 @@ fun CorrectionsSuggestionsScreen(
     onUpdateAutoSpaceAfterSuggestion: (Boolean) -> Unit = {},
     onUpdateAutoSpaceAfterPunctuation: (Boolean) -> Unit = {},
     onUpdateRemoveSpaceBeforePunctuation: (Boolean) -> Unit = {},
+    onUpdateSuggestionBarMode: (String) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
@@ -141,6 +142,29 @@ fun CorrectionsSuggestionsScreen(
                     checked = preferences.bengaliShowRawInputCandidate,
                     position = GroupPosition.BOTTOM,
                     onCheckedChange = onUpdateBengaliShowRawInputCandidate
+                )
+            }
+        }
+
+        if (preferences.suggestionsEnabled) {
+            Spacer(modifier = Modifier.height(8.dp))
+            SettingsCategoryHeader(title = "Suggestion Bar Mode")
+
+            SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+                SettingsRadioOption(
+                    title = "Normal (Default)",
+                    subtitle = "Shows candidates with an expand button for the expanded view",
+                    selected = preferences.suggestionBarMode == KiebordPreferences.SUGGESTION_BAR_MODE_NORMAL,
+                    position = GroupPosition.TOP,
+                    onSelect = { onUpdateSuggestionBarMode(KiebordPreferences.SUGGESTION_BAR_MODE_NORMAL) }
+                )
+
+                SettingsRadioOption(
+                    title = "Scrollable",
+                    subtitle = "Candidates can be scrolled horizontally instead of expanded view",
+                    selected = preferences.suggestionBarMode == KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE,
+                    position = GroupPosition.BOTTOM,
+                    onSelect = { onUpdateSuggestionBarMode(KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE) }
                 )
             }
         }

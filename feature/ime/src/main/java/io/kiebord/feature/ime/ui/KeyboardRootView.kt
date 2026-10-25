@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import io.kiebord.data.prefs.KiebordPreferences
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -102,6 +103,7 @@ fun KeyboardRootView(
     defaultOneHandedMode: String = "OFF",
     onOneHandedModeChange: ((String) -> Unit)? = null,
     suggestions: List<SuggestionCandidate> = emptyList(),
+    suggestionBarMode: String = KiebordPreferences.SUGGESTION_BAR_MODE_NORMAL,
     onCandidateSelect: (SuggestionCandidate) -> Unit = {},
     onUnlearnWord: (String) -> Unit = {},
     clipboardManager: SandboxedClipboardManager? = null,
@@ -415,6 +417,12 @@ fun KeyboardRootView(
         }
     }
 
+    LaunchedEffect(suggestionBarMode) {
+        if (suggestionBarMode == KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE) {
+            isSuggestionsExpanded = false
+        }
+    }
+
     val isKeysInteractive = isInteractive && !isResizerOpen
     val numberRowEffectiveHeight = if (showNumberRow) (44 * scaleFactor).dp else 0.dp
     val keyboardContentHeight = (keyRowHeight * 4) + numberRowEffectiveHeight
@@ -638,17 +646,20 @@ fun KeyboardRootView(
                             onCandidateLongClick = { candidate ->
                                 unlearnCandidateTarget = candidate
                             },
+                            mode = suggestionBarMode,
                             isExpanded = isSuggestionsExpanded,
-                            onExpandToggle = {
-                                try {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                } catch (_: Exception) {}
-                                isSuggestionsExpanded = !isSuggestionsExpanded
-                                if (isSuggestionsExpanded) {
-                                    isToolsDrawerOpen = false
-                                    isClipboardOpen = false
-                                    isEmojiOpen = false
-                                    isResizerOpen = false
+                            onExpandToggle = if (suggestionBarMode == KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE) null else {
+                                {
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    } catch (_: Exception) {}
+                                    isSuggestionsExpanded = !isSuggestionsExpanded
+                                    if (isSuggestionsExpanded) {
+                                        isToolsDrawerOpen = false
+                                        isClipboardOpen = false
+                                        isEmojiOpen = false
+                                        isResizerOpen = false
+                                    }
                                 }
                             },
                             modifier = Modifier
@@ -1324,7 +1335,7 @@ fun KeyboardRootView(
             }
 
             // 3. Expanded Suggestions Panel: overlay on top of keyboard keys
-            if (isSuggestionsExpanded && suggestions.isNotEmpty()) {
+            if (suggestionBarMode != KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE && isSuggestionsExpanded && suggestions.isNotEmpty()) {
                 ExpandedSuggestionsPanelView(
                     candidates = suggestions,
                     onCandidateClick = { candidate ->

@@ -45,6 +45,7 @@ data class KiebordPreferences(
     val autoSpaceAfterPunctuation: Boolean = true,
     val removeSpaceBeforePunctuation: Boolean = true,
     val traditionalMode: Boolean = false,
+    val suggestionBarMode: String = SUGGESTION_BAR_MODE_NORMAL,
 
     // Toolbar rearrangement persistence
     val pinnedTools: List<String> = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"),
@@ -69,6 +70,9 @@ data class KiebordPreferences(
 
         const val VIBRATION_TYPE_HAPTIC = "haptic"
         const val VIBRATION_TYPE_VIBRATION = "vibration"
+
+        const val SUGGESTION_BAR_MODE_NORMAL = "normal"
+        const val SUGGESTION_BAR_MODE_SCROLLABLE = "scrollable"
 
         const val LAYOUT_EN_QWERTY = "en_qwerty"
         const val LAYOUT_BN_BORNO = "bn_borno"

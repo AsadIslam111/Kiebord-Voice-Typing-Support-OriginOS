@@ -55,6 +55,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val AUTO_SPACE_AFTER_PUNCTUATION = booleanPreferencesKey("pref_auto_space_after_punctuation")
         val REMOVE_SPACE_BEFORE_PUNCTUATION = booleanPreferencesKey("pref_remove_space_before_punctuation")
         val TRADITIONAL_MODE = booleanPreferencesKey("pref_traditional_mode")
+        val SUGGESTION_BAR_MODE = stringPreferencesKey("pref_suggestion_bar_mode")
 
         val PINNED_TOOLS = stringPreferencesKey("pref_pinned_tools")
         val DRAWER_TOOLS = stringPreferencesKey("pref_drawer_tools")
@@ -108,6 +109,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 autoSpaceAfterPunctuation = prefs[PreferencesKeys.AUTO_SPACE_AFTER_PUNCTUATION] ?: true,
                 removeSpaceBeforePunctuation = prefs[PreferencesKeys.REMOVE_SPACE_BEFORE_PUNCTUATION] ?: true,
                 traditionalMode = prefs[PreferencesKeys.TRADITIONAL_MODE] ?: false,
+                suggestionBarMode = prefs[PreferencesKeys.SUGGESTION_BAR_MODE] ?: KiebordPreferences.SUGGESTION_BAR_MODE_NORMAL,
 
                 pinnedTools = run {
                     val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
@@ -291,6 +293,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateTraditionalMode(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.TRADITIONAL_MODE] = enabled }
+    }
+
+    suspend fun updateSuggestionBarMode(mode: String) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SUGGESTION_BAR_MODE] = mode }
     }
 
     suspend fun updateToolbarTools(pinned: List<String>, drawer: List<String>) {

@@ -31,6 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import io.kiebord.data.prefs.KiebordPreferences
+
 data class SuggestionCandidate(
     val text: String,
     val isPrimary: Boolean = false,
@@ -44,6 +50,7 @@ fun SuggestionStripView(
     candidates: List<SuggestionCandidate>,
     onCandidateClick: (SuggestionCandidate) -> Unit,
     onCandidateLongClick: ((SuggestionCandidate) -> Unit)? = null,
+    mode: String = KiebordPreferences.SUGGESTION_BAR_MODE_NORMAL,
     isExpanded: Boolean = false,
     onExpandToggle: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -51,8 +58,8 @@ fun SuggestionStripView(
     if (candidates.isEmpty()) return
 
     val colorScheme = KiebordTheme.colorScheme
-    val visibleCandidates = candidates.take(3)
-    val showExpandBtn = onExpandToggle != null && (candidates.size > 3 || isExpanded)
+    val isScrollableMode = mode == KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE
+    val showExpandBtn = !isScrollableMode && onExpandToggle != null && (candidates.size > 3 || isExpanded)
 
     Row(
         modifier = modifier
@@ -61,61 +68,135 @@ fun SuggestionStripView(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Suggestion slots
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            visibleCandidates.forEachIndexed { index, candidate ->
-                val isPrimary = candidate.isPrimary
-                val isRaw = candidate.rawInput != null && candidate.text == candidate.rawInput
+        if (isScrollableMode) {
+            // Mode 2: Scrollable candidate chips horizontally
+            val scrollState = rememberScrollState()
+            LaunchedEffect(candidates) {
+                scrollState.scrollTo(0)
+            }
 
-                // Clean vertical divider between candidate slots
-                if (index > 0) {
-                    Box(
-                        modifier = Modifier
-                            .height(18.dp)
-                            .width(1.dp)
-                            .background(colorScheme.keyForeground.copy(alpha = 0.15f))
-                    )
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .horizontalScroll(scrollState),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                candidates.forEachIndexed { index, candidate ->
+                    key(candidate.text) {
+                        val isPrimary = candidate.isPrimary
+                        val isRaw = candidate.rawInput != null && candidate.text == candidate.rawInput
+                        val isLearnedWithAction = candidate.isLearned && onCandidateLongClick != null
+
+                        if (index > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .height(18.dp)
+                                    .width(1.dp)
+                                    .background(colorScheme.keyForeground.copy(alpha = 0.15f))
+                            )
+                        }
+
+                        val chipClickModifier = if (isLearnedWithAction) {
+                            Modifier.combinedClickable(
+                                onClick = { onCandidateClick(candidate) },
+                                onLongClick = { onCandidateLongClick(candidate) }
+                            )
+                        } else {
+                            Modifier.clickable { onCandidateClick(candidate) }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(8.dp))
+                                .then(chipClickModifier)
+                                .padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = candidate.text,
+                                color = when {
+                                    isPrimary -> colorScheme.accentColor
+                                    isRaw -> colorScheme.keyForeground.copy(alpha = 0.88f)
+                                    else -> colorScheme.keyForeground.copy(alpha = 0.72f)
+                                },
+                                fontSize = if (isPrimary) 18.5.sp else 17.5.sp,
+                                fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
+                                fontFamily = KiebordTheme.fontFamily,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1
+                            )
+                        }
+                    }
                 }
+            }
+        } else {
+            // Mode 1: Normal mode (3 slots, equally distributed, with expand button)
+            val visibleCandidates = candidates.take(3)
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                visibleCandidates.forEachIndexed { index, candidate ->
+                    key(candidate.text) {
+                        val isPrimary = candidate.isPrimary
+                        val isRaw = candidate.rawInput != null && candidate.text == candidate.rawInput
+                        val isLearnedWithAction = candidate.isLearned && onCandidateLongClick != null
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(8.dp))
-                        .combinedClickable(
-                            onClick = { onCandidateClick(candidate) },
-                            onLongClick = if (candidate.isLearned && onCandidateLongClick != null) {
-                                { onCandidateLongClick(candidate) }
-                            } else null
-                        )
-                        .padding(horizontal = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = candidate.text,
-                        color = when {
-                            isPrimary -> colorScheme.accentColor
-                            isRaw -> colorScheme.keyForeground.copy(alpha = 0.88f)
-                            else -> colorScheme.keyForeground.copy(alpha = 0.72f)
-                        },
-                        fontSize = if (isPrimary) 18.5.sp else 17.5.sp,
-                        fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
-                        fontFamily = KiebordTheme.fontFamily,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                        // Clean vertical divider between candidate slots
+                        if (index > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .height(18.dp)
+                                    .width(1.dp)
+                                    .background(colorScheme.keyForeground.copy(alpha = 0.15f))
+                            )
+                        }
+
+                        val chipClickModifier = if (isLearnedWithAction) {
+                            Modifier.combinedClickable(
+                                onClick = { onCandidateClick(candidate) },
+                                onLongClick = { onCandidateLongClick(candidate) }
+                            )
+                        } else {
+                            Modifier.clickable { onCandidateClick(candidate) }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(8.dp))
+                                .then(chipClickModifier)
+                                .padding(horizontal = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = candidate.text,
+                                color = when {
+                                    isPrimary -> colorScheme.accentColor
+                                    isRaw -> colorScheme.keyForeground.copy(alpha = 0.88f)
+                                    else -> colorScheme.keyForeground.copy(alpha = 0.72f)
+                                },
+                                fontSize = if (isPrimary) 18.5.sp else 17.5.sp,
+                                fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
+                                fontFamily = KiebordTheme.fontFamily,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
         }
 
-        // Down expand button when candidates exceed strip capacity or expanded
+        // Down expand button when candidates exceed strip capacity or expanded (Normal mode only)
         if (showExpandBtn) {
             Box(
                 modifier = Modifier

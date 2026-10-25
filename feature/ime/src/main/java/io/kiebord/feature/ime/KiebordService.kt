@@ -228,6 +228,7 @@ class KiebordService : InputMethodService() {
                     onKeyLongPress = ::handleKeyLongPress,
                     onTextAction = ::handleTextAction,
                     suggestions = activeSuggestions,
+                    suggestionBarMode = preferencesState.suggestionBarMode,
                     onCandidateSelect = ::handleCandidateSelect,
                     onUnlearnWord = { word ->
                         userDictionaryRepo.unlearnWord(word)

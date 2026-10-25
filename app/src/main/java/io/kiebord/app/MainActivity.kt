@@ -448,6 +448,9 @@ fun KiebordSettingsApp(
                             onUpdateRemoveSpaceBeforePunctuation = { enabled ->
                                 scope.launch { preferencesRepo.updateRemoveSpaceBeforePunctuation(enabled) }
                             },
+                            onUpdateSuggestionBarMode = { mode ->
+                                scope.launch { preferencesRepo.updateSuggestionBarMode(mode) }
+                            },
                             onBack = navigateBack
                         )
                     }
