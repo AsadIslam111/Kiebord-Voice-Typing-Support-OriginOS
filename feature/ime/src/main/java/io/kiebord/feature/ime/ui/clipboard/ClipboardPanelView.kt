@@ -38,6 +38,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,14 +72,19 @@ fun ClipboardPanelView(
     onOpenSettings: () -> Unit,
     onClose: () -> Unit,
     height: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSyncRequest: (() -> Unit)? = null
 ) {
+    LaunchedEffect(Unit) {
+        onSyncRequest?.invoke()
+    }
+
     val colorScheme = KiebordTheme.colorScheme
     var currentFilter by remember { mutableStateOf(ClipboardFilter.ALL) }
     var previewEntry by remember { mutableStateOf<ClipboardEntry?>(null) }
 
-    val pinnedClips = remember(clips) { clips.filter { it.isPinned } }
-    val recentClips = remember(clips) { clips.filter { !it.isPinned } }
+    val pinnedClips = clips.filter { it.isPinned }
+    val recentClips = clips.filter { !it.isPinned }
 
     Box(
         modifier = modifier

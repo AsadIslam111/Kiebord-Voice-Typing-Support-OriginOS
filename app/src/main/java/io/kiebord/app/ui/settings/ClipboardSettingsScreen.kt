@@ -46,6 +46,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,21 +73,23 @@ fun ClipboardSettingsScreen(
     val context = LocalContext.current
     val colors = LocalSettingsColors.current
 
+    LaunchedEffect(Unit) {
+        clipboardManager.syncFromSystemClipboard(context)
+    }
+
     var searchQuery by remember { mutableStateOf("") }
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     val allClips = clipboardManager.clips
-    val filteredClips = remember(allClips, searchQuery) {
-        if (searchQuery.isBlank()) {
-            allClips.toList()
-        } else {
-            allClips.filter { it.text.contains(searchQuery, ignoreCase = true) }
-        }
+    val filteredClips = if (searchQuery.isBlank()) {
+        allClips.toList()
+    } else {
+        allClips.filter { it.text.contains(searchQuery, ignoreCase = true) }
     }
 
-    val recentClips = remember(filteredClips) { filteredClips.filter { !it.isPinned } }
-    val pinnedClips = remember(filteredClips) { filteredClips.filter { it.isPinned } }
+    val recentClips = filteredClips.filter { !it.isPinned }
+    val pinnedClips = filteredClips.filter { it.isPinned }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(

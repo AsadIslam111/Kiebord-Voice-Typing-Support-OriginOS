@@ -54,6 +54,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class KiebordService : InputMethodService() {
@@ -318,9 +319,18 @@ class KiebordService : InputMethodService() {
         return composeView
     }
 
+    override fun onWindowShown() {
+        super.onWindowShown()
+        clipboardManager.syncFromSystemClipboard(this)
+        serviceScope.launch {
+            delay(150)
+            clipboardManager.syncFromSystemClipboard(this@KiebordService)
+        }
+    }
+
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        clipboardManager.syncFromSystemClipboard()
+        clipboardManager.syncFromSystemClipboard(this)
         window?.window?.decorView?.let { decorView ->
             lifecycleOwner.attachToView(decorView)
             ViewCompat.getRootWindowInsets(decorView)?.let { insets ->
@@ -1530,6 +1540,10 @@ class KiebordService : InputMethodService() {
                     clipboardManager.addClip(selected)
                 }
                 ic.performContextMenuAction(android.R.id.cut)
+                serviceScope.launch {
+                    delay(80)
+                    clipboardManager.syncFromSystemClipboard(this@KiebordService)
+                }
                 true
             }
             TextAction.COPY -> {
@@ -1538,6 +1552,10 @@ class KiebordService : InputMethodService() {
                     clipboardManager.addClip(selected)
                 }
                 ic.performContextMenuAction(android.R.id.copy)
+                serviceScope.launch {
+                    delay(80)
+                    clipboardManager.syncFromSystemClipboard(this@KiebordService)
+                }
                 true
             }
             TextAction.PASTE -> {

@@ -28,6 +28,9 @@ class SandboxedClipboardManager(context: Context) {
     private val otpPattern = Regex("^\\b\\d{4,8}\\b$")
     private val storageFile by lazy { File(appContext.filesDir, "kiebord_clipboard_v1.json") }
 
+    private var lastSyncedText: String? = null
+    private var lastSyncedTimestamp: Long = 0L
+
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener {
         syncFromSystemClipboard()
     }
@@ -40,15 +43,78 @@ class SandboxedClipboardManager(context: Context) {
         syncFromSystemClipboard()
     }
 
-    fun syncFromSystemClipboard() {
-        purgeExpiredOtps()
-        val clipData = systemClipboard?.primaryClip ?: return
-        if (clipData.itemCount > 0) {
-            val text = clipData.getItemAt(0)?.coerceToText(appContext)?.toString()
-            if (!text.isNullOrBlank()) {
-                addClip(text)
+    fun syncFromSystemClipboard(callingContext: Context? = null) {
+        try {
+            purgeExpiredOtps()
+            val cm = (callingContext?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                ?: (appContext.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                ?: systemClipboard
+                ?: return
+
+            if (!cm.hasPrimaryClip()) return
+
+            val clipData = cm.primaryClip ?: return
+            var foundText: String? = null
+            for (i in 0 until clipData.itemCount) {
+                val item = clipData.getItemAt(i) ?: continue
+                val text = item.text?.toString()
+                    ?: runCatching { item.coerceToText(callingContext ?: appContext)?.toString() }.getOrNull()
+                    ?: item.htmlText?.let {
+                        runCatching {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                                android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_COMPACT).toString()
+                            } else {
+                                @Suppress("DEPRECATION")
+                                android.text.Html.fromHtml(it).toString()
+                            }
+                        }.getOrNull()
+                    }
+                    ?: item.htmlText
+
+                if (!text.isNullOrBlank()) {
+                    foundText = text
+                    break
+                }
             }
-        }
+
+            if (!foundText.isNullOrBlank()) {
+                val trimmed = foundText.trim()
+                if (trimmed.isNotEmpty()) {
+                    val clipTimestamp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        try {
+                            cm.primaryClipDescription?.timestamp ?: 0L
+                        } catch (_: Exception) { 0L }
+                    } else {
+                        0L
+                    }
+
+                    val now = System.currentTimeMillis()
+                    val isNewCopy = if (clipTimestamp > 0L) {
+                        if (lastSyncedTimestamp == 0L) {
+                            (now - clipTimestamp) < 60_000L
+                        } else {
+                            clipTimestamp != lastSyncedTimestamp
+                        }
+                    } else {
+                        lastSyncedText != trimmed
+                    }
+
+                    if (clipTimestamp > 0L) {
+                        lastSyncedTimestamp = clipTimestamp
+                    }
+                    lastSyncedText = trimmed
+
+                    if (isNewCopy) {
+                        addClip(trimmed, notifyQuickPaste = true)
+                    } else {
+                        val existing = clips.firstOrNull { it.text == trimmed }
+                        if (existing == null) {
+                            addClip(trimmed, notifyQuickPaste = false)
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     fun addClip(text: String, notifyQuickPaste: Boolean = true): ClipboardEntry? {

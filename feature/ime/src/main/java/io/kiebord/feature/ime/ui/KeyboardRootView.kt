@@ -339,6 +339,7 @@ fun KeyboardRootView(
             }?.key
         }
     } else null
+    val context = LocalContext.current
     var isClipboardOpen by remember { mutableStateOf(false) }
     var undoActionPillState by remember { mutableStateOf<UndoRedoPillState?>(null) }
     var clipboardQuickPaste by remember { mutableStateOf<String?>(null) }
@@ -347,6 +348,12 @@ fun KeyboardRootView(
         val clip = clipboardManager?.quickPasteClip
         if (clip != null) {
             clipboardQuickPaste = clip.text
+        }
+    }
+
+    LaunchedEffect(isClipboardOpen) {
+        if (isClipboardOpen) {
+            clipboardManager?.syncFromSystemClipboard(context)
         }
     }
 
@@ -445,6 +452,7 @@ fun KeyboardRootView(
             isResizerOpen = false
             isSuggestionsExpanded = false
             isLanguagePickerOpen = false
+            clipboardManager?.syncFromSystemClipboard(context)
         }
     }
 
@@ -458,7 +466,6 @@ fun KeyboardRootView(
     val numberRowEffectiveHeight = if (showNumberRow) (44 * scaleFactor).dp else 0.dp
     val keyboardContentHeight = (keyRowHeight * 4) + numberRowEffectiveHeight
 
-    val context = LocalContext.current
     val handleToolbarAction: (ToolbarAction) -> Unit = { action ->
         when (action) {
             ToolbarAction.TEXT_EDIT -> {
@@ -517,7 +524,7 @@ fun KeyboardRootView(
                 isSuggestionsExpanded = false
                 isClipboardOpen = !isClipboardOpen
                 if (isClipboardOpen) {
-                    clipboardManager?.syncFromSystemClipboard()
+                    clipboardManager?.syncFromSystemClipboard(context)
                 }
             }
             ToolbarAction.ONE_HANDED -> {
@@ -631,7 +638,8 @@ fun KeyboardRootView(
                         onOpenClipboardSettings()
                     },
                     onClose = { isClipboardOpen = false },
-                    height = toolbarHeight + keyboardContentHeight
+                    height = toolbarHeight + keyboardContentHeight,
+                    onSyncRequest = { clipboardManager?.syncFromSystemClipboard(context) }
                 )
             } else {
                 // Single unified Top Bar row (46dp height)
