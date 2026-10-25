@@ -190,13 +190,11 @@ fun SettingsMainScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-        SettingsCategoryHeader(title = "Configuration")
+        Spacer(modifier = Modifier.height(16.dp))
 
         SettingsGroup {
             SettingsNavigationItem(
                 title = "Appearance & Themes",
-                subtitle = "Themes, key borders & row height",
                 icon = Icons.Outlined.Palette,
                 position = GroupPosition.TOP,
                 onClick = { onNavigate(SettingsScreen.AppearanceThemes) }
@@ -204,7 +202,6 @@ fun SettingsMainScreen(
 
             SettingsNavigationItem(
                 title = "Keyboard Layouts",
-                subtitle = "English, Borno Phonetic, Probhat & National",
                 icon = Icons.Outlined.Keyboard,
                 position = GroupPosition.MIDDLE,
                 onClick = { onNavigate(SettingsScreen.KeyboardLayouts) }
@@ -212,7 +209,6 @@ fun SettingsMainScreen(
 
             SettingsNavigationItem(
                 title = "Preferences",
-                subtitle = "Haptics, vibration, one-handed mode & sound",
                 icon = Icons.Outlined.Tune,
                 position = GroupPosition.MIDDLE,
                 onClick = { onNavigate(SettingsScreen.Preferences) }
@@ -220,7 +216,6 @@ fun SettingsMainScreen(
 
             SettingsNavigationItem(
                 title = "Corrections & Suggestions",
-                subtitle = "Next-word prediction, smart transliteration & suggestions",
                 icon = Icons.Outlined.Spellcheck,
                 position = GroupPosition.MIDDLE,
                 onClick = { onNavigate(SettingsScreen.CorrectionsSuggestions) }
@@ -228,20 +223,17 @@ fun SettingsMainScreen(
 
             SettingsNavigationItem(
                 title = "Clipboard",
-                subtitle = "Manage copied items, pinned clips & history",
                 icon = Icons.Outlined.ContentPaste,
                 position = GroupPosition.BOTTOM,
                 onClick = { onNavigate(SettingsScreen.Clipboard) }
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-        SettingsCategoryHeader(title = "System & About")
+        Spacer(modifier = Modifier.height(16.dp))
 
         SettingsGroup {
             SettingsNavigationItem(
                 title = "About Kiebord",
-                subtitle = "Version 0.1.0 • Privacy & open source",
                 iconResId = R.drawable.ic_launcher,
                 position = GroupPosition.ALONE,
                 onClick = { onNavigate(SettingsScreen.About) }

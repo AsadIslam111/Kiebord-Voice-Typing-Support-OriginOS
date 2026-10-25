@@ -146,8 +146,8 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.Onboarding -> "Setup Wizard"
     }
 
-    val subtitle = when (screen) {
-        is SettingsScreen.Main -> "Privacy Focused"
+    val subtitle: String? = when (screen) {
+        is SettingsScreen.Main -> null
         is SettingsScreen.AppearanceThemes -> "Themes & key styling"
         is SettingsScreen.KeyboardLayouts -> "Active languages & preview"
         is SettingsScreen.Preferences -> "Haptics, smart gestures & ergonomics"
@@ -207,11 +207,13 @@ fun SettingsUnifiedTopBar(
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary
                 )
-                Text(
-                    text = s,
-                    fontSize = 12.sp,
-                    color = colors.textSecondary
-                )
+                if (!s.isNullOrBlank()) {
+                    Text(
+                        text = s,
+                        fontSize = 12.sp,
+                        color = colors.textSecondary
+                    )
+                }
             }
         }
     }
@@ -391,6 +393,7 @@ fun SettingsNavigationItem(
     icon: ImageVector? = null,
     @DrawableRes iconResId: Int? = null,
     iconTint: Color? = null,
+    titleFontWeight: FontWeight = FontWeight.Bold,
     badge: String? = null,
     position: GroupPosition? = null,
     showDivider: Boolean = true,
@@ -432,7 +435,7 @@ fun SettingsNavigationItem(
                         Text(
                             text = title,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = titleFontWeight,
                             color = colors.textPrimary
                         )
                         if (badge != null) {
@@ -499,7 +502,7 @@ fun SettingsNavigationItem(
                         Text(
                             text = title,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = titleFontWeight,
                             color = colors.textPrimary
                         )
                         if (badge != null) {
