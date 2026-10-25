@@ -172,6 +172,7 @@ fun KeycapView(
     val currentOnGestureEnd = rememberUpdatedState(onGestureEnd)
     val currentGestureTypingEnabled = rememberUpdatedState(gestureTypingEnabled)
     val currentLongPressDelay = rememberUpdatedState(longPressDelayMs)
+    val currentShiftState = rememberUpdatedState(shiftState)
 
     val showCircularPopup = showKeyPopups && isPressed && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode && !isMoreKeysActive
 
@@ -222,6 +223,8 @@ fun KeycapView(
                                 delay(currentLongPressDelay.value)
                                 val coords = keyCoordinates
                                 isLongPressTriggered = true
+                                val activeShift = currentShiftState.value
+                                val activeMoreKeys = initialKey.moreKeys(activeShift)
                                 if (initialKey.type == KeyType.DELETE) {
                                     isDeleteLongPressActive = true
                                     while (isActive) {
@@ -230,9 +233,9 @@ fun KeycapView(
                                     }
                                 } else if (initialKey.type == KeyType.SPACE) {
                                     // Handled via spacebarDwellJob
-                                } else if (initialKey.moreKeys.isNotEmpty() && coords != null && coords.isAttached) {
+                                } else if (activeMoreKeys.isNotEmpty() && coords != null && coords.isAttached) {
                                     isMoreKeysActive = true
-                                    currentOnShowMoreKeys.value(initialKey, coords)
+                                    currentOnShowMoreKeys.value(initialKey.copy(moreKeys = activeMoreKeys), coords)
                                 } else {
                                     currentOnLongPress.value(initialKey)
                                 }
@@ -442,9 +445,11 @@ fun KeycapView(
             contentAlignment = Alignment.Center
         ) {
         // Flick up preview badge in top right corner (hidden when sliding symbol/shift mode is active, secondary keys disabled, or no moreKeys exist)
-        if (showSecondaryKeys && !key.flickUp.isNullOrEmpty() && key.moreKeys.isNotEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode) {
+        val activeFlickUp = key.flickUp(shiftState)
+        val activeMoreKeys = key.moreKeys(shiftState)
+        if (showSecondaryKeys && !activeFlickUp.isNullOrEmpty() && activeMoreKeys.isNotEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode) {
             Text(
-                text = key.flickUp!!,
+                text = activeFlickUp,
                 color = if (isPressed && colorScheme.keyPressedForeground != Color.Unspecified) {
                     colorScheme.keyPressedForeground.copy(alpha = 0.7f)
                 } else {

@@ -27,22 +27,27 @@ class PredefinedLayoutsTest {
         assertEquals(10, topRowKeys.size)
         assertEquals("ঙ", topRowKeys[0].label)
         assertEquals("ং", topRowKeys[0].shiftedLabel)
-        assertEquals(listOf("ঙ্ক"), topRowKeys[0].moreKeys)
+        assertEquals(emptyList<String>(), topRowKeys[0].moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals(listOf("ঙ্ক"), topRowKeys[0].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
+        assertEquals("ঙ্ক", topRowKeys[0].flickUp(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         assertEquals("য", topRowKeys[1].label)
         assertEquals("য়", topRowKeys[1].shiftedLabel)
-        assertEquals(listOf("ঞ্ঝ"), topRowKeys[1].moreKeys)
+        assertEquals(emptyList<String>(), topRowKeys[1].moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals(listOf("ঞ্ঝ"), topRowKeys[1].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         // Home row
         val homeRowKeys = layout.rows[1].keys
         assertEquals(9, homeRowKeys.size)
         assertEquals("ৃ", homeRowKeys[0].label)
         assertEquals("র্", homeRowKeys[0].shiftedLabel)
-        assertEquals(listOf("ঋ"), homeRowKeys[0].moreKeys)
+        assertEquals(listOf("ঋ"), homeRowKeys[0].moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals(emptyList<String>(), homeRowKeys[0].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         assertEquals("ত", homeRowKeys[7].label)
         assertEquals("থ", homeRowKeys[7].shiftedLabel)
-        assertEquals(listOf("ৎ"), homeRowKeys[7].moreKeys)
+        assertEquals(listOf("ৎ"), homeRowKeys[7].moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals(emptyList<String>(), homeRowKeys[7].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         // Bottom row
         val bottomRowKeys = layout.rows[2].keys
@@ -50,33 +55,33 @@ class PredefinedLayoutsTest {
         assertEquals(KeyType.SHIFT, bottomRowKeys[0].type)
         assertEquals("্য", bottomRowKeys[1].label)
         assertEquals("্য", bottomRowKeys[1].shiftedLabel)
-        assertTrue(bottomRowKeys[1].moreKeys.contains("ACTION_SELECT_ALL"))
 
         assertEquals("ো", bottomRowKeys[2].label)
         assertEquals("ৌ", bottomRowKeys[2].shiftedLabel)
-        assertTrue(bottomRowKeys[2].moreKeys.contains("ও"))
-        assertTrue(bottomRowKeys[2].moreKeys.contains("ঔ"))
+        assertEquals(listOf("ও"), bottomRowKeys[2].moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals(listOf("ঔ"), bottomRowKeys[2].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         assertEquals("ে", bottomRowKeys[3].label)
         assertEquals("ৈ", bottomRowKeys[3].shiftedLabel)
-        assertTrue(bottomRowKeys[3].moreKeys.contains("এ"))
-        assertTrue(bottomRowKeys[3].moreKeys.contains("ঐ"))
+        assertEquals(listOf("এ"), bottomRowKeys[3].moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals(listOf("ঐ"), bottomRowKeys[3].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         assertEquals("র", bottomRowKeys[4].label)
         assertEquals("ল", bottomRowKeys[4].shiftedLabel)
-        assertTrue(bottomRowKeys[4].moreKeys.contains("ব়্য"))
+        assertEquals(listOf("ব়্য"), bottomRowKeys[4].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         assertEquals("ন", bottomRowKeys[5].label)
         assertEquals("ণ", bottomRowKeys[5].shiftedLabel)
-        assertEquals(listOf("ঞ্চ"), bottomRowKeys[5].moreKeys)
+        assertEquals(listOf("ঞ্চ"), bottomRowKeys[5].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         assertEquals("স", bottomRowKeys[6].label)
         assertEquals("ষ", bottomRowKeys[6].shiftedLabel)
-        assertEquals(listOf("ষ্ণ"), bottomRowKeys[6].moreKeys)
+        assertEquals(listOf("ষ্ণ"), bottomRowKeys[6].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         assertEquals("ম", bottomRowKeys[7].label)
         assertEquals("শ", bottomRowKeys[7].shiftedLabel)
-        assertEquals(listOf("ঃ", "হ্ম"), bottomRowKeys[7].moreKeys)
+        assertEquals(listOf("ঃ"), bottomRowKeys[7].moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals(listOf("হ্ম"), bottomRowKeys[7].moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
 
         assertEquals(KeyType.DELETE, bottomRowKeys[8].type)
 
@@ -91,6 +96,21 @@ class PredefinedLayoutsTest {
         assertEquals(KeyType.SPACE, row4Keys[3].type)
         assertEquals("।", row4Keys[4].label)
         assertEquals(KeyType.ACTION, row4Keys[5].type)
+
+        // Verify national layout key hints match first moreKeys and dummy secondary hints are removed for each shift state
+        for (state in listOf(io.kiebord.common.model.ShiftState.UNSHIFTED, io.kiebord.common.model.ShiftState.ONE_SHOT)) {
+            for (row in layout.rows) {
+                for (key in row.keys) {
+                    val mk = key.moreKeys(state)
+                    val hint = key.flickUp(state)
+                    if (mk.isEmpty() || mk.first().startsWith("ACTION_") || key.label == "।") {
+                        org.junit.Assert.assertNull("Key ${key.label} in state $state without character moreKeys should not have flickUp", hint)
+                    } else {
+                        assertEquals("Key ${key.label} in state $state flickUp must match moreKeys.first()", mk.first(), hint)
+                    }
+                }
+            }
+        }
     }
 
     @Test

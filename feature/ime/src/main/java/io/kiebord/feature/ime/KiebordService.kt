@@ -913,9 +913,12 @@ class KiebordService : InputMethodService() {
             return
         }
         val ic = currentInputConnection ?: return
+        val currentShiftState = shiftState
+        val currentMoreKeys = key.moreKeys(currentShiftState)
+        val currentFlickUp = key.flickUp(currentShiftState)
         val charToInsert = when {
-            key.moreKeys.isNotEmpty() -> key.moreKeys.first()
-            !key.flickUp.isNullOrEmpty() -> key.flickUp!!
+            currentMoreKeys.isNotEmpty() -> currentMoreKeys.first()
+            !currentFlickUp.isNullOrEmpty() -> currentFlickUp
             else -> ""
         }
         if (charToInsert.isEmpty()) return

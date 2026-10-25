@@ -10,7 +10,9 @@ data class KeyDef(
     val moreKeys: List<String> = emptyList(),
     val moreKeysColumns: Int? = null,
     val slidingInput: Boolean = false,
-    val commitText: String? = null
+    val commitText: String? = null,
+    val shiftedFlickUp: String? = null,
+    val shiftedMoreKeys: List<String>? = null
 ) {
     fun displayLabel(shiftState: ShiftState): String {
         return when (shiftState) {
@@ -21,6 +23,20 @@ data class KeyDef(
 
     fun textToCommit(shiftState: ShiftState): String {
         return commitText ?: displayLabel(shiftState)
+    }
+
+    fun moreKeys(shiftState: ShiftState): List<String> {
+        return when (shiftState) {
+            ShiftState.UNSHIFTED -> moreKeys
+            ShiftState.ONE_SHOT, ShiftState.CAPS_LOCK -> shiftedMoreKeys ?: moreKeys
+        }
+    }
+
+    fun flickUp(shiftState: ShiftState): String? {
+        return when (shiftState) {
+            ShiftState.UNSHIFTED -> flickUp
+            ShiftState.ONE_SHOT, ShiftState.CAPS_LOCK -> shiftedFlickUp ?: (if (shiftedMoreKeys != null) shiftedMoreKeys.firstOrNull() else flickUp)
+        }
     }
 }
 
