@@ -10,15 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.AutoFixHigh
-import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Gesture
 import androidx.compose.material.icons.outlined.Route
-import androidx.compose.material.icons.outlined.SpaceBar
-import androidx.compose.material.icons.outlined.Spellcheck
-import androidx.compose.material.icons.outlined.TextFields
-import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,7 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.data.prefs.KiebordPreferences
-import io.kiebord.feature.ime.R as ImeR
 
 @Composable
 fun CorrectionsSuggestionsScreen(
@@ -111,7 +103,6 @@ fun CorrectionsSuggestionsScreen(
             SettingsToggleItem(
                 title = "Display Suggestion Strip",
                 subtitle = "Show candidate words and quick tools in the top bar",
-                icon = Icons.Outlined.Spellcheck,
                 checked = preferences.suggestionsEnabled,
                 position = stripPosition,
                 onCheckedChange = onUpdateSuggestionsEnabled
@@ -121,7 +112,6 @@ fun CorrectionsSuggestionsScreen(
                 SettingsToggleItem(
                     title = "Next-Word Prediction",
                     subtitle = "Predict subsequent words using bigram language models",
-                    icon = Icons.Outlined.AutoAwesome,
                     checked = preferences.nextWordPrediction,
                     position = GroupPosition.MIDDLE,
                     onCheckedChange = onUpdateNextWordPrediction
@@ -130,7 +120,6 @@ fun CorrectionsSuggestionsScreen(
                 SettingsToggleItem(
                     title = "Show Proximity Suggestions in Phonetic Layout",
                     subtitle = "Suggest dictionary words and proximity corrections while typing phonetically",
-                    iconResId = ImeR.drawable.ic_traditional,
                     checked = preferences.bengaliSmartPhonetic,
                     position = GroupPosition.MIDDLE,
                     onCheckedChange = onUpdateBengaliSmartPhonetic
@@ -139,7 +128,6 @@ fun CorrectionsSuggestionsScreen(
                 SettingsToggleItem(
                     title = "Show English Input Candidate",
                     subtitle = "Display raw typed English word as first candidate in Borno Phonetic layout",
-                    iconResId = ImeR.drawable.ic_text_edit,
                     checked = preferences.bengaliShowRawInputCandidate,
                     position = GroupPosition.BOTTOM,
                     onCheckedChange = onUpdateBengaliShowRawInputCandidate
@@ -177,7 +165,6 @@ fun CorrectionsSuggestionsScreen(
             SettingsToggleItem(
                 title = "Learn from Typing",
                 subtitle = "Remember frequently typed words, valid candidate selections, and next-word ngrams",
-                icon = Icons.Outlined.AutoFixHigh,
                 checked = preferences.learnedWordsEnabled,
                 position = GroupPosition.TOP,
                 onCheckedChange = onUpdateLearnedWordsEnabled
@@ -186,8 +173,6 @@ fun CorrectionsSuggestionsScreen(
             SettingsNavigationItem(
                 title = "Delete Learned Words",
                 subtitle = "Clear all personalized learned words, bigrams, and prediction history",
-                icon = Icons.Outlined.DeleteOutline,
-                iconTint = Color(0xFFFF5555),
                 position = GroupPosition.BOTTOM,
                 onClick = { showDeleteDialog = true }
             )
@@ -226,7 +211,6 @@ fun CorrectionsSuggestionsScreen(
             SettingsToggleItem(
                 title = "Auto-Capitalization",
                 subtitle = "Automatically capitalize the first letter of each sentence",
-                iconResId = ImeR.drawable.ic_shift,
                 checked = preferences.autoCapitalization,
                 position = GroupPosition.TOP,
                 onCheckedChange = onUpdateAutoCapitalization
@@ -235,7 +219,6 @@ fun CorrectionsSuggestionsScreen(
             SettingsToggleItem(
                 title = "Double-Space Period",
                 subtitle = "Quickly double-tap the spacebar to insert a period followed by a space",
-                icon = Icons.Outlined.SpaceBar,
                 checked = preferences.doubleSpacePeriod,
                 position = GroupPosition.MIDDLE,
                 onCheckedChange = onUpdateDoubleSpacePeriod
@@ -244,7 +227,6 @@ fun CorrectionsSuggestionsScreen(
             SettingsToggleItem(
                 title = "Auto-Space after Suggestions",
                 subtitle = "Automatically insert a space after committing a word from the candidate strip",
-                icon = Icons.Outlined.AutoFixHigh,
                 checked = preferences.autoSpaceAfterSuggestion,
                 position = GroupPosition.MIDDLE,
                 onCheckedChange = onUpdateAutoSpaceAfterSuggestion
@@ -253,7 +235,6 @@ fun CorrectionsSuggestionsScreen(
             SettingsToggleItem(
                 title = "Auto-Space after Punctuation",
                 subtitle = "Automatically insert a space after comma, period, and sentence terminators",
-                icon = Icons.Outlined.SpaceBar,
                 checked = preferences.autoSpaceAfterPunctuation,
                 position = GroupPosition.MIDDLE,
                 onCheckedChange = onUpdateAutoSpaceAfterPunctuation
@@ -262,7 +243,6 @@ fun CorrectionsSuggestionsScreen(
             SettingsToggleItem(
                 title = "Remove Space Before Punctuation",
                 subtitle = "Automatically remove space before punctuation marks (except URL and code fields)",
-                icon = Icons.Outlined.Spellcheck,
                 checked = preferences.removeSpaceBeforePunctuation,
                 position = GroupPosition.BOTTOM,
                 onCheckedChange = onUpdateRemoveSpaceBeforePunctuation

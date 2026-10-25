@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -325,7 +324,6 @@ private fun ThemePreviewBottomSheetContent(
                 SettingsToggleItem(
                     title = "Key Borders",
                     subtitle = "Preview theme with keycap separation borders",
-                    icon = Icons.Outlined.Layers,
                     checked = showKeyBorders,
                     position = GroupPosition.ALONE,
                     onCheckedChange = onToggleKeyBorders

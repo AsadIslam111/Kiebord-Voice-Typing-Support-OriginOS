@@ -17,17 +17,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Backspace
-import androidx.compose.material.icons.automirrored.outlined.VolumeUp
-import androidx.compose.material.icons.filled.Pin
-import androidx.compose.material.icons.outlined.HourglassBottom
-import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material.icons.outlined.Numbers
-import androidx.compose.material.icons.outlined.SmartButton
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Vibration
-import androidx.compose.material.icons.outlined.ViewCompact
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.data.prefs.KiebordPreferences
-import io.kiebord.feature.ime.R as ImeR
 
 @Composable
 fun PreferencesScreen(
@@ -72,7 +62,6 @@ fun PreferencesScreen(
             SettingsToggleItem(
                 title = "Vibrate on Keypress",
                 subtitle = "Subtle tactile feedback on key taps",
-                icon = Icons.Outlined.Vibration,
                 checked = preferences.vibrateOnKeypress,
                 position = GroupPosition.TOP,
                 onCheckedChange = onUpdateVibrate
@@ -171,7 +160,6 @@ fun PreferencesScreen(
                     SettingsSliderItem(
                         title = "Vibration Intensity",
                         subtitle = "Motor vibration pulse strength",
-                        icon = Icons.Outlined.Speed,
                         value = strength.toFloat(),
                         valueRange = 10f..100f,
                         steps = 8,
@@ -185,7 +173,6 @@ fun PreferencesScreen(
             SettingsToggleItem(
                 title = "Sound on Keypress",
                 subtitle = "Audible click feedback when typing",
-                icon = Icons.AutoMirrored.Outlined.VolumeUp,
                 checked = preferences.soundOnKeypress,
                 position = GroupPosition.BOTTOM,
                 onCheckedChange = onUpdateSound
@@ -199,7 +186,6 @@ fun PreferencesScreen(
             SettingsToggleItem(
                 title = "Dedicated Number Row",
                 subtitle = "Display persistent 5th row of digits above letter keys",
-                icon = Icons.Filled.Pin,
                 checked = preferences.showNumberRow,
                 position = GroupPosition.TOP,
                 onCheckedChange = onUpdateShowNumberRow
@@ -208,7 +194,6 @@ fun PreferencesScreen(
             SettingsToggleItem(
                 title = "Secondary Key Hints",
                 subtitle = "Show secondary symbol hints on the corner of keycaps",
-                iconResId = ImeR.drawable.ic_key_hints,
                 checked = preferences.showSecondaryKeys,
                 position = GroupPosition.MIDDLE,
                 onCheckedChange = onUpdateShowSecondaryKeys
@@ -217,7 +202,6 @@ fun PreferencesScreen(
             SettingsToggleItem(
                 title = "Popup on Keypress",
                 subtitle = "Show circular character preview popup when touching keys",
-                icon = Icons.Outlined.SmartButton,
                 checked = preferences.showKeyPopups,
                 position = GroupPosition.BOTTOM,
                 onCheckedChange = onUpdateShowKeyPopups
@@ -234,7 +218,6 @@ fun PreferencesScreen(
             SettingsSliderItem(
                 title = "Long-Press Delay",
                 subtitle = "Hold duration required to trigger more-keys and symbols",
-                icon = Icons.Outlined.HourglassBottom,
                 value = delayMs.toFloat(),
                 valueRange = 150f..600f,
                 steps = 8,
@@ -251,7 +234,6 @@ fun PreferencesScreen(
             SettingsToggleItem(
                 title = "Long-Press Repeat Delete",
                 subtitle = "Holding backspace repeats deletion continuously like standard keyboard",
-                icon = Icons.AutoMirrored.Outlined.Backspace,
                 checked = preferences.longPressDeleteEnabled,
                 position = GroupPosition.TOP,
                 onCheckedChange = onUpdateLongPressDelete
@@ -276,39 +258,9 @@ fun PreferencesScreen(
             SettingsToggleItem(
                 title = "Spacebar Cursor Trackpad",
                 subtitle = "Slide thumb horizontally across spacebar to position cursor",
-                icon = Icons.Outlined.TouchApp,
                 checked = preferences.cursorTrackpadEnabled,
                 position = GroupPosition.BOTTOM,
                 onCheckedChange = onUpdateCursorTrackpad
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        SettingsCategoryHeader(title = "Layout Alignment & Ergonomics")
-
-        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-            SettingsRadioOption(
-                title = "Standard Centered (Full Width)",
-                subtitle = "Full display width keyboard",
-                selected = preferences.oneHandedMode == KiebordPreferences.ONE_HANDED_OFF,
-                position = GroupPosition.TOP,
-                onSelect = { onUpdateOneHandedMode(KiebordPreferences.ONE_HANDED_OFF) }
-            )
-
-            SettingsRadioOption(
-                title = "One-Handed (Left Hand)",
-                subtitle = "Compact layout aligned toward left edge",
-                selected = preferences.oneHandedMode == KiebordPreferences.ONE_HANDED_LEFT,
-                position = GroupPosition.MIDDLE,
-                onSelect = { onUpdateOneHandedMode(KiebordPreferences.ONE_HANDED_LEFT) }
-            )
-
-            SettingsRadioOption(
-                title = "One-Handed (Right Hand)",
-                subtitle = "Compact layout aligned toward right edge",
-                selected = preferences.oneHandedMode == KiebordPreferences.ONE_HANDED_RIGHT,
-                position = GroupPosition.BOTTOM,
-                onSelect = { onUpdateOneHandedMode(KiebordPreferences.ONE_HANDED_RIGHT) }
             )
         }
     }

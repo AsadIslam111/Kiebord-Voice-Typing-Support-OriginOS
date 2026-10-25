@@ -18,20 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.Image
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Keyboard
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -121,7 +110,6 @@ fun AboutScreen(
             SettingsNavigationItem(
                 title = "100% Offline & Private",
                 subtitle = "Zero internet permissions. Your keystrokes and data never leave your device.",
-                icon = Icons.Outlined.Lock,
                 position = GroupPosition.TOP,
                 onClick = {}
             )
@@ -129,7 +117,6 @@ fun AboutScreen(
             SettingsNavigationItem(
                 title = "Isolated Local Storage",
                 subtitle = "Learned dictionary and user data are securely kept in private app sandbox.",
-                icon = Icons.Outlined.Shield,
                 position = GroupPosition.MIDDLE,
                 onClick = {}
             )
@@ -137,7 +124,6 @@ fun AboutScreen(
             SettingsNavigationItem(
                 title = "Open Source Engine",
                 subtitle = "High-performance native transliteration core and bigram prediction models.",
-                icon = Icons.Outlined.Code,
                 position = GroupPosition.BOTTOM,
                 onClick = {}
             )
@@ -150,7 +136,6 @@ fun AboutScreen(
             SettingsNavigationItem(
                 title = "Version & Build",
                 subtitle = "0.1.0 (Build 1) • Production Release",
-                icon = Icons.Outlined.Info,
                 position = GroupPosition.TOP,
                 onClick = {}
             )
@@ -158,7 +143,6 @@ fun AboutScreen(
             SettingsNavigationItem(
                 title = "License",
                 subtitle = "Free & Open Source Software (GPL-3.0 / Apache-2.0)",
-                icon = Icons.Outlined.CheckCircle,
                 position = GroupPosition.BOTTOM,
                 onClick = {}
             )
@@ -171,8 +155,6 @@ fun AboutScreen(
             SettingsNavigationItem(
                 title = "Reset All Settings to Defaults",
                 subtitle = "Restore all layout, theming, haptic, and suggestion options to factory state",
-                icon = Icons.Outlined.Refresh,
-                iconTint = Color(0xFFF7768E),
                 position = GroupPosition.ALONE,
                 onClick = { showResetDialog = true }
             )
