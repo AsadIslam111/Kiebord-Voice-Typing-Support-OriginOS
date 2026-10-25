@@ -72,11 +72,9 @@ fun AboutScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(R.drawable.ic_launcher),
+                painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = "Kiebord Logo",
-                modifier = Modifier
-                    .size(76.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                modifier = Modifier.size(76.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))

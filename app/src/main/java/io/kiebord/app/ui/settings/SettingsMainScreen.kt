@@ -151,11 +151,9 @@ fun SettingsMainScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
-                        painter = painterResource(R.drawable.ic_launcher),
+                        painter = painterResource(R.drawable.ic_launcher_foreground),
                         contentDescription = "Kiebord Logo",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                        modifier = Modifier.size(36.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -234,7 +232,7 @@ fun SettingsMainScreen(
         SettingsGroup {
             SettingsNavigationItem(
                 title = "About Kiebord",
-                iconResId = R.drawable.ic_launcher,
+                iconResId = R.drawable.ic_launcher_foreground,
                 position = GroupPosition.ALONE,
                 onClick = { onNavigate(SettingsScreen.About) }
             )

@@ -89,7 +89,7 @@ fun PreferencesScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         val isHaptic = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_HAPTIC
-                        val hapticBg = if (isHaptic) (if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)) else colors.inputBackground
+                        val hapticBg = if (isHaptic) colors.accent.copy(alpha = 0.15f) else colors.inputBackground
                         val hapticBorder = if (isHaptic) colors.accent else colors.inputBorder
                         val hapticTint = if (isHaptic) colors.accent else colors.textSecondary
                         val hapticText = if (isHaptic) colors.accent else colors.textPrimary
@@ -124,7 +124,7 @@ fun PreferencesScreen(
                         }
 
                         val isVibration = preferences.vibrationType == KiebordPreferences.VIBRATION_TYPE_VIBRATION
-                        val vibrationBg = if (isVibration) (if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)) else colors.inputBackground
+                        val vibrationBg = if (isVibration) colors.accent.copy(alpha = 0.15f) else colors.inputBackground
                         val vibrationBorder = if (isVibration) colors.accent else colors.inputBorder
                         val vibrationTint = if (isVibration) colors.accent else colors.textSecondary
                         val vibrationText = if (isVibration) colors.accent else colors.textPrimary

@@ -163,7 +163,7 @@ fun KeyboardLayoutsScreen(
                     }
 
                     val badgeBg = if (isEnglishEnabled) {
-                        if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)
+                        colors.accent.copy(alpha = 0.15f)
                     } else colors.inputBackground
                     val badgeText = if (isEnglishEnabled) colors.accent else colors.textSecondary
 
@@ -253,7 +253,7 @@ fun KeyboardLayoutsScreen(
                     }
 
                     val badgeBg = if (activeBanglaCount > 0) {
-                        if (colors.isDark) Color(0xFF233047) else Color(0xFFEBF2FE)
+                        colors.accent.copy(alpha = 0.15f)
                     } else colors.inputBackground
                     val badgeText = if (activeBanglaCount > 0) colors.accent else colors.textSecondary
 

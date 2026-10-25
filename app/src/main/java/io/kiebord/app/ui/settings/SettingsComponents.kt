@@ -63,6 +63,7 @@ data class SettingsColors(
     val textPrimary: Color,
     val textSecondary: Color,
     val accent: Color,
+    val sectionTitle: Color,
     val divider: Color,
     val inputBackground: Color,
     val inputBorder: Color,
@@ -86,7 +87,8 @@ val DarkSettingsColors = SettingsColors(
     iconBackground = Color(0xFF2B2D31),
     textPrimary = Color(0xFFE0E2E8),
     textSecondary = Color(0xFF9499A8),
-    accent = Color(0xFF7AA2F7),
+    accent = Color(0xFFFF9E55),
+    sectionTitle = Color(0xFFFFFFFF),
     divider = Color(0xFF2B2D31),
     inputBackground = Color(0xFF25272B),
     inputBorder = Color(0xFF383A40),
@@ -110,7 +112,8 @@ val LightSettingsColors = SettingsColors(
     iconBackground = Color(0xFFEEF2F6),
     textPrimary = Color(0xFF111827),
     textSecondary = Color(0xFF6B7280),
-    accent = Color(0xFF2563EB),
+    accent = Color(0xFF9C4300),
+    sectionTitle = Color(0xFF9C4300),
     divider = Color(0xFFE5E7EB),
     inputBackground = Color(0xFFF9FAFB),
     inputBorder = Color(0xFFD1D5DB),
@@ -270,7 +273,7 @@ fun SettingsCategoryHeader(
         text = title,
         fontSize = 14.sp,
         fontWeight = FontWeight.SemiBold,
-        color = colors.accent,
+        color = colors.sectionTitle,
         modifier = modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp)
     )
 }
@@ -350,15 +353,26 @@ private fun SettingsItemIcon(
 
     val colors = LocalSettingsColors.current
     val isAppIcon = iconResId == R.drawable.ic_launcher || iconResId == R.drawable.ic_launcher_foreground
+    val isKeyboardIcon = icon == Icons.Outlined.Keyboard
 
     if (isAppIcon) {
         Image(
             painter = painterResource(iconResId!!),
             contentDescription = null,
-            modifier = Modifier
-                .size(size)
-                .clip(RoundedCornerShape(size * 0.25f))
+            modifier = Modifier.size(size)
         )
+    } else if (isKeyboardIcon) {
+        Box(
+            modifier = Modifier.size(size),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon!!,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(iconSize)
+            )
+        }
     } else {
         Box(
             modifier = Modifier
@@ -443,14 +457,14 @@ fun SettingsNavigationItem(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(if (colors.isDark) Color(0xFF2E3440) else Color(0xFFE2E8F0))
+                                    .background(colors.accent.copy(alpha = 0.15f))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = badge,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (colors.isDark) Color(0xFF88C0D0) else Color(0xFF2B6CB0)
+                                    color = colors.accent
                                 )
                             }
                         }
@@ -510,14 +524,14 @@ fun SettingsNavigationItem(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(if (colors.isDark) Color(0xFF2E3440) else Color(0xFFE2E8F0))
+                                    .background(colors.accent.copy(alpha = 0.15f))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = badge,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (colors.isDark) Color(0xFF88C0D0) else Color(0xFF2B6CB0)
+                                    color = colors.accent
                                 )
                             }
                         }
@@ -640,7 +654,7 @@ fun SettingsToggleItem(
                     checked = checked,
                     onCheckedChange = onCheckedChange,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = if (colors.isDark) Color(0xFF0F141C) else Color(0xFFFFFFFF),
+                        checkedThumbColor = Color.White,
                         checkedTrackColor = colors.accent,
                         uncheckedThumbColor = colors.textSecondary,
                         uncheckedTrackColor = colors.iconBackground,
@@ -692,7 +706,7 @@ fun SettingsToggleItem(
                     checked = checked,
                     onCheckedChange = onCheckedChange,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = if (colors.isDark) Color(0xFF0F141C) else Color(0xFFFFFFFF),
+                        checkedThumbColor = Color.White,
                         checkedTrackColor = colors.accent,
                         uncheckedThumbColor = colors.textSecondary,
                         uncheckedTrackColor = colors.iconBackground,
