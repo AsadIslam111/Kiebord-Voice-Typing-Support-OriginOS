@@ -14,12 +14,13 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -52,7 +53,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -287,33 +287,20 @@ private fun WelcomeStep(
     ) {
         Spacer(modifier = Modifier.weight(1f))
 
-        // Glowing App Icon
-        Box(
+        // App Icon
+        Image(
+            painter = painterResource(id = R.drawable.ic_launcher),
+            contentDescription = "Kiebord Logo",
             modifier = Modifier
-                .size(110.dp)
-                .clip(RoundedCornerShape(28.dp))
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(colors.accent.copy(alpha = 0.25f), Color.Transparent)
-                    )
-                )
-                .border(1.5.dp, colors.accent.copy(alpha = 0.4f), RoundedCornerShape(28.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher),
-                contentDescription = "Kiebord Logo",
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(18.dp))
-            )
-        }
+                .size(108.dp)
+                .clip(RoundedCornerShape(26.dp))
+        )
 
         Spacer(modifier = Modifier.height(36.dp))
 
         // Morph Greeting Text (from Borno's GreetingAnimator)
         MorphGreetingText(
-            textColor = colors.accent
+            textColor = if (colors.isDark) Color.White else Color.Black
         )
 
         Spacer(modifier = Modifier.weight(1.2f))
@@ -325,8 +312,9 @@ private fun WelcomeStep(
                 containerColor = colors.accent,
                 contentColor = Color.White
             ),
+            contentPadding = PaddingValues(horizontal = 32.dp),
             modifier = Modifier
-                .fillMaxWidth()
+                .defaultMinSize(minWidth = 190.dp)
                 .height(48.dp)
         ) {
             Text(

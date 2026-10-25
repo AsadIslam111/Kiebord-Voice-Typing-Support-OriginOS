@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -16,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -33,11 +35,12 @@ import java.text.BreakIterator
 @Composable
 fun MorphGreetingText(
     words: List<String> = listOf(
-        "Hello",
-        "from",
-        "Kiebord"
+        "Free",
+        "Open Source",
+        "Multilingual",
+        "Privacy Focused"
     ),
-    textColor: Color = Color(0xFF7AA2F7),
+    textColor: Color = if (isSystemInDarkTheme()) Color.White else Color.Black,
     modifier: Modifier = Modifier
 ) {
     if (words.isEmpty()) return
@@ -101,7 +104,14 @@ fun MorphGreetingText(
         val rawClustersTo = splitIntoGraphemes(toWord)
 
         paint.textSize = textSizePx
-        paint.color = textColor.hashCode()
+        val maxWordWidth = words.maxOfOrNull { paint.measureText(it) } ?: 0f
+        val effectiveTextSizePx = if (w > 0f && maxWordWidth > w * 0.92f) {
+            textSizePx * (w * 0.92f / maxWordWidth)
+        } else {
+            textSizePx
+        }
+        paint.textSize = effectiveTextSizePx
+        paint.color = textColor.toArgb()
 
         val fontMetrics = paint.fontMetrics
         val cy = h / 2f
