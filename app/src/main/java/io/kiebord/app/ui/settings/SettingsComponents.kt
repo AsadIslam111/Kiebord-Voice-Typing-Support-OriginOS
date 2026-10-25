@@ -180,7 +180,7 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.Preferences -> "Haptics, smart gestures & ergonomics"
         is SettingsScreen.CorrectionsSuggestions -> "Candidate strip, auto-fix & glide typing"
         is SettingsScreen.Clipboard -> "Manage copied items & pins"
-        is SettingsScreen.About -> "Privacy, engine architecture & diagnostics"
+        is SettingsScreen.About -> null
         is SettingsScreen.Onboarding -> "Welcome to Kiebord"
     }
 

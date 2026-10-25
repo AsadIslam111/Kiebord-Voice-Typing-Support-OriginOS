@@ -31,7 +31,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
+import io.kiebord.theme.KeyboardFontFamily
+import io.kiebord.theme.KiebordTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -109,7 +110,7 @@ class MainActivity : ComponentActivity() {
 
             CompositionLocalProvider(
                 LocalSettingsColors provides settingsColors,
-                LocalTextStyle provides TextStyle(fontFamily = FontFamily.Default)
+                LocalTextStyle provides TextStyle(fontFamily = KeyboardFontFamily)
             ) {
                 MaterialTheme(
                     colorScheme = if (isDark) {
@@ -129,7 +130,7 @@ class MainActivity : ComponentActivity() {
                             onSurface = settingsColors.textPrimary
                         )
                     },
-                    typography = Typography()
+                    typography = KiebordTypography
                 ) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),

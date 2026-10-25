@@ -36,8 +36,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.Redo
-import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.ui.text.style.TextOverflow
 import io.kiebord.feature.ime.ui.onehanded.OneHandedSideBar
 import androidx.compose.material.icons.outlined.GridView
@@ -839,7 +837,7 @@ fun KeyboardRootView(
                                             horizontalArrangement = Arrangement.spacedBy(7.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.AutoMirrored.Outlined.Undo,
+                                                painter = painterResource(id = R.drawable.ic_undo),
                                                 contentDescription = "Undo",
                                                 tint = colorScheme.keyForeground,
                                                 modifier = Modifier.size(18.dp)
@@ -875,7 +873,7 @@ fun KeyboardRootView(
                                             horizontalArrangement = Arrangement.spacedBy(7.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.AutoMirrored.Outlined.Redo,
+                                                painter = painterResource(id = R.drawable.ic_redo),
                                                 contentDescription = "Redo",
                                                 tint = colorScheme.keyForeground,
                                                 modifier = Modifier.size(18.dp)

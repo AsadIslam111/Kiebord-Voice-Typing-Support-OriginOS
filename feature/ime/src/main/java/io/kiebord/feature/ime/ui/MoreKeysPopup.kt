@@ -22,8 +22,8 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Redo
-import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.ui.res.painterResource
+import io.kiebord.feature.ime.R
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.ContentPaste
@@ -277,7 +277,7 @@ fun MoreKeysPopup(
                                         }
                                         "ACTION_UNDO", "action:undo", "UNDO" -> {
                                             Icon(
-                                                imageVector = Icons.AutoMirrored.Outlined.Undo,
+                                                painter = painterResource(id = R.drawable.ic_undo),
                                                 contentDescription = "Undo",
                                                 tint = animatedTextColor,
                                                 modifier = Modifier.size(actionIconSize)
@@ -285,7 +285,7 @@ fun MoreKeysPopup(
                                         }
                                         "ACTION_REDO", "action:redo", "REDO" -> {
                                             Icon(
-                                                imageVector = Icons.AutoMirrored.Outlined.Redo,
+                                                painter = painterResource(id = R.drawable.ic_redo),
                                                 contentDescription = "Redo",
                                                 tint = animatedTextColor,
                                                 modifier = Modifier.size(actionIconSize)
