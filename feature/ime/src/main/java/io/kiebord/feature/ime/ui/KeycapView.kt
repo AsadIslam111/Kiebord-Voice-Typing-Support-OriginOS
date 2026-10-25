@@ -183,29 +183,8 @@ fun KeycapView(
             .onGloballyPositioned { coords ->
                 keyCoordinates = coords
                 onKeyPositioned(key, coords)
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = horizontalPadding, vertical = verticalPadding)
-                .then(
-                    if (showKeyBorders && colorScheme.keyShadow.alpha > 0.01f) {
-                        Modifier.shadow(
-                            elevation = (1.5f * scaleFactor).dp,
-                            shape = keyShape,
-                            clip = false,
-                            ambientColor = colorScheme.keyShadow,
-                            spotColor = colorScheme.keyShadow
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
-                .clip(keyShape)
-                .background(activeBackground)
-                .pointerInput(isInteractive) {
+            }
+            .pointerInput(isInteractive) {
                     if (!isInteractive) return@pointerInput
                     coroutineScope {
                         awaitEachGesture {
@@ -313,6 +292,7 @@ fun KeycapView(
                                 } else if (isDeleteLongPressActive || isLongPressTriggered) {
                                     // Handled during long-press, do NOT emit tap on release
                                 } else {
+                                    change.consume()
                                     currentOnTap.value(initialKey)
                                 }
                                 break
@@ -441,6 +421,27 @@ fun KeycapView(
             },
         contentAlignment = Alignment.Center
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding)
+                .then(
+                    if (showKeyBorders && colorScheme.keyShadow.alpha > 0.01f) {
+                        Modifier.shadow(
+                            elevation = (1.5f * scaleFactor).dp,
+                            shape = keyShape,
+                            clip = false,
+                            ambientColor = colorScheme.keyShadow,
+                            spotColor = colorScheme.keyShadow
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
+                .clip(keyShape)
+                .background(activeBackground),
+            contentAlignment = Alignment.Center
+        ) {
         // Flick up preview badge in top right corner (hidden when sliding symbol/shift mode is active or secondary keys disabled)
         if (showSecondaryKeys && !key.flickUp.isNullOrEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode) {
             Text(
@@ -623,10 +624,16 @@ fun KeycapView(
                     )
                     .clip(CircleShape)
                     .background(popupBg)
-                    .border(
-                        width = 0.5.dp,
-                        color = if (isLight) Color(0x1A000000) else Color(0x22FFFFFF),
-                        shape = CircleShape
+                    .then(
+                        if (!isLight && colorScheme.keyBorder.alpha > 0.01f) {
+                            Modifier.border(
+                                width = 0.5.dp,
+                                color = Color(0x22FFFFFF),
+                                shape = CircleShape
+                            )
+                        } else {
+                            Modifier
+                        }
                     ),
                 contentAlignment = Alignment.Center
             ) {

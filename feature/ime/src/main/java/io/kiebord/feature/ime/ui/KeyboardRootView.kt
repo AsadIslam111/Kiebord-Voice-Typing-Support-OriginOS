@@ -1,7 +1,13 @@
 package io.kiebord.feature.ime.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -914,10 +920,8 @@ fun KeyboardRootView(
                 ) {
                     val isAnyPanelOpen = (isSuggestionsExpanded && suggestions.isNotEmpty()) || isToolsDrawerOpen || isClipboardOpen || isEmojiOpen
                     val areKeysInteractive = isKeysInteractive && !isAnyPanelOpen
+                    var keyboardColumnCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
-                    // 1. Keyboard rows (ALWAYS retained in the composition tree for instant zero-lag collapse!)
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // Shared MoreKeys & key press handlers for NumberRowBar and keyboard rows
                     val handleKeyPress: (KeyDef) -> Unit = { keyDef ->
                         if (moreKeysState != null) {
                             moreKeysState = null
@@ -926,6 +930,77 @@ fun KeyboardRootView(
                         clipboardManager?.clearQuickPaste()
                         onKeyPress(keyDef)
                     }
+
+                    // 1. Keyboard rows (ALWAYS retained in the composition tree for instant zero-lag collapse!)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .onGloballyPositioned { keyboardColumnCoords = it }
+                            .pointerInput(areKeysInteractive) {
+                                if (!areKeysInteractive) return@pointerInput
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = true)
+                                    val up = waitForUpOrCancellation()
+                                    if (up != null && !up.isConsumed) {
+                                        up.consume()
+                                        val rCoords = rootCoordinates ?: return@awaitEachGesture
+                                        val cCoords = keyboardColumnCoords ?: return@awaitEachGesture
+                                        if (!rCoords.isAttached || !cCoords.isAttached) return@awaitEachGesture
+                                        val rootTapPos = rCoords.localPositionOf(cCoords, up.position)
+                                        var closestKey: KeyDef? = null
+                                        var minDistance = Float.MAX_VALUE
+
+                                        for (r in keyboardRows.indices) {
+                                            val row = keyboardRows[r]
+                                            for (c in row.keys.indices) {
+                                                val coords = cellCoordinatesMap[Pair(r, c)]
+                                                if (coords != null && coords.isAttached) {
+                                                    val keyTopLeft = rCoords.localPositionOf(coords, Offset.Zero)
+                                                    val keyWidth = coords.size.width.toFloat()
+                                                    val keyHeight = coords.size.height.toFloat()
+                                                    val keyRect = Rect(keyTopLeft, Size(keyWidth, keyHeight))
+                                                    val dx = when {
+                                                        rootTapPos.x < keyRect.left -> keyRect.left - rootTapPos.x
+                                                        rootTapPos.x > keyRect.right -> rootTapPos.x - keyRect.right
+                                                        else -> 0f
+                                                    }
+                                                    val dy = when {
+                                                        rootTapPos.y < keyRect.top -> keyRect.top - rootTapPos.y
+                                                        rootTapPos.y > keyRect.bottom -> rootTapPos.y - keyRect.bottom
+                                                        else -> 0f
+                                                    }
+                                                    val dist = Math.hypot(dx.toDouble(), dy.toDouble()).toFloat()
+                                                    if (dist < minDistance) {
+                                                        minDistance = dist
+                                                        val rawKey = row.keys[c]
+                                                        closestKey = if (rawKey.type == KeyType.SPACE && rawKey.label.isBlank()) {
+                                                            val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
+                                                                "Space"
+                                                            } else {
+                                                                PredefinedLayouts.displayName(displayLayout.id)
+                                                            }
+                                                            rawKey.copy(label = spaceLabel)
+                                                        } else {
+                                                            rawKey
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        val maxProximityDistPx = with(density) { 68.dp.toPx() }
+                                        if (closestKey != null && minDistance <= maxProximityDistPx) {
+                                            handleKeyPress(closestKey)
+                                            onKeyTap(closestKey)
+                                            try {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            } catch (_: Exception) {}
+                                        }
+                                    }
+                                }
+                            }
+                    ) {
+                        // Shared MoreKeys & key press handlers for NumberRowBar and keyboard rows
 
                     val openMoreKeysForAnchor: (KeyDef, Rect) -> Unit = { keyDef, keyRect ->
                         val dims = MoreKeysLayoutHelper.calculateDimensions(
@@ -1554,6 +1629,28 @@ fun KeyboardRootView(
             keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f,
             modifier = Modifier.matchParentSize()
         )
+
+        // Soft fading light overlay over keyboard background when morekeys panel is shown
+        val moreKeysOverlayAlpha by animateFloatAsState(
+            targetValue = if (moreKeysState != null) 1f else 0f,
+            animationSpec = tween(durationMillis = 150),
+            label = "moreKeysOverlayAlpha"
+        )
+        if (moreKeysOverlayAlpha > 0.005f) {
+            val isLight = colorScheme == KeyboardColorScheme.DefaultLight
+            val overlayColor = if (isLight) {
+                Color.White.copy(alpha = 0.38f)
+            } else {
+                colorScheme.containerBackground.copy(alpha = 0.45f)
+            }
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .zIndex(85f)
+                    .graphicsLayer { alpha = moreKeysOverlayAlpha }
+                    .background(overlayColor)
+            )
+        }
 
         // 2. Borno Keyboard rounded pill MoreKeys floating popup
         MoreKeysPopup(

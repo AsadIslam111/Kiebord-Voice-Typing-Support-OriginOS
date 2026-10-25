@@ -55,16 +55,16 @@ data class KeyboardColorScheme(
         )
 
         val DefaultLight = KeyboardColorScheme(
-            containerBackground = Color(0xFFE8EAED),
+            containerBackground = Color(0xFFF1F3F4),
             keyBackground = Color(0xFFFFFFFF),
             keyForeground = Color(0xFF000000),
             keyBorder = Color(0x00000000),
             keyShadow = Color(0x00000000),
-            actionKeyBackground = Color(0xFFCCCED6),
+            actionKeyBackground = Color(0xFFDBDFE6),
             actionKeyForeground = Color(0xFFFFFFFF),
             shiftActiveColor = Color(0xFF4999FD),
             accentColor = Color(0xFF4999FD),
-            moreKeysBackground = Color(0xFFCCCED6),
+            moreKeysBackground = Color(0xFFF3F3F3),
             guidelineColor = Color(0xFF4999FD),
             suggestionBackground = Color(0xFFE8EAED),
             suggestionForeground = Color(0xFF000000),

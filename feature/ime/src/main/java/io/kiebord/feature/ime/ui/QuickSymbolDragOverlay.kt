@@ -137,10 +137,16 @@ fun QuickSymbolDragOverlay(
                     )
                     .clip(CircleShape)
                     .background(popupBg)
-                    .border(
-                        width = 0.5.dp,
-                        color = if (isLight) Color(0x1A000000) else Color(0x22FFFFFF),
-                        shape = CircleShape
+                    .then(
+                        if (!isLight && colorScheme.keyBorder.alpha > 0.01f) {
+                            Modifier.border(
+                                width = 0.5.dp,
+                                color = Color(0x22FFFFFF),
+                                shape = CircleShape
+                            )
+                        } else {
+                            Modifier
+                        }
                     ),
                 contentAlignment = Alignment.Center
             ) {

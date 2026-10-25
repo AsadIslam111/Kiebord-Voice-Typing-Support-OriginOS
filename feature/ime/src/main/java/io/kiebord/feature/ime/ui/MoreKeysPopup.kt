@@ -179,10 +179,16 @@ fun MoreKeysPopup(
                     )
                     .clip(RoundedCornerShape(20.dp))
                     .background(colorScheme.moreKeysBackground)
-                    .border(
-                        width = 0.5.dp,
-                        color = if (isLight) Color(0x1A000000) else Color(0x22FFFFFF),
-                        shape = RoundedCornerShape(20.dp)
+                    .then(
+                        if (!isLight && colorScheme.keyBorder.alpha > 0.01f) {
+                            Modifier.border(
+                                width = 0.5.dp,
+                                color = Color(0x22FFFFFF),
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                        } else {
+                            Modifier
+                        }
                     )
                     .padding(horizontal = horizontalPaddingDp, vertical = verticalPaddingDp)
             ) {
