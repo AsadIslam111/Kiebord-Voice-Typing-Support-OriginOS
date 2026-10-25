@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
@@ -210,15 +211,7 @@ fun ReorderableToolbar(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight()
-                        .onGloballyPositioned { coords ->
-                            itemCoordinates = coords
-                            rootCoordinates?.let { root ->
-                                if (coords.isAttached && root.isAttached) {
-                                    onReportItemBounds(action, root.localBoundingBoxOf(coords))
-                                }
-                            }
-                        },
+                        .fillMaxHeight(),
                     contentAlignment = Alignment.Center
                 ) {
                     val tileWidth = (if (isCustomizeMode) 42.dp else 36.dp) * scaleFactor
@@ -230,6 +223,14 @@ fun ReorderableToolbar(
                         modifier = Modifier
                             .size(tileWidth, tileHeight)
                             .zIndex(if (isDraggingThisItem) 100f else 1f)
+                            .onGloballyPositioned { coords ->
+                                itemCoordinates = coords
+                                rootCoordinates?.let { root ->
+                                    if (coords.isAttached && root.isAttached) {
+                                        onReportItemBounds(action, root.localBoundingBoxOf(coords))
+                                    }
+                                }
+                            }
                             .graphicsLayer {
                                 translationX = visualTranslationX
                                 translationY = visualTranslationY
@@ -311,7 +312,11 @@ fun ReorderableToolbar(
                                     }
                                 )
                             }
-                            .clickable(enabled = draggingAction == null) {
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                enabled = draggingAction == null
+                            ) {
                                 onActionClick(item.action)
                             },
                         contentAlignment = Alignment.Center

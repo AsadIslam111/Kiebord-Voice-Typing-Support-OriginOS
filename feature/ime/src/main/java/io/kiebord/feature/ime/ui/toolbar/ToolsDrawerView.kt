@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -186,15 +187,7 @@ fun ToolsDrawerView(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .zIndex(if (isDraggingThisItem) 100f else 1f)
-                                    .onGloballyPositioned { coords ->
-                                        itemCoordinates = coords
-                                        rootCoordinates?.let { root ->
-                                            if (coords.isAttached && root.isAttached) {
-                                                onReportItemBounds(action, root.localBoundingBoxOf(coords))
-                                            }
-                                        }
-                                    },
+                                    .zIndex(if (isDraggingThisItem) 100f else 1f),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Box(
@@ -280,6 +273,13 @@ fun ToolsDrawerView(
                                         isActive = isActionActive(tool.action),
                                         isDragging = isDraggingThisItem,
                                         isHovered = isHovered,
+                                        rootCoordinates = rootCoordinates,
+                                        onReportBounds = { bounds ->
+                                            onReportItemBounds(action, bounds)
+                                        },
+                                        onCoordinatesPositioned = { coords ->
+                                            itemCoordinates = coords
+                                        },
                                         onClick = {
                                             if (draggingAction == null) {
                                                 onToolClick(tool.action)
@@ -312,18 +312,33 @@ private fun ToolGridItem(
     isDragging: Boolean,
     isHovered: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    rootCoordinates: LayoutCoordinates? = null,
+    onReportBounds: ((Rect) -> Unit)? = null,
+    onCoordinatesPositioned: ((LayoutCoordinates) -> Unit)? = null
 ) {
     val colorScheme = KiebordTheme.colorScheme
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.clickable(onClick = onClick)
+        modifier = modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick
+        )
     ) {
         // Tile container: Fixed 54dp compact squircle with keyBackground
         Box(
             modifier = Modifier
                 .size(54.dp)
+                .onGloballyPositioned { tileCoords ->
+                    onCoordinatesPositioned?.invoke(tileCoords)
+                    rootCoordinates?.let { root ->
+                        if (tileCoords.isAttached && root.isAttached) {
+                            onReportBounds?.invoke(root.localBoundingBoxOf(tileCoords))
+                        }
+                    }
+                }
                 .clip(RoundedCornerShape(16.dp))
                 .background(
                     when {

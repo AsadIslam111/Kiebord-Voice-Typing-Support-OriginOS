@@ -287,6 +287,11 @@ fun KeyboardRootView(
         }
     }
 
+    // Active drag session across toolbar and drawer
+    var activeDraggingFromToolbar by remember { mutableStateOf<ToolbarAction?>(null) }
+    var activeDraggingFromDrawer by remember { mutableStateOf<ToolbarAction?>(null) }
+    var currentFingerInRoot by remember { mutableStateOf<Offset?>(null) }
+
     val moveToolbarToDrawer: (ToolbarAction) -> Unit = { toolbarAct ->
         if (pinnedTools.contains(toolbarAct)) {
             val newPinned = (pinnedTools - toolbarAct).distinct()
@@ -297,9 +302,31 @@ fun KeyboardRootView(
 
     val moveDrawerToToolbar: (ToolbarAction) -> Unit = { drawerAct ->
         if (drawerTools.contains(drawerAct)) {
-            val newDrawer = (drawerTools - drawerAct).distinct()
-            val newPinned = (pinnedTools + drawerAct).distinct()
-            updateTools(newPinned, newDrawer)
+            if (pinnedTools.size >= 4) {
+                // Toolbar is already at capacity (4 tools max): swap with the slot at finger position
+                val finger = currentFingerInRoot
+                val targetIndex = if (finger != null && rootWidthPx > 0f) {
+                    val slotWidth = rootWidthPx / pinnedTools.size
+                    (finger.x / slotWidth).toInt().coerceIn(0, pinnedTools.lastIndex)
+                } else {
+                    pinnedTools.lastIndex
+                }
+                val targetToolbarAct = pinnedTools[targetIndex]
+                interchangeTools(drawerAct, targetToolbarAct)
+            } else {
+                // Toolbar has space (< 4 items): ADD TO TOOLBAR at finger slot position!
+                val finger = currentFingerInRoot
+                val newPinned = pinnedTools.toMutableList()
+                if (finger != null && rootWidthPx > 0f && pinnedTools.isNotEmpty()) {
+                    val slotWidth = rootWidthPx / (pinnedTools.size + 1)
+                    val targetIndex = (finger.x / slotWidth).toInt().coerceIn(0, newPinned.size)
+                    newPinned.add(targetIndex, drawerAct)
+                } else {
+                    newPinned.add(drawerAct)
+                }
+                val newDrawer = (drawerTools - drawerAct).distinct()
+                updateTools(newPinned.distinct(), newDrawer)
+            }
         }
     }
 
@@ -308,18 +335,13 @@ fun KeyboardRootView(
     var oneHandedSideWidth by remember { mutableFloatStateOf(64f) }
     var isEmojiOpen by remember { mutableStateOf(false) }
 
-    // Active drag session across toolbar and drawer
-    var activeDraggingFromToolbar by remember { mutableStateOf<ToolbarAction?>(null) }
-    var activeDraggingFromDrawer by remember { mutableStateOf<ToolbarAction?>(null) }
-    var currentFingerInRoot by remember { mutableStateOf<Offset?>(null) }
-
     val hoveredDrawerAction: ToolbarAction? = if (currentFingerInRoot != null) {
         val finger = currentFingerInRoot!!
         val activeDrag = activeDraggingFromToolbar ?: activeDraggingFromDrawer
         if (activeDrag != null) {
             val validDrawerBounds = drawerItemBounds.filterKeys { it in drawerTools && it != activeDrag }
             validDrawerBounds.entries.firstOrNull { (_, rect) ->
-                rect.inflate(16f).contains(finger)
+                rect.inflate(14f).contains(finger)
             }?.key
         } else null
     } else null
@@ -334,10 +356,13 @@ fun KeyboardRootView(
 
     val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
         val finger = currentFingerInRoot!!
-        val validToolbarBounds = toolbarItemBounds.filterKeys { it in pinnedTools && it != activeDraggingFromDrawer }
-        validToolbarBounds.entries.firstOrNull { (_, rect) ->
-            rect.inflate(16f).contains(finger)
-        }?.key
+        val toolbarHeightPx = with(density) { toolbarHeight.toPx() }
+        if (finger.y <= toolbarHeightPx * 2.2f && pinnedTools.isNotEmpty()) {
+            val validToolbarBounds = toolbarItemBounds.filterKeys { it in pinnedTools && it != activeDraggingFromDrawer }
+            validToolbarBounds.entries.firstOrNull { (_, rect) ->
+                rect.inflate(14f).contains(finger)
+            }?.key
+        } else null
     } else null
     val context = LocalContext.current
     var isClipboardOpen by remember { mutableStateOf(false) }
