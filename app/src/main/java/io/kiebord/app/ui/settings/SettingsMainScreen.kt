@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Palette
@@ -215,8 +216,16 @@ fun SettingsMainScreen(
                 title = "Corrections & Suggestions",
                 subtitle = "Next-word prediction, smart transliteration & suggestions",
                 icon = Icons.Outlined.Spellcheck,
-                position = GroupPosition.BOTTOM,
+                position = GroupPosition.MIDDLE,
                 onClick = { onNavigate(SettingsScreen.CorrectionsSuggestions) }
+            )
+
+            SettingsNavigationItem(
+                title = "Clipboard",
+                subtitle = "Manage copied items, pinned clips & history",
+                icon = Icons.Outlined.ContentPaste,
+                position = GroupPosition.BOTTOM,
+                onClick = { onNavigate(SettingsScreen.Clipboard) }
             )
         }
 

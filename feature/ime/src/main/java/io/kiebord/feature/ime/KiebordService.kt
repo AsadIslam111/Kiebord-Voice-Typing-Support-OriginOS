@@ -109,11 +109,12 @@ class KiebordService : InputMethodService() {
     private var selectionAnchor: Int? = null
     private var selectionCursor: Int? = null
     private var inputSessionId by mutableIntStateOf(0)
+    private var lastDeletedBatchState by mutableStateOf<String?>(null)
 
     override fun onCreate() {
         super.onCreate()
         preferencesRepo = KiebordPreferencesRepository.getInstance(this)
-        clipboardManager = SandboxedClipboardManager(this)
+        clipboardManager = SandboxedClipboardManager.getInstance(this)
         userDictionaryRepo = UserDictionaryRepository.getInstance(this)
         lifecycleOwner.onCreate()
         NativeEngine.ensureInitialized(this, "en")
@@ -242,6 +243,8 @@ class KiebordService : InputMethodService() {
                         ic?.commitText(clipText, 1)
                         updateSuggestions()
                     },
+                    onOpenClipboardSettings = ::openClipboardSettings,
+                    lastDeletedBatch = lastDeletedBatchState,
                     onGestureCommit = ::handleGestureCommit,
                     gestureTypingEnabled = preferencesState.gestureTypingEnabled && isQwertyBasedLayout(activeLayout.id),
                     showGestureTrail = preferencesState.showGestureTrail,
@@ -317,6 +320,7 @@ class KiebordService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        clipboardManager.syncFromSystemClipboard()
         window?.window?.decorView?.let { decorView ->
             lifecycleOwner.attachToView(decorView)
             ViewCompat.getRootWindowInsets(decorView)?.let { insets ->
@@ -423,6 +427,16 @@ class KiebordService : InputMethodService() {
             val intent = Intent(this, Class.forName("io.kiebord.app.MainActivity")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("navigate_to", "themes")
+            }
+            startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    fun openClipboardSettings() {
+        try {
+            val intent = Intent(this, Class.forName("io.kiebord.app.MainActivity")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("navigate_to", "clipboard")
             }
             startActivity(intent)
         } catch (_: Exception) {}
@@ -899,9 +913,10 @@ class KiebordService : InputMethodService() {
         val ic = currentInputConnection ?: return
         if (isSwipeDeleting) {
             isSwipeDeleting = false
-            val selectedText = ic.getSelectedText(0)
+            val selectedText = ic.getSelectedText(0)?.toString()
             if (!selectedText.isNullOrEmpty()) {
                 ic.commitText("", 1)
+                lastDeletedBatchState = selectedText
             }
             updateSuggestions()
         }
@@ -1510,10 +1525,18 @@ class KiebordService : InputMethodService() {
             TextAction.CUT -> {
                 selectionAnchor = null
                 selectionCursor = null
+                val selected = ic.getSelectedText(0)?.toString()
+                if (!selected.isNullOrEmpty()) {
+                    clipboardManager.addClip(selected)
+                }
                 ic.performContextMenuAction(android.R.id.cut)
                 true
             }
             TextAction.COPY -> {
+                val selected = ic.getSelectedText(0)?.toString()
+                if (!selected.isNullOrEmpty()) {
+                    clipboardManager.addClip(selected)
+                }
                 ic.performContextMenuAction(android.R.id.copy)
                 true
             }

@@ -27,6 +27,8 @@ import androidx.compose.material.icons.outlined.SmartButton
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -66,7 +68,9 @@ enum class ToolbarAction {
     EMOJI,
     ONE_HANDED,
     SETTINGS,
-    TRADITIONAL_MODE
+    TRADITIONAL_MODE,
+    UNDO,
+    REDO
 }
 
 data class ToolbarItem(
@@ -124,7 +128,9 @@ fun ReorderableToolbar(
             ToolbarAction.EMOJI to ToolbarItem(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emojis"),
             ToolbarAction.ONE_HANDED to ToolbarItem(ToolbarAction.ONE_HANDED, Icons.Outlined.TouchApp, "One-Handed"),
             ToolbarAction.SETTINGS to ToolbarItem(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings"),
-            ToolbarAction.TRADITIONAL_MODE to ToolbarItem(ToolbarAction.TRADITIONAL_MODE, Icons.Outlined.Translate, "Traditional Mode")
+            ToolbarAction.TRADITIONAL_MODE to ToolbarItem(ToolbarAction.TRADITIONAL_MODE, Icons.Outlined.Translate, "Traditional Mode"),
+            ToolbarAction.UNDO to ToolbarItem(ToolbarAction.UNDO, Icons.AutoMirrored.Outlined.Undo, "Undo"),
+            ToolbarAction.REDO to ToolbarItem(ToolbarAction.REDO, Icons.AutoMirrored.Outlined.Redo, "Redo")
         )
     }
 

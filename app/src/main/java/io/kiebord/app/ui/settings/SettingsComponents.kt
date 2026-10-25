@@ -137,6 +137,7 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.KeyboardLayouts -> "Keyboard Layouts"
         is SettingsScreen.Preferences -> "Preferences"
         is SettingsScreen.CorrectionsSuggestions -> "Corrections & Suggestions"
+        is SettingsScreen.Clipboard -> "Clipboard"
         is SettingsScreen.About -> "About Kiebord"
         is SettingsScreen.Onboarding -> "Setup Wizard"
     }
@@ -147,6 +148,7 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.KeyboardLayouts -> "Active languages & preview"
         is SettingsScreen.Preferences -> "Haptics, smart gestures & ergonomics"
         is SettingsScreen.CorrectionsSuggestions -> "Candidate strip, auto-fix & glide typing"
+        is SettingsScreen.Clipboard -> "Manage copied items & pins"
         is SettingsScreen.About -> "Privacy, engine architecture & diagnostics"
         is SettingsScreen.Onboarding -> "Welcome to Kiebord"
     }

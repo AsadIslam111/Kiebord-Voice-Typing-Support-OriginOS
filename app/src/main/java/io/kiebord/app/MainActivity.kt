@@ -54,6 +54,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import io.kiebord.app.ui.settings.AboutScreen
 import io.kiebord.app.ui.settings.AppearanceThemesScreen
+import io.kiebord.app.ui.settings.ClipboardSettingsScreen
 import io.kiebord.app.ui.settings.CorrectionsSuggestionsScreen
 import io.kiebord.app.ui.settings.DarkSettingsColors
 import io.kiebord.app.ui.settings.KeyboardLayoutsScreen
@@ -63,6 +64,7 @@ import io.kiebord.app.ui.settings.PreferencesScreen
 import io.kiebord.app.ui.settings.SettingsMainScreen
 import io.kiebord.app.ui.settings.SettingsScreen
 import io.kiebord.app.ui.settings.SettingsUnifiedTopBar
+import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.data.dictionary.UserDictionaryRepository
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.data.prefs.KiebordPreferencesRepository
@@ -209,6 +211,8 @@ fun KiebordSettingsApp(
             SettingsScreen.KeyboardLayouts
         } else if (target == "themes" || target == "appearance") {
             SettingsScreen.AppearanceThemes
+        } else if (target == "clipboard") {
+            SettingsScreen.Clipboard
         } else {
             SettingsScreen.Main
         }
@@ -235,6 +239,12 @@ fun KiebordSettingsApp(
                     if (currentScreen != SettingsScreen.Preferences) {
                         backStack = listOf(SettingsScreen.Main)
                         currentScreen = SettingsScreen.Preferences
+                    }
+                }
+                "clipboard" -> {
+                    if (currentScreen != SettingsScreen.Clipboard) {
+                        backStack = listOf(SettingsScreen.Main)
+                        currentScreen = SettingsScreen.Clipboard
                     }
                 }
             }
@@ -451,6 +461,13 @@ fun KiebordSettingsApp(
                             onUpdateSuggestionBarMode = { mode ->
                                 scope.launch { preferencesRepo.updateSuggestionBarMode(mode) }
                             },
+                            onBack = navigateBack
+                        )
+                    }
+
+                    is SettingsScreen.Clipboard -> {
+                        ClipboardSettingsScreen(
+                            clipboardManager = SandboxedClipboardManager.getInstance(context),
                             onBack = navigateBack
                         )
                     }

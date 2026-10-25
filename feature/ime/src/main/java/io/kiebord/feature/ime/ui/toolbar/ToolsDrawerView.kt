@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -115,7 +117,9 @@ fun ToolsDrawerView(
             ToolbarAction.EMOJI to DrawerTool(ToolbarAction.EMOJI, Icons.Outlined.Mood, "Emoji"),
             ToolbarAction.ONE_HANDED to DrawerTool(ToolbarAction.ONE_HANDED, Icons.Outlined.TouchApp, "One-handed"),
             ToolbarAction.SETTINGS to DrawerTool(ToolbarAction.SETTINGS, Icons.Outlined.Settings, "Settings"),
-            ToolbarAction.TRADITIONAL_MODE to DrawerTool(ToolbarAction.TRADITIONAL_MODE, Icons.Outlined.Translate, "Traditional")
+            ToolbarAction.TRADITIONAL_MODE to DrawerTool(ToolbarAction.TRADITIONAL_MODE, Icons.Outlined.Translate, "Traditional"),
+            ToolbarAction.UNDO to DrawerTool(ToolbarAction.UNDO, Icons.AutoMirrored.Outlined.Undo, "Undo"),
+            ToolbarAction.REDO to DrawerTool(ToolbarAction.REDO, Icons.AutoMirrored.Outlined.Redo, "Redo")
         )
     }
 

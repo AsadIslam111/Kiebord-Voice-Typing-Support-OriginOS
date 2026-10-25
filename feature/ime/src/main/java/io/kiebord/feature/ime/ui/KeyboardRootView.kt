@@ -25,9 +25,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.ui.text.style.TextOverflow
 import io.kiebord.feature.ime.ui.onehanded.OneHandedSideBar
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material3.Icon
@@ -91,6 +96,11 @@ import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
 import io.kiebord.theme.KeyboardColorScheme
 
+sealed class UndoRedoPillState {
+    data class CanUndo(val text: String, val isPaste: Boolean = false, val isBatchDelete: Boolean = false) : UndoRedoPillState()
+    data class CanRedo(val text: String, val isPaste: Boolean = false, val isBatchDelete: Boolean = false) : UndoRedoPillState()
+}
+
 @Composable
 fun KeyboardRootView(
     layout: KeyboardLayoutDef,
@@ -108,6 +118,8 @@ fun KeyboardRootView(
     onUnlearnWord: (String) -> Unit = {},
     clipboardManager: SandboxedClipboardManager? = null,
     onPasteClip: (String) -> Unit = {},
+    onOpenClipboardSettings: () -> Unit = {},
+    lastDeletedBatch: String? = null,
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
     initialRowHeight: Dp = 58.dp,
     defaultShowNumberRow: Boolean = false,
@@ -210,6 +222,8 @@ fun KeyboardRootView(
         ToolbarAction.SECONDARY_KEYS_TOGGLE,
         ToolbarAction.EMOJI,
         ToolbarAction.ONE_HANDED,
+        ToolbarAction.UNDO,
+        ToolbarAction.REDO,
         ToolbarAction.SETTINGS
     )
     var pinnedTools by remember(initialPinnedTools) {
@@ -326,6 +340,23 @@ fun KeyboardRootView(
         }
     } else null
     var isClipboardOpen by remember { mutableStateOf(false) }
+    var undoActionPillState by remember { mutableStateOf<UndoRedoPillState?>(null) }
+    var clipboardQuickPaste by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(clipboardManager?.quickPasteClip) {
+        val clip = clipboardManager?.quickPasteClip
+        if (clip != null) {
+            clipboardQuickPaste = clip.text
+        }
+    }
+
+    LaunchedEffect(lastDeletedBatch) {
+        if (!lastDeletedBatch.isNullOrEmpty()) {
+            undoActionPillState = UndoRedoPillState.CanUndo(text = lastDeletedBatch, isBatchDelete = true)
+            clipboardQuickPaste = null
+        }
+    }
+
     var isResizerOpen by remember { mutableStateOf(false) }
     var isTextEditOpen by remember { mutableStateOf(false) }
     var isToolsDrawerOpen by remember { mutableStateOf(false) }
@@ -517,6 +548,12 @@ fun KeyboardRootView(
                 traditionalMode = !traditionalMode
                 onTraditionalModeToggle?.invoke(traditionalMode)
             }
+            ToolbarAction.UNDO -> {
+                onTextAction(TextAction.UNDO, false)
+            }
+            ToolbarAction.REDO -> {
+                onTextAction(TextAction.REDO, false)
+            }
         }
     }
 
@@ -574,6 +611,26 @@ fun KeyboardRootView(
                 TextEditPanelView(
                     onTextAction = { action, isSelecting -> onTextAction(action, isSelecting) },
                     onClose = { isTextEditOpen = false },
+                    height = toolbarHeight + keyboardContentHeight
+                )
+            } else if (isClipboardOpen) {
+                ClipboardPanelView(
+                    clips = clipboardManager?.clips ?: emptyList(),
+                    onClipClick = { clip ->
+                        onPasteClip(clip.text)
+                        clipboardQuickPaste = null
+                        clipboardManager?.clearQuickPaste()
+                        undoActionPillState = UndoRedoPillState.CanUndo(text = clip.text, isPaste = true)
+                        isClipboardOpen = false
+                    },
+                    onTogglePin = { clip -> clipboardManager?.togglePin(clip) },
+                    onDeleteClip = { clip -> clipboardManager?.deleteClip(clip) },
+                    onClearAll = { clipboardManager?.clearAllUnpinned() },
+                    onOpenSettings = {
+                        isClipboardOpen = false
+                        onOpenClipboardSettings()
+                    },
+                    onClose = { isClipboardOpen = false },
                     height = toolbarHeight + keyboardContentHeight
                 )
             } else {
@@ -641,6 +698,8 @@ fun KeyboardRootView(
                             candidates = suggestions,
                             onCandidateClick = { candidate ->
                                 isSuggestionsExpanded = false
+                                undoActionPillState = null
+                                clipboardQuickPaste = null
                                 onCandidateSelect(candidate)
                             },
                             onCandidateLongClick = { candidate ->
@@ -666,6 +725,131 @@ fun KeyboardRootView(
                                 .weight(1f)
                                 .fillMaxHeight()
                         )
+                    } else if (!isToolbarOptionsVisible && !isToolsDrawerOpen && (clipboardQuickPaste != null || undoActionPillState != null)) {
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Quick Paste Pill
+                            if (clipboardQuickPaste != null) {
+                                val textToPaste = clipboardQuickPaste!!
+                                val ellipsized = if (textToPaste.length > 25) textToPaste.take(25) + "…" else textToPaste
+                                Row(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(colorScheme.accentColor.copy(alpha = 0.22f))
+                                        .border(BorderStroke(1.dp, colorScheme.accentColor.copy(alpha = 0.45f)), CircleShape)
+                                        .clickable {
+                                            onPasteClip(textToPaste)
+                                            clipboardQuickPaste = null
+                                            clipboardManager?.clearQuickPaste()
+                                            undoActionPillState = UndoRedoPillState.CanUndo(text = textToPaste, isPaste = true)
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.Assignment,
+                                        contentDescription = "Quick paste",
+                                        tint = colorScheme.accentColor,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = ellipsized,
+                                        color = colorScheme.keyForeground,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            // Undo / Redo Pill
+                            if (undoActionPillState != null) {
+                                when (val state = undoActionPillState!!) {
+                                    is UndoRedoPillState.CanUndo -> {
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(colorScheme.actionKeyBackground)
+                                                .border(BorderStroke(1.dp, Color(0x22FFFFFF)), CircleShape)
+                                                .clickable {
+                                                    if (state.isBatchDelete) {
+                                                        onPasteClip(state.text)
+                                                    } else {
+                                                        onTextAction(TextAction.UNDO, false)
+                                                    }
+                                                    undoActionPillState = UndoRedoPillState.CanRedo(
+                                                        text = state.text,
+                                                        isPaste = state.isPaste,
+                                                        isBatchDelete = state.isBatchDelete
+                                                    )
+                                                }
+                                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Outlined.Undo,
+                                                contentDescription = "Undo",
+                                                tint = colorScheme.keyForeground,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = "Undo",
+                                                color = colorScheme.keyForeground,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+                                    is UndoRedoPillState.CanRedo -> {
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(colorScheme.actionKeyBackground)
+                                                .border(BorderStroke(1.dp, Color(0x22FFFFFF)), CircleShape)
+                                                .clickable {
+                                                    if (state.isBatchDelete) {
+                                                        onTextAction(TextAction.UNDO, false)
+                                                    } else {
+                                                        onTextAction(TextAction.REDO, false)
+                                                    }
+                                                    undoActionPillState = UndoRedoPillState.CanUndo(
+                                                        text = state.text,
+                                                        isPaste = state.isPaste,
+                                                        isBatchDelete = state.isBatchDelete
+                                                    )
+                                                }
+                                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Outlined.Redo,
+                                                contentDescription = "Redo",
+                                                tint = colorScheme.keyForeground,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = "Redo",
+                                                color = colorScheme.keyForeground,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     } else {
                         ReorderableToolbar(
                             pinnedTools = pinnedTools,
@@ -1307,19 +1491,6 @@ fun KeyboardRootView(
                         activeDraggingFromDrawer = action
                         currentFingerInRoot = fingerPos
                     }
-                )
-            } else if (isClipboardOpen) {
-                ClipboardPanelView(
-                    clips = clipboardManager?.clips ?: emptyList(),
-                    onClipClick = { clip ->
-                        onPasteClip(clip.text)
-                        isClipboardOpen = false
-                    },
-                    onTogglePin = { clip -> clipboardManager?.togglePin(clip) },
-                    onDeleteClip = { clip -> clipboardManager?.deleteClip(clip) },
-                    onClearAll = { clipboardManager?.clearAllUnpinned() },
-                    onClose = { isClipboardOpen = false },
-                    modifier = Modifier.height(keyboardContentHeight)
                 )
             } else if (isEmojiOpen) {
                 EmojiPanelView(
