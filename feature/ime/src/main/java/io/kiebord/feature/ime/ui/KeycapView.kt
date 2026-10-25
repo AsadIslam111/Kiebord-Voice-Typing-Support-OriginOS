@@ -221,16 +221,28 @@ fun KeycapView(
                             var isLongPressTriggered = false
                             var isDeleteLongPressActive = false
                             val longPressJob = if (isSlidingInitiator) null else launch {
-                                delay(currentLongPressDelay.value)
+                                val delayDuration = if (initialKey.type == KeyType.DELETE) {
+                                    currentLongPressDelay.value.coerceIn(250L, 400L)
+                                } else {
+                                    currentLongPressDelay.value
+                                }
+                                delay(delayDuration)
                                 val coords = keyCoordinates
                                 isLongPressTriggered = true
                                 val activeShift = currentShiftState.value
                                 val activeMoreKeys = initialKey.moreKeys(activeShift)
                                 if (initialKey.type == KeyType.DELETE) {
                                     isDeleteLongPressActive = true
+                                    var repeatCount = 0
                                     while (isActive) {
                                         currentOnLongPress.value(initialKey)
-                                        delay(90L)
+                                        repeatCount++
+                                        val interval = when {
+                                            repeatCount < 10 -> 50L
+                                            repeatCount < 25 -> 38L
+                                            else -> 28L
+                                        }
+                                        delay(interval)
                                     }
                                 } else if (initialKey.type == KeyType.SPACE) {
                                     // Handled via spacebarDwellJob

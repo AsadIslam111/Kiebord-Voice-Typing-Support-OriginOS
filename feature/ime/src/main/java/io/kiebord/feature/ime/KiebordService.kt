@@ -1009,10 +1009,6 @@ class KiebordService : InputMethodService() {
     }
 
     private fun handleLongPressDelete() {
-        if (!preferencesState.longPressDeleteEnabled) {
-            handleKeyTap(KeyDef(type = KeyType.DELETE))
-            return
-        }
         val ic = currentInputConnection ?: return
 
         // 1. If text is highlighted / selected, delete the whole selection first

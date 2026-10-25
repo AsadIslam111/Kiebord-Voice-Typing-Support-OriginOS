@@ -44,7 +44,7 @@ fun PreferencesScreen(
     onUpdateShowSecondaryKeys: (Boolean) -> Unit = {},
     onUpdateCursorTrackpad: (Boolean) -> Unit,
     onUpdateOneHandedMode: (String) -> Unit,
-    onUpdateLongPressDelete: (Boolean) -> Unit,
+    onUpdateLongPressDelete: (Boolean) -> Unit = {},
     onUpdateSelectiveDeleteMode: (String) -> Unit,
     onBack: () -> Unit = {}
 ) {
@@ -231,19 +231,11 @@ fun PreferencesScreen(
         SettingsCategoryHeader(title = "Smart Gestures")
 
         SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-            SettingsToggleItem(
-                title = "Long-Press Repeat Delete",
-                subtitle = "Holding backspace repeats deletion continuously like standard keyboard",
-                checked = preferences.longPressDeleteEnabled,
-                position = GroupPosition.TOP,
-                onCheckedChange = onUpdateLongPressDelete
-            )
-
             SettingsRadioOption(
                 title = "Swipe Delete (Selective): By Word",
                 subtitle = "Swiping left from backspace selects and deletes text word-by-word",
                 selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD,
-                position = GroupPosition.MIDDLE,
+                position = GroupPosition.TOP,
                 onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_WORD) }
             )
 
