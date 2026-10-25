@@ -27,11 +27,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.text.TextStyle
-import io.kiebord.theme.KeyboardFontFamily
-import io.kiebord.theme.KiebordTypography
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
 
             CompositionLocalProvider(
                 LocalSettingsColors provides settingsColors,
-                LocalTextStyle provides TextStyle(fontFamily = KeyboardFontFamily)
+                LocalTextStyle provides TextStyle(fontFamily = FontFamily.Default)
             ) {
                 MaterialTheme(
                     colorScheme = if (isDark) {
@@ -129,7 +129,7 @@ class MainActivity : ComponentActivity() {
                             onSurface = settingsColors.textPrimary
                         )
                     },
-                    typography = KiebordTypography
+                    typography = Typography()
                 ) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
