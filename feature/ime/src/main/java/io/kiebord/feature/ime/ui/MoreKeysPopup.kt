@@ -29,6 +29,8 @@ import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -285,6 +287,22 @@ fun MoreKeysPopup(
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Outlined.Redo,
                                                 contentDescription = "Redo",
+                                                tint = animatedTextColor,
+                                                modifier = Modifier.size(actionIconSize)
+                                            )
+                                        }
+                                        "ACTION_SETTINGS", "action:settings", "SETTINGS" -> {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Settings,
+                                                contentDescription = "Settings",
+                                                tint = animatedTextColor,
+                                                modifier = Modifier.size(actionIconSize)
+                                            )
+                                        }
+                                        "ACTION_ONE_HANDED", "action:one_handed", "ONE_HANDED" -> {
+                                            Icon(
+                                                imageVector = Icons.Outlined.TouchApp,
+                                                contentDescription = "One-Handed",
                                                 tint = animatedTextColor,
                                                 modifier = Modifier.size(actionIconSize)
                                             )

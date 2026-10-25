@@ -84,8 +84,10 @@ class PredefinedLayoutsTest {
         val row4Keys = layout.rows[3].keys
         assertEquals(6, row4Keys.size)
         assertEquals(KeyType.SYMBOLS, row4Keys[0].type)
-        assertEquals(KeyType.SWITCH_LANGUAGE, row4Keys[1].type)
-        assertEquals(",", row4Keys[2].label)
+        assertEquals(",", row4Keys[1].label)
+        assertTrue(row4Keys[1].moreKeys.contains("ACTION_SETTINGS"))
+        assertTrue(row4Keys[1].moreKeys.contains("ACTION_ONE_HANDED"))
+        assertEquals(KeyType.SWITCH_LANGUAGE, row4Keys[2].type)
         assertEquals(KeyType.SPACE, row4Keys[3].type)
         assertEquals("।", row4Keys[4].label)
         assertEquals(KeyType.ACTION, row4Keys[5].type)

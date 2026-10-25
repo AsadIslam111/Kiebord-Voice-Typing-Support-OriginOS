@@ -441,8 +441,8 @@ fun KeycapView(
                 .background(activeBackground),
             contentAlignment = Alignment.Center
         ) {
-        // Flick up preview badge in top right corner (hidden when sliding symbol/shift mode is active or secondary keys disabled)
-        if (showSecondaryKeys && !key.flickUp.isNullOrEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode) {
+        // Flick up preview badge in top right corner (hidden when sliding symbol/shift mode is active, secondary keys disabled, or no moreKeys exist)
+        if (showSecondaryKeys && !key.flickUp.isNullOrEmpty() && key.moreKeys.isNotEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode) {
             Text(
                 text = key.flickUp!!,
                 color = if (isPressed && colorScheme.keyPressedForeground != Color.Unspecified) {

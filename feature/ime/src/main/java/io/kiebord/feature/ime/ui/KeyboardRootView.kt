@@ -1175,6 +1175,12 @@ fun KeyboardRootView(
                                     "ACTION_REDO", "action:redo", "REDO" -> {
                                         onTextAction(TextAction.REDO, false)
                                     }
+                                    "ACTION_SETTINGS", "action:settings", "SETTINGS" -> {
+                                        handleToolbarAction(ToolbarAction.SETTINGS)
+                                    }
+                                    "ACTION_ONE_HANDED", "action:one_handed", "ONE_HANDED" -> {
+                                        handleToolbarAction(ToolbarAction.ONE_HANDED)
+                                    }
                                     else -> {
                                         val charToCommit = when (selectedChar) {
                                             "ZWNJ" -> "\u200C"
