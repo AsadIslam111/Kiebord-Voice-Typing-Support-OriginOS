@@ -356,17 +356,64 @@ mod tests {
     #[test]
     fn test_next_word_prediction() {
         // English bigrams
+        let en_dict = get_en_binary_dict().expect("en dict loaded");
+        assert!(en_dict.contains_word("thank"));
+        assert!(en_dict.contains_word("you"));
         let after_thank = predict_next_words("thank", "en", 3);
         assert!(!after_thank.is_empty());
         let thank_items: Vec<&str> = after_thank.split('|').collect();
         assert_eq!(thank_items[0], "you");
+        for word in &thank_items {
+            assert!(en_dict.contains_word(word), "Predicted English word '{}' must exist in dict", word);
+        }
 
         let after_how = predict_next_words("how", "en", 3);
         assert!(!after_how.is_empty());
 
-        // Bengali bigrams from corpus format
-        let after_amader = predict_next_words("আমাদের", "bn", 3);
-        assert_eq!(after_amader, "এই|আগ্রহের|দেশে");
+        // Bengali bigrams from .combined corpus format
+        let bn_dict = get_bn_binary_dict().expect("bn dict loaded");
+
+        // Helper closure to assert next words and verify that every predicted word actually exists in bn.dict
+        let assert_bn_prediction = |prev_word: &str, expected_words: &[&str]| {
+            assert!(
+                bn_dict.contains_word(prev_word),
+                "Head word '{}' from .combined must actually exist in dictionary",
+                prev_word
+            );
+            let raw = predict_next_words(prev_word, "bn", expected_words.len());
+            assert!(!raw.is_empty(), "Predictions for '{}' should not be empty", prev_word);
+            let items: Vec<&str> = raw.split('|').collect();
+            for word in &items {
+                assert!(
+                    bn_dict.contains_word(word),
+                    "Predicted Bengali word '{}' following '{}' must actually exist in dictionary",
+                    word,
+                    prev_word
+                );
+            }
+            assert_eq!(items, expected_words, "Next word prediction mismatch for '{}'", prev_word);
+        };
+
+        // 1. আমাদের -> এই, আগ্রহের, দেশে
+        assert_bn_prediction("আমাদের", &["এই", "আগ্রহের", "দেশে"]);
+
+        // 2. অনেক -> সময়, বেশি, ব্যবহারকারী
+        assert_bn_prediction("অনেক", &["সময়", "বেশি", "ব্যবহারকারী"]);
+
+        // 3. অত্যন্ত -> ইতিবাচক, জরুরি, ফজিলতপূর্ণ
+        assert_bn_prediction("অত্যন্ত", &["ইতিবাচক", "জরুরি", "ফজিলতপূর্ণ"]);
+
+        // 4. আমি -> এই, একেবারে, এখন
+        assert_bn_prediction("আমি", &["এই", "একেবারে", "এখন"]);
+
+        // 5. তুমি -> কি, অনেক, কখন
+        assert_bn_prediction("তুমি", &["কি", "অনেক", "কখন"]);
+
+        // 6. তিনি -> বলেন, নিজেই, বললেন
+        assert_bn_prediction("তিনি", &["বলেন", "নিজেই", "বললেন"]);
+
+        // 7. ভালো -> আছি, কাজের, খারাপ
+        assert_bn_prediction("ভালো", &["আছি", "কাজের", "খারাপ"]);
     }
 
     #[test]

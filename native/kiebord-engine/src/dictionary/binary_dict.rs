@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
 pub const MAGIC: u32 = 0x4B42_4443; // "KBDC" (Kiebord Dictionary Core)
-pub const VERSION: u16 = 3;
+pub const VERSION: u16 = 4;
 pub const FLAG_LABELS_U8: u16 = 1;
 pub const FLAG_DEGREE_U8: u16 = 2;
 pub const MAX_SYMBOLS: usize = 256;
@@ -32,11 +32,11 @@ pub struct BinaryDict<'a> {
     freq_off: usize,
     max_subtree_off: usize,
     is_word_off: usize,
-    vocab_offsets_off: usize,
-    vocab_bytes_off: usize,
+    bigram_head_nodes_off: usize,
     bigram_run_start_off: usize,
     bigram_followers_off: usize,
     _bigram_freqs_off: usize,
+    bigram_head_count: usize,
 }
 
 impl<'a> BinaryDict<'a> {
@@ -183,41 +183,65 @@ impl<'a> BinaryDict<'a> {
             checkpoints.push(child_starts[node_idx]);
         }
 
-        // 7. Vocabulary section (concatenated UTF-8 bytes + offsets)
-        let mut vocab_offsets: Vec<u32> = Vec::with_capacity(word_count + 1);
-        let mut vocab_bytes: Vec<u8> = Vec::new();
+        // 7. Map each word to its terminal node_id in the BFS tree
+        let mut word_to_node: HashMap<&str, u32> = HashMap::with_capacity(word_count);
         for word in &vocab {
-            vocab_offsets.push(vocab_bytes.len() as u32);
-            vocab_bytes.extend_from_slice(word.as_bytes());
+            let mut curr = 0u32;
+            for unit in word.encode_utf16() {
+                let start = child_starts[curr as usize] as usize;
+                let count = degrees[curr as usize] as usize;
+                let mut found = None;
+                for e in start..start + count {
+                    if edge_labels_raw[e] == unit {
+                        found = Some((e + 1) as u32);
+                        break;
+                    }
+                }
+                curr = found.expect("inserted word in trie");
+            }
+            word_to_node.insert(word.as_str(), curr);
         }
-        vocab_offsets.push(vocab_bytes.len() as u32);
 
-        // 8. Word-ID bigram section
-        let mut bigram_run_start: Vec<u32> = Vec::with_capacity(word_count + 1);
+        // 8. Sparse word-ID bigram section
+        let mut head_bigrams: Vec<(u32, Vec<(u32, u8)>)> = Vec::new();
+        for (head_word, cands) in &data.bigrams {
+            if let Some(&head_node) = word_to_node.get(head_word.as_str()) {
+                let mut sorted_cands = cands.clone();
+                sorted_cands.sort_by(|a, b| b.1.cmp(&a.1));
+                let mut followers = Vec::new();
+                for (nw, f) in sorted_cands.into_iter().take(24) {
+                    if let Some(&nw_node) = word_to_node.get(nw.as_str()) {
+                        followers.push((nw_node, f));
+                    }
+                }
+                if !followers.is_empty() {
+                    head_bigrams.push((head_node, followers));
+                }
+            }
+        }
+        head_bigrams.sort_by_key(|(hn, _)| *hn);
+
+        let bigram_head_count = head_bigrams.len();
+        let mut bigram_head_nodes: Vec<u32> = Vec::with_capacity(bigram_head_count);
+        let mut bigram_run_start: Vec<u32> = Vec::with_capacity(bigram_head_count + 1);
         let mut bigram_followers: Vec<u32> = Vec::new();
         let mut bigram_freqs: Vec<u8> = Vec::new();
 
-        for word in &vocab {
+        for (hn, followers) in head_bigrams {
+            bigram_head_nodes.push(hn);
             bigram_run_start.push(bigram_followers.len() as u32);
-            if let Some(cands) = data.bigrams.get(word.as_str()) {
-                let mut sorted_cands = cands.clone();
-                sorted_cands.sort_by(|a, b| b.1.cmp(&a.1));
-                // Keep top 24 follower candidates per head word
-                for (nw, f) in sorted_cands.into_iter().take(24) {
-                    if let Some(&nw_id) = word_to_id.get(nw.as_str()) {
-                        bigram_followers.push(nw_id);
-                        bigram_freqs.push(f);
-                    }
-                }
+            for (fn_node, freq) in followers {
+                bigram_followers.push(fn_node);
+                bigram_freqs.push(freq);
             }
         }
         bigram_run_start.push(bigram_followers.len() as u32);
         let total_bigrams = bigram_followers.len();
 
         // 9. Layout sections and calculate offsets
-        let header_bytes = 4 + 2 + 2 + 4 + 4 + 4 + 4 + 4 + 12 * 4;
+        let header_bytes = 4 + 2 + 2 + 4 * 6 + 11 * 4;
         let mut cursor = header_bytes;
-        let mut offsets = [0u32; 12];
+        let mut offsets = [0u32; 11];
 
         let mut alloc_section = |size: usize| -> u32 {
             let at = cursor;
@@ -232,11 +256,10 @@ impl<'a> BinaryDict<'a> {
         offsets[4] = alloc_section(node_count); // freqs
         offsets[5] = alloc_section(node_count); // max_subtree_freq
         offsets[6] = alloc_section(node_count.div_ceil(8)); // is_word bitset
-        offsets[7] = alloc_section((word_count + 1) * 4); // vocab_offsets
-        offsets[8] = alloc_section(vocab_bytes.len()); // vocab_bytes
-        offsets[9] = alloc_section((word_count + 1) * 4); // bigram_run_start
-        offsets[10] = alloc_section(total_bigrams * 4); // bigram_followers
-        offsets[11] = alloc_section(total_bigrams); // bigram_freqs
+        offsets[7] = alloc_section(bigram_head_count * 4); // bigram_head_nodes
+        offsets[8] = alloc_section((bigram_head_count + 1) * 4); // bigram_run_start
+        offsets[9] = alloc_section(total_bigrams * 4); // bigram_followers
+        offsets[10] = alloc_section(total_bigrams); // bigram_freqs
 
         // 10. Write binary output
         let mut out = Vec::with_capacity(cursor);
@@ -249,6 +272,7 @@ impl<'a> BinaryDict<'a> {
         out.extend_from_slice(&(edge_count as u32).to_be_bytes());
         out.extend_from_slice(&(symbol_count as u32).to_be_bytes());
         out.extend_from_slice(&(total_bigrams as u32).to_be_bytes());
+        out.extend_from_slice(&(bigram_head_count as u32).to_be_bytes());
 
         for off in offsets {
             out.extend_from_slice(&off.to_be_bytes());
@@ -307,29 +331,25 @@ impl<'a> BinaryDict<'a> {
         }
         while out.len() < offsets[7] as usize { out.push(0); }
 
-        // Section 7: vocab_offsets
-        for &vo in &vocab_offsets {
-            out.extend_from_slice(&vo.to_be_bytes());
+        // Section 7: bigram_head_nodes
+        for &hn in &bigram_head_nodes {
+            out.extend_from_slice(&hn.to_be_bytes());
         }
         while out.len() < offsets[8] as usize { out.push(0); }
 
-        // Section 8: vocab_bytes
-        out.extend_from_slice(&vocab_bytes);
-        while out.len() < offsets[9] as usize { out.push(0); }
-
-        // Section 9: bigram_run_start
+        // Section 8: bigram_run_start
         for &bs in &bigram_run_start {
             out.extend_from_slice(&bs.to_be_bytes());
         }
-        while out.len() < offsets[10] as usize { out.push(0); }
+        while out.len() < offsets[9] as usize { out.push(0); }
 
-        // Section 10: bigram_followers
+        // Section 9: bigram_followers
         for &bf in &bigram_followers {
             out.extend_from_slice(&bf.to_be_bytes());
         }
-        while out.len() < offsets[11] as usize { out.push(0); }
+        while out.len() < offsets[10] as usize { out.push(0); }
 
-        // Section 11: bigram_freqs
+        // Section 10: bigram_freqs
         out.extend_from_slice(&bigram_freqs);
         while out.len() < cursor { out.push(0); }
 
@@ -338,7 +358,7 @@ impl<'a> BinaryDict<'a> {
 
     /// Loads a binary dictionary into an in-place zero-copy reader.
     pub fn from_bytes(bytes: &'a [u8]) -> Result<Self, &'static str> {
-        let header_min = 4 + 2 + 2 + 4 + 4 + 4 + 4 + 4 + 12 * 4;
+        let header_min = 4 + 2 + 2 + 4 * 6 + 11 * 4;
         if bytes.len() < header_min {
             return Err("Binary dict too small");
         }
@@ -359,12 +379,13 @@ impl<'a> BinaryDict<'a> {
         let edge_count = u32::from_be_bytes(bytes[16..20].try_into().unwrap()) as usize;
         let symbol_count = u32::from_be_bytes(bytes[20..24].try_into().unwrap()) as usize;
         let bigram_count = u32::from_be_bytes(bytes[24..28].try_into().unwrap()) as usize;
+        let bigram_head_count = u32::from_be_bytes(bytes[28..32].try_into().unwrap()) as usize;
 
         let labels_are_u8 = flags & FLAG_LABELS_U8 != 0;
 
-        let mut offsets = [0usize; 12];
-        for i in 0..12 {
-            offsets[i] = u32::from_be_bytes(bytes[28 + i * 4..32 + i * 4].try_into().unwrap()) as usize;
+        let mut offsets = [0usize; 11];
+        for i in 0..11 {
+            offsets[i] = u32::from_be_bytes(bytes[32 + i * 4..36 + i * 4].try_into().unwrap()) as usize;
         }
 
         let mut symbols_table = [UNUSED_SYMBOL; 256];
@@ -389,11 +410,11 @@ impl<'a> BinaryDict<'a> {
             freq_off: offsets[4],
             max_subtree_off: offsets[5],
             is_word_off: offsets[6],
-            vocab_offsets_off: offsets[7],
-            vocab_bytes_off: offsets[8],
-            bigram_run_start_off: offsets[9],
-            bigram_followers_off: offsets[10],
-            _bigram_freqs_off: offsets[11],
+            bigram_head_nodes_off: offsets[7],
+            bigram_run_start_off: offsets[8],
+            bigram_followers_off: offsets[9],
+            _bigram_freqs_off: offsets[10],
+            bigram_head_count,
         })
     }
 
@@ -500,23 +521,92 @@ impl<'a> BinaryDict<'a> {
         }
     }
 
-    pub fn word_at(&self, id: u32) -> Option<&'a str> {
-        if id >= self.word_count {
-            return None;
-        }
-        let off_idx = self.vocab_offsets_off + id as usize * 4;
-        let start = u32::from_be_bytes(self.bytes[off_idx..off_idx + 4].try_into().unwrap()) as usize;
-        let end = u32::from_be_bytes(self.bytes[off_idx + 4..off_idx + 8].try_into().unwrap()) as usize;
-        std::str::from_utf8(&self.bytes[self.vocab_bytes_off + start..self.vocab_bytes_off + end]).ok()
+    #[inline]
+    pub fn checkpoint(&self, k: usize) -> u32 {
+        let off = self.checkpoints_off + k * 4;
+        u32::from_be_bytes(self.bytes[off..off + 4].try_into().unwrap())
     }
 
-    pub fn find_word_id(&self, word: &str) -> Option<u32> {
+    #[inline]
+    pub fn parent_node(&self, node: usize) -> Option<usize> {
+        if node == 0 || node >= self.node_count {
+            return None;
+        }
+        let edge = (node - 1) as u32;
+        let checkpoint_count = (self.node_count >> CHECKPOINT_SHIFT) + 1;
         let mut lo = 0isize;
-        let mut hi = self.word_count as isize - 1;
+        let mut hi = checkpoint_count as isize - 1;
+        let mut best_k = 0usize;
         while lo <= hi {
-            let mid = ((lo + hi) >> 1) as u32;
-            let mid_word = self.word_at(mid)?;
-            match mid_word.cmp(word) {
+            let mid = ((lo + hi) >> 1) as usize;
+            let cp_val = self.checkpoint(mid);
+            if cp_val <= edge {
+                best_k = mid;
+                lo = mid as isize + 1;
+            } else {
+                hi = mid as isize - 1;
+            }
+        }
+
+        let mut p = best_k << CHECKPOINT_SHIFT;
+        let mut running = self.checkpoint(best_k);
+        let max_p = (p + CHECKPOINT_STRIDE).min(self.node_count);
+        let degrees_slice = &self.bytes[self.child_count_off..self.child_count_off + self.node_count];
+        while p < max_p {
+            running += degrees_slice[p] as u32;
+            if edge < running {
+                return Some(p);
+            }
+            p += 1;
+        }
+        None
+    }
+
+    pub fn word_at_node(&self, node: u32) -> Option<String> {
+        if node == 0 || node as usize >= self.node_count || !self.is_word(node) {
+            return None;
+        }
+        let mut chars = Vec::with_capacity(16);
+        let mut curr = node as usize;
+        while curr != 0 {
+            let edge = curr - 1;
+            chars.push(self.edge_label(edge));
+            curr = self.parent_node(curr)?;
+        }
+        chars.reverse();
+        Some(String::from_utf16_lossy(&chars))
+    }
+
+    #[inline]
+    pub fn word_at(&self, id: u32) -> Option<String> {
+        self.word_at_node(id)
+    }
+
+    #[inline]
+    pub fn find_word_id(&self, word: &str) -> Option<u32> {
+        match self.find_node(word) {
+            Some(node) if self.is_word(node) => Some(node),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn bigram_head_node(&self, idx: usize) -> u32 {
+        let off = self.bigram_head_nodes_off + idx * 4;
+        u32::from_be_bytes(self.bytes[off..off + 4].try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn find_bigram_head(&self, head_node: u32) -> Option<usize> {
+        if self.bigram_head_count == 0 {
+            return None;
+        }
+        let mut lo = 0isize;
+        let mut hi = self.bigram_head_count as isize - 1;
+        while lo <= hi {
+            let mid = ((lo + hi) >> 1) as usize;
+            let val = self.bigram_head_node(mid);
+            match val.cmp(&head_node) {
                 Ordering::Less => lo = mid as isize + 1,
                 Ordering::Greater => hi = mid as isize - 1,
                 Ordering::Equal => return Some(mid),
@@ -525,25 +615,50 @@ impl<'a> BinaryDict<'a> {
         None
     }
 
+    #[inline]
+    pub fn bigram_run_start(&self, head_idx: usize) -> usize {
+        let off = self.bigram_run_start_off + head_idx * 4;
+        u32::from_be_bytes(self.bytes[off..off + 4].try_into().unwrap()) as usize
+    }
+
+    #[inline]
+    pub fn bigram_run_end(&self, head_idx: usize) -> usize {
+        let off = self.bigram_run_start_off + (head_idx + 1) * 4;
+        u32::from_be_bytes(self.bytes[off..off + 4].try_into().unwrap()) as usize
+    }
+
+    #[inline]
+    pub fn bigram_follower(&self, idx: usize) -> u32 {
+        let off = self.bigram_followers_off + idx * 4;
+        u32::from_be_bytes(self.bytes[off..off + 4].try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn bigram_freq(&self, idx: usize) -> u8 {
+        self.bytes[self._bigram_freqs_off + idx]
+    }
+
     /// Predicts next words based on preceding committed word in O(1) time without heap allocations.
     pub fn predict_next(&self, prev_word: &str, limit: usize) -> Vec<String> {
         let clean = prev_word.trim().to_lowercase();
-        let word_id = match self.find_word_id(&clean) {
-            Some(id) => id,
+        let head_node = match self.find_node(&clean).or_else(|| self.find_node(prev_word.trim())) {
+            Some(node) if self.is_word(node) => node,
+            _ => return Vec::new(),
+        };
+
+        let head_idx = match self.find_bigram_head(head_node) {
+            Some(idx) => idx,
             None => return Vec::new(),
         };
 
-        let run_idx = self.bigram_run_start_off + word_id as usize * 4;
-        let start = u32::from_be_bytes(self.bytes[run_idx..run_idx + 4].try_into().unwrap()) as usize;
-        let end = u32::from_be_bytes(self.bytes[run_idx + 4..run_idx + 8].try_into().unwrap()) as usize;
-
+        let start = self.bigram_run_start(head_idx);
+        let end = self.bigram_run_end(head_idx);
         let count = (end - start).min(limit);
         let mut results = Vec::with_capacity(count);
         for i in 0..count {
-            let f_off = self.bigram_followers_off + (start + i) * 4;
-            let follower_id = u32::from_be_bytes(self.bytes[f_off..f_off + 4].try_into().unwrap());
-            if let Some(w) = self.word_at(follower_id) {
-                results.push(w.to_string());
+            let follower_node = self.bigram_follower(start + i);
+            if let Some(w) = self.word_at(follower_node) {
+                results.push(w);
             }
         }
         results

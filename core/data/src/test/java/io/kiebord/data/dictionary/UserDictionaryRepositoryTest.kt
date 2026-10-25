@@ -159,8 +159,49 @@ class UserDictionaryRepositoryTest {
         assertEquals("banana", learned.first())
     }
 
+
     @Test
-    fun testFilteredLanguageCompletionsAndBigrams() {
-        // Auto pass
+    fun testBengaliNextWordPredictionFromCombinedCorpus() {
+        val repo = UserDictionaryRepository(tempFolder.root)
+
+        // Contextual Bengali bigrams matching bn.combined corpus pairs (length >= 3, recorded >= 2 times)
+        // "আমাদের" -> "আগ্রহের", "দেশে"
+        repeat(3) {
+            repo.recordWord("আগ্রহের", prevWord = "আমাদের")
+        }
+        repeat(2) {
+            repo.recordWord("দেশে", prevWord = "আমাদের")
+        }
+
+        // "অনেক" -> "সময়", "বেশি"
+        repeat(3) {
+            repo.recordWord("সময়", prevWord = "অনেক")
+        }
+        repeat(2) {
+            repo.recordWord("বেশি", prevWord = "অনেক")
+        }
+
+        val amaderNext = repo.getNextWords("আমাদের")
+        assertEquals(listOf("আগ্রহের", "দেশে"), amaderNext)
+
+        val onekNext = repo.getNextWords("অনেক")
+        assertEquals(listOf("সময়", "বেশি"), onekNext)
+    }
+
+    @Test
+    fun testLearnedGestureWordPrioritization() {
+        val repo = UserDictionaryRepository(tempFolder.root)
+
+        // Simulate choosing a gesture alternative
+        repeat(3) {
+            repo.recordWord("আমির", prevWord = "আমরা", isGesture = true)
+        }
+
+        val gestureWords = repo.getLearnedGestureWords(10)
+        assertEquals(listOf("আমির"), gestureWords)
+
+        val allLearned = repo.getAllLearnedWords(10)
+        assertTrue(allLearned.contains("আমির"))
     }
 }
+
