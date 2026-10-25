@@ -386,6 +386,21 @@ class KiebordService : InputMethodService() {
         updateSuggestions()
     }
 
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        val translitMgr = getTransliterationManager()
+        if (!translitMgr.isComposing && composingBuffer.isEmpty()) {
+            updateSuggestions()
+        }
+    }
+
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         try {
@@ -1892,6 +1907,18 @@ class KiebordService : InputMethodService() {
         }
     }
 
+    private fun hasDoubleOrGreaterSpacing(): Boolean {
+        val ic = currentInputConnection ?: return false
+        val textBefore = ic.getTextBeforeCursor(40, 0)?.toString() ?: return false
+        val trailingWhitespace = textBefore.takeLastWhile { it.isWhitespace() }
+        if (trailingWhitespace.length >= 2 || trailingWhitespace.contains('\n')) return true
+        val nonWhitespace = textBefore.dropLast(trailingWhitespace.length)
+        if (nonWhitespace.isNotEmpty() && isSentenceTerminatorChar(nonWhitespace.last())) {
+            return true
+        }
+        return false
+    }
+
     private fun updateSuggestions() {
         if (!preferencesState.suggestionsEnabled || !NativeEngine.isAvailable() || isSymbolsMode) {
             activeSuggestions = emptyList()
@@ -1984,7 +2011,7 @@ class KiebordService : InputMethodService() {
 
                 activeSuggestions = filterAndMarkCandidates(list.take(12))
             } else {
-                if (!preferencesState.nextWordPrediction) {
+                if (!preferencesState.nextWordPrediction || hasDoubleOrGreaterSpacing()) {
                     activeSuggestions = emptyList()
                     return
                 }
@@ -2023,7 +2050,7 @@ class KiebordService : InputMethodService() {
                         } else emptyList()
                     })
                 } else {
-                    if (!preferencesState.nextWordPrediction) {
+                    if (!preferencesState.nextWordPrediction || hasDoubleOrGreaterSpacing()) {
                         activeSuggestions = emptyList()
                         return
                     }
@@ -2059,7 +2086,7 @@ class KiebordService : InputMethodService() {
                         } else emptyList()
                     })
                 } else {
-                    if (!preferencesState.nextWordPrediction) {
+                    if (!preferencesState.nextWordPrediction || hasDoubleOrGreaterSpacing()) {
                         activeSuggestions = emptyList()
                         return
                     }
