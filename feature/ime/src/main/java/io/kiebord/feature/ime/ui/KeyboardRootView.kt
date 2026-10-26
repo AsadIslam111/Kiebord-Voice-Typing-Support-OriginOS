@@ -88,6 +88,7 @@ import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.feature.ime.gesture.KeyCentroid
 import io.kiebord.feature.ime.ui.clipboard.ClipboardPanelView
 import io.kiebord.feature.ime.ui.emoji.EmojiPanelView
+import io.kiebord.feature.ime.ui.emoji.EmojiSearchCardView
 import io.kiebord.feature.ime.ui.emoji.EmojiSearchBarRow
 import io.kiebord.feature.ime.ui.emoji.EmojiSearchResultsGrid
 import io.kiebord.feature.ime.ui.emoji.EmojiSearchResultsStrip
@@ -777,29 +778,24 @@ fun KeyboardRootView(
                     height = toolbarHeight + keyboardContentHeight,
                     showKeyBorders = showKeyBorders
                 )
-            } else if (isEmojiSearchOpen) {
-                // 1. Emoji results shown ON TOP of the search bar (2 rows horizontally scrollable)
-                EmojiSearchResultsGrid(
-                    query = emojiSearchQuery,
-                    onEmojiSelected = { emoji ->
-                        onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
-                    },
-                    colorScheme = colorScheme,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // 2. Search bar below emoji results, directly above keyboard keys
-                EmojiSearchBarRow(
-                    query = emojiSearchQuery,
-                    onQueryChange = { emojiSearchQuery = it },
-                    onClose = {
-                        isEmojiSearchOpen = false
-                        emojiSearchQuery = ""
-                        isEmojiOpen = true
-                    },
-                    colorScheme = colorScheme
-                )
             } else {
+                if (isEmojiSearchOpen) {
+                    // Emoji search results in a CardView with search input stacked bottom inside
+                    EmojiSearchCardView(
+                        query = emojiSearchQuery,
+                        onQueryChange = { emojiSearchQuery = it },
+                        onEmojiSelected = { emoji ->
+                            onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                        },
+                        onClose = {
+                            isEmojiSearchOpen = false
+                            emojiSearchQuery = ""
+                            isEmojiOpen = true
+                        },
+                        colorScheme = colorScheme
+                    )
+                }
+
                 // Single unified Top Bar row (46dp height)
                 Row(
                     modifier = Modifier
