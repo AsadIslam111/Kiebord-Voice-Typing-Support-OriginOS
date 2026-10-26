@@ -2,6 +2,7 @@ package io.kiebord.feature.ime.ui.emoji
 
 import android.content.Context
 import android.graphics.Typeface
+import androidx.core.content.ContextCompat
 import androidx.emoji2.text.DefaultEmojiCompatConfig
 import androidx.emoji2.text.EmojiCompat
 import java.io.File
@@ -19,12 +20,45 @@ object EmojiFontManager {
     private var isInitialized = false
 
     /**
+     * Purges any cached AndroidX EmojiPicker files (both regular and device-protected storage)
+     * and resets in-memory singletons so overridden raw CSV resources take effect immediately.
+     */
+    fun clearEmojiPickerCache(context: Context) {
+        try {
+            val dpsContext = ContextCompat.createDeviceProtectedStorageContext(context)
+            val candidateDirs = listOfNotNull(
+                File(context.cacheDir, "emoji_picker"),
+                File(context.filesDir, "emoji_picker"),
+                File(context.noBackupFilesDir, "emoji_picker"),
+                dpsContext?.let { File(it.cacheDir, "emoji_picker") },
+                dpsContext?.let { File(it.filesDir, "emoji_picker") },
+                dpsContext?.let { File(it.noBackupFilesDir, "emoji_picker") }
+            )
+            candidateDirs.forEach { dir ->
+                if (dir.exists()) {
+                    dir.deleteRecursively()
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Reset BundledEmojiListLoader in-memory caches if already loaded
+        try {
+            val loaderClass = Class.forName("androidx.emoji2.emojipicker.BundledEmojiListLoader")
+            val catField = loaderClass.getDeclaredField("categorizedEmojiData").apply { isAccessible = true }
+            catField.set(null, null)
+            val mapField = loaderClass.getDeclaredField("emojiVariantsLookup").apply { isAccessible = true }
+            mapField.set(null, null)
+        } catch (_: Exception) {}
+    }
+
+    /**
      * Initializes EmojiCompat asynchronously in the background so font tables are warm
      * without bundling bulky font binaries or ballooning heap memory.
      */
     fun initEmojiCompat(context: Context) {
         if (isInitialized) return
         isInitialized = true
+        clearEmojiPickerCache(context)
         try {
             val config = DefaultEmojiCompatConfig.create(context)
             if (config != null) {

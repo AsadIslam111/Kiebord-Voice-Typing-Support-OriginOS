@@ -1,11 +1,7 @@
 package io.kiebord.feature.ime.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,20 +20,15 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.ui.res.painterResource
-import io.kiebord.feature.ime.R
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,11 +37,14 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.common.model.KeyDef
+import io.kiebord.feature.ime.R
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
 import kotlin.math.roundToInt
@@ -59,13 +53,23 @@ data class MoreKeysPopupState(
     val anchorKey: KeyDef,
     val anchorRect: Rect,
     val items: List<String>,
+    val dims: MoreKeysDimensions = MoreKeysLayoutHelper.calculateDimensions(1f, 1f, 1080f),
+    val layoutResult: MoreKeysLayoutResult = MoreKeysLayoutHelper.computeLayout(items.size, anchorKey.moreKeysColumns, anchorRect.center.x, 1080f, 100f),
+    val clampedLeft: Float = 0f,
+    val popupTop: Float = 0f,
+    val pivotFractionX: Float = 0.5f,
+    val allowedLeft: Float = 0f,
+    val allowedRight: Float = 1080f,
+    val allowedTop: Float = 0f,
+    val allowedBottom: Float = 1920f,
     val selectedIndex: Int = 0
 )
 
 @Composable
 fun MoreKeysPopup(
     state: MoreKeysPopupState?,
-    keyboardWidthPx: Float,
+    selectedIndexProvider: () -> Int = { 0 },
+    keyboardWidthPx: Float = 0f,
     keyboardLeftPx: Float = 0f,
     keyboardRightPx: Float = keyboardWidthPx,
     scaleFactor: Float = 1.0f,
@@ -76,9 +80,8 @@ fun MoreKeysPopup(
     val density = LocalDensity.current
     val colorScheme = KiebordTheme.colorScheme
 
-    val dims = remember(density.density, scaleFactor, keyboardWidthPx) {
-        MoreKeysLayoutHelper.calculateDimensions(density.density, scaleFactor, keyboardWidthPx)
-    }
+    val dims = state.dims
+    val layoutResult = state.layoutResult
 
     val itemWidthDp = with(density) { dims.itemWidthPx.toDp() }
     val itemHeightDp = with(density) { dims.itemHeightPx.toDp() }
@@ -87,95 +90,27 @@ fun MoreKeysPopup(
     val horizontalPaddingDp = with(density) { dims.horizontalPaddingPx.toDp() }
     val verticalPaddingDp = with(density) { dims.verticalPaddingPx.toDp() }
 
-    val anchorCenterX = state.anchorRect.center.x
-    val anchorXInKeyboard = (anchorCenterX - keyboardLeftPx).coerceAtLeast(0f)
-
-    val layoutResult = remember(state.items, state.anchorKey, state.anchorRect, keyboardWidthPx, keyboardLeftPx, dims) {
-        MoreKeysLayoutHelper.computeLayout(
-            itemCount = state.items.size,
-            columnsHint = state.anchorKey.moreKeysColumns,
-            anchorCenterX = anchorXInKeyboard,
-            keyboardWidthPx = keyboardWidthPx,
-            columnWidthPx = dims.itemWidthPx + dims.colGapPx
-        )
-    }
-
-    val maxCols = layoutResult.numColumns
-    val rowCount = layoutResult.numRows
-
-    val totalWidthPx = dims.totalWidthPx(maxCols)
-    val totalHeightPx = dims.totalHeightPx(rowCount)
-
-    // 1. Safe horizontal clamping: align default key (leftKeys) with anchorCenterX, then clamp within [keyboardLeftPx, keyboardRightPx]
-    val idealLeft = anchorCenterX - (layoutResult.leftKeys * (dims.itemWidthPx + dims.colGapPx) + dims.itemWidthPx / 2f + dims.horizontalPaddingPx)
-    val marginPx = with(density) { 4.dp.toPx() }
-    val minLeftPx = keyboardLeftPx + marginPx
-    val maxLeftPx = (keyboardRightPx - totalWidthPx - marginPx).coerceAtLeast(minLeftPx)
-    val clampedLeft = idealLeft.coerceIn(minLeftPx, maxLeftPx)
-
-    // 2. Safe vertical clamping: above anchor keycap, never off top of screen
-    val anchorTop = state.anchorRect.top
-    val gapDp = (10 * scaleFactor).coerceIn(6f, 14f).dp
-    val gapPx = with(density) { gapDp.toPx() }
-    val idealTop = anchorTop - totalHeightPx - gapPx
-    val minTopDp = 4.dp
-    val minTopPx = with(density) { minTopDp.toPx() }
-    val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
-
-    // 3. Dynamic transform origin for smooth bloom originating right from anchor key
-    val pivotFractionX = if (totalWidthPx > 0f) {
-        ((anchorCenterX - clampedLeft) / totalWidthPx).coerceIn(0.06f, 0.94f)
-    } else {
-        0.5f
-    }
-
-    // 4. Calculate target coordinates for the sliding highlight pill
-    val safeSelectedIndex = state.selectedIndex.coerceIn(0, state.items.lastIndex)
-    val targetCoords = layoutResult.itemPositions[safeSelectedIndex]
-        ?: layoutResult.itemPositions[0]
-        ?: Pair(layoutResult.numRows - 1, layoutResult.leftKeys)
-
-    val targetPillX = (itemWidthDp + colGapDp) * targetCoords.second
-    val targetPillY = (itemHeightDp + rowGapDp) * targetCoords.first
-
-    // Ultra-fast, instant-response sliding highlight indicator (high stiffness spring, 0 lag)
-    val animatedPillX by animateDpAsState(
-        targetValue = targetPillX,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessHigh
-        ),
-        label = "pillX"
-    )
-    val animatedPillY by animateDpAsState(
-        targetValue = targetPillY,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessHigh
-        ),
-        label = "pillY"
-    )
-
     val isLight = colorScheme == KeyboardColorScheme.DefaultLight
+    val currentSelectedIndex = selectedIndexProvider()
 
-    // Outer Box holds the FIXED position so there is ZERO jumping
+    // Outer Box holds the FIXED precomputed position so there is ZERO jumping or re-layout
     Box(
         modifier = modifier
-            .offset { IntOffset(clampedLeft.roundToInt(), popupTop.roundToInt()) }
+            .offset { IntOffset(state.clampedLeft.roundToInt(), state.popupTop.roundToInt()) }
             .wrapContentSize()
     ) {
         AnimatedVisibility(
             visible = true,
             enter = scaleIn(
                 initialScale = 0.85f,
-                transformOrigin = TransformOrigin(pivotFractionX, 1.0f),
-                animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing)
-            ) + fadeIn(animationSpec = tween(durationMillis = 100)),
+                transformOrigin = TransformOrigin(state.pivotFractionX, 1.0f),
+                animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(durationMillis = 80)),
             exit = scaleOut(
                 targetScale = 0.85f,
-                transformOrigin = TransformOrigin(pivotFractionX, 1.0f),
-                animationSpec = tween(durationMillis = 60)
-            ) + fadeOut(animationSpec = tween(durationMillis = 60))
+                transformOrigin = TransformOrigin(state.pivotFractionX, 1.0f),
+                animationSpec = tween(durationMillis = 50)
+            ) + fadeOut(animationSpec = tween(durationMillis = 50))
         ) {
             // Material 3 Borderless Floating Capsule with Soft Shadow
             Box(
@@ -202,16 +137,7 @@ fun MoreKeysPopup(
                     )
                     .padding(horizontal = horizontalPaddingDp, vertical = verticalPaddingDp)
             ) {
-                // 1. Sliding Accent Highlight (glides smoothly under the selected key as a full circle)
-                Box(
-                    modifier = Modifier
-                        .offset(x = animatedPillX, y = animatedPillY)
-                        .size(itemWidthDp, itemHeightDp)
-                        .clip(CircleShape)
-                        .background(colorScheme.accentColor)
-                )
-
-                // 2. Keys Grid
+                // Keys Grid
                 Column(
                     verticalArrangement = Arrangement.spacedBy(rowGapDp),
                     horizontalAlignment = Alignment.Start
@@ -228,108 +154,147 @@ fun MoreKeysPopup(
                                     )
                                 } else {
                                     val item = state.items[originalItemIndex]
-                                    val isSelected = originalItemIndex == safeSelectedIndex
+                                    val isSelected = originalItemIndex == currentSelectedIndex
 
-                                val animatedTextColor by animateColorAsState(
-                                    targetValue = if (isSelected) Color.White else colorScheme.keyForeground,
-                                    animationSpec = tween(durationMillis = 35),
-                                    label = "moreKeyText"
-                                )
-
-                                Box(
-                                    modifier = Modifier
-                                        .size(itemWidthDp, itemHeightDp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    val actionIconSize = dims.iconSizeDp.dp
-                                    when (item) {
-                                        "ACTION_EMOJI", "action:emoji", "EMOJI" -> {
-                                            Icon(
-                                                imageVector = Icons.Outlined.Mood,
-                                                contentDescription = "Emoji",
-                                                tint = animatedTextColor,
-                                                modifier = Modifier.size(actionIconSize)
-                                            )
-                                        }
-                                        "ACTION_SELECT_ALL", "action:select_all", "SELECT_ALL" -> {
-                                            Icon(
-                                                imageVector = Icons.Outlined.SelectAll,
-                                                contentDescription = "Select All",
-                                                tint = animatedTextColor,
-                                                modifier = Modifier.size(actionIconSize)
-                                            )
-                                        }
-                                        "ACTION_CUT", "action:cut", "CUT" -> {
-                                            Icon(
-                                                imageVector = Icons.Outlined.ContentCut,
-                                                contentDescription = "Cut",
-                                                tint = animatedTextColor,
-                                                modifier = Modifier.size(actionIconSize)
-                                            )
-                                        }
-                                        "ACTION_COPY", "action:copy", "COPY" -> {
-                                            Icon(
-                                                imageVector = Icons.Outlined.ContentCopy,
-                                                contentDescription = "Copy",
-                                                tint = animatedTextColor,
-                                                modifier = Modifier.size(actionIconSize)
-                                            )
-                                        }
-                                        "ACTION_PASTE", "action:paste", "PASTE" -> {
-                                            Icon(
-                                                imageVector = Icons.Outlined.ContentPaste,
-                                                contentDescription = "Paste",
-                                                tint = animatedTextColor,
-                                                modifier = Modifier.size(actionIconSize)
-                                            )
-                                        }
-                                        "ACTION_UNDO", "action:undo", "UNDO" -> {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.ic_undo),
-                                                contentDescription = "Undo",
-                                                tint = animatedTextColor,
-                                                modifier = Modifier.size(actionIconSize)
-                                            )
-                                        }
-                                        "ACTION_REDO", "action:redo", "REDO" -> {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.ic_redo),
-                                                contentDescription = "Redo",
-                                                tint = animatedTextColor,
-                                                modifier = Modifier.size(actionIconSize)
-                                            )
-                                        }
-                                        "ACTION_SETTINGS", "action:settings", "SETTINGS" -> {
-                                            Icon(
-                                                imageVector = Icons.Outlined.Settings,
-                                                contentDescription = "Settings",
-                                                tint = animatedTextColor,
-                                                modifier = Modifier.size(actionIconSize)
-                                            )
-                                        }
-                                        "ACTION_ONE_HANDED", "action:one_handed", "ONE_HANDED" -> {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.ic_one_handed),
-                                                contentDescription = "One-Handed",
-                                                tint = animatedTextColor,
-                                                modifier = Modifier.size(actionIconSize)
-                                            )
-                                        }
-                                        else -> {
-                                            Text(
-                                                text = item,
-                                                color = animatedTextColor,
-                                                fontSize = dims.fontSizeSp.sp,
-                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
-                                            )
-                                        }
-                                    }
+                                    MoreKeyCell(
+                                        item = item,
+                                        isSelected = isSelected,
+                                        widthDp = itemWidthDp,
+                                        heightDp = itemHeightDp,
+                                        fontSizeSp = dims.fontSizeSp,
+                                        iconSizeDp = dims.iconSizeDp,
+                                        colorScheme = colorScheme
+                                    )
                                 }
                             }
                         }
                     }
                 }
-                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MoreKeysPopup(
+    state: MoreKeysPopupState?,
+    selectedIndex: Int,
+    keyboardWidthPx: Float = 0f,
+    keyboardLeftPx: Float = 0f,
+    keyboardRightPx: Float = keyboardWidthPx,
+    scaleFactor: Float = 1.0f,
+    modifier: Modifier = Modifier
+) = MoreKeysPopup(
+    state = state,
+    selectedIndexProvider = { selectedIndex },
+    keyboardWidthPx = keyboardWidthPx,
+    keyboardLeftPx = keyboardLeftPx,
+    keyboardRightPx = keyboardRightPx,
+    scaleFactor = scaleFactor,
+    modifier = modifier
+)
+
+@Composable
+private fun MoreKeyCell(
+    item: String,
+    isSelected: Boolean,
+    widthDp: Dp,
+    heightDp: Dp,
+    fontSizeSp: Float,
+    iconSizeDp: Float,
+    colorScheme: KeyboardColorScheme
+) {
+    val contentColor = if (isSelected) Color.White else colorScheme.keyForeground
+    val cellBackground = if (isSelected) colorScheme.accentColor else Color.Transparent
+
+    Box(
+        modifier = Modifier
+            .size(widthDp, heightDp)
+            .clip(CircleShape)
+            .background(cellBackground),
+        contentAlignment = Alignment.Center
+    ) {
+        val actionIconSize = iconSizeDp.dp
+        when (item) {
+            "ACTION_EMOJI", "action:emoji", "EMOJI" -> {
+                Icon(
+                    imageVector = Icons.Outlined.Mood,
+                    contentDescription = "Emoji",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            "ACTION_SELECT_ALL", "action:select_all", "SELECT_ALL" -> {
+                Icon(
+                    imageVector = Icons.Outlined.SelectAll,
+                    contentDescription = "Select All",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            "ACTION_CUT", "action:cut", "CUT" -> {
+                Icon(
+                    imageVector = Icons.Outlined.ContentCut,
+                    contentDescription = "Cut",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            "ACTION_COPY", "action:copy", "COPY" -> {
+                Icon(
+                    imageVector = Icons.Outlined.ContentCopy,
+                    contentDescription = "Copy",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            "ACTION_PASTE", "action:paste", "PASTE" -> {
+                Icon(
+                    imageVector = Icons.Outlined.ContentPaste,
+                    contentDescription = "Paste",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            "ACTION_UNDO", "action:undo", "UNDO" -> {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_undo),
+                    contentDescription = "Undo",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            "ACTION_REDO", "action:redo", "REDO" -> {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_redo),
+                    contentDescription = "Redo",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            "ACTION_SETTINGS", "action:settings", "SETTINGS" -> {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            "ACTION_ONE_HANDED", "action:one_handed", "ONE_HANDED" -> {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_one_handed),
+                    contentDescription = "One-Handed",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            else -> {
+                Text(
+                    text = item,
+                    color = contentColor,
+                    fontSize = fontSizeSp.sp,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                )
             }
         }
     }

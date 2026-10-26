@@ -57,6 +57,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -197,6 +198,7 @@ fun KeyboardRootView(
     val cellCoordinatesMap = remember { mutableMapOf<Pair<Int, Int>, LayoutCoordinates>() }
 
     var moreKeysState by remember { mutableStateOf<MoreKeysPopupState?>(null) }
+    var selectedMoreKeyIndex by remember { mutableIntStateOf(0) }
     var quickDragState by remember { mutableStateOf<QuickSymbolDragState?>(null) }
     var isSlidingSymbolMode by remember { mutableStateOf(false) }
     var isSlidingShiftMode by remember { mutableStateOf(false) }
@@ -1198,10 +1200,52 @@ fun KeyboardRootView(
                             keyboardWidthPx = effectiveKeyboardWidthPx,
                             columnWidthPx = dims.itemWidthPx + dims.colGapPx
                         )
+                        val totalWidthPx = dims.totalWidthPx(layoutResult.numColumns)
+                        val totalHeightPx = dims.totalHeightPx(layoutResult.numRows)
+
+                        val marginPx = with(density) { 4.dp.toPx() }
+                        val minLeftPx = keyboardLeftPx + marginPx
+                        val maxLeftPx = (keyboardRightPx - totalWidthPx - marginPx).coerceAtLeast(minLeftPx)
+                        val idealLeft = keyRect.center.x - (layoutResult.leftKeys * (dims.itemWidthPx + dims.colGapPx) + dims.itemWidthPx / 2f + dims.horizontalPaddingPx)
+                        val clampedLeft = idealLeft.coerceIn(minLeftPx, maxLeftPx)
+
+                        val gapDp = (10 * scaleFactor).coerceIn(6f, 14f).dp
+                        val gapPx = with(density) { gapDp.toPx() }
+                        val idealTop = keyRect.top - totalHeightPx - gapPx
+                        val minTopDp = 4.dp
+                        val minTopPx = with(density) { minTopDp.toPx() }
+                        val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
+
+                        val pivotFractionX = if (totalWidthPx > 0f) {
+                            ((keyRect.center.x - clampedLeft) / totalWidthPx).coerceIn(0.06f, 0.94f)
+                        } else {
+                            0.5f
+                        }
+
+                        // Generous hit-test bounding box with slop so user doesn't accidentally cancel
+                        val slopHorizontalPx = with(density) { (48 * scaleFactor).dp.toPx() }
+                        val slopTopPx = with(density) { (48 * scaleFactor).dp.toPx() }
+                        val slopBottomPx = with(density) { (64 * scaleFactor).dp.toPx() }
+
+                        val allowedLeft = minOf(clampedLeft, keyRect.left) - slopHorizontalPx
+                        val allowedRight = maxOf(clampedLeft + totalWidthPx, keyRect.right) + slopHorizontalPx
+                        val allowedTop = popupTop - slopTopPx
+                        val allowedBottom = keyRect.bottom + slopBottomPx
+
+                        selectedMoreKeyIndex = layoutResult.defaultItemIndex
                         moreKeysState = MoreKeysPopupState(
                             anchorKey = keyDef,
                             anchorRect = keyRect,
                             items = keyDef.moreKeys,
+                            dims = dims,
+                            layoutResult = layoutResult,
+                            clampedLeft = clampedLeft,
+                            popupTop = popupTop,
+                            pivotFractionX = pivotFractionX,
+                            allowedLeft = allowedLeft,
+                            allowedRight = allowedRight,
+                            allowedTop = allowedTop,
+                            allowedBottom = allowedBottom,
                             selectedIndex = layoutResult.defaultItemIndex
                         )
                     }
@@ -1209,81 +1253,41 @@ fun KeyboardRootView(
                     val updateMoreKeysHoverFromRoot: (Offset) -> Boolean = { fingerPosInRoot ->
                         val state = moreKeysState
                         if (state != null) {
-                            val dims = MoreKeysLayoutHelper.calculateDimensions(
-                                density = density.density,
-                                scaleFactor = scaleFactor,
-                                keyboardWidthPx = effectiveKeyboardWidthPx
-                            )
-                            val anchorXInKeyboard = (state.anchorRect.center.x - keyboardLeftPx).coerceAtLeast(0f)
-                            val layoutResult = MoreKeysLayoutHelper.computeLayout(
-                                itemCount = state.items.size,
-                                columnsHint = state.anchorKey.moreKeysColumns,
-                                anchorCenterX = anchorXInKeyboard,
-                                keyboardWidthPx = effectiveKeyboardWidthPx,
-                                columnWidthPx = dims.itemWidthPx + dims.colGapPx
-                            )
-
-                            val totalWidthPx = dims.totalWidthPx(layoutResult.numColumns)
-                            val totalHeightPx = dims.totalHeightPx(layoutResult.numRows)
-
-                            val marginPx = with(density) { 4.dp.toPx() }
-                            val minLeftPx = keyboardLeftPx + marginPx
-                            val maxLeftPx = (keyboardRightPx - totalWidthPx - marginPx).coerceAtLeast(minLeftPx)
-                            val idealLeft = state.anchorRect.center.x - (layoutResult.leftKeys * (dims.itemWidthPx + dims.colGapPx) + dims.itemWidthPx / 2f + dims.horizontalPaddingPx)
-                            val clampedLeft = idealLeft.coerceIn(minLeftPx, maxLeftPx)
-
-                            val gapDp = (10 * scaleFactor).coerceIn(6f, 14f).dp
-                            val gapPx = with(density) { gapDp.toPx() }
-                            val idealTop = state.anchorRect.top - totalHeightPx - gapPx
-                            val minTopDp = 4.dp
-                            val minTopPx = with(density) { minTopDp.toPx() }
-                            val popupTop = if (idealTop < minTopPx) minTopPx else idealTop
-
-                            // Hit-test bounding box with slop
-                            val slopHorizontalPx = with(density) { (28 * scaleFactor).dp.toPx() }
-                            val slopTopPx = with(density) { (32 * scaleFactor).dp.toPx() }
-                            val slopBottomPx = with(density) { (36 * scaleFactor).dp.toPx() }
-
-                            val allowedLeft = minOf(clampedLeft, state.anchorRect.left) - slopHorizontalPx
-                            val allowedRight = maxOf(clampedLeft + totalWidthPx, state.anchorRect.right) + slopHorizontalPx
-                            val allowedTop = popupTop - slopTopPx
-                            val allowedBottom = state.anchorRect.bottom + slopBottomPx
-
-                            val isWithinBounds = fingerPosInRoot.x in allowedLeft..allowedRight &&
-                                fingerPosInRoot.y in allowedTop..allowedBottom
+                            val isWithinBounds = fingerPosInRoot.x in state.allowedLeft..state.allowedRight &&
+                                fingerPosInRoot.y in state.allowedTop..state.allowedBottom
 
                             if (!isWithinBounds) {
                                 false
                             } else {
-                                val relX = fingerPosInRoot.x - (clampedLeft + dims.horizontalPaddingPx)
-                                val relY = fingerPosInRoot.y - (popupTop + dims.verticalPaddingPx)
+                                val relX = fingerPosInRoot.x - (state.clampedLeft + state.dims.horizontalPaddingPx)
+                                val relY = fingerPosInRoot.y - (state.popupTop + state.dims.verticalPaddingPx)
 
-                                val rowStep = dims.itemHeightPx + dims.rowGapPx
-                                val colStep = dims.itemWidthPx + dims.colGapPx
+                                val rowStep = state.dims.itemHeightPx + state.dims.rowGapPx
+                                val colStep = state.dims.itemWidthPx + state.dims.colGapPx
 
-                                val hoveredRow = if (layoutResult.numRows > 1 && rowStep > 0f) {
-                                    kotlin.math.floor(relY / rowStep).toInt().coerceIn(0, layoutResult.numRows - 1)
+                                val hoveredRow = if (state.layoutResult.numRows > 1 && rowStep > 0f) {
+                                    (relY / rowStep).toInt().coerceIn(0, state.layoutResult.numRows - 1)
                                 } else {
                                     0
                                 }
 
                                 val hoveredCol = if (colStep > 0f) {
-                                    kotlin.math.floor(relX / colStep).toInt().coerceIn(0, layoutResult.numColumns - 1)
+                                    (relX / colStep).toInt().coerceIn(0, state.layoutResult.numColumns - 1)
                                 } else {
                                     0
                                 }
 
-                                val targetItemIndex = layoutResult.grid.getOrNull(hoveredRow)?.getOrNull(hoveredCol)
+                                val targetItemIndex = state.layoutResult.grid.getOrNull(hoveredRow)?.getOrNull(hoveredCol)
                                     ?: run {
-                                        val rowList = layoutResult.grid.getOrNull(hoveredRow) ?: emptyList()
+                                        val rowList = state.layoutResult.grid.getOrNull(hoveredRow) ?: emptyList()
                                         rowList.filterNotNull().minByOrNull { itemIdx ->
-                                            val coords = layoutResult.itemPositions[itemIdx] ?: Pair(0, 0)
-                                            Math.abs(coords.second - hoveredCol)
+                                            val coords = state.layoutResult.itemPositions[itemIdx] ?: Pair(0, 0)
+                                            kotlin.math.abs(coords.second - hoveredCol)
                                         }
                                     }
 
-                                if (targetItemIndex != null && targetItemIndex != state.selectedIndex) {
-                                    moreKeysState = state.copy(selectedIndex = targetItemIndex)
+                                if (targetItemIndex != null && targetItemIndex != selectedMoreKeyIndex) {
+                                    selectedMoreKeyIndex = targetItemIndex
                                     performHaptic(HapticFeedbackType.TextHandleMove)
                                 }
                                 true
@@ -1320,7 +1324,7 @@ fun KeyboardRootView(
                     val handleMoreKeysCommit: () -> Unit = {
                         val state = moreKeysState
                         if (state != null) {
-                            val selectedChar = state.items.getOrNull(state.selectedIndex)
+                            val selectedChar = state.items.getOrNull(selectedMoreKeyIndex)
                                 ?: state.items.firstOrNull()
                             if (!selectedChar.isNullOrEmpty()) {
                                 when (selectedChar) {
@@ -1863,6 +1867,7 @@ fun KeyboardRootView(
         // 2. Borno Keyboard rounded pill MoreKeys floating popup
         MoreKeysPopup(
             state = moreKeysState,
+            selectedIndexProvider = { selectedMoreKeyIndex },
             keyboardWidthPx = effectiveKeyboardWidthPx,
             keyboardLeftPx = keyboardLeftPx,
             keyboardRightPx = keyboardRightPx,

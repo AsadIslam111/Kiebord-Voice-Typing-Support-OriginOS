@@ -232,6 +232,7 @@ fun EmojiPanelView(
 
             AndroidView(
                 factory = {
+                    EmojiFontManager.clearEmojiPickerCache(themedContext)
                     EmojiPickerView(themedContext).apply {
                         emojiGridColumns = calculatedColumns
                         setOnEmojiPickedListener { item ->
