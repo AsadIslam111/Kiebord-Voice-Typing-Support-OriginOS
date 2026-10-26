@@ -35,6 +35,7 @@ fun OneHandedSideBar(
     onCyclePaddingPreset: () -> Unit,
     onExpand: () -> Unit,
     onSwitchDirection: () -> Unit,
+    vibrationEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -68,9 +69,11 @@ fun OneHandedSideBar(
                         )
                     }
                     .clickable {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        } catch (_: Exception) {}
+                        if (vibrationEnabled) {
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            } catch (_: Exception) {}
+                        }
                         onCyclePaddingPreset()
                     },
                 contentAlignment = Alignment.Center
@@ -90,9 +93,11 @@ fun OneHandedSideBar(
                     .clip(CircleShape)
                     .background(colorScheme.keyBackground)
                     .clickable {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (_: Exception) {}
+                        if (vibrationEnabled) {
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            } catch (_: Exception) {}
+                        }
                         onExpand()
                     },
                 contentAlignment = Alignment.Center
@@ -112,9 +117,11 @@ fun OneHandedSideBar(
                     .clip(CircleShape)
                     .background(colorScheme.keyBackground)
                     .clickable {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (_: Exception) {}
+                        if (vibrationEnabled) {
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            } catch (_: Exception) {}
+                        }
                         onSwitchDirection()
                     },
                 contentAlignment = Alignment.Center

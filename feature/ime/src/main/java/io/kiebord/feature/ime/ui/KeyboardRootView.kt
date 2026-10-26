@@ -168,11 +168,19 @@ fun KeyboardRootView(
     longPressDelayMs: Long = 300L,
     cursorTrackpadEnabled: Boolean = true,
     inputSessionId: Int = 0,
+    vibrationEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
+    val performHaptic: (HapticFeedbackType) -> Unit = { type ->
+        if (vibrationEnabled) {
+            try {
+                haptic.performHapticFeedback(type)
+            } catch (_: Exception) {}
+        }
+    }
 
     var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var rootWidthPx by remember { mutableFloatStateOf(0f) }
@@ -227,9 +235,7 @@ fun KeyboardRootView(
     LaunchedEffect(isSpacebarSwiping, targetSwipeIndex) {
         if (isSpacebarSwiping && lastHapticIndex != targetSwipeIndex) {
             lastHapticIndex = targetSwipeIndex
-            try {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            } catch (_: Exception) {}
+            performHaptic(HapticFeedbackType.TextHandleMove)
         } else if (!isSpacebarSwiping) {
             lastHapticIndex = null
         }
@@ -819,9 +825,7 @@ fun KeyboardRootView(
                             .clickable {
                                 when {
                                     isSuggestionsExpanded -> {
-                                        try {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        } catch (_: Exception) {}
+                                        performHaptic(HapticFeedbackType.TextHandleMove)
                                         isSuggestionsExpanded = false
                                     }
                                     isToolsDrawerOpen || isToolbarOptionsVisible -> {
@@ -887,9 +891,7 @@ fun KeyboardRootView(
                             isExpanded = isSuggestionsExpanded,
                             onExpandToggle = if (suggestionBarMode == KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE) null else {
                                 {
-                                    try {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    } catch (_: Exception) {}
+                                    performHaptic(HapticFeedbackType.TextHandleMove)
                                     isSuggestionsExpanded = !isSuggestionsExpanded
                                     if (isSuggestionsExpanded) {
                                         isToolsDrawerOpen = false
@@ -973,7 +975,7 @@ fun KeyboardRootView(
                                                 painter = painterResource(id = R.drawable.ic_undo),
                                                 contentDescription = "Undo",
                                                 tint = colorScheme.keyForeground,
-                                                modifier = Modifier.size(18.dp)
+                                                modifier = Modifier.size(24.dp)
                                             )
                                             Text(
                                                 text = "Undo",
@@ -1009,7 +1011,7 @@ fun KeyboardRootView(
                                                 painter = painterResource(id = R.drawable.ic_redo),
                                                 contentDescription = "Redo",
                                                 tint = colorScheme.keyForeground,
-                                                modifier = Modifier.size(18.dp)
+                                                modifier = Modifier.size(24.dp)
                                             )
                                             Text(
                                                 text = "Redo",
@@ -1143,9 +1145,7 @@ fun KeyboardRootView(
                                         if (closestKey != null && minDistance <= maxProximityDistPx) {
                                             handleKeyPress(closestKey)
                                             handleKeyTapUnified(closestKey)
-                                            try {
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            } catch (_: Exception) {}
+                                            performHaptic(HapticFeedbackType.TextHandleMove)
                                         }
                                     }
                                 }
@@ -1246,9 +1246,7 @@ fun KeyboardRootView(
 
                                 if (targetItemIndex != null && targetItemIndex != state.selectedIndex) {
                                     moreKeysState = state.copy(selectedIndex = targetItemIndex)
-                                    try {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    } catch (_: Exception) {}
+                                    performHaptic(HapticFeedbackType.TextHandleMove)
                                 }
                                 true
                             }
@@ -1401,9 +1399,7 @@ fun KeyboardRootView(
                                 onKeyLongPress = { keyDef ->
                                     if (keyDef.type == KeyType.SWITCH_LANGUAGE) {
                                         isLanguagePickerOpen = true
-                                        try {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        } catch (_: Exception) {}
+                                        performHaptic(HapticFeedbackType.LongPress)
                                     } else {
                                         onKeyLongPress(keyDef)
                                     }
@@ -1427,18 +1423,14 @@ fun KeyboardRootView(
                                         val newLayoutId = effectiveLayoutList.getOrNull(finalTarget)
                                         if (newLayoutId != null && newLayoutId != layout.id) {
                                             onSwitchToLayout(newLayoutId)
-                                            try {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            } catch (_: Exception) {}
+                                            performHaptic(HapticFeedbackType.LongPress)
                                         }
                                         isSpacebarSwiping = false
                                         spacebarSwipeDeltaX = 0f
                                     }
                                 },
                                 onSpacebarDwellReady = {
-                                    try {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    } catch (_: Exception) {}
+                                    performHaptic(HapticFeedbackType.TextHandleMove)
                                 },
                                 onKeyPositioned = { _, coords ->
                                     cellCoordinatesMap[Pair(rowIndex, keyIndex)] = coords
@@ -1450,9 +1442,7 @@ fun KeyboardRootView(
                                             false
                                         )
                                         if (didMove) {
-                                            try {
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            } catch (_: Exception) {}
+                                            performHaptic(HapticFeedbackType.TextHandleMove)
                                         }
                                     }
                                 },
@@ -1553,9 +1543,7 @@ fun KeyboardRootView(
                                             slidingDwellJob = coroutineScope.launch {
                                                 delay(260L)
                                                 openMoreKeysForAnchor(targetKey, targetBounds)
-                                                try {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                } catch (_: Exception) {}
+                                                performHaptic(HapticFeedbackType.LongPress)
                                             }
                                         }
                                     }
@@ -1954,9 +1942,7 @@ fun KeyboardRootView(
                 onConfirm = {
                     onUnlearnWord(candidateToUnlearn.text)
                     unlearnCandidateTarget = null
-                    try {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    } catch (_: Exception) {}
+                    performHaptic(HapticFeedbackType.LongPress)
                 },
                 onDismiss = { unlearnCandidateTarget = null },
                 modifier = Modifier.matchParentSize()
@@ -1968,6 +1954,7 @@ fun KeyboardRootView(
             OneHandedSideBar(
                 oneHandedSide = oneHandedSide,
                 sideWidth = oneHandedSideWidth.dp,
+                vibrationEnabled = vibrationEnabled,
                 onAdjustPaddingDelta = { deltaPx ->
                     val deltaDp = deltaPx / density.density
                     if (oneHandedSide == "LEFT") {

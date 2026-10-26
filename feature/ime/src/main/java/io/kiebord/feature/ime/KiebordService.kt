@@ -234,6 +234,7 @@ class KiebordService : InputMethodService() {
                     shiftState = shiftState,
                     inputSessionId = inputSessionId,
                     navBarBottomInset = navBarBottomDp,
+                    vibrationEnabled = preferencesState.vibrateOnKeypress,
                     onKeyPress = { performKeyFeedback() },
                     onKeyTap = ::handleKeyTap,
                     onKeyLongPress = ::handleKeyLongPress,

@@ -301,7 +301,7 @@ fun MoreKeysPopup(
                                         }
                                         "ACTION_ONE_HANDED", "action:one_handed", "ONE_HANDED" -> {
                                             Icon(
-                                                imageVector = Icons.Outlined.TouchApp,
+                                                painter = painterResource(id = R.drawable.ic_one_handed),
                                                 contentDescription = "One-Handed",
                                                 tint = animatedTextColor,
                                                 modifier = Modifier.size(actionIconSize)
