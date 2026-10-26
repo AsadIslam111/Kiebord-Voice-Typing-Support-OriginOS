@@ -7,6 +7,11 @@ data class KiebordPreferences(
     // Appearance & Theming
     val theme: String = THEME_DEFAULT_DARK,
     val keyboardHeightScale: Float = 1.0f,
+    val keyboardHeightScaleLandscape: Float = 1.0f,
+    val chinPaddingPortraitDp: Float = 8.0f,
+    val chinPaddingLandscapeDp: Float = 4.0f,
+    val horizontalMarginPortraitDp: Float = 0.0f,
+    val horizontalMarginLandscapeDp: Float = 0.0f,
     val showNumberRow: Boolean = false,
     val showKeyBorders: Boolean = true,
     val showKeyPopups: Boolean = true,

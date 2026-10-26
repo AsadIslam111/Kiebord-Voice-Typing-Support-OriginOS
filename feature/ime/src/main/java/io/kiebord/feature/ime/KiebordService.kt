@@ -263,7 +263,17 @@ class KiebordService : InputMethodService() {
                     showGestureTrail = preferencesState.showGestureTrail,
                     longPressDelayMs = preferencesState.longPressDelayMs.toLong(),
                     cursorTrackpadEnabled = preferencesState.cursorTrackpadEnabled,
-                    initialRowHeight = (58 * preferencesState.keyboardHeightScale).dp,
+                    heightScalePortrait = preferencesState.keyboardHeightScale,
+                    heightScaleLandscape = preferencesState.keyboardHeightScaleLandscape,
+                    chinPaddingPortraitDp = preferencesState.chinPaddingPortraitDp,
+                    chinPaddingLandscapeDp = preferencesState.chinPaddingLandscapeDp,
+                    horizontalMarginPortraitDp = preferencesState.horizontalMarginPortraitDp,
+                    horizontalMarginLandscapeDp = preferencesState.horizontalMarginLandscapeDp,
+                    onResizerValuesChange = { isLandscape, scale, chinDp, marginDp ->
+                        serviceScope.launch {
+                            preferencesRepo.updateKeyboardResizerValues(isLandscape, scale, chinDp, marginDp)
+                        }
+                    },
                     defaultShowNumberRow = preferencesState.showNumberRow,
                     onNumberRowToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateShowNumberRow(enabled) }

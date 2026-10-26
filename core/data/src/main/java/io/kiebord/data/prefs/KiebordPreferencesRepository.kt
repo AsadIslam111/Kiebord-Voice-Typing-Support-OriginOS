@@ -24,6 +24,11 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
     private object PreferencesKeys {
         val THEME = stringPreferencesKey("pref_theme")
         val KEYBOARD_HEIGHT_SCALE = floatPreferencesKey("pref_keyboard_height_scale")
+        val KEYBOARD_HEIGHT_SCALE_LANDSCAPE = floatPreferencesKey("pref_keyboard_height_scale_landscape")
+        val CHIN_PADDING_PORTRAIT = floatPreferencesKey("pref_chin_padding_portrait")
+        val CHIN_PADDING_LANDSCAPE = floatPreferencesKey("pref_chin_padding_landscape")
+        val HORIZONTAL_MARGIN_PORTRAIT = floatPreferencesKey("pref_horizontal_margin_portrait")
+        val HORIZONTAL_MARGIN_LANDSCAPE = floatPreferencesKey("pref_horizontal_margin_landscape")
         val SHOW_NUMBER_ROW = booleanPreferencesKey("pref_show_number_row")
         val SHOW_KEY_BORDERS = booleanPreferencesKey("pref_show_key_borders")
         val SHOW_KEY_POPUPS = booleanPreferencesKey("pref_show_key_popups")
@@ -74,6 +79,11 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
             KiebordPreferences(
                 theme = prefs[PreferencesKeys.THEME] ?: KiebordPreferences.THEME_DEFAULT_DARK,
                 keyboardHeightScale = prefs[PreferencesKeys.KEYBOARD_HEIGHT_SCALE] ?: 1.0f,
+                keyboardHeightScaleLandscape = prefs[PreferencesKeys.KEYBOARD_HEIGHT_SCALE_LANDSCAPE] ?: 1.0f,
+                chinPaddingPortraitDp = prefs[PreferencesKeys.CHIN_PADDING_PORTRAIT] ?: 8.0f,
+                chinPaddingLandscapeDp = prefs[PreferencesKeys.CHIN_PADDING_LANDSCAPE] ?: 4.0f,
+                horizontalMarginPortraitDp = prefs[PreferencesKeys.HORIZONTAL_MARGIN_PORTRAIT] ?: 0.0f,
+                horizontalMarginLandscapeDp = prefs[PreferencesKeys.HORIZONTAL_MARGIN_LANDSCAPE] ?: 0.0f,
                 showNumberRow = prefs[PreferencesKeys.SHOW_NUMBER_ROW] ?: false,
                 showKeyBorders = prefs[PreferencesKeys.SHOW_KEY_BORDERS] ?: true,
                 showKeyPopups = prefs[PreferencesKeys.SHOW_KEY_POPUPS] ?: true,
@@ -149,6 +159,29 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateKeyboardHeightScale(scale: Float) {
         context.kiebordDataStore.edit { it[PreferencesKeys.KEYBOARD_HEIGHT_SCALE] = scale }
+    }
+
+    suspend fun updateKeyboardHeightScaleLandscape(scale: Float) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.KEYBOARD_HEIGHT_SCALE_LANDSCAPE] = scale }
+    }
+
+    suspend fun updateKeyboardResizerValues(
+        isLandscape: Boolean,
+        heightScale: Float,
+        chinPaddingDp: Float,
+        horizontalMarginDp: Float
+    ) {
+        context.kiebordDataStore.edit { prefs ->
+            if (isLandscape) {
+                prefs[PreferencesKeys.KEYBOARD_HEIGHT_SCALE_LANDSCAPE] = heightScale
+                prefs[PreferencesKeys.CHIN_PADDING_LANDSCAPE] = chinPaddingDp
+                prefs[PreferencesKeys.HORIZONTAL_MARGIN_LANDSCAPE] = horizontalMarginDp
+            } else {
+                prefs[PreferencesKeys.KEYBOARD_HEIGHT_SCALE] = heightScale
+                prefs[PreferencesKeys.CHIN_PADDING_PORTRAIT] = chinPaddingDp
+                prefs[PreferencesKeys.HORIZONTAL_MARGIN_PORTRAIT] = horizontalMarginDp
+            }
+        }
     }
 
     suspend fun updateShowNumberRow(enabled: Boolean) {

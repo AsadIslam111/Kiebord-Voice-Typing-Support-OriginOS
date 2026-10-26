@@ -49,6 +49,7 @@ fun LiveResizerOverlay(
     onReset: () -> Unit,
     onDone: () -> Unit,
     onCancel: () -> Unit,
+    baseRowHeight: Dp = 58.dp,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -98,7 +99,9 @@ fun LiveResizerOverlay(
                     detectDragGestures { change, dragAmount ->
                         change.consume()
                         val deltaRowDp = with(density) { (-dragAmount.y / 4f).toDp() }
-                        val newHeight = (currentHeightState.value + deltaRowDp).coerceIn(40.dp, 80.dp)
+                        val minAllowedHeight = (baseRowHeight * 0.65f).coerceAtLeast(22.dp)
+                        val maxAllowedHeight = (baseRowHeight * 1.45f).coerceAtMost(90.dp)
+                        val newHeight = (currentHeightState.value + deltaRowDp).coerceIn(minAllowedHeight, maxAllowedHeight)
                         onHeightChangeState.value(newHeight)
                     }
                 },
@@ -293,7 +296,7 @@ fun LiveResizerOverlay(
 
                 // Scale / Height readout percentage
                 Text(
-                    text = "${(currentRowHeight.value / 58f * 100).toInt()}%",
+                    text = "${(currentRowHeight.value / (if (baseRowHeight.value > 0f) baseRowHeight.value else 58f) * 100).toInt()}%",
                     color = colorScheme.keyForeground,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp

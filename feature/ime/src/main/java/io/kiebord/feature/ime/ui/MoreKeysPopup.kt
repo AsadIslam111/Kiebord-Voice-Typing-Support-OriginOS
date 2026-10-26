@@ -3,7 +3,9 @@ package io.kiebord.feature.ime.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -136,15 +138,21 @@ fun MoreKeysPopup(
     val targetPillX = (itemWidthDp + colGapDp) * targetCoords.second
     val targetPillY = (itemHeightDp + rowGapDp) * targetCoords.first
 
-    // Snappy, silky-smooth sliding highlight indicator (80ms glide, zero lag, no bouncy spring delay)
+    // Ultra-fast, instant-response sliding highlight indicator (high stiffness spring, 0 lag)
     val animatedPillX by animateDpAsState(
         targetValue = targetPillX,
-        animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
         label = "pillX"
     )
     val animatedPillY by animateDpAsState(
         targetValue = targetPillY,
-        animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
         label = "pillY"
     )
 
@@ -224,7 +232,7 @@ fun MoreKeysPopup(
 
                                 val animatedTextColor by animateColorAsState(
                                     targetValue = if (isSelected) Color.White else colorScheme.keyForeground,
-                                    animationSpec = tween(durationMillis = 80),
+                                    animationSpec = tween(durationMillis = 35),
                                     label = "moreKeyText"
                                 )
 

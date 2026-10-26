@@ -75,6 +75,8 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
@@ -139,6 +141,13 @@ fun KeyboardRootView(
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
     onGestureLivePredict: ((List<Offset>, List<KeyCentroid>, Float) -> String?)? = null,
     initialRowHeight: Dp = 58.dp,
+    heightScalePortrait: Float = 1.0f,
+    heightScaleLandscape: Float = 1.0f,
+    chinPaddingPortraitDp: Float = 8.0f,
+    chinPaddingLandscapeDp: Float = 4.0f,
+    horizontalMarginPortraitDp: Float = 0.0f,
+    horizontalMarginLandscapeDp: Float = 0.0f,
+    onResizerValuesChange: ((isLandscape: Boolean, heightScale: Float, chinPaddingDp: Float, horizontalMarginDp: Float) -> Unit)? = null,
     defaultShowNumberRow: Boolean = false,
     onNumberRowToggle: ((Boolean) -> Unit)? = null,
     showKeyBorders: Boolean = true,
@@ -409,9 +418,50 @@ fun KeyboardRootView(
         drawerContainerBounds?.contains(currentFingerInRoot!!) ?: false
     } else false
 
-    var keyRowHeight by remember(initialRowHeight) { mutableStateOf(initialRowHeight) }
-    val scaleFactor = (keyRowHeight.value / 58f).coerceIn(0.4f, 1.6f)
-    val toolbarHeight = (44 * scaleFactor).dp
+    var isResizerOpen by remember { mutableStateOf(false) }
+    var isTextEditOpen by remember { mutableStateOf(false) }
+    var isToolsDrawerOpen by remember { mutableStateOf(false) }
+    var isSuggestionsExpanded by remember { mutableStateOf(false) }
+    var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
+    var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
+    var showKeyPopups by remember(defaultShowKeyPopups) { mutableStateOf(defaultShowKeyPopups) }
+    var traditionalMode by remember(defaultTraditionalMode) { mutableStateOf(defaultTraditionalMode) }
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val screenHeightDp = configuration.screenHeightDp.dp
+
+    // Baseline row height: in portrait 58dp
+    val basePortraitRowHeight = 58.dp
+
+    // In landscape, by default the keyboard height is 60% of landscape height
+    val totalLandscapeRows = if (showNumberRow) 5f else 4f
+    val baseLandscapeRowHeight = remember(screenHeightDp, totalLandscapeRows) {
+        ((screenHeightDp * 0.60f - 38.dp - 4.dp).coerceAtLeast(110.dp) / totalLandscapeRows)
+    }
+
+    val activeBaseRowHeight = if (isLandscape) baseLandscapeRowHeight else basePortraitRowHeight
+    val activeHeightScale = if (isLandscape) heightScaleLandscape else heightScalePortrait
+    val activeTargetRowHeight = if (initialRowHeight != 58.dp && !isLandscape) initialRowHeight else activeBaseRowHeight * activeHeightScale
+
+    val activeChinPadding = if (isLandscape) chinPaddingLandscapeDp.dp else chinPaddingPortraitDp.dp
+    val activeHorizontalMargin = if (isLandscape) horizontalMarginLandscapeDp.dp else horizontalMarginPortraitDp.dp
+
+    var keyRowHeight by remember(isLandscape, activeTargetRowHeight) { mutableStateOf(activeTargetRowHeight) }
+    val scaleFactor = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 58f)).coerceIn(0.4f, 1.6f)
+    val toolbarHeight = if (isLandscape) (38 * scaleFactor).coerceIn(32f, 44f).dp else (44 * scaleFactor).dp
+
+    var chinPadding by remember(isLandscape, activeChinPadding) {
+        mutableStateOf(activeChinPadding)
+    }
+    var horizontalMargin by remember(isLandscape, activeHorizontalMargin) {
+        mutableStateOf(activeHorizontalMargin)
+    }
+
+    // Snapshot state for Resizer Cancel button
+    var savedRowHeight by remember { mutableStateOf(keyRowHeight) }
+    var savedChinPadding by remember { mutableStateOf(chinPadding) }
+    var savedHorizontalMargin by remember { mutableStateOf(horizontalMargin) }
 
     val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
         val finger = currentFingerInRoot!!
@@ -454,25 +504,6 @@ fun KeyboardRootView(
             clipboardManager?.clearQuickPaste()
         }
     }
-
-    var isResizerOpen by remember { mutableStateOf(false) }
-    var isTextEditOpen by remember { mutableStateOf(false) }
-    var isToolsDrawerOpen by remember { mutableStateOf(false) }
-    var isSuggestionsExpanded by remember { mutableStateOf(false) }
-    var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
-    var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
-    var showKeyPopups by remember(defaultShowKeyPopups) { mutableStateOf(defaultShowKeyPopups) }
-    var traditionalMode by remember(defaultTraditionalMode) { mutableStateOf(defaultTraditionalMode) }
-    var chinPadding by remember(initialRowHeight) {
-        val initialScale = (initialRowHeight.value / 58f).coerceIn(0.4f, 1.6f)
-        mutableStateOf((8 * initialScale).dp)
-    }
-    var horizontalMargin by remember { mutableStateOf(0.dp) }
-
-    // Snapshot state for Resizer Cancel button
-    var savedRowHeight by remember { mutableStateOf(initialRowHeight) }
-    var savedChinPadding by remember { mutableStateOf(chinPadding) }
-    var savedHorizontalMargin by remember { mutableStateOf(0.dp) }
 
     // Obey navigation bar insets: maximum of Compose WindowInsets and platform WindowInsetsCompat
     val composeNavBottom = if (applySystemInsets) {
@@ -1227,13 +1258,20 @@ fun KeyboardRootView(
                                 val relX = fingerPosInRoot.x - (clampedLeft + dims.horizontalPaddingPx)
                                 val relY = fingerPosInRoot.y - (popupTop + dims.verticalPaddingPx)
 
-                                val hoveredRow = if (layoutResult.numRows > 1) {
-                                    (relY / (dims.itemHeightPx + dims.rowGapPx)).toInt().coerceIn(0, layoutResult.numRows - 1)
+                                val rowStep = dims.itemHeightPx + dims.rowGapPx
+                                val colStep = dims.itemWidthPx + dims.colGapPx
+
+                                val hoveredRow = if (layoutResult.numRows > 1 && rowStep > 0f) {
+                                    kotlin.math.floor(relY / rowStep).toInt().coerceIn(0, layoutResult.numRows - 1)
                                 } else {
                                     0
                                 }
 
-                                val hoveredCol = (relX / (dims.itemWidthPx + dims.colGapPx)).toInt().coerceIn(0, layoutResult.numColumns - 1)
+                                val hoveredCol = if (colStep > 0f) {
+                                    kotlin.math.floor(relX / colStep).toInt().coerceIn(0, layoutResult.numColumns - 1)
+                                } else {
+                                    0
+                                }
 
                                 val targetItemIndex = layoutResult.grid.getOrNull(hoveredRow)?.getOrNull(hoveredCol)
                                     ?: run {
@@ -1838,17 +1876,30 @@ fun KeyboardRootView(
                 currentRowHeight = keyRowHeight,
                 currentChinPadding = chinPadding,
                 currentHorizontalMargin = horizontalMargin,
+                baseRowHeight = activeBaseRowHeight,
                 onRowHeightChange = { keyRowHeight = it },
                 onChinPaddingChange = { chinPadding = it },
                 onHorizontalMarginChange = { horizontalMargin = it },
                 onReset = {
-                    keyRowHeight = 58.dp
-                    chinPadding = 8.dp
+                    keyRowHeight = activeBaseRowHeight
+                    chinPadding = if (isLandscape) 4.dp else 8.dp
                     horizontalMargin = 0.dp
+                    onResizerValuesChange?.invoke(
+                        isLandscape,
+                        1.0f,
+                        if (isLandscape) 4f else 8f,
+                        0f
+                    )
                     onHeightScaleChange?.invoke(1.0f)
                 },
                 onDone = {
-                    val scale = (keyRowHeight.value / 58f).coerceIn(0.7f, 1.3f)
+                    val scale = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 58f)).coerceIn(0.6f, 1.5f)
+                    onResizerValuesChange?.invoke(
+                        isLandscape,
+                        scale,
+                        chinPadding.value,
+                        horizontalMargin.value
+                    )
                     onHeightScaleChange?.invoke(scale)
                     isResizerOpen = false
                 },

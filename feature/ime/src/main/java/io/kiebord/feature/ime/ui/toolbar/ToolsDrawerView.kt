@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -131,7 +132,6 @@ fun ToolsDrawerView(
     var accumulatedDragY by remember { mutableFloatStateOf(0f) }
     var itemStartOffsetInRoot by remember { mutableStateOf(Offset.Zero) }
 
-    val numColumns = 3
     val addThresholdPx = with(density) { 30.dp.toPx() }
 
     val scrollState = rememberScrollState()
@@ -167,12 +167,18 @@ fun ToolsDrawerView(
             )
         }
 
-        // 3-Column Balanced Grid container (exactly 3 items per row, perfectly centered)
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        // Dynamic N-column grid according to available width
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth()
         ) {
+            val totalWidth = maxWidth
+            val numColumns = (totalWidth / 86.dp).toInt().coerceAtLeast(3)
             val chunkedTools = drawerTools.chunked(numColumns)
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
             chunkedTools.forEachIndexed { rowIndex, rowActions ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -302,6 +308,7 @@ fun ToolsDrawerView(
                     }
                 }
             }
+        }
         }
 
         // Generous bottom spacer so items at the bottom are fully and easily scrollable

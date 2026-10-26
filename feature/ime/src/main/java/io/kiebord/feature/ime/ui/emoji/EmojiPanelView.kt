@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -215,15 +216,24 @@ fun EmojiPanelView(
             .background(colorScheme.containerBackground)
     ) {
         // 1. AndroidX EmojiPicker View (smooth 120fps RecyclerView with official category icons)
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
+            val totalWidthDp = maxWidth
+            // Dynamic column calculation:
+            // Standard emoji cell is ~38-42dp wide.
+            // In portrait (~360-412dp), this yields 9-10 columns.
+            // In landscape (~700-1000dp), this yields 17-25 columns, keeping emojis at normal size!
+            val calculatedColumns = remember(totalWidthDp) {
+                (totalWidthDp / 40.dp).toInt().coerceIn(9, 25)
+            }
+
             AndroidView(
                 factory = {
                     EmojiPickerView(themedContext).apply {
-                        emojiGridColumns = 10
+                        emojiGridColumns = calculatedColumns
                         setOnEmojiPickedListener { item ->
                             onEmojiSelected(item.emoji)
                         }
@@ -241,6 +251,9 @@ fun EmojiPanelView(
                     }
                 },
                 update = { picker ->
+                    if (picker.emojiGridColumns != calculatedColumns) {
+                        picker.emojiGridColumns = calculatedColumns
+                    }
                     attachHeaderControls(picker, onClose, onOpenSearch, colorScheme)
                 },
                 modifier = Modifier
