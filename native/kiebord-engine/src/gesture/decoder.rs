@@ -24,37 +24,65 @@ pub struct GestureCandidate {
     pub score: f32,
 }
 
-#[derive(Clone)]
-pub struct PhoneticWordEntry {
-    pub word: Arc<str>,
+#[derive(Clone, Copy, Debug)]
+pub struct CompactPhoneticEntry {
+    pub node: u32,
+    pub keys_offset: u32,
+    pub keys_len: u16,
     pub freq: u8,
-    pub keys: Vec<char>,
+}
+
+#[inline]
+pub fn char_to_bucket_idx(c: char) -> Option<usize> {
+    if c.is_ascii_lowercase() {
+        Some((c as u8 - b'a') as usize)
+    } else if c.is_ascii_uppercase() {
+        Some((c.to_ascii_lowercase() as u8 - b'a') as usize)
+    } else {
+        None
+    }
 }
 
 pub struct PhoneticIndex {
-    pub buckets: HashMap<(char, char), Vec<PhoneticWordEntry>>,
+    pub bucket_ranges: [(u32, u32); 676],
+    pub entries: Vec<CompactPhoneticEntry>,
+    pub keys_pool: Vec<u8>,
 }
 
 impl PhoneticIndex {
     pub fn build(dict: &BinaryDict, transliterator: &dyn PhoneticTransliterator) -> Self {
-        let mut buckets: HashMap<(char, char), Vec<PhoneticWordEntry>> = HashMap::with_capacity(700);
+        struct TempEntry {
+            node: u32,
+            freq: u8,
+            keys: Vec<u8>,
+        }
+
+        let mut temp_buckets: Vec<Vec<TempEntry>> = (0..676).map(|_| Vec::new()).collect();
         let node_count = dict.node_count();
 
         for node in 1..node_count as u32 {
             if dict.is_word(node) {
                 if let Some(word) = dict.word_at(node) {
                     let freq = dict.freq(node);
-                    let variants = transliterator.to_phonetic_keys(&word);
-                    let word_arc: Arc<str> = Arc::from(word.as_str());
+                    let mut variants = transliterator.to_phonetic_keys(&word);
+                    variants.sort();
+                    variants.dedup();
                     for v in variants {
                         if v.len() >= 2 {
                             let first = v[0];
                             let last = *v.last().unwrap();
-                            buckets.entry((first, last)).or_default().push(PhoneticWordEntry {
-                                word: Arc::clone(&word_arc),
-                                freq,
-                                keys: v,
-                            });
+                            if let (Some(s_idx), Some(e_idx)) = (char_to_bucket_idx(first), char_to_bucket_idx(last)) {
+                                let bucket_idx = s_idx * 26 + e_idx;
+                                let keys_bytes: Vec<u8> = v.into_iter().map(|c| c.to_ascii_lowercase() as u8).collect();
+                                let is_dup = temp_buckets[bucket_idx].iter().rev().take(4).any(|item| item.node == node && item.keys == keys_bytes);
+                                if !is_dup {
+                                    temp_buckets[bucket_idx].push(TempEntry {
+                                        node,
+                                        freq,
+                                        keys: keys_bytes,
+                                    });
+                                }
+                            }
                         }
                     }
                 }
@@ -62,11 +90,68 @@ impl PhoneticIndex {
         }
 
         // Sort bucket entries by frequency descending so common words are prioritized
-        for entries in buckets.values_mut() {
-            entries.sort_by(|a, b| b.freq.cmp(&a.freq));
+        for bucket in &mut temp_buckets {
+            bucket.sort_by(|a, b| b.freq.cmp(&a.freq));
         }
 
-        PhoneticIndex { buckets }
+        let total_entries: usize = temp_buckets.iter().map(|b| b.len()).sum();
+        let total_keys: usize = temp_buckets.iter().map(|b| b.iter().map(|e| e.keys.len()).sum::<usize>()).sum();
+
+        let mut entries = Vec::with_capacity(total_entries);
+        let mut keys_pool = Vec::with_capacity(total_keys);
+        let mut bucket_ranges = [(0u32, 0u32); 676];
+
+        for (idx, bucket) in temp_buckets.into_iter().enumerate() {
+            let start = entries.len() as u32;
+            let count = bucket.len() as u32;
+            bucket_ranges[idx] = (start, count);
+
+            for item in bucket {
+                let keys_offset = keys_pool.len() as u32;
+                let keys_len = item.keys.len() as u16;
+                keys_pool.extend_from_slice(&item.keys);
+                entries.push(CompactPhoneticEntry {
+                    node: item.node,
+                    keys_offset,
+                    keys_len,
+                    freq: item.freq,
+                });
+            }
+        }
+
+        PhoneticIndex {
+            bucket_ranges,
+            entries,
+            keys_pool,
+        }
+    }
+
+    #[inline]
+    pub fn get_bucket(&self, start_char: char, end_char: char) -> &[CompactPhoneticEntry] {
+        let s_idx = match char_to_bucket_idx(start_char) {
+            Some(i) => i,
+            None => return &[],
+        };
+        let e_idx = match char_to_bucket_idx(end_char) {
+            Some(i) => i,
+            None => return &[],
+        };
+        let bucket_idx = s_idx * 26 + e_idx;
+        let (start, count) = self.bucket_ranges[bucket_idx];
+        if count == 0 {
+            &[]
+        } else {
+            let start = start as usize;
+            let end = start + count as usize;
+            &self.entries[start..end]
+        }
+    }
+
+    #[inline]
+    pub fn get_keys<'a>(&'a self, entry: &CompactPhoneticEntry) -> &'a [u8] {
+        let start = entry.keys_offset as usize;
+        let end = start + entry.keys_len as usize;
+        &self.keys_pool[start..end]
     }
 }
 
@@ -489,6 +574,84 @@ impl GestureDecoder {
         Some(score)
     }
 
+    /// Evaluates shape match and scoring of an ideal key trajectory against the user's touch trajectory.
+    /// Uses windowed Dynamic Time Warping (DTW), key-visit proximity verification, and log-scaled frequency.
+    #[inline]
+    pub fn evaluate_ideal_points(
+        ideal_pts: &[GesturePoint],
+        user_path: &[GesturePoint],
+        kw: f32,
+        freq: u8,
+    ) -> Option<f32> {
+        // Start and end anchor distances (normalized by key width)
+        let d_start = {
+            let dx = user_path[0].x - ideal_pts[0].x;
+            let dy = user_path[0].y - ideal_pts[0].y;
+            (dx * dx + dy * dy).sqrt() / kw
+        };
+        let d_end = {
+            let dx = user_path.last().unwrap().x - ideal_pts.last().unwrap().x;
+            let dy = user_path.last().unwrap().y - ideal_pts.last().unwrap().y;
+            (dx * dx + dy * dy).sqrt() / kw
+        };
+
+        // If start or end key is too far from gesture endpoints, reject
+        if d_start > 2.4 || d_end > 2.4 {
+            return None;
+        }
+
+        // Key-visit verification: every key in the candidate must be approached by the trajectory
+        let mut max_key_miss = 0.0f32;
+        let mut total_key_miss = 0.0f32;
+        for k_pt in ideal_pts {
+            let mut min_d = f32::MAX;
+            for u_pt in user_path {
+                let dx = u_pt.x - k_pt.x;
+                let dy = u_pt.y - k_pt.y;
+                let d = (dx * dx + dy * dy).sqrt();
+                if d < min_d {
+                    min_d = d;
+                }
+            }
+            let norm_d = min_d / kw;
+            if norm_d > max_key_miss {
+                max_key_miss = norm_d;
+            }
+            total_key_miss += norm_d;
+        }
+
+        // Candidates containing keys never visited (e.g. > 1.85 key widths away) are eliminated
+        if max_key_miss > 1.85 {
+            return None;
+        }
+
+        let avg_key_miss = total_key_miss / ideal_pts.len() as f32;
+
+        // Dynamic Time Warping (DTW) with Sakoe-Chiba band window
+        let resampled_ideal = Self::resample_polyline(ideal_pts, user_path.len());
+        let dtw_dist = Self::dtw_distance(user_path, &resampled_ideal, 6) / kw;
+
+        // Key miss penalty for keys that were relatively far (> 1.2 key width)
+        let miss_penalty = if max_key_miss > 1.2 {
+            (max_key_miss - 1.2) * 2.0
+        } else {
+            0.0
+        };
+
+        let total_cost = dtw_dist + 0.5 * d_start + 0.5 * d_end + 0.4 * avg_key_miss + miss_penalty;
+
+        if total_cost > 3.2 {
+            return None;
+        }
+
+        // Shape score dominates (0 to 100), log-scaled frequency acts as tie-breaker (0 to 15)
+        let shape_score = (-total_cost * 1.5).exp();
+        let freq_score = (1.0 + freq as f32).ln() / (256.0f32).ln();
+        let score = 100.0 * shape_score + 15.0 * freq_score;
+
+        Some(score)
+    }
+
     /// Evaluates shape match and scoring of a candidate word path against the user's touch trajectory.
     /// Uses windowed Dynamic Time Warping (DTW), key-visit proximity verification, and log-scaled frequency.
     pub fn evaluate_candidate(
@@ -515,73 +678,41 @@ impl GestureDecoder {
             }
         }
 
-        // Start and end anchor distances (normalized by key width)
-        let d_start = {
-            let dx = user_path[0].x - ideal_pts[0].x;
-            let dy = user_path[0].y - ideal_pts[0].y;
-            (dx * dx + dy * dy).sqrt() / kw
-        };
-        let d_end = {
-            let dx = user_path.last().unwrap().x - ideal_pts.last().unwrap().x;
-            let dy = user_path.last().unwrap().y - ideal_pts.last().unwrap().y;
-            (dx * dx + dy * dy).sqrt() / kw
-        };
+        Self::evaluate_ideal_points(&ideal_pts, user_path, kw, freq)
+    }
 
-        // If start or end key is too far from gesture endpoints, reject
-        if d_start > 2.4 || d_end > 2.4 {
+    /// Evaluates candidate key byte sequence against key positions with zero heap allocation and direct array indexing.
+    pub fn evaluate_candidate_bytes(
+        ideal_bytes: &[u8],
+        key_positions: &[(f32, f32); 26],
+        key_present: &[bool; 26],
+        user_path: &[GesturePoint],
+        kw: f32,
+        freq: u8,
+    ) -> Option<f32> {
+        if ideal_bytes.len() < 2 || user_path.len() < 2 {
             return None;
         }
 
-        // Key-visit verification: every key in the candidate must be approached by the trajectory
-        let mut max_key_miss = 0.0f32;
-        let mut total_key_miss = 0.0f32;
-        for k_pt in &ideal_pts {
-            let mut min_d = f32::MAX;
-            for u_pt in user_path {
-                let dx = u_pt.x - k_pt.x;
-                let dy = u_pt.y - k_pt.y;
-                let d = (dx * dx + dy * dy).sqrt();
-                if d < min_d {
-                    min_d = d;
+        let mut ideal_pts = Vec::with_capacity(ideal_bytes.len());
+        for &b in ideal_bytes {
+            let ch = b.to_ascii_lowercase();
+            if ch.is_ascii_lowercase() {
+                let idx = (ch - b'a') as usize;
+                if key_present[idx] {
+                    let pos = key_positions[idx];
+                    ideal_pts.push(GesturePoint {
+                        x: pos.0,
+                        y: pos.1,
+                        timestamp_ms: 0,
+                    });
+                    continue;
                 }
             }
-            let norm_d = min_d / kw;
-            if norm_d > max_key_miss {
-                max_key_miss = norm_d;
-            }
-            total_key_miss += norm_d;
-        }
-
-        // Candidates containing keys never visited (e.g. > 1.85 key widths away) are eliminated
-        if max_key_miss > 1.85 {
             return None;
         }
 
-        let avg_key_miss = total_key_miss / ideal_pts.len() as f32;
-
-        // Dynamic Time Warping (DTW) with Sakoe-Chiba band window
-        let resampled_ideal = Self::resample_polyline(&ideal_pts, user_path.len());
-        let dtw_dist = Self::dtw_distance(user_path, &resampled_ideal, 6) / kw;
-
-        // Key miss penalty for keys that were relatively far (> 1.2 key width)
-        let miss_penalty = if max_key_miss > 1.2 {
-            (max_key_miss - 1.2) * 2.0
-        } else {
-            0.0
-        };
-
-        let total_cost = dtw_dist + 0.5 * d_start + 0.5 * d_end + 0.4 * avg_key_miss + miss_penalty;
-
-        if total_cost > 3.2 {
-            return None;
-        }
-
-        // Shape score dominates (0 to 100), log-scaled frequency acts as tie-breaker (0 to 15)
-        let shape_score = (-total_cost * 1.5).exp();
-        let freq_score = (1.0 + freq as f32).ln() / (256.0f32).ln();
-        let score = 100.0 * shape_score + 15.0 * freq_score;
-
-        Some(score)
+        Self::evaluate_ideal_points(&ideal_pts, user_path, kw, freq)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -680,8 +811,16 @@ impl GestureDecoder {
         let end_pt = &user_path[sample_count - 1];
 
         let mut key_map: HashMap<char, (f32, f32)> = HashMap::with_capacity(keys.len());
+        let mut key_positions = [(0.0f32, 0.0f32); 26];
+        let mut key_present = [false; 26];
         for k in keys {
-            key_map.insert(k.char_code.to_ascii_lowercase(), (k.x, k.y));
+            let lower = k.char_code.to_ascii_lowercase();
+            key_map.insert(lower, (k.x, k.y));
+            if lower.is_ascii_lowercase() {
+                let idx = (lower as u8 - b'a') as usize;
+                key_positions[idx] = (k.x, k.y);
+                key_present[idx] = true;
+            }
         }
 
         let start_radius = 2.4 * kw;
@@ -713,26 +852,37 @@ impl GestureDecoder {
 
         let index = get_or_build_phonetic_index(dict, transliterator);
 
-        let mut word_scores: HashMap<String, f32> = HashMap::new();
+        let mut node_scores: HashMap<u32, f32> = HashMap::new();
 
         for &s in &start_keys {
             for &e in &end_keys {
-                if let Some(entries) = index.buckets.get(&(s, e)) {
-                    for entry in entries {
-                        if let Some(score) = Self::evaluate_candidate(
-                            &entry.keys,
-                            &key_map,
-                            &user_path,
-                            kw,
-                            entry.freq,
-                        ) {
-                            let norm_word = entry.word.replace("\u{0985}\u{09BE}", "আ");
-                            let slot = word_scores.entry(norm_word).or_insert(f32::MIN);
-                            if score > *slot {
-                                *slot = score;
-                            }
+                let entries = index.get_bucket(s, e);
+                for entry in entries {
+                    let keys_bytes = index.get_keys(entry);
+                    if let Some(score) = Self::evaluate_candidate_bytes(
+                        keys_bytes,
+                        &key_positions,
+                        &key_present,
+                        &user_path,
+                        kw,
+                        entry.freq,
+                    ) {
+                        let slot = node_scores.entry(entry.node).or_insert(f32::MIN);
+                        if score > *slot {
+                            *slot = score;
                         }
                     }
+                }
+            }
+        }
+
+        let mut word_scores: HashMap<String, f32> = HashMap::with_capacity(node_scores.len());
+        for (node, score) in node_scores {
+            if let Some(word) = dict.word_at(node) {
+                let norm_word = word.replace("\u{0985}\u{09BE}", "আ");
+                let slot = word_scores.entry(norm_word).or_insert(f32::MIN);
+                if score > *slot {
+                    *slot = score;
                 }
             }
         }
@@ -981,6 +1131,38 @@ mod tests {
         assert!(!results_amader.is_empty(), "Results for 'amader' should not be empty");
         assert_eq!(results_amader[0].word, "আমাদের", "Expected 'আমাদের' to win even when 'আমির' and 'মা' are learned: {:?}", results_amader);
         assert!(!results_amader.iter().any(|c| c.word == "মা"), "'মা' should not be predicted for long 'amader' gesture");
+    }
+
+    #[test]
+    fn test_compact_phonetic_index_memory_footprint() {
+        let dict = match get_bn_binary_dict() {
+            Some(d) => d,
+            None => return,
+        };
+        let translit = BornoPhoneticTransliterator;
+        let index = PhoneticIndex::build(dict, &translit);
+
+        let entries_bytes = index.entries.len() * std::mem::size_of::<CompactPhoneticEntry>();
+        let keys_bytes = index.keys_pool.len();
+        let bucket_ranges_bytes = std::mem::size_of_val(&index.bucket_ranges);
+        let total_bytes = entries_bytes + keys_bytes + bucket_ranges_bytes;
+
+        println!(
+            "Entries: {}, entries_bytes: {}, keys_bytes: {}, total: {} bytes (~{:.2} MB)",
+            index.entries.len(),
+            entries_bytes,
+            keys_bytes,
+            total_bytes,
+            total_bytes as f64 / (1024.0 * 1024.0)
+        );
+
+        assert!(!index.entries.is_empty(), "Entries should not be empty");
+        assert!(!index.keys_pool.is_empty(), "Keys pool should not be empty");
+        assert!(
+            total_bytes < 7_500_000,
+            "Total index footprint must be under 7.5 MB (was {} bytes)",
+            total_bytes
+        );
     }
 
     #[test]
