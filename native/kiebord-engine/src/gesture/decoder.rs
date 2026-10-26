@@ -307,18 +307,26 @@ impl GestureDecoder {
         let mut candidates: Vec<GestureCandidate> = Vec::new();
 
         for &start_ch in &start_keys {
-            if let Some(start_node) = dict.child(0, start_ch as u16) {
-                let mut word_buffer = vec![start_ch as u16];
-                Self::collect_words(
-                    dict,
-                    start_node,
-                    &mut word_buffer,
-                    &end_keys,
-                    &key_map,
-                    &user_path,
-                    kw,
-                    &mut candidates,
-                );
+            let mut start_targets = vec![start_ch as u16];
+            if start_ch.is_ascii_lowercase() {
+                start_targets.push(start_ch.to_ascii_uppercase() as u16);
+            } else if start_ch.is_ascii_uppercase() {
+                start_targets.push(start_ch.to_ascii_lowercase() as u16);
+            }
+            for &st in &start_targets {
+                if let Some(start_node) = dict.child(0, st) {
+                    let mut word_buffer = vec![st];
+                    Self::collect_words(
+                        dict,
+                        start_node,
+                        &mut word_buffer,
+                        &end_keys,
+                        &key_map,
+                        &user_path,
+                        kw,
+                        &mut candidates,
+                    );
+                }
             }
         }
 
@@ -463,6 +471,9 @@ impl GestureDecoder {
 
         let mut ideal_pts = Vec::with_capacity(ideal_chars.len());
         for &ch in ideal_chars {
+            if ch == '\'' || ch == '\u{2019}' {
+                continue;
+            }
             if let Some(&pos) = key_map.get(&ch.to_ascii_lowercase()) {
                 ideal_pts.push(GesturePoint {
                     x: pos.0,
@@ -667,6 +678,9 @@ impl GestureDecoder {
 
         let mut ideal_pts = Vec::with_capacity(ideal_chars.len());
         for &ch in ideal_chars {
+            if ch == '\'' || ch == '\u{2019}' {
+                continue;
+            }
             if let Some(&pos) = key_map.get(&ch.to_ascii_lowercase()) {
                 ideal_pts.push(GesturePoint {
                     x: pos.0,
@@ -955,6 +969,107 @@ mod tests {
         assert!((resampled[2].x - 50.0).abs() < 1e-3);
         assert!((resampled[3].x - 75.0).abs() < 1e-3);
         assert!((resampled[4].x - 100.0).abs() < 1e-3);
+    }
+
+    
+#[test]
+fn test_decode_jayed_gesture() {
+    let dict = get_en_binary_dict().expect("en dict");
+
+    let keys = vec![
+        KeyCenter { char_code: 'q', x: 20.0, y: 50.0 },
+        KeyCenter { char_code: 'w', x: 60.0, y: 50.0 },
+        KeyCenter { char_code: 'e', x: 100.0, y: 50.0 },
+        KeyCenter { char_code: 'r', x: 140.0, y: 50.0 },
+        KeyCenter { char_code: 't', x: 180.0, y: 50.0 },
+        KeyCenter { char_code: 'y', x: 220.0, y: 50.0 },
+        KeyCenter { char_code: 'u', x: 260.0, y: 50.0 },
+        KeyCenter { char_code: 'i', x: 300.0, y: 50.0 },
+        KeyCenter { char_code: 'o', x: 340.0, y: 50.0 },
+        KeyCenter { char_code: 'p', x: 380.0, y: 50.0 },
+        KeyCenter { char_code: 'a', x: 40.0, y: 120.0 },
+        KeyCenter { char_code: 's', x: 80.0, y: 120.0 },
+        KeyCenter { char_code: 'd', x: 120.0, y: 120.0 },
+        KeyCenter { char_code: 'f', x: 160.0, y: 120.0 },
+        KeyCenter { char_code: 'g', x: 200.0, y: 120.0 },
+        KeyCenter { char_code: 'h', x: 240.0, y: 120.0 },
+        KeyCenter { char_code: 'j', x: 280.0, y: 120.0 },
+        KeyCenter { char_code: 'k', x: 320.0, y: 120.0 },
+        KeyCenter { char_code: 'l', x: 360.0, y: 120.0 },
+        KeyCenter { char_code: 'z', x: 60.0, y: 190.0 },
+        KeyCenter { char_code: 'x', x: 100.0, y: 190.0 },
+        KeyCenter { char_code: 'c', x: 140.0, y: 190.0 },
+        KeyCenter { char_code: 'v', x: 180.0, y: 190.0 },
+        KeyCenter { char_code: 'b', x: 220.0, y: 190.0 },
+        KeyCenter { char_code: 'n', x: 260.0, y: 190.0 },
+        KeyCenter { char_code: 'm', x: 300.0, y: 190.0 },
+    ];
+
+    // Swipe path: 'j' (280, 120) -> 'a' (40, 120) -> 'y' (220, 50) -> 'e' (100, 50) -> 'd' (120, 120)
+    let stroke = vec![
+        GesturePoint { x: 280.0, y: 120.0, timestamp_ms: 0 },
+        GesturePoint { x: 160.0, y: 120.0, timestamp_ms: 50 },
+        GesturePoint { x: 40.0, y: 120.0, timestamp_ms: 100 },
+        GesturePoint { x: 130.0, y: 85.0, timestamp_ms: 150 },
+        GesturePoint { x: 220.0, y: 50.0, timestamp_ms: 200 },
+        GesturePoint { x: 160.0, y: 50.0, timestamp_ms: 250 },
+        GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 300 },
+        GesturePoint { x: 110.0, y: 85.0, timestamp_ms: 350 },
+        GesturePoint { x: 120.0, y: 120.0, timestamp_ms: 400 },
+    ];
+
+    let results = GestureDecoder::decode(&stroke, &keys, 40.0, dict, 10);
+    println!("Jayed gesture results: {:?}", results);
+    assert!(results.iter().any(|c| c.word == "Jayed" || c.word.eq_ignore_ascii_case("jayed")));
+}
+
+
+    #[test]
+    fn test_decode_iphone_gesture() {
+        let dict = get_en_binary_dict().expect("en dict");
+
+        let keys = vec![
+            KeyCenter { char_code: 'q', x: 20.0, y: 50.0 },
+            KeyCenter { char_code: 'w', x: 60.0, y: 50.0 },
+            KeyCenter { char_code: 'e', x: 100.0, y: 50.0 },
+            KeyCenter { char_code: 'r', x: 140.0, y: 50.0 },
+            KeyCenter { char_code: 't', x: 180.0, y: 50.0 },
+            KeyCenter { char_code: 'y', x: 220.0, y: 50.0 },
+            KeyCenter { char_code: 'u', x: 260.0, y: 50.0 },
+            KeyCenter { char_code: 'i', x: 300.0, y: 50.0 },
+            KeyCenter { char_code: 'o', x: 340.0, y: 50.0 },
+            KeyCenter { char_code: 'p', x: 380.0, y: 50.0 },
+            KeyCenter { char_code: 'a', x: 40.0, y: 120.0 },
+            KeyCenter { char_code: 's', x: 80.0, y: 120.0 },
+            KeyCenter { char_code: 'd', x: 120.0, y: 120.0 },
+            KeyCenter { char_code: 'f', x: 160.0, y: 120.0 },
+            KeyCenter { char_code: 'g', x: 200.0, y: 120.0 },
+            KeyCenter { char_code: 'h', x: 240.0, y: 120.0 },
+            KeyCenter { char_code: 'j', x: 280.0, y: 120.0 },
+            KeyCenter { char_code: 'k', x: 320.0, y: 120.0 },
+            KeyCenter { char_code: 'l', x: 360.0, y: 120.0 },
+            KeyCenter { char_code: 'z', x: 60.0, y: 190.0 },
+            KeyCenter { char_code: 'x', x: 100.0, y: 190.0 },
+            KeyCenter { char_code: 'c', x: 140.0, y: 190.0 },
+            KeyCenter { char_code: 'v', x: 180.0, y: 190.0 },
+            KeyCenter { char_code: 'b', x: 220.0, y: 190.0 },
+            KeyCenter { char_code: 'n', x: 260.0, y: 190.0 },
+            KeyCenter { char_code: 'm', x: 300.0, y: 190.0 },
+        ];
+
+        // Swipe path for "iPhone": 'i' (300, 50) -> 'p' (380, 50) -> 'h' (240, 120) -> 'o' (340, 50) -> 'n' (260, 190) -> 'e' (100, 50)
+        let stroke = vec![
+            GesturePoint { x: 300.0, y: 50.0, timestamp_ms: 0 },
+            GesturePoint { x: 380.0, y: 50.0, timestamp_ms: 50 },
+            GesturePoint { x: 240.0, y: 120.0, timestamp_ms: 100 },
+            GesturePoint { x: 340.0, y: 50.0, timestamp_ms: 150 },
+            GesturePoint { x: 260.0, y: 190.0, timestamp_ms: 200 },
+            GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 250 },
+        ];
+
+        let results = GestureDecoder::decode(&stroke, &keys, 40.0, dict, 10);
+        println!("iPhone gesture results: {:?}", results);
+        assert!(results.iter().any(|c| c.word == "iPhone"));
     }
 
     #[test]
