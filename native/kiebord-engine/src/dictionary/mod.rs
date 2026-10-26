@@ -416,6 +416,19 @@ mod tests {
         assert_bn_prediction("ভালো", &["আছি", "কাজের", "খারাপ"]);
     }
 
+
+#[test]
+fn test_iphone_casing() {
+    let dict = get_en_binary_dict().expect("dict loaded");
+    let prox = get_en_proximity();
+    let res = dict.suggest("iphone", 3, prox);
+    println!("iphone suggestions: {:?}", res);
+    assert_eq!(res[0], "iPhone");
+    assert!(dict.contains_word("iphone"));
+    assert!(dict.contains_word("iPhone"));
+    assert_eq!(dict.word_freq("iphone"), 168);
+}
+
     #[test]
     fn test_en_casing() {
         let dict = get_en_binary_dict().expect("dict loaded");
@@ -426,6 +439,20 @@ mod tests {
 
         let upper_sug = dict.suggest("TH", 3, prox);
         assert_eq!(upper_sug[0], "THE");
+
+        let jayed_sug = dict.suggest("jayed", 5, prox);
+        assert_eq!(jayed_sug[0], "Jayed");
+
+        let jayed_title = dict.suggest("Jayed", 5, prox);
+        assert_eq!(jayed_title[0], "Jayed");
+
+        let jayed_upper = dict.suggest("JAYED", 5, prox);
+        assert_eq!(jayed_upper[0], "JAYED");
+
+        assert!(dict.contains_word("jayed"));
+        assert!(dict.contains_word("Jayed"));
+        assert_eq!(dict.word_freq("jayed"), 110);
+        assert_eq!(dict.word_freq("Jayed"), 110);
     }
 
     #[test]

@@ -500,10 +500,43 @@ impl<'a> BinaryDict<'a> {
 
     pub fn find_node(&self, word: &str) -> Option<u32> {
         let mut curr = 0u32;
+        let mut exact_ok = true;
         for u in word.encode_utf16() {
-            curr = self.child(curr, u)?;
+            if let Some(next) = self.child(curr, u) {
+                curr = next;
+            } else {
+                exact_ok = false;
+                break;
+            }
         }
-        Some(curr)
+        if exact_ok {
+            return Some(curr);
+        }
+
+        // Case-insensitive traversal across full word
+        let units: Vec<u16> = word.encode_utf16().collect();
+        let mut current_nodes = vec![0u32];
+        for &u in &units {
+            let mut next_nodes = Vec::new();
+            let mut targets = vec![u];
+            if u >= b'a' as u16 && u <= b'z' as u16 {
+                targets.push(u - 32);
+            } else if u >= b'A' as u16 && u <= b'Z' as u16 {
+                targets.push(u + 32);
+            }
+            for &node in &current_nodes {
+                for &t in &targets {
+                    if let Some(next) = self.child(node, t) {
+                        next_nodes.push(next);
+                    }
+                }
+            }
+            if next_nodes.is_empty() {
+                return None;
+            }
+            current_nodes = next_nodes;
+        }
+        current_nodes.iter().copied().find(|&n| self.is_word(n)).or_else(|| current_nodes.first().copied())
     }
 
     pub fn word_freq(&self, word: &str) -> u8 {
@@ -820,24 +853,33 @@ impl<'a> BinaryDict<'a> {
 
             let target = typed[state.typed_pos];
 
-            // 1. Exact match
-            if let Some(child_node) = self.child(state.node, target) {
-                let mut next_accum = state.accum.clone();
-                next_accum.push(target);
-                let child_mf = self.max_subtree_freq(child_node) as f32;
-                let extra = (next_accum.len() as f32 - (state.typed_pos + 1) as f32).max(0.0);
-                let is_exact = state.cost == 0.0;
-                let bound = child_mf
-                    + if is_exact { 50.0 } else { 0.0 }
-                    - (state.cost * 80.0)
-                    - (0.001 * extra);
-                heap.push(State {
-                    node: child_node,
-                    typed_pos: state.typed_pos + 1,
-                    accum: next_accum,
-                    cost: state.cost,
-                    bound,
-                });
+            // 1. Exact match (case-insensitive across full word)
+            let mut exact_targets = vec![target];
+            if target >= b'a' as u16 && target <= b'z' as u16 {
+                exact_targets.push(target - 32);
+            } else if target >= b'A' as u16 && target <= b'Z' as u16 {
+                exact_targets.push(target + 32);
+            }
+
+            for &t_unit in &exact_targets {
+                if let Some(child_node) = self.child(state.node, t_unit) {
+                    let mut next_accum = state.accum.clone();
+                    next_accum.push(t_unit);
+                    let child_mf = self.max_subtree_freq(child_node) as f32;
+                    let extra = (next_accum.len() as f32 - (state.typed_pos + 1) as f32).max(0.0);
+                    let is_exact = state.cost == 0.0;
+                    let bound = child_mf
+                        + if is_exact { 50.0 } else { 0.0 }
+                        - (state.cost * 80.0)
+                        - (0.001 * extra);
+                    heap.push(State {
+                        node: child_node,
+                        typed_pos: state.typed_pos + 1,
+                        accum: next_accum,
+                        cost: state.cost,
+                        bound,
+                    });
+                }
             }
 
             // 1b. Contraction apostrophe bypass (e.g. user typed 'hell' for 'he'll', 'well' for 'we'll', 'cant' for 'can't')
