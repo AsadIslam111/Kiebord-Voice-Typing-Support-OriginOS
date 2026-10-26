@@ -19,7 +19,8 @@ object EmojiFontManager {
     private var isInitialized = false
 
     /**
-     * Initializes EmojiCompat asynchronously in the background so font tables are warm.
+     * Initializes EmojiCompat asynchronously in the background so font tables are warm
+     * without bundling bulky font binaries or ballooning heap memory.
      */
     fun initEmojiCompat(context: Context) {
         if (isInitialized) return
@@ -62,37 +63,38 @@ object EmojiFontManager {
  */
 object EmojiSearchCatalog {
     private val searchData: List<Pair<List<String>, List<String>>> = listOf(
-        listOf("smile", "happy", "joy", "grin", "glad", "laugh") to listOf("😊", "😄", "😃"),
-        listOf("love", "heart", "like", "val", "romance", "crush") to listOf("❤️", "💖", "😍"),
-        listOf("fire", "hot", "lit", "burn", "flame") to listOf("🔥", "✨", "💥"),
-        listOf("cat", "pet", "meow", "kitty") to listOf("🐱", "🐈", "😻"),
-        listOf("dog", "pup", "bark", "woof") to listOf("🐶", "🐕", "🐩"),
-        listOf("cry", "sad", "tear", "unhappy") to listOf("😢", "😭", "🥺"),
-        listOf("cool", "sunglasses", "swag") to listOf("😎", "🆒", "🕶️"),
-        listOf("food", "eat", "hungry", "snack") to listOf("🍕", "🍔", "🍟"),
-        listOf("car", "drive", "ride", "auto") to listOf("🚗", "🏎️", "🚙"),
-        listOf("clap", "bravo", "congrats") to listOf("👏", "🙌", "🎉"),
-        listOf("star", "glow", "night") to listOf("⭐", "🌟", "✨"),
-        listOf("ok", "good", "yes", "thumbs") to listOf("👍", "👌", "✅"),
-        listOf("party", "celebrate", "dance") to listOf("🥳", "🎉", "🎊"),
-        listOf("sleep", "tired", "rest") to listOf("😴", "💤", "🥱"),
-        listOf("money", "cash", "rich") to listOf("💰", "💵", "🤑")
+        listOf("smile", "happy", "joy", "grin", "glad", "laugh", "cheerful") to listOf("😊", "😄", "😃", "😁", "😆", "😂", "🤣", "🙂", "😉", "😇"),
+        listOf("love", "heart", "like", "val", "romance", "crush") to listOf("❤️", "💖", "😍", "🥰", "😘", "💕", "💓", "💘", "💌", "🌹"),
+        listOf("fire", "hot", "lit", "burn", "flame") to listOf("🔥", "✨", "💥", "⚡", "🌟", "☀️", "🌶️"),
+        listOf("cat", "pet", "meow", "kitty") to listOf("🐱", "🐈", "😻", "😽", "😸", "🐾"),
+        listOf("dog", "pup", "bark", "woof") to listOf("🐶", "🐕", "🐩", "🦮", "🐾", "🦴"),
+        listOf("cry", "sad", "tear", "unhappy") to listOf("😢", "😭", "🥺", "😿", "💔", "😞", "😔", "😥"),
+        listOf("cool", "sunglasses", "swag") to listOf("😎", "🆒", "🕶️", "🤙", "😏", "✌️"),
+        listOf("food", "eat", "hungry", "snack") to listOf("🍕", "🍔", "🍟", "🌮", "🍦", "🍩", "🍰", "🍣", "🍜", "🍿"),
+        listOf("car", "drive", "ride", "auto") to listOf("🚗", "🏎️", "🚙", "🚕", "🚌", "🚘", "🏍️", "🚲"),
+        listOf("clap", "bravo", "congrats") to listOf("👏", "🙌", "🎉", "🥳", "✨", "🎊", "🏆"),
+        listOf("star", "glow", "night") to listOf("⭐", "🌟", "✨", "💫", "🌙", "🌠", "🌌"),
+        listOf("ok", "good", "yes", "thumbs") to listOf("👍", "👌", "✅", "🙌", "💯", "🤝", "✔️"),
+        listOf("party", "celebrate", "dance") to listOf("🥳", "🎉", "🎊", "🍾", "💃", "🕺", "🎈", "🍻"),
+        listOf("sleep", "tired", "rest") to listOf("😴", "💤", "🥱", "🛌", "🌙", "😪"),
+        listOf("money", "cash", "rich") to listOf("💰", "💵", "🤑", "💸", "💳", "🪙", "💎")
     )
 
-    private val defaultCandidates = listOf("😊", "❤️", "🔥")
+    private val defaultCandidates = listOf("😊", "❤️", "🔥", "👍", "🎉", "😂", "✨", "😍", "🙌", "😎", "🥳", "🍕")
 
     /**
-     * Searches dummy emoji catalog matching query keywords, returning 3 candidates.
+     * Searches emoji catalog matching query keywords, returning candidates.
      */
     fun search(query: String): List<String> {
         val q = query.trim().lowercase()
         if (q.isEmpty()) return defaultCandidates
 
+        val results = mutableListOf<String>()
         for ((keywords, emojis) in searchData) {
             if (keywords.any { it.startsWith(q) || q.startsWith(it) }) {
-                return emojis
+                results.addAll(emojis)
             }
         }
-        return defaultCandidates
+        return if (results.isNotEmpty()) results.distinct() else defaultCandidates
     }
 }

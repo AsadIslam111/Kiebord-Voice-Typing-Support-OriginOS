@@ -88,7 +88,8 @@ import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.feature.ime.gesture.KeyCentroid
 import io.kiebord.feature.ime.ui.clipboard.ClipboardPanelView
 import io.kiebord.feature.ime.ui.emoji.EmojiPanelView
-import io.kiebord.feature.ime.ui.emoji.EmojiSearchBar
+import io.kiebord.feature.ime.ui.emoji.EmojiSearchBarRow
+import io.kiebord.feature.ime.ui.emoji.EmojiSearchResultsStrip
 import io.kiebord.feature.ime.ui.emoji.EmojiSearchCatalog
 import io.kiebord.feature.ime.ui.resizer.LiveResizerOverlay
 import io.kiebord.feature.ime.ui.textedit.TextAction
@@ -586,9 +587,15 @@ fun KeyboardRootView(
                 isSuggestionsExpanded = false
             }
             ToolbarAction.EMOJI -> {
+                if (isEmojiSearchOpen) {
+                    isEmojiSearchOpen = false
+                    emojiSearchQuery = ""
+                }
                 isEmojiOpen = !isEmojiOpen
                 if (isEmojiOpen) {
                     isToolsDrawerOpen = false
+                    isClipboardOpen = false
+                    isTextEditOpen = false
                     isResizerOpen = false
                     isSuggestionsExpanded = false
                 }
@@ -749,9 +756,42 @@ fun KeyboardRootView(
                     height = toolbarHeight + keyboardContentHeight,
                     onSyncRequest = { clipboardManager?.syncFromSystemClipboard(context) }
                 )
+            } else if (isEmojiOpen) {
+                EmojiPanelView(
+                    onEmojiSelected = { emoji ->
+                        onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                    },
+                    onDelete = {
+                        onKeyTap(KeyDef(type = KeyType.DELETE))
+                    },
+                    onSpace = {
+                        onKeyTap(KeyDef(label = " ", type = KeyType.CHARACTER))
+                    },
+                    onClose = { isEmojiOpen = false },
+                    onOpenSearch = {
+                        isEmojiOpen = false
+                        isEmojiSearchOpen = true
+                        emojiSearchQuery = ""
+                    },
+                    height = toolbarHeight + keyboardContentHeight,
+                    showKeyBorders = showKeyBorders
+                )
             } else {
-                // Single unified Top Bar row (46dp height)
-                // The suggestion strip is shown INSTEAD OF the togglable toolbar options (never a new row!)
+                // 1. Dedicated Search bar added ABOVE the toolbar when search mode is active
+                if (isEmojiSearchOpen) {
+                    EmojiSearchBarRow(
+                        query = emojiSearchQuery,
+                        onQueryChange = { emojiSearchQuery = it },
+                        onClose = {
+                            isEmojiSearchOpen = false
+                            emojiSearchQuery = ""
+                            isEmojiOpen = true
+                        },
+                        colorScheme = colorScheme
+                    )
+                }
+
+                // 2. Single unified Top Bar row (46dp height)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -760,8 +800,21 @@ fun KeyboardRootView(
                         .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible || isSuggestionsExpanded
-                    val leadingNavWidth = (36 * scaleFactor).coerceAtLeast(26f).dp + (4 * scaleFactor).coerceAtLeast(2f).dp
+                    if (isEmojiSearchOpen) {
+                        // Emoji search results on top of keyboard across full strip
+                        EmojiSearchResultsStrip(
+                            query = emojiSearchQuery,
+                            onEmojiSelected = { emoji ->
+                                onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                            },
+                            colorScheme = colorScheme,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    } else {
+                        val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible || isSuggestionsExpanded
+                        val leadingNavWidth = (36 * scaleFactor).coerceAtLeast(26f).dp + (4 * scaleFactor).coerceAtLeast(2f).dp
 
                     // 1. Expand / Back / Toggle button on far left
                     Box(
@@ -825,25 +878,8 @@ fun KeyboardRootView(
                         else -> suggestions
                     }
 
-                    // 2. Main content: Emoji Search Bar OR Suggestion Strip OR Quick Paste/Undo Pill OR Toolbar Options
-                    if (isEmojiSearchOpen) {
-                        EmojiSearchBar(
-                            query = emojiSearchQuery,
-                            onQueryChange = { emojiSearchQuery = it },
-                            onEmojiSelected = { emoji ->
-                                onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
-                            },
-                            onClose = {
-                                isEmojiSearchOpen = false
-                                emojiSearchQuery = ""
-                                isEmojiOpen = true
-                            },
-                            colorScheme = colorScheme,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                        )
-                    } else if (displayedSuggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
+                    // 2. Main content: Suggestion Strip OR Quick Paste/Undo Pill OR Toolbar Options
+                    if (displayedSuggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
                         SuggestionStripView(
                             candidates = displayedSuggestions,
                             onCandidateClick = { candidate ->
@@ -1031,6 +1067,7 @@ fun KeyboardRootView(
                                 .weight(1f)
                                 .fillMaxHeight()
                         )
+                    }
                     }
                 }
 
@@ -1743,25 +1780,6 @@ fun KeyboardRootView(
                         activeDraggingFromDrawer = action
                         currentFingerInRoot = fingerPos
                     }
-                )
-            } else if (isEmojiOpen) {
-                EmojiPanelView(
-                    onEmojiSelected = { emoji ->
-                        onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
-                    },
-                    onDelete = {
-                        onKeyTap(KeyDef(type = KeyType.DELETE))
-                    },
-                    onSpace = {
-                        onKeyTap(KeyDef(label = " ", type = KeyType.CHARACTER))
-                    },
-                    onClose = { isEmojiOpen = false },
-                    onOpenSearch = {
-                        isEmojiOpen = false
-                        isEmojiSearchOpen = true
-                        emojiSearchQuery = ""
-                    },
-                    height = keyboardContentHeight
                 )
             }
 

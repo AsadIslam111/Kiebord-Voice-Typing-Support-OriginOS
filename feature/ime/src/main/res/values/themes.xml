@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Kiebord.EmojiPicker" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:colorButtonNormal">#38383F</item>
+        <item name="android:colorBackgroundFloating">#38383F</item>
+        <item name="android:colorControlNormal">#999999</item>
+        <item name="android:colorAccent">#A8C7FA</item>
+    </style>
+
+    <style name="Theme.Kiebord.EmojiPicker.Dark" parent="Theme.Kiebord.EmojiPicker">
+        <item name="android:colorButtonNormal">#38383F</item>
+        <item name="android:colorBackgroundFloating">#38383F</item>
+        <item name="android:colorControlNormal">#999999</item>
+        <item name="android:colorAccent">#A8C7FA</item>
+    </style>
+
+    <style name="Theme.Kiebord.EmojiPicker.Light" parent="android:Theme.DeviceDefault.Light.NoActionBar">
+        <item name="android:colorButtonNormal">#F3F3F3</item>
+        <item name="android:colorBackgroundFloating">#F3F3F3</item>
+        <item name="android:colorControlNormal">#707070</item>
+        <item name="android:colorAccent">#4999FD</item>
+    </style>
+</resources>
