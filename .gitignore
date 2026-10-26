@@ -16,3 +16,4 @@ native/kiebord-engine/target/
 *.log
 .kotlin/
 assets-src/
+*.dict
