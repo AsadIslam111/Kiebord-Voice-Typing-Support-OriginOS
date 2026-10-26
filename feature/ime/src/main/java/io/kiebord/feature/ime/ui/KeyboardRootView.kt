@@ -88,6 +88,8 @@ import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.feature.ime.gesture.KeyCentroid
 import io.kiebord.feature.ime.ui.clipboard.ClipboardPanelView
 import io.kiebord.feature.ime.ui.emoji.EmojiPanelView
+import io.kiebord.feature.ime.ui.emoji.EmojiSearchBar
+import io.kiebord.feature.ime.ui.emoji.EmojiSearchCatalog
 import io.kiebord.feature.ime.ui.resizer.LiveResizerOverlay
 import io.kiebord.feature.ime.ui.textedit.TextAction
 import io.kiebord.feature.ime.ui.textedit.TextEditPanelView
@@ -348,6 +350,40 @@ fun KeyboardRootView(
     var oneHandedSide by remember(defaultOneHandedMode) { mutableStateOf(defaultOneHandedMode) } // "OFF", "RIGHT", "LEFT"
     var oneHandedSideWidth by remember { mutableFloatStateOf(64f) }
     var isEmojiOpen by remember { mutableStateOf(false) }
+    var isEmojiSearchOpen by remember { mutableStateOf(false) }
+    var emojiSearchQuery by remember { mutableStateOf("") }
+
+    val handleKeyTapUnified: (KeyDef) -> Unit = { key ->
+        if (isEmojiSearchOpen) {
+            when (key.type) {
+                KeyType.CHARACTER -> {
+                    val text = key.commitText ?: key.label
+                    emojiSearchQuery += text
+                }
+                KeyType.DELETE -> {
+                    if (emojiSearchQuery.isNotEmpty()) {
+                        emojiSearchQuery = emojiSearchQuery.dropLast(1)
+                    } else {
+                        onKeyTap(key)
+                    }
+                }
+                KeyType.SPACE -> {
+                    emojiSearchQuery += " "
+                }
+                KeyType.ACTION -> {
+                    val topEmoji = EmojiSearchCatalog.search(emojiSearchQuery).firstOrNull()
+                    if (topEmoji != null) {
+                        onKeyTap(KeyDef(label = topEmoji, type = KeyType.CHARACTER))
+                    }
+                    isEmojiSearchOpen = false
+                    emojiSearchQuery = ""
+                }
+                else -> onKeyTap(key)
+            }
+        } else {
+            onKeyTap(key)
+        }
+    }
 
     val hoveredDrawerAction: ToolbarAction? = if (currentFingerInRoot != null) {
         val finger = currentFingerInRoot!!
@@ -789,8 +825,25 @@ fun KeyboardRootView(
                         else -> suggestions
                     }
 
-                    // 2. Main content: Suggestion Strip OR Quick Paste/Undo Pill OR Toolbar Options
-                    if (displayedSuggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
+                    // 2. Main content: Emoji Search Bar OR Suggestion Strip OR Quick Paste/Undo Pill OR Toolbar Options
+                    if (isEmojiSearchOpen) {
+                        EmojiSearchBar(
+                            query = emojiSearchQuery,
+                            onQueryChange = { emojiSearchQuery = it },
+                            onEmojiSelected = { emoji ->
+                                onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                            },
+                            onClose = {
+                                isEmojiSearchOpen = false
+                                emojiSearchQuery = ""
+                                isEmojiOpen = true
+                            },
+                            colorScheme = colorScheme,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    } else if (displayedSuggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
                         SuggestionStripView(
                             candidates = displayedSuggestions,
                             onCandidateClick = { candidate ->
@@ -1061,7 +1114,7 @@ fun KeyboardRootView(
                                         val maxProximityDistPx = with(density) { 68.dp.toPx() }
                                         if (closestKey != null && minDistance <= maxProximityDistPx) {
                                             handleKeyPress(closestKey)
-                                            onKeyTap(closestKey)
+                                            handleKeyTapUnified(closestKey)
                                             try {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             } catch (_: Exception) {}
@@ -1245,7 +1298,7 @@ fun KeyboardRootView(
                                             "ZWJ" -> "\u200D"
                                             else -> selectedChar
                                         }
-                                        onKeyTap(KeyDef(label = selectedChar, commitText = charToCommit, type = KeyType.CHARACTER))
+                                        handleKeyTapUnified(KeyDef(label = selectedChar, commitText = charToCommit, type = KeyType.CHARACTER))
                                     }
                                 }
                             }
@@ -1316,7 +1369,7 @@ fun KeyboardRootView(
                                     .weight(effectiveKey.widthWeight)
                                     .fillMaxHeight(),
                                 onKeyPress = handleKeyPress,
-                                onKeyTap = onKeyTap,
+                                onKeyTap = handleKeyTapUnified,
                                 onKeyLongPress = { keyDef ->
                                     if (keyDef.type == KeyType.SWITCH_LANGUAGE) {
                                         isLanguagePickerOpen = true
@@ -1519,18 +1572,18 @@ fun KeyboardRootView(
                                                     commitText = keyToCommit.textToCommit(ShiftState.ONE_SHOT),
                                                     label = keyToCommit.displayLabel(ShiftState.ONE_SHOT)
                                                 )
-                                                onKeyTap(shiftedKey)
+                                                handleKeyTapUnified(shiftedKey)
                                             }
                                         } else {
                                             if (keyToCommit.type != KeyType.SYMBOLS) {
-                                                onKeyTap(keyToCommit)
+                                                handleKeyTapUnified(keyToCommit)
                                             }
                                         }
                                     } else if (!hasMoved) {
                                         if (isShiftDrag) {
-                                            onKeyTap(initiator ?: KeyDef(type = KeyType.SHIFT))
+                                            handleKeyTapUnified(initiator ?: KeyDef(type = KeyType.SHIFT))
                                         } else {
-                                            onKeyTap(initiator ?: KeyDef("?123", type = KeyType.SYMBOLS))
+                                            handleKeyTapUnified(initiator ?: KeyDef("?123", type = KeyType.SYMBOLS))
                                         }
                                     }
 
@@ -1699,7 +1752,15 @@ fun KeyboardRootView(
                     onDelete = {
                         onKeyTap(KeyDef(type = KeyType.DELETE))
                     },
+                    onSpace = {
+                        onKeyTap(KeyDef(label = " ", type = KeyType.CHARACTER))
+                    },
                     onClose = { isEmojiOpen = false },
+                    onOpenSearch = {
+                        isEmojiOpen = false
+                        isEmojiSearchOpen = true
+                        emojiSearchQuery = ""
+                    },
                     height = keyboardContentHeight
                 )
             }

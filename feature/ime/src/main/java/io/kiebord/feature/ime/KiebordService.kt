@@ -42,6 +42,7 @@ import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
 import io.kiebord.feature.ime.translit.BengaliBstiEngine
 import io.kiebord.feature.ime.translit.BornoTransliterationManager
 import io.kiebord.feature.ime.translit.TransliterationManager
+import io.kiebord.feature.ime.ui.emoji.EmojiFontManager
 import androidx.compose.ui.unit.dp
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.data.prefs.KiebordPreferencesRepository
@@ -125,6 +126,7 @@ class KiebordService : InputMethodService() {
         clipboardManager = SandboxedClipboardManager.getInstance(this)
         userDictionaryRepo = UserDictionaryRepository.getInstance(this)
         lifecycleOwner.onCreate()
+        EmojiFontManager.initEmojiCompat(this)
         NativeEngine.ensureInitialized(this, "en")
         NativeEngine.ensureInitialized(this, "bn")
 
