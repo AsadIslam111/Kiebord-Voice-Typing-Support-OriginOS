@@ -89,6 +89,7 @@ import io.kiebord.feature.ime.gesture.KeyCentroid
 import io.kiebord.feature.ime.ui.clipboard.ClipboardPanelView
 import io.kiebord.feature.ime.ui.emoji.EmojiPanelView
 import io.kiebord.feature.ime.ui.emoji.EmojiSearchBarRow
+import io.kiebord.feature.ime.ui.emoji.EmojiSearchResultsGrid
 import io.kiebord.feature.ime.ui.emoji.EmojiSearchResultsStrip
 import io.kiebord.feature.ime.ui.emoji.EmojiSearchCatalog
 import io.kiebord.feature.ime.ui.resizer.LiveResizerOverlay
@@ -776,22 +777,30 @@ fun KeyboardRootView(
                     height = toolbarHeight + keyboardContentHeight,
                     showKeyBorders = showKeyBorders
                 )
-            } else {
-                // 1. Dedicated Search bar added ABOVE the toolbar when search mode is active
-                if (isEmojiSearchOpen) {
-                    EmojiSearchBarRow(
-                        query = emojiSearchQuery,
-                        onQueryChange = { emojiSearchQuery = it },
-                        onClose = {
-                            isEmojiSearchOpen = false
-                            emojiSearchQuery = ""
-                            isEmojiOpen = true
-                        },
-                        colorScheme = colorScheme
-                    )
-                }
+            } else if (isEmojiSearchOpen) {
+                // 1. Emoji results shown ON TOP of the search bar (2 rows horizontally scrollable)
+                EmojiSearchResultsGrid(
+                    query = emojiSearchQuery,
+                    onEmojiSelected = { emoji ->
+                        onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                    },
+                    colorScheme = colorScheme,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                // 2. Single unified Top Bar row (46dp height)
+                // 2. Search bar below emoji results, directly above keyboard keys
+                EmojiSearchBarRow(
+                    query = emojiSearchQuery,
+                    onQueryChange = { emojiSearchQuery = it },
+                    onClose = {
+                        isEmojiSearchOpen = false
+                        emojiSearchQuery = ""
+                        isEmojiOpen = true
+                    },
+                    colorScheme = colorScheme
+                )
+            } else {
+                // Single unified Top Bar row (46dp height)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -800,20 +809,7 @@ fun KeyboardRootView(
                         .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (isEmojiSearchOpen) {
-                        // Emoji search results on top of keyboard across full strip
-                        EmojiSearchResultsStrip(
-                            query = emojiSearchQuery,
-                            onEmojiSelected = { emoji ->
-                                onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
-                            },
-                            colorScheme = colorScheme,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                        )
-                    } else {
-                        val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible || isSuggestionsExpanded
+                    val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible || isSuggestionsExpanded
                         val leadingNavWidth = (36 * scaleFactor).coerceAtLeast(26f).dp + (4 * scaleFactor).coerceAtLeast(2f).dp
 
                     // 1. Expand / Back / Toggle button on far left
@@ -1067,7 +1063,6 @@ fun KeyboardRootView(
                                 .weight(1f)
                                 .fillMaxHeight()
                         )
-                    }
                     }
                 }
 

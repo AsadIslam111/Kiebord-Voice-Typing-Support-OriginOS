@@ -4,14 +4,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,7 +35,84 @@ import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KeyboardColorScheme
 
 /**
- * Dedicated Emoji Search Bar placed directly ABOVE the toolbar.
+ * 2-row horizontally scrollable emoji search results grid displayed on top of the search bar.
+ */
+@Composable
+fun EmojiSearchResultsGrid(
+    query: String,
+    onEmojiSelected: (String) -> Unit,
+    colorScheme: KeyboardColorScheme,
+    modifier: Modifier = Modifier
+) {
+    val candidates = remember(query) {
+        EmojiSearchCatalog.search(query)
+    }
+
+    if (candidates.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(82.dp)
+                .background(colorScheme.containerBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No emoji found",
+                color = colorScheme.keyForeground.copy(alpha = 0.5f),
+                fontSize = 13.sp
+            )
+        }
+    } else {
+        LazyHorizontalGrid(
+            rows = GridCells.Fixed(2),
+            modifier = modifier
+                .fillMaxWidth()
+                .height(82.dp)
+                .background(colorScheme.containerBackground),
+            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 3.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(candidates) { emoji ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .aspectRatio(1f)
+                        .clip(CircleShape)
+                        .background(colorScheme.keyBackground.copy(alpha = 0.45f))
+                        .clickable { onEmojiSelected(emoji) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = emoji,
+                        fontSize = 20.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Backward compatibility alias for emoji search results.
+ */
+@Composable
+fun EmojiSearchResultsStrip(
+    query: String,
+    onEmojiSelected: (String) -> Unit,
+    colorScheme: KeyboardColorScheme,
+    modifier: Modifier = Modifier
+) {
+    EmojiSearchResultsGrid(
+        query = query,
+        onEmojiSelected = onEmojiSelected,
+        colorScheme = colorScheme,
+        modifier = modifier
+    )
+}
+
+/**
+ * Dedicated Emoji Search Bar placed below the emoji search results and directly above the keyboard.
  */
 @Composable
 fun EmojiSearchBarRow(
@@ -103,45 +183,6 @@ fun EmojiSearchBarRow(
                             .clickable { onQueryChange("") }
                     )
                 }
-            }
-        }
-    }
-}
-
-/**
- * Horizontal strip of matching emoji results displayed on top (in the toolbar slot).
- */
-@Composable
-fun EmojiSearchResultsStrip(
-    query: String,
-    onEmojiSelected: (String) -> Unit,
-    colorScheme: KeyboardColorScheme,
-    modifier: Modifier = Modifier
-) {
-    val candidates = remember(query) {
-        EmojiSearchCatalog.search(query)
-    }
-
-    LazyRow(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        items(candidates) { emoji ->
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(colorScheme.keyBackground.copy(alpha = 0.45f))
-                    .clickable { onEmojiSelected(emoji) },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = emoji,
-                    fontSize = 20.sp
-                )
             }
         }
     }
