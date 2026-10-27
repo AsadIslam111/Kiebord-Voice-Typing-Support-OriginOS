@@ -9,7 +9,8 @@ object PredefinedLayouts {
 
     val EnglishQwerty = KeyboardLayoutDef(
         id = "en_qwerty",
-        name = "English (QWERTY)",
+        name = "English",
+        displayName = "English",
         language = "en",
         rows = listOf(
             KeyRow(
@@ -69,7 +70,8 @@ object PredefinedLayouts {
 
     val BengaliBorno = KeyboardLayoutDef(
         id = "bn_borno",
-        name = "Bengali (Borno Phonetic)",
+        name = "বর্ণ ফোনেটিক",
+        displayName = "বর্ণ ফোনেটিক",
         language = "bn",
         rows = listOf(
             KeyRow(
@@ -129,7 +131,8 @@ object PredefinedLayouts {
 
     val BengaliAvro = KeyboardLayoutDef(
         id = "bn_avro",
-        name = "Bengali (Avro Phonetic)",
+        name = "অভ্র",
+        displayName = "অভ্র",
         language = "bn",
         rows = listOf(
             KeyRow(
@@ -189,7 +192,8 @@ object PredefinedLayouts {
 
     val BengaliProbhat = KeyboardLayoutDef(
         id = "bn_probhat",
-        name = "Bengali (Probhat)",
+        name = "প্রভাত",
+        displayName = "প্রভাত",
         language = "bn",
         rows = listOf(
             KeyRow(
@@ -253,7 +257,8 @@ object PredefinedLayouts {
 
     val BengaliNational = KeyboardLayoutDef(
         id = "bn_national",
-        name = "Bengali (Jatiyo / BSTI)",
+        name = "জাতীয় (BSTI)",
+        displayName = "জাতীয় (BSTI)",
         language = "bn",
         rows = listOf(
             KeyRow(
@@ -516,7 +521,7 @@ object PredefinedLayouts {
             "bn_avro" -> "অভ্র"
             "bn_probhat" -> "প্রভাত"
             "bn_national" -> "জাতীয় (BSTI)"
-            "ar_arabic" -> "العربية"
+            "ar_arabic" -> "Arabic"
             "en_qwerty" -> "English"
             else -> "English"
         }

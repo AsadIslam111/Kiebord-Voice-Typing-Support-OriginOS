@@ -68,27 +68,27 @@ fun OnboardingLayoutSelectionStep(
         listOf(
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_EN_QWERTY,
-                title = "English (QWERTY)",
+                title = "English",
                 subtitle = "Standard Latin layout with gesture typing"
             ),
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_BORNO,
-                title = "Borno Phonetic",
+                title = "বর্ণ ফোনেটিক",
                 subtitle = "Smart transliteration: type 'ami' -> 'আমি'"
             ),
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_AVRO,
-                title = "Avro Phonetic",
+                title = "অভ্র",
                 subtitle = "Popular phonetic parser by OmicronLab"
             ),
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_NATIONAL,
-                title = "National (BSTI)",
+                title = "জাতীয় (BSTI)",
                 subtitle = "Official national standard Bengali layout"
             ),
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_PROBHAT,
-                title = "Probhat",
+                title = "প্রভাত",
                 subtitle = "Popular fixed Bengali layout"
             )
         )

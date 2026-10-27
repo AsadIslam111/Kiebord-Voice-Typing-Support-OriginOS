@@ -95,7 +95,7 @@ fun KeyboardLayoutsScreen(
     val englishCard = remember {
         LayoutCardData(
             id = KiebordPreferences.LAYOUT_EN_QWERTY,
-            name = "English (QWERTY)",
+            name = "English",
             badge = "EN",
             description = "Standard Latin layout with gesture typing",
             layoutDef = PredefinedLayouts.EnglishQwerty
@@ -106,28 +106,28 @@ fun KeyboardLayoutsScreen(
         listOf(
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_BORNO,
-                name = "Borno Phonetic",
+                name = "বর্ণ ফোনেটিক",
                 badge = "বর্ণ",
                 description = "ami -> আমি",
                 layoutDef = PredefinedLayouts.BengaliBorno
             ),
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_AVRO,
-                name = "Avro Phonetic",
+                name = "অভ্র",
                 badge = "অভ্র",
                 description = "ami -> আমি",
                 layoutDef = PredefinedLayouts.BengaliAvro
             ),
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_NATIONAL,
-                name = "National (BSTI)",
+                name = "জাতীয় (BSTI)",
                 badge = "জাতীয়",
                 description = "National BSTI layout",
                 layoutDef = PredefinedLayouts.BengaliNational
             ),
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_PROBHAT,
-                name = "Probhat",
+                name = "প্রভাত",
                 badge = "প্রভাত",
                 description = "Fixed layout",
                 layoutDef = PredefinedLayouts.BengaliProbhat
@@ -139,7 +139,7 @@ fun KeyboardLayoutsScreen(
     val arabicCard = remember(arabicLayout) {
         LayoutCardData(
             id = KiebordPreferences.LAYOUT_AR_ARABIC,
-            name = "Arabic (العربية)",
+            name = "Arabic",
             badge = "عربي",
             description = "Standard Arabic with Harakat diacritics",
             layoutDef = arabicLayout
@@ -294,7 +294,7 @@ fun KeyboardLayoutsScreen(
                                 color = colors.textPrimary
                             )
                             Text(
-                                text = if (isBanglaExpanded) "Borno Phonetic, Avro Phonetic, National (BSTI), Probhat" else "$activeBanglaCount active layout(s) - tap to expand",
+                                text = if (isBanglaExpanded) "বর্ণ ফোনেটিক, অভ্র, জাতীয় (BSTI), প্রভাত" else "$activeBanglaCount active layout(s) - tap to expand",
                                 fontSize = 12.sp,
                                 color = colors.textSecondary
                             )
@@ -368,7 +368,7 @@ fun KeyboardLayoutsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Arabic (العربية)",
+                                text = "Arabic",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = colors.textPrimary

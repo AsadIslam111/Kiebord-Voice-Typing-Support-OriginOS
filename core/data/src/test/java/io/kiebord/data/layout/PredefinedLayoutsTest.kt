@@ -15,14 +15,14 @@ class PredefinedLayoutsTest {
         assertEquals("বর্ণ ফোনেটিক", PredefinedLayouts.displayName("bn_borno"))
         assertEquals("অভ্র", PredefinedLayouts.displayName("bn_avro"))
         assertEquals("প্রভাত", PredefinedLayouts.displayName("bn_probhat"))
-        assertEquals("العربية", PredefinedLayouts.displayName("ar_arabic"))
+        assertEquals("Arabic", PredefinedLayouts.displayName("ar_arabic"))
     }
 
     @Test
     fun testAvroLayoutResolution() {
         val layout = PredefinedLayouts.fromId("bn_avro")
         assertEquals("bn_avro", layout.id)
-        assertEquals("Bengali (Avro Phonetic)", layout.name)
+        assertEquals("অভ্র", layout.name)
         assertEquals(4, layout.rows.size)
 
         // Key 'a' in home row has no ঁ
