@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -276,15 +279,21 @@ private fun ThemePreviewBottomSheetContent(
             modifier = Modifier.padding(bottom = 14.dp)
         )
 
-        // Live Actual Keyboard View preview with margins left and right, completely non-touchable
+        // Live Actual Keyboard View preview scaled down proportionally, keeping standard aspect ratio
         KiebordTheme(colorScheme = themeOption.scheme) {
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .widthIn(max = 380.dp)
+                    .fillMaxWidth(0.85f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, colors.cardBorder, RoundedCornerShape(16.dp))
                     .background(themeOption.scheme.containerBackground)
             ) {
+                val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+                val baseWidth = if (screenWidth > 500.dp) 390.dp else screenWidth
+                val widthRatio = if (baseWidth > 0.dp) (maxWidth / baseWidth).coerceIn(0.5f, 1.0f) else 0.85f
+                val previewRowHeight = (58 * preferences.keyboardHeightScale * widthRatio).dp
+
                 KeyboardRootView(
                     layout = PredefinedLayouts.EnglishQwerty,
                     shiftState = ShiftState.UNSHIFTED,
@@ -293,7 +302,7 @@ private fun ThemePreviewBottomSheetContent(
                     showKeyBorders = showKeyBorders,
                     defaultShowNumberRow = preferences.showNumberRow,
                     defaultShowSecondaryKeys = false,
-                    initialRowHeight = (58 * preferences.keyboardHeightScale).dp,
+                    initialRowHeight = previewRowHeight,
                     applySystemInsets = false,
                     isInteractive = false,
                     navBarBottomInset = 0.dp

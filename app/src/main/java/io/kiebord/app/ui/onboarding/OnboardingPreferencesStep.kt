@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -136,15 +138,18 @@ fun OnboardingPreferencesStep(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 6.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .border(1.dp, colors.cardBorder, RoundedCornerShape(16.dp))
                 .background(keyboardColorScheme.containerBackground)
-                .padding(horizontal = 10.dp, vertical = 8.dp)
         ) {
+            val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+            val baseWidth = if (screenWidth > 500.dp) 390.dp else screenWidth
+            val widthRatio = if (baseWidth > 0.dp) (maxWidth / baseWidth).coerceIn(0.5f, 1.0f) else 0.88f
+            val demoRowHeight = (58 * widthRatio).dp
+
             KiebordTheme(colorScheme = keyboardColorScheme) {
                 KeyboardRootView(
                     layout = layoutDef,
@@ -154,7 +159,7 @@ fun OnboardingPreferencesStep(
                     showKeyBorders = showKeyBorders,
                     defaultShowNumberRow = showNumberRow,
                     defaultShowSecondaryKeys = showSecondaryKeys,
-                    initialRowHeight = 38.dp,
+                    initialRowHeight = demoRowHeight,
                     applySystemInsets = false,
                     isInteractive = false,
                     navBarBottomInset = 0.dp
