@@ -49,8 +49,7 @@ import io.kiebord.data.prefs.KiebordPreferences
 private data class LayoutOption(
     val id: String,
     val title: String,
-    val subtitle: String,
-    val badge: String
+    val subtitle: String
 )
 
 @Composable
@@ -68,26 +67,22 @@ fun OnboardingLayoutSelectionStep(
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_EN_QWERTY,
                 title = "English (QWERTY)",
-                subtitle = "Standard Latin layout with gesture typing",
-                badge = "ABC"
+                subtitle = "Standard Latin layout with gesture typing"
             ),
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_BORNO,
                 title = "Borno Phonetic",
-                subtitle = "Smart transliteration: type 'ami' -> 'আমি'",
-                badge = "বাংলা"
+                subtitle = "Smart transliteration: type 'ami' -> 'আমি'"
             ),
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_PROBHAT,
                 title = "Probhat",
-                subtitle = "Popular fixed Bengali layout",
-                badge = "প্রভাত"
+                subtitle = "Popular fixed Bengali layout"
             ),
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_NATIONAL,
                 title = "National (Jatiyo)",
-                subtitle = "Official national standard Bengali layout",
-                badge = "জাতীয়"
+                subtitle = "Official national standard Bengali layout"
             )
         )
     }
@@ -203,28 +198,12 @@ fun OnboardingLayoutSelectionStep(
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = opt.title,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isChecked) colors.textPrimary else colors.textSecondary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(colors.accent.copy(alpha = 0.12f))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = opt.badge,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = colors.accent
-                                    )
-                                }
-                            }
+                            Text(
+                                text = opt.title,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isChecked) colors.textPrimary else colors.textSecondary
+                            )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = opt.subtitle,
