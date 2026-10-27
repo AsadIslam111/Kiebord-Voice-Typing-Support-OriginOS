@@ -22,16 +22,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Coffee
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Policy
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,11 +48,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import io.kiebord.app.R
+
+private const val GITHUB_REPO_URL = "https://github.com/JayedAhsan/Kiebord"
+private const val GITHUB_ISSUES_URL = "https://github.com/JayedAhsan/Kiebord/issues"
+private const val SUPPORT_URL = "https://jayed.me/support-kiebord"
+
+private data class OpenSourceLib(
+    val name: String,
+    val author: String,
+    val license: String,
+    val description: String
+)
 
 private fun openUrl(context: Context, url: String) {
     if (url == "#" || url.isBlank()) {
-        Toast.makeText(context, "Repository link coming soon", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Link coming soon", Toast.LENGTH_SHORT).show()
         return
     }
     val targetUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) {
@@ -102,6 +119,59 @@ private fun AboutCircularButton(
 }
 
 @Composable
+private fun OpenSourceLicenseItem(lib: OpenSourceLib) {
+    val colors = LocalSettingsColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(colors.inputBackground)
+            .padding(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = lib.name,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
+                modifier = Modifier.weight(1f)
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(colors.accent.copy(alpha = 0.15f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = lib.license,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.accent
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(3.dp))
+        Text(
+            text = lib.author,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = colors.textSecondary
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = lib.description,
+            fontSize = 11.sp,
+            color = colors.textSecondary.copy(alpha = 0.85f),
+            lineHeight = 15.sp
+        )
+    }
+}
+
+@Composable
 fun AboutScreen(
     onResetDefaults: () -> Unit = {},
     onBack: () -> Unit = {}
@@ -109,6 +179,104 @@ fun AboutScreen(
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val colors = LocalSettingsColors.current
+
+    var showLicensesDialog by remember { mutableStateOf(false) }
+
+    val openSourceLibraries = remember {
+        listOf(
+            OpenSourceLib(
+                name = "AndroidX & Jetpack Compose",
+                author = "Google LLC / The Android Open Source Project",
+                license = "Apache 2.0",
+                description = "Modern declarative UI toolkit, Material 3 design components, runtime lifecycle, and foundation utilities."
+            ),
+            OpenSourceLib(
+                name = "AndroidX Emoji2 & EmojiPicker",
+                author = "Google LLC / The Android Open Source Project",
+                license = "Apache 2.0",
+                description = "Emoji compatibility font renderer and integrated interactive emoji picker."
+            ),
+            OpenSourceLib(
+                name = "Kotlin & Kotlin Coroutines",
+                author = "JetBrains s.r.o. / Kotlin Foundation",
+                license = "Apache 2.0",
+                description = "Modern programming language and asynchronous coroutine primitives for concurrent processing."
+            ),
+            OpenSourceLib(
+                name = "AndroidX DataStore",
+                author = "Google LLC / The Android Open Source Project",
+                license = "Apache 2.0",
+                description = "Modern, transactional, thread-safe asynchronous key-value data storage solution."
+            ),
+            OpenSourceLib(
+                name = "Rust Native Engine (memmap2, parking_lot, jni-rs)",
+                author = "Various Contributors",
+                license = "MIT / Apache 2.0",
+                description = "High-performance memory mapping, synchronization primitives, and JNI bridge for the spatial typing core."
+            ),
+            OpenSourceLib(
+                name = "BornoTSF & Bangla Layout Standards",
+                author = "Jayed Ahsan Saad / Open Source Community",
+                license = "GPL 3.0 / Open Standard",
+                description = "Core phonetic transliteration engine ported from BornoTSF, alongside National (BSTI Jatiyo) and Probhat specifications."
+            ),
+            OpenSourceLib(
+                name = "Material Symbols & Google Icons",
+                author = "Google LLC",
+                license = "Apache 2.0",
+                description = "Standard system and keyboard icons designed by Google."
+            )
+        )
+    }
+
+    if (showLicensesDialog) {
+        AlertDialog(
+            onDismissRequest = { showLicensesDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            title = {
+                Text(
+                    text = "Open Source Licenses",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Kiebord is the result of over 6 years of development on Borno Keyboard and heavily relies on its foundational source code and transliteration architecture, though Borno Keyboard itself is closed source. This codebase underwent an intensive AI-driven migration and heavy refactoring (transitioning from Java & C++ to modern Kotlin & Rust), with each change carefully reviewed and verified by me. Kiebord also proudly builds upon many remarkable open-source components. We gratefully acknowledge the following projects:",
+                        fontSize = 12.sp,
+                        color = colors.textSecondary,
+                        lineHeight = 16.sp,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    openSourceLibraries.forEach { lib ->
+                        OpenSourceLicenseItem(lib = lib)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLicensesDialog = false }) {
+                    Text(
+                        text = "Close",
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.accent
+                    )
+                }
+            },
+            containerColor = colors.dialogBackground,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -138,20 +306,13 @@ fun AboutScreen(
                 color = colors.textPrimary
             )
 
-            Box(
-                modifier = Modifier
-                    .padding(top = 6.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(colors.iconBackground)
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = "Version 0.1.0",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.accent
-                )
-            }
+            Text(
+                text = "Version 0.1.0",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
 
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -171,8 +332,8 @@ fun AboutScreen(
 
         SettingsGroup {
             SettingsNavigationItem(
-                title = "Developer",
-                subtitle = "Jayed Ahsan Saad",
+                title = "Maintainer",
+                subtitle = "Jayed Ahsan Saad (Codepotro)",
                 icon = Icons.Outlined.Person,
                 position = GroupPosition.TOP,
                 onClick = { openUrl(context, "https://jayed.me") }
@@ -180,24 +341,24 @@ fun AboutScreen(
 
             SettingsNavigationItem(
                 title = "License",
-                subtitle = "The app and its codes are licensed under GPL 3.0",
+                subtitle = "GNU General Public License v3.0",
                 icon = Icons.Outlined.Policy,
                 position = GroupPosition.MIDDLE,
-                onClick = {}
+                onClick = { openUrl(context, GITHUB_REPO_URL) }
             )
 
             SettingsNavigationItem(
-                title = "Git Repository",
-                subtitle = "GitHub • Repository link coming soon (#)",
-                icon = Icons.AutoMirrored.Outlined.OpenInNew,
+                title = "Open Source Licenses",
+                subtitle = "Third-party libraries, tools & notices",
+                icon = Icons.Outlined.Code,
                 position = GroupPosition.BOTTOM,
-                onClick = { openUrl(context, "#") }
+                onClick = { showLicensesDialog = true }
             )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Circular Action Buttons with text labels below (moved below About & Licensing, Support at last)
+        // Circular Action Buttons with text labels below
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -211,7 +372,7 @@ fun AboutScreen(
                 label = "Git Repo",
                 containerColor = colors.iconBackground,
                 contentColor = colors.textPrimary,
-                onClick = { openUrl(context, "#") }
+                onClick = { openUrl(context, GITHUB_REPO_URL) }
             )
 
             // Report Issue button
@@ -220,16 +381,16 @@ fun AboutScreen(
                 label = "Report Issue",
                 containerColor = colors.iconBackground,
                 contentColor = colors.textPrimary,
-                onClick = { openUrl(context, "#") }
+                onClick = { openUrl(context, GITHUB_ISSUES_URL) }
             )
 
-            // Support / Donate button with coffee mug (at last)
+            // Support button with warm golden yellow branding
             AboutCircularButton(
                 icon = Icons.Outlined.Coffee,
-                label = "Donate",
-                containerColor = colors.accent,
-                contentColor = Color.White,
-                onClick = { openUrl(context, "https://jayed.me/support-kiebord") }
+                label = "Support",
+                containerColor = Color(0xFFFFAF02),
+                contentColor = Color(0xFF1F1200),
+                onClick = { openUrl(context, SUPPORT_URL) }
             )
         }
 
