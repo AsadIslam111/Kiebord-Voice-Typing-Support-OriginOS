@@ -551,9 +551,17 @@ fun KeyboardRootView(
         }
     }
 
-    val keyboardRows: List<KeyRow> = remember(displayLayout, showNumberRow, extraRowOverrides) {
+    val effectiveShiftState = if (isSlidingShiftMode) ShiftState.ONE_SHOT else shiftState
+    val isShiftActive = effectiveShiftState != ShiftState.UNSHIFTED
+
+    val keyboardRows: List<KeyRow> = remember(displayLayout, showNumberRow, extraRowOverrides, isShiftActive) {
         val numberRow: List<KeyRow> = if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
-            listOf(displayLayout.numberRow ?: PredefinedLayouts.createNumberRow(displayLayout.language))
+            val baseRow = if (isShiftActive && displayLayout.shiftedNumberRow != null) {
+                displayLayout.shiftedNumberRow!!
+            } else {
+                displayLayout.numberRow ?: PredefinedLayouts.createNumberRow(displayLayout.language)
+            }
+            listOf(baseRow)
         } else {
             emptyList()
         }
@@ -640,8 +648,15 @@ fun KeyboardRootView(
     }
 
     val isKeysInteractive = isInteractive && !isResizerOpen
-    val numberRowEffectiveHeight = if (showNumberRow) (50 * scaleFactor).dp else 0.dp
-    val keyboardContentHeight = (keyRowHeight * 4) + numberRowEffectiveHeight
+    val hasTopNumberRow = showNumberRow && !displayLayout.id.startsWith("symbols")
+    val keyboardContentHeight = remember(keyboardRows, keyRowHeight, scaleFactor, hasTopNumberRow) {
+        var total = 0.dp
+        keyboardRows.forEachIndexed { index, _ ->
+            val isTopNumber = hasTopNumberRow && index == 0
+            total += if (isTopNumber) (50 * scaleFactor).dp else keyRowHeight
+        }
+        total
+    }
 
     val handleToolbarAction: (ToolbarAction) -> Unit = { action ->
         when (action) {

@@ -57,12 +57,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.automirrored.outlined.Backspace
+import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
+import androidx.compose.foundation.layout.fillMaxHeight
+import io.kiebord.common.model.KeyRow
+import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
-import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.LayoutRepository
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.data.prefs.KiebordPreferences
-import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
 
@@ -89,44 +92,48 @@ fun KeyboardLayoutsScreen(
     val scrollState = rememberScrollState()
     val colors = LocalSettingsColors.current
 
-    val englishCard = LayoutCardData(
-        id = KiebordPreferences.LAYOUT_EN_QWERTY,
-        name = "English (QWERTY)",
-        badge = "EN",
-        description = "Standard Latin layout with gesture typing",
-        layoutDef = PredefinedLayouts.EnglishQwerty
-    )
-
-    val banglaCards = listOf(
+    val englishCard = remember {
         LayoutCardData(
-            id = KiebordPreferences.LAYOUT_BN_BORNO,
-            name = "Borno Phonetic",
-            badge = "বর্ণ",
-            description = "ami -> আমি",
-            layoutDef = PredefinedLayouts.BengaliBorno
-        ),
-        LayoutCardData(
-            id = KiebordPreferences.LAYOUT_BN_AVRO,
-            name = "Avro Phonetic",
-            badge = "অভ্র",
-            description = "ami -> আমি",
-            layoutDef = PredefinedLayouts.BengaliAvro
-        ),
-        LayoutCardData(
-            id = KiebordPreferences.LAYOUT_BN_NATIONAL,
-            name = "National (BSTI)",
-            badge = "জাতীয়",
-            description = "National BSTI layout",
-            layoutDef = PredefinedLayouts.BengaliNational
-        ),
-        LayoutCardData(
-            id = KiebordPreferences.LAYOUT_BN_PROBHAT,
-            name = "Probhat",
-            badge = "প্রভাত",
-            description = "Fixed layout",
-            layoutDef = PredefinedLayouts.BengaliProbhat
+            id = KiebordPreferences.LAYOUT_EN_QWERTY,
+            name = "English (QWERTY)",
+            badge = "EN",
+            description = "Standard Latin layout with gesture typing",
+            layoutDef = PredefinedLayouts.EnglishQwerty
         )
-    )
+    }
+
+    val banglaCards = remember {
+        listOf(
+            LayoutCardData(
+                id = KiebordPreferences.LAYOUT_BN_BORNO,
+                name = "Borno Phonetic",
+                badge = "বর্ণ",
+                description = "ami -> আমি",
+                layoutDef = PredefinedLayouts.BengaliBorno
+            ),
+            LayoutCardData(
+                id = KiebordPreferences.LAYOUT_BN_AVRO,
+                name = "Avro Phonetic",
+                badge = "অভ্র",
+                description = "ami -> আমি",
+                layoutDef = PredefinedLayouts.BengaliAvro
+            ),
+            LayoutCardData(
+                id = KiebordPreferences.LAYOUT_BN_NATIONAL,
+                name = "National (BSTI)",
+                badge = "জাতীয়",
+                description = "National BSTI layout",
+                layoutDef = PredefinedLayouts.BengaliNational
+            ),
+            LayoutCardData(
+                id = KiebordPreferences.LAYOUT_BN_PROBHAT,
+                name = "Probhat",
+                badge = "প্রভাত",
+                description = "Fixed layout",
+                layoutDef = PredefinedLayouts.BengaliProbhat
+            )
+        )
+    }
 
     val arabicLayout = remember(reloadTrigger) { layoutRepo.getLayout(KiebordPreferences.LAYOUT_AR_ARABIC) }
     val arabicCard = remember(arabicLayout) {
@@ -667,37 +674,12 @@ private fun KeyboardLayoutPreviewItem(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            val virtualWidth = 336.dp
-            val virtualHeight = 206.dp
-            val scale = 164f / 336f
-
-            KiebordTheme(colorScheme = currentScheme) {
-                Box(
-                    modifier = Modifier
-                        .requiredSize(virtualWidth, virtualHeight)
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                            transformOrigin = TransformOrigin(0.5f, 0.5f)
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    KeyboardRootView(
-                        layout = cardData.layoutDef,
-                        shiftState = ShiftState.UNSHIFTED,
-                        onKeyTap = {},
-                        onKeyLongPress = {},
-                        showKeyBorders = true,
-                        defaultShowNumberRow = false,
-                        extraRowOverrides = preferences.extraRowOverrides,
-                        defaultShowSecondaryKeys = false,
-                        initialRowHeight = 42.dp,
-                        applySystemInsets = false,
-                        isInteractive = false,
-                        navBarBottomInset = 0.dp
-                    )
-                }
-            }
+            KeyboardMiniPreview(
+                layout = cardData.layoutDef,
+                colorScheme = currentScheme,
+                extraRowOverrides = preferences.extraRowOverrides,
+                modifier = Modifier.fillMaxSize()
+            )
 
             Box(
                 modifier = Modifier
@@ -753,6 +735,99 @@ private fun KeyboardLayoutPreviewItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+    }
+}
+
+@Composable
+private fun KeyboardMiniPreview(
+    layout: KeyboardLayoutDef,
+    colorScheme: KeyboardColorScheme,
+    extraRowOverrides: Map<String, Boolean>,
+    modifier: Modifier = Modifier
+) {
+    val enabledExtra = remember(layout, extraRowOverrides) {
+        layout.extraRows.filter { extraRow ->
+            extraRowOverrides["${layout.id}_${extraRow.id}"] ?: extraRow.defaultEnabled
+        }.map { KeyRow(it.keys) }
+    }
+    val allRows = remember(layout, enabledExtra) {
+        enabledExtra + layout.rows
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+    ) {
+        allRows.forEach { row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (row.startPaddingWeight > 0f) {
+                    Spacer(modifier = Modifier.weight(row.startPaddingWeight))
+                }
+                row.keys.forEach { key ->
+                    val isPill = key.type == KeyType.ACTION || key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS
+                    val bg = when {
+                        key.type == KeyType.ACTION -> colorScheme.accentColor
+                        key.type == KeyType.SYMBOLS -> colorScheme.actionKeyBackground
+                        key.type == KeyType.SPACE -> colorScheme.keyBackground
+                        key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.SWITCH_LANGUAGE -> colorScheme.actionKeyBackground
+                        else -> colorScheme.keyBackground
+                    }
+                    val fg = when {
+                        key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
+                        else -> colorScheme.keyForeground
+                    }
+                    val shape = if (isPill) RoundedCornerShape(percent = 50) else RoundedCornerShape(3.dp)
+
+                    Box(
+                        modifier = Modifier
+                            .weight(key.widthWeight)
+                            .fillMaxHeight()
+                            .clip(shape)
+                            .background(bg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (key.type == KeyType.CHARACTER || key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS) {
+                            val label = if (key.type == KeyType.SPACE) "" else key.label
+                            if (label.isNotEmpty()) {
+                                Text(
+                                    text = label,
+                                    color = fg,
+                                    fontSize = if (label.length > 2) 6.sp else 8.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        } else if (key.type == KeyType.DELETE) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Backspace,
+                                contentDescription = null,
+                                tint = fg,
+                                modifier = Modifier.size(9.dp)
+                            )
+                        } else if (key.type == KeyType.ACTION) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
+                                contentDescription = null,
+                                tint = fg,
+                                modifier = Modifier.size(9.dp)
+                            )
+                        }
+                    }
+                }
+                if (row.endPaddingWeight > 0f) {
+                    Spacer(modifier = Modifier.weight(row.endPaddingWeight))
+                }
+            }
         }
     }
 }

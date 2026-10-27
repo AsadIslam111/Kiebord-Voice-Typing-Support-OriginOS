@@ -520,46 +520,46 @@ object PredefinedLayouts {
 
     val NumberRowAr: KeyRow = KeyRow(
         listOf(
-            KeyDef("١", moreKeys = listOf("1", "١")),
-            KeyDef("٢", moreKeys = listOf("2", "٢")),
-            KeyDef("٣", moreKeys = listOf("3", "٣")),
-            KeyDef("٤", moreKeys = listOf("4", "٤")),
-            KeyDef("٥", moreKeys = listOf("5", "٥")),
-            KeyDef("٦", moreKeys = listOf("6", "٦")),
-            KeyDef("٧", moreKeys = listOf("7", "٧")),
-            KeyDef("٨", moreKeys = listOf("8", "٨")),
-            KeyDef("٩", moreKeys = listOf("9", "٩")),
-            KeyDef("٠", moreKeys = listOf("0", "٠"))
+            KeyDef("١", shiftedLabel = "!", moreKeys = listOf("1", "١")),
+            KeyDef("٢", shiftedLabel = "@", moreKeys = listOf("2", "٢")),
+            KeyDef("٣", shiftedLabel = "#", moreKeys = listOf("3", "٣")),
+            KeyDef("٤", shiftedLabel = "$", moreKeys = listOf("4", "٤")),
+            KeyDef("٥", shiftedLabel = "٪", moreKeys = listOf("5", "٥", "%")),
+            KeyDef("٦", shiftedLabel = "^", moreKeys = listOf("6", "٦")),
+            KeyDef("٧", shiftedLabel = "&", moreKeys = listOf("7", "٧")),
+            KeyDef("٨", shiftedLabel = "*", moreKeys = listOf("8", "٨")),
+            KeyDef("٩", shiftedLabel = ")", moreKeys = listOf("9", "٩")),
+            KeyDef("٠", shiftedLabel = "(", moreKeys = listOf("0", "٠"))
         )
     )
 
     val NumberRowBn: KeyRow = KeyRow(
         listOf(
-            KeyDef("১", moreKeys = listOf("1", "১")),
-            KeyDef("২", moreKeys = listOf("2", "২")),
-            KeyDef("৩", moreKeys = listOf("3", "৩")),
-            KeyDef("৪", moreKeys = listOf("4", "৪")),
-            KeyDef("৫", moreKeys = listOf("5", "৫")),
-            KeyDef("৬", moreKeys = listOf("6", "৬")),
-            KeyDef("৭", moreKeys = listOf("7", "৭")),
-            KeyDef("৮", moreKeys = listOf("8", "৮")),
-            KeyDef("৯", moreKeys = listOf("9", "৯")),
-            KeyDef("০", moreKeys = listOf("0", "০"))
+            KeyDef("১", shiftedLabel = "!", moreKeys = listOf("1", "১")),
+            KeyDef("২", shiftedLabel = "@", moreKeys = listOf("2", "২")),
+            KeyDef("৩", shiftedLabel = "#", moreKeys = listOf("3", "৩")),
+            KeyDef("৪", shiftedLabel = "৳", moreKeys = listOf("4", "৪", "$", "₹")),
+            KeyDef("৫", shiftedLabel = "%", moreKeys = listOf("5", "৫")),
+            KeyDef("৬", shiftedLabel = "^", moreKeys = listOf("6", "৬")),
+            KeyDef("৭", shiftedLabel = "&", moreKeys = listOf("7", "৭")),
+            KeyDef("৮", shiftedLabel = "*", moreKeys = listOf("8", "৮")),
+            KeyDef("৯", shiftedLabel = "(", moreKeys = listOf("9", "৯")),
+            KeyDef("০", shiftedLabel = ")", moreKeys = listOf("0", "০"))
         )
     )
 
     val NumberRowEn: KeyRow = KeyRow(
         listOf(
-            KeyDef("1", moreKeys = listOf("1", "¹", "½", "১")),
-            KeyDef("2", moreKeys = listOf("2", "²", "⅔", "২")),
-            KeyDef("3", moreKeys = listOf("3", "³", "¾", "৩")),
-            KeyDef("4", moreKeys = listOf("4", "⁴", "৪")),
-            KeyDef("5", moreKeys = listOf("5", "⁵", "৫")),
-            KeyDef("6", moreKeys = listOf("6", "⁶", "৬")),
-            KeyDef("7", moreKeys = listOf("7", "⁷", "৭")),
-            KeyDef("8", moreKeys = listOf("8", "⁸", "৮")),
-            KeyDef("9", moreKeys = listOf("9", "⁹", "৯")),
-            KeyDef("0", moreKeys = listOf("0", "⁰", "০", "∅"))
+            KeyDef("1", shiftedLabel = "!", moreKeys = listOf("1", "¹", "½", "১")),
+            KeyDef("2", shiftedLabel = "@", moreKeys = listOf("2", "²", "⅔", "২")),
+            KeyDef("3", shiftedLabel = "#", moreKeys = listOf("3", "³", "¾", "৩")),
+            KeyDef("4", shiftedLabel = "$", moreKeys = listOf("4", "⁴", "৪")),
+            KeyDef("5", shiftedLabel = "%", moreKeys = listOf("5", "⁵", "৫")),
+            KeyDef("6", shiftedLabel = "^", moreKeys = listOf("6", "⁶", "৬")),
+            KeyDef("7", shiftedLabel = "&", moreKeys = listOf("7", "⁷", "৭")),
+            KeyDef("8", shiftedLabel = "*", moreKeys = listOf("8", "⁸", "৮")),
+            KeyDef("9", shiftedLabel = "(", moreKeys = listOf("9", "⁹", "৯")),
+            KeyDef("0", shiftedLabel = ")", moreKeys = listOf("0", "⁰", "০", "∅"))
         )
     )
 

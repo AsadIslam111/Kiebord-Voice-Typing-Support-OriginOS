@@ -27,6 +27,14 @@ class LayoutRepository private constructor(private val context: Context) {
     private val customLayoutsDir: File
         get() = File(context.filesDir, "layouts").apply { if (!exists()) mkdirs() }
 
+    private val bundledAssetIds: List<String> by lazy {
+        try {
+            (context.assets.list("layouts") ?: emptyArray()).filter { it.endsWith(".json") }.map { it.removeSuffix(".json") }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     init {
         for (layout in PredefinedLayouts.allPredefined) {
             cache[layout.id] = layout
@@ -84,31 +92,25 @@ class LayoutRepository private constructor(private val context: Context) {
         }
 
         // Bundled assets
-        try {
-            val list = context.assets.list("layouts") ?: emptyArray()
-            for (filename in list) {
-                if (filename.endsWith(".json")) {
-                    val id = filename.removeSuffix(".json")
-                    if (id !in seenIds) {
-                        try {
-                            val layout = getLayout(id)
-                            if (seenIds.add(layout.id)) {
-                                result.add(
-                                    LayoutItemMeta(
-                                        id = layout.id,
-                                        name = layout.name,
-                                        language = layout.language,
-                                        direction = layout.direction,
-                                        isCustom = false,
-                                        hasExtraRows = layout.extraRows.isNotEmpty()
-                                    )
-                                )
-                            }
-                        } catch (_: Exception) {}
+        for (id in bundledAssetIds) {
+            if (id !in seenIds) {
+                try {
+                    val layout = getLayout(id)
+                    if (seenIds.add(layout.id)) {
+                        result.add(
+                            LayoutItemMeta(
+                                id = layout.id,
+                                name = layout.name,
+                                language = layout.language,
+                                direction = layout.direction,
+                                isCustom = false,
+                                hasExtraRows = layout.extraRows.isNotEmpty()
+                            )
+                        )
                     }
-                }
+                } catch (_: Exception) {}
             }
-        } catch (_: Exception) {}
+        }
 
         // Custom imported files
         try {

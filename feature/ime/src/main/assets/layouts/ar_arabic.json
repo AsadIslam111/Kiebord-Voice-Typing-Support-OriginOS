@@ -60,6 +60,7 @@
     "keys": [
       {
         "label": "١",
+        "shiftedLabel": "!",
         "moreKeys": [
           "1",
           "١"
@@ -67,6 +68,7 @@
       },
       {
         "label": "٢",
+        "shiftedLabel": "@",
         "moreKeys": [
           "2",
           "٢"
@@ -74,6 +76,7 @@
       },
       {
         "label": "٣",
+        "shiftedLabel": "#",
         "moreKeys": [
           "3",
           "٣"
@@ -81,6 +84,7 @@
       },
       {
         "label": "٤",
+        "shiftedLabel": "$",
         "moreKeys": [
           "4",
           "٤"
@@ -88,13 +92,16 @@
       },
       {
         "label": "٥",
+        "shiftedLabel": "٪",
         "moreKeys": [
           "5",
-          "٥"
+          "٥",
+          "%"
         ]
       },
       {
         "label": "٦",
+        "shiftedLabel": "^",
         "moreKeys": [
           "6",
           "٦"
@@ -102,6 +109,7 @@
       },
       {
         "label": "٧",
+        "shiftedLabel": "&",
         "moreKeys": [
           "7",
           "٧"
@@ -109,6 +117,7 @@
       },
       {
         "label": "٨",
+        "shiftedLabel": "*",
         "moreKeys": [
           "8",
           "٨"
@@ -116,6 +125,7 @@
       },
       {
         "label": "٩",
+        "shiftedLabel": ")",
         "moreKeys": [
           "9",
           "٩"
@@ -123,6 +133,7 @@
       },
       {
         "label": "٠",
+        "shiftedLabel": "(",
         "moreKeys": [
           "0",
           "٠"

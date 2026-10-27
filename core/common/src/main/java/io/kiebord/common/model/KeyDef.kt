@@ -14,6 +14,7 @@ data class KeyDef(
     val moreKeysColumns: Int? = null,
     val slidingInput: Boolean = false,
     val commitText: String? = null,
+    val shiftedCommitText: String? = null,
     val shiftedFlickUp: String? = null,
     val shiftedMoreKeys: List<String>? = null
 ) {
@@ -25,7 +26,10 @@ data class KeyDef(
     }
 
     fun textToCommit(shiftState: ShiftState): String {
-        return commitText ?: displayLabel(shiftState)
+        return when (shiftState) {
+            ShiftState.UNSHIFTED -> commitText ?: label
+            ShiftState.ONE_SHOT, ShiftState.CAPS_LOCK -> shiftedCommitText ?: shiftedLabel ?: (commitText ?: label).uppercase()
+        }
     }
 
     fun moreKeys(shiftState: ShiftState): List<String> {
@@ -77,5 +81,6 @@ data class KeyboardLayoutDef(
     val direction: String = "LTR",
     val extraRows: List<LayoutExtraRow> = emptyList(),
     val numberRow: KeyRow? = null,
+    val shiftedNumberRow: KeyRow? = null,
     val rows: List<KeyRow>
 )

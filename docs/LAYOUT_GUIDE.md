@@ -34,6 +34,7 @@ Layouts are parsed with compile-time serializers and cached in memory to ensure 
 | `direction` | String | No | Text and keyboard flow direction: `"LTR"` (default) or `"RTL"`. |
 | `extraRows` | Array of `LayoutExtraRow` | No | Optional feature rows that appear above the main alphabet keys. |
 | `numberRow` | `KeyRow` | No | Optional layout-specific number row override. |
+| `shiftedNumberRow` | `KeyRow` | No | Optional layout-specific number row displayed when Shift or Caps Lock is active. |
 | `rows` | Array of `KeyRow` | Yes | List of main keyboard rows from top to bottom. |
 
 ---
@@ -68,6 +69,7 @@ Extra rows allow layouts to provide specialized key rows (such as Arabic Harakat
 | `label` | String | No | Primary character or symbol displayed on the key cap. |
 | `shiftedLabel` | String | No | Label displayed when Shift or Caps Lock is active. |
 | `commitText` | String | No | Text sent to the input field if different from `label`. Useful for combining diacritics. |
+| `shiftedCommitText` | String | No | Text committed when Shift or Caps Lock is active if different from `shiftedLabel`. |
 | `type` | String | No | Key functional type (see Key Types table below). Default: `"CHARACTER"`. |
 | `icon` | String | No | Vector icon identifier (`"backspace"`, `"enter"`, `"globe"`, `"space"`, `"shift"`). |
 | `widthWeight` | Float | No | Relative width multiplier. Standard key is `1.0`. Space is typically `4.0`. Modifiers are often `1.5`. |
