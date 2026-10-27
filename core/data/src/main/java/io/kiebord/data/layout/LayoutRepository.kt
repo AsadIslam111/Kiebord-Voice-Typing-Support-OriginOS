@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 data class LayoutItemMeta(
     val id: String,
     val name: String,
+    val displayName: String = name,
     val language: String,
     val direction: String,
     val isCustom: Boolean,
@@ -38,6 +39,9 @@ class LayoutRepository private constructor(private val context: Context) {
     init {
         for (layout in PredefinedLayouts.allPredefined) {
             cache[layout.id] = layout
+        }
+        PredefinedLayouts.customLayoutResolver = { id ->
+            cache[id]?.displayName ?: cache[id]?.name
         }
     }
 
@@ -82,6 +86,7 @@ class LayoutRepository private constructor(private val context: Context) {
                     LayoutItemMeta(
                         id = layout.id,
                         name = layout.name,
+                        displayName = layout.displayName ?: PredefinedLayouts.displayName(layout.id),
                         language = layout.language,
                         direction = layout.direction,
                         isCustom = false,
@@ -101,6 +106,7 @@ class LayoutRepository private constructor(private val context: Context) {
                             LayoutItemMeta(
                                 id = layout.id,
                                 name = layout.name,
+                                displayName = layout.displayName ?: layout.name,
                                 language = layout.language,
                                 direction = layout.direction,
                                 isCustom = false,
@@ -125,6 +131,7 @@ class LayoutRepository private constructor(private val context: Context) {
                                 LayoutItemMeta(
                                     id = layout.id,
                                     name = layout.name,
+                                    displayName = layout.displayName ?: layout.name,
                                     language = layout.language,
                                     direction = layout.direction,
                                     isCustom = true,

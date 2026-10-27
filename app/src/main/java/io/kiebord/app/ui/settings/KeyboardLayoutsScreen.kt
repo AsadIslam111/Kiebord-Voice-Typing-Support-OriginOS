@@ -153,7 +153,7 @@ fun KeyboardLayoutsScreen(
             val def = layoutRepo.getLayout(meta.id)
             LayoutCardData(
                 id = meta.id,
-                name = meta.name,
+                name = meta.displayName ?: meta.name,
                 badge = meta.language.uppercase(),
                 description = "Custom imported layout",
                 layoutDef = def

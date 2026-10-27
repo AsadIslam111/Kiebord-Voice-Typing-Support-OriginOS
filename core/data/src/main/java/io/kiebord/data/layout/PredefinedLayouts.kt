@@ -507,13 +507,17 @@ object PredefinedLayouts {
         }
     }
 
+    var customLayoutResolver: ((String) -> String?)? = null
+
     fun displayName(id: String): String {
+        customLayoutResolver?.invoke(id)?.let { return it }
         return when (id) {
             "bn_borno" -> "বর্ণ ফোনেটিক"
             "bn_avro" -> "অভ্র"
             "bn_probhat" -> "প্রভাত"
             "bn_national" -> "জাতীয় (BSTI)"
             "ar_arabic" -> "العربية"
+            "en_qwerty" -> "English"
             else -> "English"
         }
     }

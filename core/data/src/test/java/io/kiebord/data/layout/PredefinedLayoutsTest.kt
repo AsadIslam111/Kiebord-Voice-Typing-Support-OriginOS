@@ -15,6 +15,7 @@ class PredefinedLayoutsTest {
         assertEquals("বর্ণ ফোনেটিক", PredefinedLayouts.displayName("bn_borno"))
         assertEquals("অভ্র", PredefinedLayouts.displayName("bn_avro"))
         assertEquals("প্রভাত", PredefinedLayouts.displayName("bn_probhat"))
+        assertEquals("العربية", PredefinedLayouts.displayName("ar_arabic"))
     }
 
     @Test
@@ -231,5 +232,55 @@ class PredefinedLayoutsTest {
         for (k in enRow.keys) {
             org.junit.Assert.assertNull("English number row key ${k.label} should not have flickUp", k.flickUp)
         }
+    }
+
+    @Test
+    fun testCustomLayoutResolverAndDisplayName() {
+        val originalResolver = PredefinedLayouts.customLayoutResolver
+        try {
+            PredefinedLayouts.customLayoutResolver = { id ->
+                if (id == "custom_layout_1") "Custom Layout" else null
+            }
+            assertEquals("Custom Layout", PredefinedLayouts.displayName("custom_layout_1"))
+            assertEquals("English", PredefinedLayouts.displayName("en_qwerty"))
+        } finally {
+            PredefinedLayouts.customLayoutResolver = originalResolver
+        }
+    }
+
+    @Test
+    fun testNumberRowShiftedSymbols() {
+        val enRow = PredefinedLayouts.NumberRowEn
+        assertEquals("1", enRow.keys[0].textToCommit(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals("!", enRow.keys[0].textToCommit(io.kiebord.common.model.ShiftState.ONE_SHOT))
+        assertEquals("!", enRow.keys[0].textToCommit(io.kiebord.common.model.ShiftState.CAPS_LOCK))
+
+        val bnRow = PredefinedLayouts.NumberRowBn
+        assertEquals("৪", bnRow.keys[3].textToCommit(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals("৳", bnRow.keys[3].textToCommit(io.kiebord.common.model.ShiftState.ONE_SHOT))
+
+        val arRow = PredefinedLayouts.NumberRowAr
+        assertEquals("٥", arRow.keys[4].textToCommit(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals("٪", arRow.keys[4].textToCommit(io.kiebord.common.model.ShiftState.ONE_SHOT))
+    }
+
+    @Test
+    fun testKeyboardLayoutDefEffectiveDisplayName() {
+        val withDisplay = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "test_custom",
+            name = "Test Custom Full",
+            displayName = "Custom Short",
+            language = "en",
+            rows = emptyList()
+        )
+        assertEquals("Custom Short", withDisplay.effectiveDisplayName())
+
+        val withoutDisplay = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "test_custom_2",
+            name = "Test Custom 2",
+            language = "en",
+            rows = emptyList()
+        )
+        assertEquals("Test Custom 2", withoutDisplay.effectiveDisplayName())
     }
 }

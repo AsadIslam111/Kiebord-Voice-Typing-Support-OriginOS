@@ -77,10 +77,13 @@ data class LayoutExtraRow(
 data class KeyboardLayoutDef(
     val id: String,
     val name: String,
+    val displayName: String? = null,
     val language: String,
     val direction: String = "LTR",
     val extraRows: List<LayoutExtraRow> = emptyList(),
     val numberRow: KeyRow? = null,
     val shiftedNumberRow: KeyRow? = null,
     val rows: List<KeyRow>
-)
+) {
+    fun effectiveDisplayName(): String = displayName ?: name.ifEmpty { id }
+}

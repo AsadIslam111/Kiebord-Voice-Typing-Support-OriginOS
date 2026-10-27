@@ -1,6 +1,7 @@
 {
   "id": "ar_arabic",
   "name": "Arabic (العربية)",
+  "displayName": "العربية",
   "language": "ar",
   "direction": "RTL",
   "extraRows": [

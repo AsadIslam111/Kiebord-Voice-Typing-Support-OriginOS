@@ -29,7 +29,8 @@ Layouts are parsed with compile-time serializers and cached in memory to ensure 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `id` | String | Yes | Unique identifier for the layout (e.g., `ar_arabic`, `en_dvorak`). |
-| `name` | String | Yes | Display name shown in Settings and language switchers (e.g., `Arabic (العربية)`). |
+| `name` | String | Yes | Full display name shown in Settings (e.g., `Arabic (العربية)`). |
+| `displayName` | String | No | Concise display name for space bar and quick switchers (e.g., `العربية`). Defaults to `name`. |
 | `language` | String | Yes | ISO 639-1 two-letter language code (e.g., `en`, `bn`, `ar`, `es`). |
 | `direction` | String | No | Text and keyboard flow direction: `"LTR"` (default) or `"RTL"`. |
 | `extraRows` | Array of `LayoutExtraRow` | No | Optional feature rows that appear above the main alphabet keys. |

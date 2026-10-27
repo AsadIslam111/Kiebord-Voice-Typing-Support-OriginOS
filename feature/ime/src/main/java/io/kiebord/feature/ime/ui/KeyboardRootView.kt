@@ -780,8 +780,8 @@ fun KeyboardRootView(
     val oneHandedStart = if (oneHandedSide == "RIGHT") oneHandedSideWidth.dp else 0.dp
     val oneHandedEnd = if (oneHandedSide == "LEFT") oneHandedSideWidth.dp else 0.dp
 
-    val keyboardStartInset = 12.5.dp + horizontalMargin + oneHandedStart
-    val keyboardEndInset = 12.5.dp + horizontalMargin + oneHandedEnd
+    val keyboardStartInset = 6.dp + horizontalMargin + oneHandedStart
+    val keyboardEndInset = 6.dp + horizontalMargin + oneHandedEnd
 
     val keyboardLeftPx = with(density) { keyboardStartInset.toPx() }
     val keyboardRightPx = if (rootWidthPx > 0f) {
@@ -1262,7 +1262,7 @@ fun KeyboardRootView(
                                                             val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
                                                                 "Space"
                                                             } else {
-                                                                PredefinedLayouts.displayName(displayLayout.id)
+                                                                displayLayout.displayName ?: PredefinedLayouts.displayName(displayLayout.id)
                                                             }
                                                             rawKey.copy(label = spaceLabel)
                                                         } else {
@@ -1518,7 +1518,7 @@ fun KeyboardRootView(
                                 val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
                                     "Space"
                                 } else {
-                                    PredefinedLayouts.displayName(displayLayout.id)
+                                    displayLayout.displayName ?: PredefinedLayouts.displayName(displayLayout.id)
                                 }
                                 key.copy(label = spaceLabel)
                             } else {
@@ -1666,7 +1666,7 @@ fun KeyboardRootView(
                                                         val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
                                                             "Space"
                                                         } else {
-                                                            PredefinedLayouts.displayName(displayLayout.id)
+                                                            displayLayout.displayName ?: PredefinedLayouts.displayName(displayLayout.id)
                                                         }
                                                         rawKey.copy(label = spaceLabel)
                                                     } else {
