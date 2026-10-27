@@ -23,7 +23,6 @@ import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.SmartButton
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.TouchApp
@@ -148,7 +147,7 @@ fun ReorderableToolbar(
             ToolbarAction.RESIZER to ToolbarItem(ToolbarAction.RESIZER, iconResId = R.drawable.ic_resize, description = "Resize Keyboard"),
             ToolbarAction.NUMBER_ROW_TOGGLE to ToolbarItem(ToolbarAction.NUMBER_ROW_TOGGLE, icon = Icons.Filled.Pin, description = "Number Row"),
             ToolbarAction.SECONDARY_KEYS_TOGGLE to ToolbarItem(ToolbarAction.SECONDARY_KEYS_TOGGLE, iconResId = R.drawable.ic_key_hints, description = "Key Hints"),
-            ToolbarAction.KEY_POPUP_TOGGLE to ToolbarItem(ToolbarAction.KEY_POPUP_TOGGLE, icon = Icons.Outlined.SmartButton, description = "Key Popup"),
+            ToolbarAction.KEY_POPUP_TOGGLE to ToolbarItem(ToolbarAction.KEY_POPUP_TOGGLE, iconResId = R.drawable.ic_key_popup, description = "Key Popup"),
             ToolbarAction.EMOJI to ToolbarItem(ToolbarAction.EMOJI, icon = Icons.Outlined.Mood, description = "Emojis"),
             ToolbarAction.ONE_HANDED to ToolbarItem(ToolbarAction.ONE_HANDED, iconResId = R.drawable.ic_one_handed, description = "One-Handed"),
             ToolbarAction.SETTINGS to ToolbarItem(ToolbarAction.SETTINGS, icon = Icons.Filled.Settings, description = "Settings"),

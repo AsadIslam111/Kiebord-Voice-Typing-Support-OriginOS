@@ -32,7 +32,6 @@ import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.SmartButton
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.TouchApp
@@ -116,7 +115,7 @@ fun ToolsDrawerView(
             ToolbarAction.RESIZER to DrawerTool(ToolbarAction.RESIZER, iconResId = R.drawable.ic_resize, label = "Resize"),
             ToolbarAction.NUMBER_ROW_TOGGLE to DrawerTool(ToolbarAction.NUMBER_ROW_TOGGLE, icon = Icons.Filled.Pin, label = "Number row"),
             ToolbarAction.SECONDARY_KEYS_TOGGLE to DrawerTool(ToolbarAction.SECONDARY_KEYS_TOGGLE, iconResId = R.drawable.ic_key_hints, label = "Key hints"),
-            ToolbarAction.KEY_POPUP_TOGGLE to DrawerTool(ToolbarAction.KEY_POPUP_TOGGLE, icon = Icons.Outlined.SmartButton, label = "Key popup"),
+            ToolbarAction.KEY_POPUP_TOGGLE to DrawerTool(ToolbarAction.KEY_POPUP_TOGGLE, iconResId = R.drawable.ic_key_popup, label = "Key popup"),
             ToolbarAction.EMOJI to DrawerTool(ToolbarAction.EMOJI, icon = Icons.Outlined.Mood, label = "Emoji"),
             ToolbarAction.ONE_HANDED to DrawerTool(ToolbarAction.ONE_HANDED, iconResId = R.drawable.ic_one_handed, label = "One-handed"),
             ToolbarAction.SETTINGS to DrawerTool(ToolbarAction.SETTINGS, icon = Icons.Filled.Settings, label = "Settings"),
