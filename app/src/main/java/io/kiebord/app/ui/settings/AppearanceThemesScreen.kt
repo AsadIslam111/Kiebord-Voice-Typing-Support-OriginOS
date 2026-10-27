@@ -130,6 +130,7 @@ fun AppearanceThemesScreen(
                         AbstractThemeCard(
                             themeOption = themeOption,
                             isSelected = isSelected,
+                            showKeyBorders = preferences.showKeyBorders,
                             modifier = Modifier.weight(1f),
                             onSelect = { previewThemeOption = themeOption }
                         )
@@ -172,6 +173,7 @@ fun AppearanceThemesScreen(
 private fun AbstractThemeCard(
     themeOption: ThemeOption,
     isSelected: Boolean,
+    showKeyBorders: Boolean = true,
     modifier: Modifier = Modifier,
     onSelect: () -> Unit
 ) {
@@ -226,11 +228,12 @@ private fun AbstractThemeCard(
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val spaceShape = if (showKeyBorders) RoundedCornerShape(3.dp) else RoundedCornerShape(percent = 50)
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .height(18.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(spaceShape)
                         .background(themeOption.scheme.keyBackground)
                 )
                 Box(

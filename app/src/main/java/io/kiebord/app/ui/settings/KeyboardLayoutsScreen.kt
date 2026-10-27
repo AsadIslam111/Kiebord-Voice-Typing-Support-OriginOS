@@ -808,6 +808,7 @@ private fun KeyboardLayoutPreviewItem(
                 layout = cardData.layoutDef,
                 colorScheme = currentScheme,
                 extraRowOverrides = preferences.extraRowOverrides,
+                showKeyBorders = preferences.showKeyBorders,
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -874,6 +875,7 @@ private fun KeyboardMiniPreview(
     layout: KeyboardLayoutDef,
     colorScheme: KeyboardColorScheme,
     extraRowOverrides: Map<String, Boolean>,
+    showKeyBorders: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val enabledExtra = remember(layout, extraRowOverrides) {
@@ -904,13 +906,14 @@ private fun KeyboardMiniPreview(
                 }
                 row.keys.forEach { key ->
                     val isComma = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
-                    val isPill = key.type == KeyType.ACTION || key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS
+                    val isPill = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
                     val bg = when {
                         key.type == KeyType.ACTION -> colorScheme.accentColor
                         key.type == KeyType.SYMBOLS || isComma -> colorScheme.actionKeyBackground
                         key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> colorScheme.keyBackground
                         key.type == KeyType.SHIFT || key.type == KeyType.DELETE -> colorScheme.actionKeyBackground
-                        else -> colorScheme.keyBackground
+                        showKeyBorders -> colorScheme.keyBackground
+                        else -> colorScheme.containerBackground
                     }
                     val fg = when {
                         key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
