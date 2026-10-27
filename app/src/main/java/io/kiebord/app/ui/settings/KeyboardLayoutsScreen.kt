@@ -413,9 +413,7 @@ fun KeyboardLayoutsScreen(
                                 isEnabled = isArabicEnabled,
                                 onToggle = {
                                     onToggleLayoutEnabled(arabicCard.id, !isArabicEnabled)
-                                },
-                                onOpenSettings = { isArabicOptionsOpen = !isArabicOptionsOpen },
-                                isSettingsOpen = isArabicOptionsOpen
+                                }
                             )
 
                             // Dynamic Extra Rows options
@@ -585,13 +583,7 @@ fun KeyboardLayoutsScreen(
                                                 isEnabled = isEnabled,
                                                 onToggle = {
                                                     onToggleLayoutEnabled(cardData.id, !isEnabled)
-                                                },
-                                                onOpenSettings = if (hasExtraRows) {
-                                                    {
-                                                        selectedCustomSettingsId = if (selectedCustomSettingsId == cardData.id) null else cardData.id
-                                                    }
-                                                } else null,
-                                                isSettingsOpen = isCardSettingsOpen
+                                                }
                                             )
                                             Row(
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -773,9 +765,7 @@ private fun KeyboardLayoutPreviewItem(
     preferences: KiebordPreferences,
     isEnabled: Boolean,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-    onOpenSettings: (() -> Unit)? = null,
-    isSettingsOpen: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     val colors = LocalSettingsColors.current
     val currentScheme = when (preferences.theme) {
@@ -828,30 +818,6 @@ private fun KeyboardLayoutPreviewItem(
                         onClick = onToggle
                     )
             )
-
-            if (cardData.layoutDef.extraRows.isNotEmpty() && onOpenSettings != null) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(if (isSettingsOpen) colors.accent else currentScheme.keyBackground.copy(alpha = 0.9f))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onOpenSettings
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Settings,
-                        contentDescription = "Options",
-                        tint = if (isSettingsOpen) Color.White else colors.textPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
