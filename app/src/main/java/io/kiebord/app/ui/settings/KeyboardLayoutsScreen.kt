@@ -35,7 +35,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
@@ -427,7 +427,7 @@ fun KeyboardLayoutsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.Settings,
+                                        imageVector = Icons.Filled.Settings,
                                         contentDescription = "Options",
                                         tint = if (isArabicOptionsOpen) colors.accent else colors.textSecondary,
                                         modifier = Modifier.size(16.dp)
@@ -597,7 +597,7 @@ fun KeyboardLayoutsScreen(
                                                         modifier = Modifier.size(28.dp)
                                                     ) {
                                                         Icon(
-                                                            imageVector = Icons.Outlined.Settings,
+                                                            imageVector = Icons.Filled.Settings,
                                                             contentDescription = "Options",
                                                             tint = if (isCardSettingsOpen) colors.accent else colors.textSecondary,
                                                             modifier = Modifier.size(16.dp)
@@ -643,7 +643,7 @@ fun KeyboardLayoutsScreen(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Outlined.Settings,
+                                                imageVector = Icons.Filled.Settings,
                                                 contentDescription = "Options",
                                                 tint = colors.accent,
                                                 modifier = Modifier.size(16.dp)
@@ -901,12 +901,13 @@ private fun KeyboardMiniPreview(
                     Spacer(modifier = Modifier.weight(row.startPaddingWeight))
                 }
                 row.keys.forEach { key ->
+                    val isComma = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
                     val isPill = key.type == KeyType.ACTION || key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS
                     val bg = when {
                         key.type == KeyType.ACTION -> colorScheme.accentColor
-                        key.type == KeyType.SYMBOLS -> colorScheme.actionKeyBackground
-                        key.type == KeyType.SPACE -> colorScheme.keyBackground
-                        key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.SWITCH_LANGUAGE -> colorScheme.actionKeyBackground
+                        key.type == KeyType.SYMBOLS || isComma -> colorScheme.actionKeyBackground
+                        key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> colorScheme.keyBackground
+                        key.type == KeyType.SHIFT || key.type == KeyType.DELETE -> colorScheme.actionKeyBackground
                         else -> colorScheme.keyBackground
                     }
                     val fg = when {

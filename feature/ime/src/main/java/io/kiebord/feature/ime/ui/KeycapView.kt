@@ -122,12 +122,13 @@ fun KeycapView(
     // Dynamic key background & foreground colors driven by configurable theme
     // When showKeyBorders is false (flat theme): key color is same as containerBackground
     // EXCEPT for Space bar, Sym key, and Enter key
+    val isCommaKey = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
     val isPillColoredKey = key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS || key.type == KeyType.ACTION
-    val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SWITCH_LANGUAGE
+    val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || isCommaKey
     val baseBackground = when {
         key.type == KeyType.ACTION -> colorScheme.accentColor
-        key.type == KeyType.SYMBOLS -> colorScheme.actionKeyBackground
-        key.type == KeyType.SPACE -> colorScheme.keyBackground
+        key.type == KeyType.SYMBOLS || isCommaKey -> colorScheme.actionKeyBackground
+        key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> colorScheme.keyBackground
         showKeyBorders -> {
             if (isActionOrModifier) colorScheme.actionKeyBackground else colorScheme.keyBackground
         }
