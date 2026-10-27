@@ -152,6 +152,15 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 },
                 voiceTypingEnabled = prefs[PreferencesKeys.VOICE_TYPING_ENABLED] ?: true,
                 voiceTypingProvider = prefs[PreferencesKeys.VOICE_TYPING_PROVIDER] ?: KiebordPreferences.VOICE_PROVIDER_GOOGLE,
+                extraRowOverrides = run {
+                    val overrides = mutableMapOf<String, Boolean>()
+                    for ((key, value) in prefs.asMap()) {
+                        if (key.name.startsWith("pref_extra_row_") && value is Boolean) {
+                            overrides[key.name.removePrefix("pref_extra_row_")] = value
+                        }
+                    }
+                    overrides
+                },
                 setupCompleted = prefs[PreferencesKeys.SETUP_COMPLETED] ?: false
             )
         }
@@ -366,6 +375,11 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateSetupCompleted(completed: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.SETUP_COMPLETED] = completed }
+    }
+
+    suspend fun setLayoutExtraRowEnabled(layoutId: String, rowId: String, enabled: Boolean) {
+        val key = booleanPreferencesKey("pref_extra_row_${layoutId}_${rowId}")
+        context.kiebordDataStore.edit { it[key] = enabled }
     }
 
     // Reset

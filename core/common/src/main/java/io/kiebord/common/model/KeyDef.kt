@@ -1,5 +1,8 @@
 package io.kiebord.common.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class KeyDef(
     val label: String = "",
     val shiftedLabel: String? = null,
@@ -40,6 +43,7 @@ data class KeyDef(
     }
 }
 
+@Serializable
 data class KeyRow(
     val keys: List<KeyDef>,
     val startPaddingWeight: Float = 0f,
@@ -57,9 +61,21 @@ data class KeyRow(
     )
 }
 
+@Serializable
+data class LayoutExtraRow(
+    val id: String,
+    val title: String,
+    val defaultEnabled: Boolean = true,
+    val keys: List<KeyDef>
+)
+
+@Serializable
 data class KeyboardLayoutDef(
     val id: String,
     val name: String,
     val language: String,
+    val direction: String = "LTR",
+    val extraRows: List<LayoutExtraRow> = emptyList(),
+    val numberRow: KeyRow? = null,
     val rows: List<KeyRow>
 )

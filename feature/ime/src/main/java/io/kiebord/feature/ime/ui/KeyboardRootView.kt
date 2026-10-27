@@ -91,6 +91,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.kiebord.common.model.KeyDef
+import io.kiebord.common.model.KeyRow
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
@@ -158,6 +159,7 @@ fun KeyboardRootView(
     horizontalMarginLandscapeDp: Float = 0.0f,
     onResizerValuesChange: ((isLandscape: Boolean, heightScale: Float, chinPaddingDp: Float, horizontalMarginDp: Float) -> Unit)? = null,
     defaultShowNumberRow: Boolean = false,
+    extraRowOverrides: Map<String, Boolean> = emptyMap(),
     onNumberRowToggle: ((Boolean) -> Unit)? = null,
     showKeyBorders: Boolean = true,
     defaultShowSecondaryKeys: Boolean = true,
@@ -549,12 +551,20 @@ fun KeyboardRootView(
         }
     }
 
-    val keyboardRows = remember(displayLayout, showNumberRow) {
-        if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
-            listOf(PredefinedLayouts.createNumberRow(displayLayout.language)) + displayLayout.rows
+    val keyboardRows: List<KeyRow> = remember(displayLayout, showNumberRow, extraRowOverrides) {
+        val numberRow: List<KeyRow> = if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
+            listOf(displayLayout.numberRow ?: PredefinedLayouts.createNumberRow(displayLayout.language))
         } else {
-            displayLayout.rows
+            emptyList()
         }
+        val enabledExtra: List<KeyRow> = if (!displayLayout.id.startsWith("symbols")) {
+            displayLayout.extraRows.filter { extraRow ->
+                extraRowOverrides["${displayLayout.id}_${extraRow.id}"] ?: extraRow.defaultEnabled
+            }.map { KeyRow(it.keys) }
+        } else {
+            emptyList()
+        }
+        numberRow + enabledExtra + displayLayout.rows
     }
 
     val isQwertyBasedLayout = displayLayout.id == "en_qwerty" || displayLayout.id == "bn_borno" || displayLayout.id == "bn_avro"

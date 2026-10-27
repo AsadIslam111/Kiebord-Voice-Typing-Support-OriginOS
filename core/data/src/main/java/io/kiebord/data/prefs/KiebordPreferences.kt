@@ -60,9 +60,16 @@ data class KiebordPreferences(
     val voiceTypingEnabled: Boolean = true,
     val voiceTypingProvider: String = VOICE_PROVIDER_GOOGLE,
 
+    // Layout-specific dynamic extra row overrides ("${layoutId}_${rowId}" -> Boolean)
+    val extraRowOverrides: Map<String, Boolean> = emptyMap(),
+
     // Onboarding / Setup status
     val setupCompleted: Boolean = false
 ) {
+    fun isExtraRowEnabled(layoutId: String, rowId: String, default: Boolean = true): Boolean {
+        return extraRowOverrides["${layoutId}_${rowId}"] ?: default
+    }
+
     companion object {
         const val VOICE_PROVIDER_GOOGLE = "google"
 
@@ -90,5 +97,6 @@ data class KiebordPreferences(
         const val LAYOUT_BN_AVRO = "bn_avro"
         const val LAYOUT_BN_PROBHAT = "bn_probhat"
         const val LAYOUT_BN_NATIONAL = "bn_national"
+        const val LAYOUT_AR_ARABIC = "ar_arabic"
     }
 }

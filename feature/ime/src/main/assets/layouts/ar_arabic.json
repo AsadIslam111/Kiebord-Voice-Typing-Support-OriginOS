@@ -1,0 +1,458 @@
+{
+  "id": "ar_arabic",
+  "name": "Arabic (العربية)",
+  "language": "ar",
+  "direction": "RTL",
+  "extraRows": [
+    {
+      "id": "harakat",
+      "title": "Harakat row (حركات)",
+      "defaultEnabled": true,
+      "keys": [
+        {
+          "label": "ـَ",
+          "commitText": "َ"
+        },
+        {
+          "label": "ـً",
+          "commitText": "ً"
+        },
+        {
+          "label": "ـُ",
+          "commitText": "ُ"
+        },
+        {
+          "label": "ـٌ",
+          "commitText": "ٌ"
+        },
+        {
+          "label": "ـِ",
+          "commitText": "ِ"
+        },
+        {
+          "label": "ـٍ",
+          "commitText": "ٍ"
+        },
+        {
+          "label": "ـْ",
+          "commitText": "ْ"
+        },
+        {
+          "label": "ـّ",
+          "commitText": "ّ"
+        },
+        {
+          "label": "ـٰ",
+          "commitText": "ٰ"
+        },
+        {
+          "label": "ـٖ",
+          "commitText": "ٖ"
+        },
+        {
+          "label": "ـٗ",
+          "commitText": "ٗ"
+        }
+      ]
+    }
+  ],
+  "numberRow": {
+    "keys": [
+      {
+        "label": "١",
+        "moreKeys": [
+          "1",
+          "١"
+        ]
+      },
+      {
+        "label": "٢",
+        "moreKeys": [
+          "2",
+          "٢"
+        ]
+      },
+      {
+        "label": "٣",
+        "moreKeys": [
+          "3",
+          "٣"
+        ]
+      },
+      {
+        "label": "٤",
+        "moreKeys": [
+          "4",
+          "٤"
+        ]
+      },
+      {
+        "label": "٥",
+        "moreKeys": [
+          "5",
+          "٥"
+        ]
+      },
+      {
+        "label": "٦",
+        "moreKeys": [
+          "6",
+          "٦"
+        ]
+      },
+      {
+        "label": "٧",
+        "moreKeys": [
+          "7",
+          "٧"
+        ]
+      },
+      {
+        "label": "٨",
+        "moreKeys": [
+          "8",
+          "٨"
+        ]
+      },
+      {
+        "label": "٩",
+        "moreKeys": [
+          "9",
+          "٩"
+        ]
+      },
+      {
+        "label": "٠",
+        "moreKeys": [
+          "0",
+          "٠"
+        ]
+      }
+    ]
+  },
+  "rows": [
+    {
+      "keys": [
+        {
+          "label": "ض",
+          "flickUp": "١",
+          "moreKeys": [
+            "١",
+            "1"
+          ]
+        },
+        {
+          "label": "ص",
+          "flickUp": "٢",
+          "moreKeys": [
+            "٢",
+            "2",
+            "ﷺ"
+          ]
+        },
+        {
+          "label": "ث",
+          "flickUp": "٣",
+          "moreKeys": [
+            "٣",
+            "3"
+          ]
+        },
+        {
+          "label": "ق",
+          "flickUp": "٤",
+          "moreKeys": [
+            "ڨ",
+            "٤",
+            "4"
+          ]
+        },
+        {
+          "label": "ف",
+          "flickUp": "٥",
+          "moreKeys": [
+            "ڤ",
+            "ڡ",
+            "ڢ",
+            "ڥ",
+            "٥",
+            "5"
+          ]
+        },
+        {
+          "label": "غ",
+          "flickUp": "٦",
+          "moreKeys": [
+            "٦",
+            "6"
+          ]
+        },
+        {
+          "label": "ع",
+          "flickUp": "٧",
+          "moreKeys": [
+            "٧",
+            "7",
+            "عفي عنه"
+          ]
+        },
+        {
+          "label": "ه",
+          "flickUp": "٨",
+          "moreKeys": [
+            "٨",
+            "8",
+            "ہ",
+            "ھ"
+          ]
+        },
+        {
+          "label": "خ",
+          "flickUp": "٩",
+          "moreKeys": [
+            "٩",
+            "9"
+          ]
+        },
+        {
+          "label": "ح",
+          "flickUp": "٠",
+          "moreKeys": [
+            "٠",
+            "0",
+            "حفظك الله"
+          ]
+        },
+        {
+          "label": "ج",
+          "moreKeys": [
+            "چ",
+            "جل",
+            "ﷻ"
+          ]
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "ش",
+          "flickUp": "ڜ",
+          "moreKeys": [
+            "ڜ"
+          ]
+        },
+        {
+          "label": "س",
+          "moreKeys": [
+            "﷽"
+          ]
+        },
+        {
+          "label": "ي",
+          "flickUp": "ئ",
+          "moreKeys": [
+            "ئ",
+            "ى",
+            "ے"
+          ]
+        },
+        {
+          "label": "ب",
+          "flickUp": "پ",
+          "moreKeys": [
+            "پ",
+            "﷽"
+          ]
+        },
+        {
+          "label": "ل",
+          "flickUp": "لا",
+          "moreKeys": [
+            "لا",
+            "لأ",
+            "لإ",
+            "لآ"
+          ]
+        },
+        {
+          "label": "ا",
+          "flickUp": "ء",
+          "moreKeys": [
+            "آ",
+            "ء",
+            "أ",
+            "إ",
+            "ٱ",
+            "ﷲ"
+          ]
+        },
+        {
+          "label": "ت",
+          "flickUp": "ٹ",
+          "moreKeys": [
+            "ٹ"
+          ]
+        },
+        {
+          "label": "ن",
+          "flickUp": "ں",
+          "moreKeys": [
+            "ں"
+          ]
+        },
+        {
+          "label": "م",
+          "moreKeys": [
+            "محمد"
+          ]
+        },
+        {
+          "label": "ك",
+          "flickUp": "گ",
+          "moreKeys": [
+            "گ",
+            "ڪ",
+            "ک"
+          ]
+        },
+        {
+          "label": "ط"
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "ذ",
+          "moreKeys": [
+            "ACTION_SELECT_ALL"
+          ]
+        },
+        {
+          "label": "ء",
+          "moreKeys": [
+            "ACTION_CUT"
+          ]
+        },
+        {
+          "label": "ؤ",
+          "moreKeys": [
+            "ACTION_COPY"
+          ]
+        },
+        {
+          "label": "ر",
+          "flickUp": "ڑ",
+          "moreKeys": [
+            "ACTION_PASTE",
+            "ڑ",
+            "﷼"
+          ]
+        },
+        {
+          "label": "ى",
+          "flickUp": "ئ",
+          "moreKeys": [
+            "ئ"
+          ]
+        },
+        {
+          "label": "ة",
+          "moreKeys": [
+            "ت",
+            "ه"
+          ]
+        },
+        {
+          "label": "و",
+          "moreKeys": [
+            "ؤ"
+          ]
+        },
+        {
+          "label": "ز",
+          "flickUp": "ژ",
+          "moreKeys": [
+            "ژ"
+          ]
+        },
+        {
+          "label": "ظ"
+        },
+        {
+          "label": "د",
+          "flickUp": "ڈ",
+          "moreKeys": [
+            "ڈ"
+          ]
+        },
+        {
+          "type": "DELETE",
+          "icon": "backspace",
+          "widthWeight": 1.5
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "?123",
+          "type": "SYMBOLS",
+          "widthWeight": 1.5,
+          "slidingInput": true
+        },
+        {
+          "label": "،",
+          "widthWeight": 1.0,
+          "moreKeys": [
+            "ACTION_SETTINGS",
+            "ACTION_ONE_HANDED"
+          ]
+        },
+        {
+          "type": "SWITCH_LANGUAGE",
+          "icon": "globe",
+          "widthWeight": 1.0
+        },
+        {
+          "label": " ",
+          "type": "SPACE",
+          "icon": "space",
+          "widthWeight": 4.0
+        },
+        {
+          "label": ".",
+          "widthWeight": 1.0,
+          "moreKeysColumns": 8,
+          "moreKeys": [
+            "،",
+            "؟",
+            "!",
+            ":",
+            ";",
+            "(",
+            ")",
+            "-",
+            "\"",
+            "'",
+            "/",
+            "@",
+            "#",
+            "$",
+            "%",
+            "&"
+          ]
+        },
+        {
+          "type": "ACTION",
+          "icon": "enter",
+          "widthWeight": 1.5,
+          "moreKeys": [
+            "ACTION_EMOJI"
+          ]
+        }
+      ]
+    }
+  ]
+}

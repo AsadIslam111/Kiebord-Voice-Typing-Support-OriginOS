@@ -491,6 +491,10 @@ object PredefinedLayouts {
         }
     }
 
+    val allPredefined: List<KeyboardLayoutDef> by lazy {
+        listOf(EnglishQwerty, BengaliBorno, BengaliAvro, BengaliNational, BengaliProbhat)
+    }
+
     fun fromId(id: String): KeyboardLayoutDef {
         return when (id) {
             "bn_borno" -> BengaliBorno
@@ -509,9 +513,25 @@ object PredefinedLayouts {
             "bn_avro" -> "অভ্র"
             "bn_probhat" -> "প্রভাত"
             "bn_national" -> "জাতীয় (BSTI)"
+            "ar_arabic" -> "العربية"
             else -> "English"
         }
     }
+
+    val NumberRowAr: KeyRow = KeyRow(
+        listOf(
+            KeyDef("١", moreKeys = listOf("1", "١")),
+            KeyDef("٢", moreKeys = listOf("2", "٢")),
+            KeyDef("٣", moreKeys = listOf("3", "٣")),
+            KeyDef("٤", moreKeys = listOf("4", "٤")),
+            KeyDef("٥", moreKeys = listOf("5", "٥")),
+            KeyDef("٦", moreKeys = listOf("6", "٦")),
+            KeyDef("٧", moreKeys = listOf("7", "٧")),
+            KeyDef("٨", moreKeys = listOf("8", "٨")),
+            KeyDef("٩", moreKeys = listOf("9", "٩")),
+            KeyDef("٠", moreKeys = listOf("0", "٠"))
+        )
+    )
 
     val NumberRowBn: KeyRow = KeyRow(
         listOf(
@@ -544,6 +564,10 @@ object PredefinedLayouts {
     )
 
     fun createNumberRow(language: String): KeyRow {
-        return if (language == "bn") NumberRowBn else NumberRowEn
+        return when (language) {
+            "bn" -> NumberRowBn
+            "ar" -> NumberRowAr
+            else -> NumberRowEn
+        }
     }
 }

@@ -35,6 +35,7 @@ import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
 import io.kiebord.data.dictionary.UserDictionaryRepository
+import io.kiebord.data.layout.LayoutRepository
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.feature.ime.gesture.CrossLanguageGestureDecoder
@@ -120,6 +121,7 @@ class KiebordService : InputMethodService() {
         clipboardManager.syncFromSystemClipboard(this, forceNotify = true)
     }
     private lateinit var userDictionaryRepo: UserDictionaryRepository
+    private lateinit var layoutRepo: LayoutRepository
     private var selectionAnchor: Int? = null
     private var selectionCursor: Int? = null
     private var inputSessionId by mutableIntStateOf(0)
@@ -128,6 +130,7 @@ class KiebordService : InputMethodService() {
     override fun onCreate() {
         super.onCreate()
         preferencesRepo = KiebordPreferencesRepository.getInstance(this)
+        layoutRepo = LayoutRepository.getInstance(this)
         clipboardManager = SandboxedClipboardManager.getInstance(this)
         userDictionaryRepo = UserDictionaryRepository.getInstance(this)
         voiceInputManager = VoiceInputManager(this).apply {
@@ -154,7 +157,7 @@ class KiebordService : InputMethodService() {
                 .getString("last_active_layout_id", null)
         } catch (_: Exception) { null }
         if (cachedLayoutId != null) {
-            primaryAlphaLayout = PredefinedLayouts.fromId(cachedLayoutId)
+            primaryAlphaLayout = layoutRepo.getLayout(cachedLayoutId)
             activeLayout = primaryAlphaLayout
         }
 
@@ -168,12 +171,9 @@ class KiebordService : InputMethodService() {
                     KiebordPreferences.THEME_DEFAULT_LIGHT -> KeyboardColorScheme.DefaultLight
                     else -> KeyboardColorScheme.DefaultDark
                 }
+                val availableMeta = layoutRepo.getAvailableLayouts().map { it.id }.toSet()
                 val enabledIds = prefs.enabledLayoutIds.toList().filter { id ->
-                    id == KiebordPreferences.LAYOUT_EN_QWERTY ||
-                    id == KiebordPreferences.LAYOUT_BN_BORNO ||
-                    id == KiebordPreferences.LAYOUT_BN_AVRO ||
-                    id == KiebordPreferences.LAYOUT_BN_PROBHAT ||
-                    id == KiebordPreferences.LAYOUT_BN_NATIONAL
+                    id in availableMeta || id == KiebordPreferences.LAYOUT_AR_ARABIC
                 }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) }
 
                 val targetPrimaryId = if (enabledIds.contains(prefs.primaryLayoutId)) {
@@ -182,7 +182,7 @@ class KiebordService : InputMethodService() {
                     enabledIds.first()
                 }
 
-                val targetPrimary = PredefinedLayouts.fromId(targetPrimaryId)
+                val targetPrimary = layoutRepo.getLayout(targetPrimaryId)
                 if (primaryAlphaLayout.id != targetPrimary.id || !enabledIds.contains(primaryAlphaLayout.id)) {
                     primaryAlphaLayout = targetPrimary
                     if (!isSymbolsMode) {
@@ -304,6 +304,7 @@ class KiebordService : InputMethodService() {
                         }
                     },
                     defaultShowNumberRow = preferencesState.showNumberRow,
+                    extraRowOverrides = preferencesState.extraRowOverrides,
                     onNumberRowToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateShowNumberRow(enabled) }
                     },
@@ -339,11 +340,7 @@ class KiebordService : InputMethodService() {
                     onDeleteSwipeEnd = ::handleDeleteSwipeEnd,
                     onDeleteSwipeCancel = ::handleDeleteSwipeCancel,
                     enabledLayoutIds = preferencesState.enabledLayoutIds.toList().filter { id ->
-                        id == KiebordPreferences.LAYOUT_EN_QWERTY ||
-                        id == KiebordPreferences.LAYOUT_BN_BORNO ||
-                        id == KiebordPreferences.LAYOUT_BN_AVRO ||
-                        id == KiebordPreferences.LAYOUT_BN_PROBHAT ||
-                        id == KiebordPreferences.LAYOUT_BN_NATIONAL
+                        id in layoutRepo.getAvailableLayouts().map { it.id } || id == KiebordPreferences.LAYOUT_AR_ARABIC
                     }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) },
                     onSwitchToLayout = ::switchToLayout,
                     onOpenLanguagesSettings = ::openLanguagesSettings,
@@ -415,7 +412,7 @@ class KiebordService : InputMethodService() {
                 .getString("last_active_layout_id", null)
         } catch (_: Exception) { null }
         if (cachedLayoutId != null && cachedLayoutId != primaryAlphaLayout.id) {
-            primaryAlphaLayout = PredefinedLayouts.fromId(cachedLayoutId)
+            primaryAlphaLayout = layoutRepo.getLayout(cachedLayoutId)
         }
         activeLayout = primaryAlphaLayout
         val initialCaps = if (shouldAutoCapitalize() && info != null) {
@@ -509,7 +506,7 @@ class KiebordService : InputMethodService() {
 
     fun switchToLayout(layoutId: String) {
         finishComposing()
-        primaryAlphaLayout = PredefinedLayouts.fromId(layoutId)
+        primaryAlphaLayout = layoutRepo.getLayout(layoutId)
         if (!isSymbolsMode) {
             activeLayout = primaryAlphaLayout
         }
@@ -956,12 +953,9 @@ class KiebordService : InputMethodService() {
                 }
             }
             KeyType.SWITCH_LANGUAGE -> {
+                val availableMeta = layoutRepo.getAvailableLayouts().map { it.id }.toSet()
                 val enabledIds = preferencesState.enabledLayoutIds.toList().filter { id ->
-                    id == KiebordPreferences.LAYOUT_EN_QWERTY ||
-                    id == KiebordPreferences.LAYOUT_BN_BORNO ||
-                    id == KiebordPreferences.LAYOUT_BN_AVRO ||
-                    id == KiebordPreferences.LAYOUT_BN_PROBHAT ||
-                    id == KiebordPreferences.LAYOUT_BN_NATIONAL
+                    id in availableMeta || id == KiebordPreferences.LAYOUT_AR_ARABIC
                 }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) }
 
                 if (enabledIds.size > 1) {

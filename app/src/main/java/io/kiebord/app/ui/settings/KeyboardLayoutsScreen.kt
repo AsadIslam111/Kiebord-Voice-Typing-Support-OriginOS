@@ -1,5 +1,8 @@
 package io.kiebord.app.ui.settings
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
@@ -30,7 +33,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,12 +52,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
+import io.kiebord.data.layout.LayoutRepository
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.feature.ime.ui.KeyboardRootView
@@ -68,8 +79,13 @@ fun KeyboardLayoutsScreen(
     preferences: KiebordPreferences,
     onUpdatePrimaryLayout: (String) -> Unit,
     onToggleLayoutEnabled: (String, Boolean) -> Unit,
+    onToggleExtraRow: (String, String, Boolean) -> Unit = { _, _, _ -> },
     onBack: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val layoutRepo = remember(context) { LayoutRepository.getInstance(context) }
+    var reloadTrigger by remember { mutableStateOf(0) }
+
     val scrollState = rememberScrollState()
     val colors = LocalSettingsColors.current
 
@@ -86,14 +102,14 @@ fun KeyboardLayoutsScreen(
             id = KiebordPreferences.LAYOUT_BN_BORNO,
             name = "Borno Phonetic",
             badge = "বর্ণ",
-            description = "ami → আমি",
+            description = "ami -> আমি",
             layoutDef = PredefinedLayouts.BengaliBorno
         ),
         LayoutCardData(
             id = KiebordPreferences.LAYOUT_BN_AVRO,
             name = "Avro Phonetic",
             badge = "অভ্র",
-            description = "ami → আমি",
+            description = "ami -> আমি",
             layoutDef = PredefinedLayouts.BengaliAvro
         ),
         LayoutCardData(
@@ -112,12 +128,65 @@ fun KeyboardLayoutsScreen(
         )
     )
 
+    val arabicLayout = remember(reloadTrigger) { layoutRepo.getLayout(KiebordPreferences.LAYOUT_AR_ARABIC) }
+    val arabicCard = remember(arabicLayout) {
+        LayoutCardData(
+            id = KiebordPreferences.LAYOUT_AR_ARABIC,
+            name = "Arabic (العربية)",
+            badge = "عربي",
+            description = "Standard Arabic with Harakat diacritics",
+            layoutDef = arabicLayout
+        )
+    }
+
+    val availableMeta = remember(reloadTrigger) { layoutRepo.getAvailableLayouts() }
+    val customMeta = remember(availableMeta) { availableMeta.filter { it.isCustom } }
+    val customCards = remember(customMeta, reloadTrigger) {
+        customMeta.map { meta ->
+            val def = layoutRepo.getLayout(meta.id)
+            LayoutCardData(
+                id = meta.id,
+                name = meta.name,
+                badge = meta.language.uppercase(),
+                description = "Custom imported layout",
+                layoutDef = def
+            )
+        }
+    }
+
     val isEnglishEnabled = preferences.enabledLayoutIds.contains(englishCard.id)
     val isEnglishLastRemaining = preferences.enabledLayoutIds.size == 1 && isEnglishEnabled
-
     val isAnyBanglaEnabled = preferences.enabledLayoutIds.any { it.startsWith("bn") }
+    val isArabicEnabled = preferences.enabledLayoutIds.contains(arabicCard.id)
+
     var isEnglishExpanded by remember { mutableStateOf(isEnglishEnabled) }
     var isBanglaExpanded by remember { mutableStateOf(isAnyBanglaEnabled) }
+    var isArabicExpanded by remember { mutableStateOf(isArabicEnabled) }
+    var isCustomExpanded by remember { mutableStateOf(customCards.any { preferences.enabledLayoutIds.contains(it.id) }) }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val jsonContent = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.bufferedReader(Charsets.UTF_8).readText()
+                }
+                if (jsonContent != null) {
+                    val result = layoutRepo.importLayout(jsonContent)
+                    result.onSuccess { newLayout ->
+                        onToggleLayoutEnabled(newLayout.id, true)
+                        reloadTrigger++
+                        Toast.makeText(context, "Imported " + newLayout.name, Toast.LENGTH_SHORT).show()
+                    }.onFailure { err ->
+                        Toast.makeText(context, "Import failed: " + (err.message ?: "Invalid JSON"), Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error reading file: " + e.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -197,7 +266,7 @@ fun KeyboardLayoutsScreen(
 
             // 2. Bangla Item with Horizontal Carousel
             SettingsItemCard(
-                position = GroupPosition.BOTTOM,
+                position = GroupPosition.MIDDLE,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 val activeBanglaCount = banglaCards.count { preferences.enabledLayoutIds.contains(it.id) }
@@ -218,7 +287,7 @@ fun KeyboardLayoutsScreen(
                                 color = colors.textPrimary
                             )
                             Text(
-                                text = if (isBanglaExpanded) "Borno Phonetic • Avro Phonetic • National (BSTI) • Probhat" else "$activeBanglaCount active layout(s) • tap to expand",
+                                text = if (isBanglaExpanded) "Borno Phonetic, Avro Phonetic, National (BSTI), Probhat" else "$activeBanglaCount active layout(s) - tap to expand",
                                 fontSize = 12.sp,
                                 color = colors.textSecondary
                             )
@@ -238,7 +307,6 @@ fun KeyboardLayoutsScreen(
                         )
                     }
 
-                    // Expanded Section: Horizontal Carousel of Vertical Keyboard Preview Cards
                     AnimatedVisibility(
                         visible = isBanglaExpanded,
                         enter = expandVertically() + fadeIn(),
@@ -276,6 +344,282 @@ fun KeyboardLayoutsScreen(
                     }
                 }
             }
+
+            // 3. Arabic Item
+            val hasCustom = customCards.isNotEmpty()
+            SettingsItemCard(
+                position = if (hasCustom) GroupPosition.MIDDLE else GroupPosition.BOTTOM,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isArabicExpanded = !isArabicExpanded }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Arabic (العربية)",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                text = "Standard Arabic with Harakat diacritics",
+                                fontSize = 12.sp,
+                                color = colors.textSecondary
+                            )
+                        }
+
+                        val chevronRotation by animateFloatAsState(
+                            targetValue = if (isArabicExpanded) 90f else 0f,
+                            label = "ArabicChevronRotation"
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = if (isArabicExpanded) "Collapse" else "Expand",
+                            tint = colors.textSecondary,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .graphicsLayer { rotationZ = chevronRotation }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = isArabicExpanded,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp, bottom = 18.dp, top = 2.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            KeyboardLayoutPreviewItem(
+                                cardData = arabicCard,
+                                preferences = preferences,
+                                isEnabled = isArabicEnabled,
+                                onToggle = {
+                                    onToggleLayoutEnabled(arabicCard.id, !isArabicEnabled)
+                                }
+                            )
+
+                            // Dynamic Extra Rows options
+                            if (arabicCard.layoutDef.extraRows.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Settings,
+                                        contentDescription = "Options",
+                                        tint = colors.textSecondary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Layout Options",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colors.textSecondary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                for (extraRow in arabicCard.layoutDef.extraRows) {
+                                    val isRowEnabled = preferences.isExtraRowEnabled(
+                                        arabicCard.id,
+                                        extraRow.id,
+                                        extraRow.defaultEnabled
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(colors.cardBackground.copy(alpha = 0.5f))
+                                            .border(1.dp, colors.cardBorder, RoundedCornerShape(10.dp))
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = extraRow.title,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = colors.textPrimary
+                                            )
+                                            Text(
+                                                text = "Show extra diacritics row above keyboard",
+                                                fontSize = 11.sp,
+                                                color = colors.textSecondary
+                                            )
+                                        }
+                                        Switch(
+                                            checked = isRowEnabled,
+                                            onCheckedChange = { checked ->
+                                                onToggleExtraRow(arabicCard.id, extraRow.id, checked)
+                                            },
+                                            colors = SwitchDefaults.colors(
+                                                checkedThumbColor = Color.White,
+                                                checkedTrackColor = colors.accent
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Custom Imported Layouts (if present)
+            if (hasCustom) {
+                SettingsItemCard(
+                    position = GroupPosition.BOTTOM,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isCustomExpanded = !isCustomExpanded }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Custom Layouts",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = "${customCards.size} custom layout(s) installed",
+                                    fontSize = 12.sp,
+                                    color = colors.textSecondary
+                                )
+                            }
+
+                            val chevronRotation by animateFloatAsState(
+                                targetValue = if (isCustomExpanded) 90f else 0f,
+                                label = "CustomChevronRotation"
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = if (isCustomExpanded) "Collapse" else "Expand",
+                                tint = colors.textSecondary,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .graphicsLayer { rotationZ = chevronRotation }
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = isCustomExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 18.dp, top = 2.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    customCards.forEach { cardData ->
+                                        val isEnabled = preferences.enabledLayoutIds.contains(cardData.id)
+
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            KeyboardLayoutPreviewItem(
+                                                cardData = cardData,
+                                                preferences = preferences,
+                                                isEnabled = isEnabled,
+                                                onToggle = {
+                                                    onToggleLayoutEnabled(cardData.id, !isEnabled)
+                                                }
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    layoutRepo.deleteCustomLayout(cardData.id)
+                                                    onToggleLayoutEnabled(cardData.id, false)
+                                                    reloadTrigger++
+                                                    Toast.makeText(context, "Deleted ${cardData.name}", Toast.LENGTH_SHORT).show()
+                                                },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Delete,
+                                                    contentDescription = "Delete",
+                                                    tint = colors.textSecondary,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Import Layout Button
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SettingsItemCard(
+                position = GroupPosition.ALONE,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            importLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(colors.accent.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Add,
+                            contentDescription = "Import",
+                            tint = colors.accent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Import Custom Layout (.json)",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textPrimary
+                        )
+                        Text(
+                            text = "Load external keyboard layout file from storage",
+                            fontSize = 12.sp,
+                            color = colors.textSecondary
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -289,7 +633,6 @@ private fun KeyboardLayoutPreviewItem(
     modifier: Modifier = Modifier
 ) {
     val colors = LocalSettingsColors.current
-
     val currentScheme = when (preferences.theme) {
         KiebordPreferences.THEME_AMOLED_BLACK -> KeyboardColorScheme.AmoledBlack
         KiebordPreferences.THEME_TOKYO_NIGHT -> KeyboardColorScheme.TokyoNight
@@ -311,7 +654,6 @@ private fun KeyboardLayoutPreviewItem(
             ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 1. Keyboard Preview Thumbnail (portrait phone screen aspect with keyboard centered)
         Box(
             modifier = Modifier
                 .width(itemWidth)
@@ -347,6 +689,7 @@ private fun KeyboardLayoutPreviewItem(
                         onKeyLongPress = {},
                         showKeyBorders = true,
                         defaultShowNumberRow = false,
+                        extraRowOverrides = preferences.extraRowOverrides,
                         defaultShowSecondaryKeys = false,
                         initialRowHeight = 42.dp,
                         applySystemInsets = false,
@@ -356,7 +699,6 @@ private fun KeyboardLayoutPreviewItem(
                 }
             }
 
-            // Transparent overlay interceptor so touch doesn't pass to keyboard internals
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -370,7 +712,6 @@ private fun KeyboardLayoutPreviewItem(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 2. Selection Row: Layout Name without pill shape
         Row(
             modifier = Modifier.width(itemWidth),
             verticalAlignment = Alignment.CenterVertically,
@@ -403,7 +744,6 @@ private fun KeyboardLayoutPreviewItem(
             )
         }
 
-        // 3. Subtitle Row with Description
         if (cardData.description.isNotEmpty()) {
             Spacer(modifier = Modifier.height(3.dp))
             Text(

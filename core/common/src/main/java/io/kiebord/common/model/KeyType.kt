@@ -1,5 +1,8 @@
 package io.kiebord.common.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class KeyType {
     CHARACTER,
     SHIFT,
@@ -11,6 +14,7 @@ enum class KeyType {
     MORE_KEYS
 }
 
+@Serializable
 enum class ShiftState {
     UNSHIFTED,
     ONE_SHOT,
