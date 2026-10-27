@@ -21,6 +21,7 @@ pub trait PhoneticTransliterator: Send + Sync {
 pub fn get_phonetic_transliterator(layout_id: &str) -> Option<&'static (dyn PhoneticTransliterator + 'static)> {
     match layout_id {
         "bn_borno" => Some(crate::translit::borno_phonetic::get_borno_transliterator()),
+        "bn_avro" => Some(crate::translit::borno_phonetic::get_avro_transliterator()),
         _ => None,
     }
 }

@@ -103,7 +103,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 enabledLayoutIds = prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: setOf(
                     KiebordPreferences.LAYOUT_EN_QWERTY,
                     KiebordPreferences.LAYOUT_BN_BORNO,
-                    KiebordPreferences.LAYOUT_BN_PROBHAT
+                    KiebordPreferences.LAYOUT_BN_NATIONAL
                 ),
 
                 suggestionsEnabled = prefs[PreferencesKeys.SUGGESTIONS_ENABLED] ?: true,
@@ -244,7 +244,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
             val currentEnabled = prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: setOf(
                 KiebordPreferences.LAYOUT_EN_QWERTY,
                 KiebordPreferences.LAYOUT_BN_BORNO,
-                KiebordPreferences.LAYOUT_BN_PROBHAT
+                KiebordPreferences.LAYOUT_BN_NATIONAL
             )
             if (!currentEnabled.contains(layoutId)) {
                 prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] = currentEnabled + layoutId
@@ -257,7 +257,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
             val currentEnabled = (prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: setOf(
                 KiebordPreferences.LAYOUT_EN_QWERTY,
                 KiebordPreferences.LAYOUT_BN_BORNO,
-                KiebordPreferences.LAYOUT_BN_PROBHAT
+                KiebordPreferences.LAYOUT_BN_NATIONAL
             )).toMutableSet()
 
             if (enabled) {

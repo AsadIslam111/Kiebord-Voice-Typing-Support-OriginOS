@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -218,7 +220,7 @@ fun AboutScreen(
                 name = "BornoTSF & Bangla Layout Standards",
                 author = "Jayed Ahsan Saad / Open Source Community",
                 license = "GPL 3.0 / Open Standard",
-                description = "Core phonetic transliteration engine ported from BornoTSF, alongside National (BSTI Jatiyo) and Probhat specifications."
+                description = "Core phonetic transliteration engine ported from BornoTSF, alongside National (BSTI) and Probhat specifications."
             ),
             OpenSourceLib(
                 name = "Material Symbols & Google Icons",
@@ -235,7 +237,9 @@ fun AboutScreen(
             properties = DialogProperties(usePlatformDefaultWidth = false),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
+                .fillMaxHeight(0.82f)
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             title = {
                 Text(
                     text = "Open Source Licenses",

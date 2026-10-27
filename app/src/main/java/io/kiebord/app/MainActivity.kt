@@ -493,6 +493,9 @@ fun KiebordSettingsApp(
                             onComplete = {
                                 currentScreen = SettingsScreen.Main
                                 backStack = emptyList()
+                            },
+                            onOpenKeyboardLayouts = {
+                                navigateTo(SettingsScreen.KeyboardLayouts)
                             }
                         )
                     }

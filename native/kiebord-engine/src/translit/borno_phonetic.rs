@@ -20,10 +20,22 @@ pub struct BornoPhonetic;
 
 impl BornoPhonetic {
     pub fn convert(query: &str) -> String {
-        Self::parse(query)
+        Self::convert_mode(query, false)
+    }
+
+    pub fn convert_avro(query: &str) -> String {
+        Self::convert_mode(query, true)
+    }
+
+    pub fn convert_mode(query: &str, is_avro: bool) -> String {
+        Self::parse_mode(query, is_avro)
     }
 
     pub fn parse(input: &str) -> String {
+        Self::parse_mode(input, false)
+    }
+
+    pub fn parse_mode(input: &str, is_avro: bool) -> String {
         if input.is_empty() {
             return String::new();
         }
@@ -41,43 +53,47 @@ impl BornoPhonetic {
 
             if right_text.is_empty() {
                 match k {
-                    1 => format!("{}\\", Self::parse_segment(left_text)),
+                    1 => format!("{}\\", Self::parse_segment_mode(left_text, is_avro)),
                     2 => left_text.to_string(),
                     3 => format!("{}\\", left_text),
-                    4 => format!("{}\\\\", Self::parse_segment(left_text)),
+                    4 => format!("{}\\\\", Self::parse_segment_mode(left_text, is_avro)),
                     _ if k % 2 == 1 => format!("{}{}", left_text, "\\".repeat((k - 1) / 2)),
-                    _ => format!("{}{}", Self::parse_segment(left_text), "\\".repeat(k / 2)),
+                    _ => format!("{}{}", Self::parse_segment_mode(left_text, is_avro), "\\".repeat(k / 2)),
                 }
             } else {
                 match k {
-                    1 => format!("{}\\{}", Self::parse_segment(left_text), Self::parse(right_text)),
-                    2 => format!("{}{}", left_text, Self::parse(right_text)),
-                    3 => format!("{}\\{}", left_text, Self::parse(right_text)),
-                    4 => format!("{}\\\\{}", Self::parse_segment(left_text), Self::parse(right_text)),
-                    _ if k % 2 == 1 => format!("{}{}{}", left_text, "\\".repeat((k - 1) / 2), Self::parse(right_text)),
-                    _ => format!("{}{}{}", Self::parse_segment(left_text), "\\".repeat(k / 2), Self::parse(right_text)),
+                    1 => format!("{}\\{}", Self::parse_segment_mode(left_text, is_avro), Self::parse_mode(right_text, is_avro)),
+                    2 => format!("{}{}", left_text, Self::parse_mode(right_text, is_avro)),
+                    3 => format!("{}\\{}", left_text, Self::parse_mode(right_text, is_avro)),
+                    4 => format!("{}\\\\{}", Self::parse_segment_mode(left_text, is_avro), Self::parse_mode(right_text, is_avro)),
+                    _ if k % 2 == 1 => format!("{}{}{}", left_text, "\\".repeat((k - 1) / 2), Self::parse_mode(right_text, is_avro)),
+                    _ => format!("{}{}{}", Self::parse_segment_mode(left_text, is_avro), "\\".repeat(k / 2), Self::parse_mode(right_text, is_avro)),
                 }
             }
         } else {
-            Self::parse_segment(input)
+            Self::parse_segment_mode(input, is_avro)
         }
     }
 
-    fn parse_segment(input: &str) -> String {
+    pub fn parse_segment(input: &str) -> String {
+        Self::parse_segment_mode(input, false)
+    }
+
+    pub fn parse_segment_mode(input: &str, is_avro: bool) -> String {
         if input.is_empty() {
             return String::new();
         }
 
         let corrected = Self::case_handle(input);
-        let tokens = Self::tokenize(&corrected);
+        let tokens = Self::tokenize_mode(&corrected, is_avro);
         let mut output = String::with_capacity(corrected.len() * 3);
         let mut last_type = PrevTokenType::StartOfWord;
 
         let phola_map = Self::get_phola_map();
         let consonants_map = Self::get_consonants_map();
         let conjuncts_map = Self::get_conjuncts_map();
-        let symbol_map = Self::get_symbol_map();
-        let diacritics_map = Self::get_diacritics_map();
+        let symbol_map = Self::get_symbol_map(is_avro);
+        let diacritics_map = Self::get_diacritics_map(is_avro);
         let punctuations_map = Self::get_punctuations_map();
         let digits_map = Self::get_digits_map();
         let initial_map = Self::get_initial_map();
@@ -150,6 +166,16 @@ impl BornoPhonetic {
                 continue;
             }
 
+            // In Borno Phonetic (!is_avro), capital 'A' after a non-start token produces chandrabindu ('ঁ')
+            if !is_avro && token == "A" {
+                if last_type != PrevTokenType::StartOfWord {
+                    output.push_str("ঁ");
+                    last_type = PrevTokenType::Symbol;
+                    i += 1;
+                    continue;
+                }
+            }
+
             if let Some(val) = symbol_map.get(token.as_str()) {
                 output.push_str(val);
                 last_type = PrevTokenType::Symbol;
@@ -199,7 +225,7 @@ impl BornoPhonetic {
 
             if let Some(val) = diacritics_map.get(token.as_str()) {
                 output.push_str(val);
-                if token == ",," || token == ",." || token == ",.." {
+                if token == ",," || token == ",." || token == ",.." || token == "hs" {
                     last_type = PrevTokenType::Consonant;
                 } else {
                     last_type = PrevTokenType::Vowel;
@@ -319,13 +345,17 @@ impl BornoPhonetic {
         result
     }
 
-    fn tokenize(text: &str) -> Vec<String> {
+    pub fn tokenize(text: &str) -> Vec<String> {
+        Self::tokenize_mode(text, false)
+    }
+
+    pub fn tokenize_mode(text: &str, is_avro: bool) -> Vec<String> {
         let mut tokens = Vec::new();
         if text.is_empty() {
             return tokens;
         }
 
-        let keys_set = Self::get_global_keys_set();
+        let keys_set = Self::get_global_keys_set(is_avro);
         let max_len = 5;
         let mut i = 0;
         let len = text.len();
@@ -430,9 +460,20 @@ impl BornoPhonetic {
         }
     }
 
-    fn get_symbol_map() -> &'static HashMap<&'static str, &'static str> {
-        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
-        MAP.get_or_init(Self::build_symbol_map)
+    fn get_symbol_map(is_avro: bool) -> &'static HashMap<&'static str, &'static str> {
+        if is_avro {
+            static AVRO_MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+            AVRO_MAP.get_or_init(|| {
+                let mut map = Self::build_symbol_map();
+                map.insert("cb", "ঁ");
+                map.insert("qq", "ঁ");
+                map.insert("HH", "ঃ");
+                map
+            })
+        } else {
+            static BORNO_MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+            BORNO_MAP.get_or_init(Self::build_symbol_map)
+        }
     }
 
     fn get_initial_map() -> &'static HashMap<&'static str, &'static str> {
@@ -470,9 +511,18 @@ impl BornoPhonetic {
         MAP.get_or_init(Self::build_reph_map)
     }
 
-    fn get_diacritics_map() -> &'static HashMap<&'static str, &'static str> {
-        static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
-        MAP.get_or_init(Self::build_diacritics_map)
+    fn get_diacritics_map(is_avro: bool) -> &'static HashMap<&'static str, &'static str> {
+        if is_avro {
+            static AVRO_MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+            AVRO_MAP.get_or_init(|| {
+                let mut map = Self::build_diacritics_map();
+                map.insert("hs", HOSHONTO);
+                map
+            })
+        } else {
+            static BORNO_MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+            BORNO_MAP.get_or_init(Self::build_diacritics_map)
+        }
     }
 
     fn get_punctuations_map() -> &'static HashMap<&'static str, &'static str> {
@@ -485,30 +535,42 @@ impl BornoPhonetic {
         MAP.get_or_init(Self::build_digits_map)
     }
 
-    fn get_global_keys_set() -> &'static HashSet<&'static str> {
-        static KEYS_SET: OnceLock<HashSet<&'static str>> = OnceLock::new();
-        KEYS_SET.get_or_init(|| {
-            let mut set = HashSet::new();
-            for k in Self::get_symbol_map().keys() { set.insert(*k); }
-            for k in Self::get_initial_map().keys() { set.insert(*k); }
-            for k in Self::get_after_vowel_map().keys() { set.insert(*k); }
-            for k in Self::get_vowel_signs_map().keys() { set.insert(*k); }
-            for k in Self::get_consonants_map().keys() { set.insert(*k); }
-            for k in Self::get_conjuncts_map().keys() { set.insert(*k); }
-            for k in Self::get_diacritics_map().keys() { set.insert(*k); }
-            for k in Self::get_punctuations_map().keys() { set.insert(*k); }
-            for k in Self::get_phola_map().keys() { set.insert(*k); }
-            for k in Self::get_reph_map().keys() { set.insert(*k); }
-            for k in Self::get_digits_map().keys() { set.insert(*k); }
-            set.insert("rri");
-            set
-        })
+    fn get_global_keys_set(is_avro: bool) -> &'static HashSet<&'static str> {
+        if is_avro {
+            static AVRO_KEYS_SET: OnceLock<HashSet<&'static str>> = OnceLock::new();
+            AVRO_KEYS_SET.get_or_init(|| {
+                let mut set = Self::get_global_keys_set(false).clone();
+                set.insert("cb");
+                set.insert("qq");
+                set.insert("HH");
+                set.insert("hs");
+                set
+            })
+        } else {
+            static BORNO_KEYS_SET: OnceLock<HashSet<&'static str>> = OnceLock::new();
+            BORNO_KEYS_SET.get_or_init(|| {
+                let mut set = HashSet::new();
+                for k in Self::get_symbol_map(false).keys() { set.insert(*k); }
+                for k in Self::get_initial_map().keys() { set.insert(*k); }
+                for k in Self::get_after_vowel_map().keys() { set.insert(*k); }
+                for k in Self::get_vowel_signs_map().keys() { set.insert(*k); }
+                for k in Self::get_consonants_map().keys() { set.insert(*k); }
+                for k in Self::get_conjuncts_map().keys() { set.insert(*k); }
+                for k in Self::get_diacritics_map(false).keys() { set.insert(*k); }
+                for k in Self::get_punctuations_map().keys() { set.insert(*k); }
+                for k in Self::get_phola_map().keys() { set.insert(*k); }
+                for k in Self::get_reph_map().keys() { set.insert(*k); }
+                for k in Self::get_digits_map().keys() { set.insert(*k); }
+                set.insert("rri");
+                set
+            })
+        }
     }
 
     fn build_symbol_map() -> HashMap<&'static str, &'static str> {
         HashMap::from([
             ("ng", "ং"), ("TH", "ৎ"), ("X", "ৎ"), ("t``", "ৎ"),
-            ("xx", "ঁ"), ("::", "ঃ")
+            ("xx", "ঁ"), ("::", "ঃ"), ("ff", "ঃ")
         ])
     }
 
@@ -942,11 +1004,19 @@ impl BornoPhonetic {
     /// lowercase/uppercase and phonetic confusion points:
     /// ত|ট (t<->T), ে|া (e<->a), জ|য (j<->z), ন|ণ (n<->N), etc.
     pub fn suggest_transliterations(input: &str) -> Vec<String> {
+        Self::suggest_transliterations_mode(input, false)
+    }
+
+    pub fn suggest_transliterations_avro(input: &str) -> Vec<String> {
+        Self::suggest_transliterations_mode(input, true)
+    }
+
+    pub fn suggest_transliterations_mode(input: &str, is_avro: bool) -> Vec<String> {
         if input.is_empty() {
             return Vec::new();
         }
 
-        let canonical = Self::convert(input);
+        let canonical = Self::convert_mode(input, is_avro);
         let mut results = Vec::new();
         if !canonical.is_empty() {
             results.push(canonical.clone());
@@ -985,7 +1055,7 @@ impl BornoPhonetic {
                 let mut alt = chars.clone();
                 alt[i] = f;
                 let alt_str: String = alt.into_iter().collect();
-                let translit = Self::convert(&alt_str);
+                let translit = Self::convert_mode(&alt_str, is_avro);
                 if !translit.is_empty() && !results.contains(&translit) {
                     results.push(translit);
                 }
@@ -1005,7 +1075,7 @@ impl BornoPhonetic {
                     let mut alt = chars.clone();
                     alt.insert(i + 1, 'r');
                     let alt_str: String = alt.into_iter().collect();
-                    let translit = Self::convert(&alt_str);
+                    let translit = Self::convert_mode(&alt_str, is_avro);
                     if !translit.is_empty() && !results.contains(&translit) {
                         results.push(translit);
                     }
@@ -1017,14 +1087,14 @@ impl BornoPhonetic {
         // e.g. kri -> krri (কৃ), rishi -> rrishi (ঋষি), rin -> rrin (ঋণ), mrit -> mrrit (মৃত)
         if input.contains("ri") {
             let alt_rri = input.replace("ri", "rri");
-            let translit = Self::convert(&alt_rri);
+            let translit = Self::convert_mode(&alt_rri, is_avro);
             if !translit.is_empty() && !results.contains(&translit) {
                 results.push(translit);
             }
             // Combined with n <-> N (e.g. rin -> rriN -> ঋণ)
             if alt_rri.contains('n') {
                 let alt_rri_n = alt_rri.replace('n', "N");
-                let translit_n = Self::convert(&alt_rri_n);
+                let translit_n = Self::convert_mode(&alt_rri_n, is_avro);
                 if !translit_n.is_empty() && !results.contains(&translit_n) {
                     results.push(translit_n);
                 }
@@ -1032,7 +1102,7 @@ impl BornoPhonetic {
             // Combined with sh <-> Sh (e.g. rishi -> rriShi -> ঋষি)
             if alt_rri.contains("sh") {
                 let alt_rri_sh = alt_rri.replace("sh", "Sh");
-                let translit_sh = Self::convert(&alt_rri_sh);
+                let translit_sh = Self::convert_mode(&alt_rri_sh, is_avro);
                 if !translit_sh.is_empty() && !results.contains(&translit_sh) {
                     results.push(translit_sh);
                 }
@@ -1040,7 +1110,7 @@ impl BornoPhonetic {
             // Combined with s <-> Sh (e.g. sristi -> srriSTi -> সৃষ্টি)
             if alt_rri.contains("st") {
                 let alt_rri_st = alt_rri.replace("st", "ST");
-                let translit_st = Self::convert(&alt_rri_st);
+                let translit_st = Self::convert_mode(&alt_rri_st, is_avro);
                 if !translit_st.is_empty() && !results.contains(&translit_st) {
                     results.push(translit_st);
                 }
@@ -1048,7 +1118,7 @@ impl BornoPhonetic {
         }
         if input.contains("rri") {
             let alt_ri = input.replace("rri", "ri");
-            let translit = Self::convert(&alt_ri);
+            let translit = Self::convert_mode(&alt_ri, is_avro);
             if !translit.is_empty() && !results.contains(&translit) {
                 results.push(translit);
             }
@@ -1058,13 +1128,13 @@ impl BornoPhonetic {
         // Also combine with j <-> z (e.g. jabona -> zabOna -> যাবোনা, jabo -> zabO -> যাবো)
         if input.contains('o') {
             let alt_o = input.replace('o', "O");
-            let translit = Self::convert(&alt_o);
+            let translit = Self::convert_mode(&alt_o, is_avro);
             if !translit.is_empty() && !results.contains(&translit) {
                 results.push(translit);
             }
             if alt_o.contains('j') {
                 let alt_zo = alt_o.replace('j', "z");
-                let translit_zo = Self::convert(&alt_zo);
+                let translit_zo = Self::convert_mode(&alt_zo, is_avro);
                 if !translit_zo.is_empty() && !results.contains(&translit_zo) {
                     results.push(translit_zo);
                 }
@@ -1072,13 +1142,13 @@ impl BornoPhonetic {
         }
         if input.contains('O') {
             let alt_small_o = input.replace('O', "o");
-            let translit = Self::convert(&alt_small_o);
+            let translit = Self::convert_mode(&alt_small_o, is_avro);
             if !translit.is_empty() && !results.contains(&translit) {
                 results.push(translit);
             }
             if alt_small_o.contains('j') {
                 let alt_zo = alt_small_o.replace('j', "z");
-                let translit_zo = Self::convert(&alt_zo);
+                let translit_zo = Self::convert_mode(&alt_zo, is_avro);
                 if !translit_zo.is_empty() && !results.contains(&translit_zo) {
                     results.push(translit_zo);
                 }
@@ -1116,6 +1186,36 @@ impl crate::translit::traits::PhoneticTransliterator for BornoPhoneticTransliter
 
     fn proximity(&self) -> Option<&'static crate::dictionary::proximity::KeyProximity> {
         Some(crate::dictionary::proximity::KeyProximity::borno_phonetic_cached())
+    }
+}
+
+pub struct AvroPhoneticTransliterator;
+
+static AVRO_TRANSLITERATOR_INSTANCE: AvroPhoneticTransliterator = AvroPhoneticTransliterator;
+
+pub fn get_avro_transliterator() -> &'static AvroPhoneticTransliterator {
+    &AVRO_TRANSLITERATOR_INSTANCE
+}
+
+impl crate::translit::traits::PhoneticTransliterator for AvroPhoneticTransliterator {
+    fn id(&self) -> &'static str {
+        "bn_avro"
+    }
+
+    fn target_dict_lang(&self) -> &'static str {
+        "bn"
+    }
+
+    fn transliterate(&self, input: &str) -> String {
+        BornoPhonetic::convert_avro(input)
+    }
+
+    fn to_phonetic_keys(&self, word: &str) -> Vec<Vec<char>> {
+        BornoPhonetic::to_phonetic_keys(word)
+    }
+
+    fn proximity(&self) -> Option<&'static crate::dictionary::proximity::KeyProximity> {
+        None
     }
 }
 
@@ -1245,5 +1345,26 @@ mod tests {
         assert_eq!(BornoPhonetic::convert("uৎsob"), "উৎসব");
         assert_eq!(BornoPhonetic::convert("duঃkho"), "দুঃখ");
         assert_eq!(BornoPhonetic::convert("hoThaৎ"), "হঠাৎ");
+    }
+
+    #[test]
+    fn test_avro_conversions() {
+        assert_eq!(BornoPhonetic::convert_avro("ami"), "আমি");
+        assert_eq!(BornoPhonetic::convert_avro("bhalO"), "ভালো");
+
+        // Avro specific: 'cb' and 'qq' for chandrabindu
+        assert_eq!(BornoPhonetic::convert_avro("cacbd"), "চাঁদ");
+        assert_eq!(BornoPhonetic::convert_avro("caqqd"), "চাঁদ");
+
+        // Avro specific: 'HH' for bishorgo
+        assert_eq!(BornoPhonetic::convert_avro("duHHkho"), "দুঃখ");
+
+        // Avro specific: 'hs' for hasanta
+        assert_eq!(BornoPhonetic::convert_avro("mhs"), "ম্");
+
+        // Capital 'A' in Avro is vowel, NOT chandrabindu
+        assert_ne!(BornoPhonetic::convert_avro("caAd"), "চাঁদ");
+        // In Borno, capital 'A' after consonant is chandrabindu
+        assert_eq!(BornoPhonetic::convert("caAd"), "চাঁদ");
     }
 }

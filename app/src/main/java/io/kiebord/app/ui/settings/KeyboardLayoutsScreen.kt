@@ -90,18 +90,25 @@ fun KeyboardLayoutsScreen(
             layoutDef = PredefinedLayouts.BengaliBorno
         ),
         LayoutCardData(
+            id = KiebordPreferences.LAYOUT_BN_AVRO,
+            name = "Avro Phonetic",
+            badge = "অভ্র",
+            description = "ami → আমি",
+            layoutDef = PredefinedLayouts.BengaliAvro
+        ),
+        LayoutCardData(
+            id = KiebordPreferences.LAYOUT_BN_NATIONAL,
+            name = "National (BSTI)",
+            badge = "জাতীয়",
+            description = "National BSTI layout",
+            layoutDef = PredefinedLayouts.BengaliNational
+        ),
+        LayoutCardData(
             id = KiebordPreferences.LAYOUT_BN_PROBHAT,
             name = "Probhat",
             badge = "প্রভাত",
             description = "Fixed layout",
             layoutDef = PredefinedLayouts.BengaliProbhat
-        ),
-        LayoutCardData(
-            id = KiebordPreferences.LAYOUT_BN_NATIONAL,
-            name = "National (Jatiyo)",
-            badge = "জাতীয়",
-            description = "National BSTI layout",
-            layoutDef = PredefinedLayouts.BengaliNational
         )
     )
 
@@ -211,7 +218,7 @@ fun KeyboardLayoutsScreen(
                                 color = colors.textPrimary
                             )
                             Text(
-                                text = if (isBanglaExpanded) "Borno Phonetic • Probhat • National" else "$activeBanglaCount active layout(s) • tap to expand",
+                                text = if (isBanglaExpanded) "Borno Phonetic • Avro Phonetic • National (BSTI) • Probhat" else "$activeBanglaCount active layout(s) • tap to expand",
                                 fontSize = 12.sp,
                                 color = colors.textSecondary
                             )

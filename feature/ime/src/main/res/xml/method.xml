@@ -17,6 +17,18 @@
         android:label="@string/subtype_bn_borno" />
 
     <subtype
+        android:imeSubtypeExtraValue="KeyboardLayout=bn_avro"
+        android:imeSubtypeLocale="bn_BD"
+        android:imeSubtypeMode="keyboard"
+        android:label="@string/subtype_bn_avro" />
+
+    <subtype
+        android:imeSubtypeExtraValue="KeyboardLayout=bn_national"
+        android:imeSubtypeLocale="bn_BD"
+        android:imeSubtypeMode="keyboard"
+        android:label="@string/subtype_bn_national" />
+
+    <subtype
         android:imeSubtypeExtraValue="KeyboardLayout=bn_probhat"
         android:imeSubtypeLocale="bn_BD"
         android:imeSubtypeMode="keyboard"

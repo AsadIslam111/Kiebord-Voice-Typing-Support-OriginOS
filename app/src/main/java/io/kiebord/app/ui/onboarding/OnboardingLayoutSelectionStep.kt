@@ -1,12 +1,11 @@
 package io.kiebord.app.ui.onboarding
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,24 +13,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +40,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.kiebord.app.ui.settings.GroupPosition
 import io.kiebord.app.ui.settings.LocalSettingsColors
+import io.kiebord.app.ui.settings.SettingsGroup
+import io.kiebord.app.ui.settings.SettingsToggleItem
 import io.kiebord.data.prefs.KiebordPreferences
 
 private data class LayoutOption(
@@ -58,9 +58,11 @@ fun OnboardingLayoutSelectionStep(
     initialPrimaryLayout: String,
     onNext: (enabledLayouts: Set<String>, primaryLayout: String) -> Unit,
     onSkip: () -> Unit,
+    onOpenAllLayouts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalSettingsColors.current
+    val scrollState = rememberScrollState()
 
     val layoutOptions = remember {
         listOf(
@@ -75,25 +77,39 @@ fun OnboardingLayoutSelectionStep(
                 subtitle = "Smart transliteration: type 'ami' -> 'আমি'"
             ),
             LayoutOption(
-                id = KiebordPreferences.LAYOUT_BN_PROBHAT,
-                title = "Probhat",
-                subtitle = "Popular fixed Bengali layout"
+                id = KiebordPreferences.LAYOUT_BN_AVRO,
+                title = "Avro Phonetic",
+                subtitle = "Popular phonetic parser by OmicronLab"
             ),
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_NATIONAL,
-                title = "National (Jatiyo)",
+                title = "National (BSTI)",
                 subtitle = "Official national standard Bengali layout"
+            ),
+            LayoutOption(
+                id = KiebordPreferences.LAYOUT_BN_PROBHAT,
+                title = "Probhat",
+                subtitle = "Popular fixed Bengali layout"
             )
         )
     }
 
-    var enabledLayouts by remember { mutableStateOf(initialEnabledLayouts) }
-    var primaryLayout by remember { mutableStateOf(initialPrimaryLayout) }
+    val displayedLayouts = remember(layoutOptions) { layoutOptions.take(5) }
+
+    var enabledLayouts by remember(initialEnabledLayouts) { mutableStateOf(initialEnabledLayouts) }
+    var primaryLayout by remember(initialPrimaryLayout) { mutableStateOf(initialPrimaryLayout) }
+
+    LaunchedEffect(initialEnabledLayouts, initialPrimaryLayout) {
+        enabledLayouts = initialEnabledLayouts
+        primaryLayout = initialPrimaryLayout
+    }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .verticalScroll(scrollState)
             .padding(horizontal = 24.dp)
+            .padding(bottom = 36.dp)
     ) {
         // Step progress pill
         Box(
@@ -130,110 +146,75 @@ fun OnboardingLayoutSelectionStep(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Layout options list
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            layoutOptions.forEach { opt ->
+        // Material 3 Layout List with Switches (at most 5 layouts)
+        SettingsGroup {
+            displayedLayouts.forEachIndexed { index, opt ->
                 val isChecked = enabledLayouts.contains(opt.id)
                 val isPrimary = primaryLayout == opt.id
+                val position = when {
+                    displayedLayouts.size == 1 -> GroupPosition.ALONE
+                    index == 0 -> GroupPosition.TOP
+                    index == displayedLayouts.size - 1 -> GroupPosition.BOTTOM
+                    else -> GroupPosition.MIDDLE
+                }
 
-                val cardBg by animateColorAsState(
-                    targetValue = if (isChecked) colors.cardBackground else colors.cardBackground.copy(alpha = 0.6f),
-                    label = "LayoutCardBg"
-                )
-                val borderColor by animateColorAsState(
-                    targetValue = if (isPrimary) colors.accent else if (isChecked) colors.cardBorder else Color.Transparent,
-                    label = "LayoutBorder"
-                )
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .border(
-                            width = if (isPrimary) 1.8.dp else 1.dp,
-                            color = borderColor,
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                        .clickable {
-                            if (isChecked) {
-                                // Don't allow unchecking if it's the only one enabled
-                                if (enabledLayouts.size > 1) {
-                                    val updated = enabledLayouts - opt.id
-                                    enabledLayouts = updated
-                                    if (primaryLayout == opt.id) {
-                                        primaryLayout = updated.first()
-                                    }
-                                }
-                            } else {
-                                enabledLayouts = enabledLayouts + opt.id
-                            }
-                        },
-                    colors = CardDefaults.cardColors(containerColor = cardBg)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = isChecked,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    enabledLayouts = enabledLayouts + opt.id
-                                } else if (enabledLayouts.size > 1) {
-                                    val updated = enabledLayouts - opt.id
-                                    enabledLayouts = updated
-                                    if (primaryLayout == opt.id) {
-                                        primaryLayout = updated.first()
-                                    }
-                                }
-                            },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = colors.accent,
-                                checkmarkColor = Color.White
-                            )
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = opt.title,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isChecked) colors.textPrimary else colors.textSecondary
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = opt.subtitle,
-                                fontSize = 11.sp,
-                                color = colors.textSecondary
-                            )
-                        }
-
-                        if (isChecked) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (isPrimary) colors.accent else colors.iconBackground
-                                    )
-                                    .clickable { primaryLayout = opt.id }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = if (isPrimary) "Primary" else "Set Primary",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isPrimary) Color.White else colors.textSecondary
-                                )
+                SettingsToggleItem(
+                    title = opt.title,
+                    subtitle = opt.subtitle,
+                    badge = if (isPrimary) "Primary" else null,
+                    checked = isChecked,
+                    position = position,
+                    onCheckedChange = { checked ->
+                        if (checked) {
+                            enabledLayouts = enabledLayouts + opt.id
+                        } else if (enabledLayouts.size > 1) {
+                            val updated = enabledLayouts - opt.id
+                            enabledLayouts = updated
+                            if (primaryLayout == opt.id) {
+                                primaryLayout = updated.first()
                             }
                         }
                     }
-                }
+                )
             }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // All Layouts Button (opens Keyboard Layouts screen)
+        OutlinedButton(
+            onClick = onOpenAllLayouts,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = colors.cardBackground,
+                contentColor = colors.textPrimary
+            ),
+            border = BorderStroke(1.dp, colors.cardBorder)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Keyboard,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = colors.accent
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "All Layouts",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = colors.textSecondary.copy(alpha = 0.7f)
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))

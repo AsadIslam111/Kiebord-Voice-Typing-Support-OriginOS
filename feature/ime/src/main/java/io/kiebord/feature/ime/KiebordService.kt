@@ -80,15 +80,17 @@ class KiebordService : InputMethodService() {
         return TransliterationManagerFactory.isTransliterationLayout(activeLayout.id)
     }
 
-    private fun isBornoPhoneticLayout(): Boolean {
+    private fun isPhoneticLayout(): Boolean {
         return isTransliterationLayout() ||
                 activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO ||
-                primaryAlphaLayout.id == KiebordPreferences.LAYOUT_BN_BORNO
+                activeLayout.id == KiebordPreferences.LAYOUT_BN_AVRO ||
+                primaryAlphaLayout.id == KiebordPreferences.LAYOUT_BN_BORNO ||
+                primaryAlphaLayout.id == KiebordPreferences.LAYOUT_BN_AVRO
     }
 
     private fun shouldAutoCapitalize(): Boolean {
         if (!preferencesState.autoCapitalization) return false
-        if (isBornoPhoneticLayout()) return false
+        if (isPhoneticLayout()) return false
         if (activeLayout.id.startsWith("bn_") || primaryAlphaLayout.id.startsWith("bn_")) return false
         if (isUrlOrCodeField()) return false
         return true
@@ -152,6 +154,7 @@ class KiebordService : InputMethodService() {
                 val enabledIds = prefs.enabledLayoutIds.toList().filter { id ->
                     id == KiebordPreferences.LAYOUT_EN_QWERTY ||
                     id == KiebordPreferences.LAYOUT_BN_BORNO ||
+                    id == KiebordPreferences.LAYOUT_BN_AVRO ||
                     id == KiebordPreferences.LAYOUT_BN_PROBHAT ||
                     id == KiebordPreferences.LAYOUT_BN_NATIONAL
                 }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) }
@@ -312,6 +315,7 @@ class KiebordService : InputMethodService() {
                     enabledLayoutIds = preferencesState.enabledLayoutIds.toList().filter { id ->
                         id == KiebordPreferences.LAYOUT_EN_QWERTY ||
                         id == KiebordPreferences.LAYOUT_BN_BORNO ||
+                        id == KiebordPreferences.LAYOUT_BN_AVRO ||
                         id == KiebordPreferences.LAYOUT_BN_PROBHAT ||
                         id == KiebordPreferences.LAYOUT_BN_NATIONAL
                     }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) },
@@ -920,6 +924,7 @@ class KiebordService : InputMethodService() {
                 val enabledIds = preferencesState.enabledLayoutIds.toList().filter { id ->
                     id == KiebordPreferences.LAYOUT_EN_QWERTY ||
                     id == KiebordPreferences.LAYOUT_BN_BORNO ||
+                    id == KiebordPreferences.LAYOUT_BN_AVRO ||
                     id == KiebordPreferences.LAYOUT_BN_PROBHAT ||
                     id == KiebordPreferences.LAYOUT_BN_NATIONAL
                 }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) }
@@ -1866,7 +1871,7 @@ class KiebordService : InputMethodService() {
     }
 
     private fun isQwertyBasedLayout(layoutId: String): Boolean {
-        return layoutId == "en_qwerty" || layoutId == "bn_borno"
+        return layoutId == "en_qwerty" || layoutId == "bn_borno" || layoutId == "bn_avro"
     }
 
     private fun filterCandidatesForLayout(candidates: List<SuggestionCandidate>): List<SuggestionCandidate> {

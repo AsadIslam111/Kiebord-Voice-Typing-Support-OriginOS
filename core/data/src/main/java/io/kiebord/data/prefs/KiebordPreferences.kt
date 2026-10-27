@@ -33,7 +33,7 @@ data class KiebordPreferences(
     val enabledLayoutIds: Set<String> = setOf(
         LAYOUT_EN_QWERTY,
         LAYOUT_BN_BORNO,
-        LAYOUT_BN_PROBHAT
+        LAYOUT_BN_NATIONAL
     ),
 
     // Corrections & Suggestions
@@ -81,6 +81,7 @@ data class KiebordPreferences(
 
         const val LAYOUT_EN_QWERTY = "en_qwerty"
         const val LAYOUT_BN_BORNO = "bn_borno"
+        const val LAYOUT_BN_AVRO = "bn_avro"
         const val LAYOUT_BN_PROBHAT = "bn_probhat"
         const val LAYOUT_BN_NATIONAL = "bn_national"
     }

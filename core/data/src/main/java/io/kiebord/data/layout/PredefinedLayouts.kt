@@ -127,6 +127,66 @@ object PredefinedLayouts {
         )
     )
 
+    val BengaliAvro = KeyboardLayoutDef(
+        id = "bn_avro",
+        name = "Bengali (Avro Phonetic)",
+        language = "bn",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("q", "Q", flickUp = "1", moreKeys = listOf("1")),
+                    KeyDef("w", "W", flickUp = "2", moreKeys = listOf("2")),
+                    KeyDef("e", "E", flickUp = "3", moreKeys = listOf("3")),
+                    KeyDef("r", "R", flickUp = "4", moreKeys = listOf("4")),
+                    KeyDef("t", "T", flickUp = "5", moreKeys = listOf("ৎ", "5")),
+                    KeyDef("y", "Y", flickUp = "6", moreKeys = listOf("`", "6")),
+                    KeyDef("u", "U", flickUp = "7", moreKeys = listOf("7")),
+                    KeyDef("i", "I", flickUp = "8", moreKeys = listOf("8")),
+                    KeyDef("o", "O", flickUp = "9", moreKeys = listOf("9")),
+                    KeyDef("p", "P", flickUp = "0", moreKeys = listOf("0"))
+                )
+            ),
+            KeyRow(
+                keys = listOf(
+                    KeyDef("a", "A", flickUp = "@", moreKeys = listOf("@")),
+                    KeyDef("s", "S", flickUp = "#", moreKeys = listOf("#")),
+                    KeyDef("d", "D", flickUp = "$", moreKeys = listOf("$")),
+                    KeyDef("f", "F", flickUp = "%", moreKeys = listOf("%")),
+                    KeyDef("g", "G", flickUp = "&", moreKeys = listOf("্", "্\u200c", "়", "&")),
+                    KeyDef("h", "H", flickUp = "-", moreKeys = listOf("-")),
+                    KeyDef("j", "J", flickUp = "+", moreKeys = listOf("+")),
+                    KeyDef("k", "K", flickUp = "(", moreKeys = listOf("(")),
+                    KeyDef("l", "L", flickUp = ")", moreKeys = listOf(")"))
+                ),
+                startPaddingWeight = 0.5f,
+                endPaddingWeight = 0.5f
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef(type = KeyType.SHIFT, icon = "shift", widthWeight = 1.5f),
+                    KeyDef("z", "Z", flickUp = "*", moreKeys = listOf("ACTION_SELECT_ALL", "*")),
+                    KeyDef("x", "X", flickUp = "\"", moreKeys = listOf("ACTION_CUT", "\"")),
+                    KeyDef("c", "C", flickUp = "'", moreKeys = listOf("ACTION_COPY", "'")),
+                    KeyDef("v", "V", flickUp = ":", moreKeys = listOf("ACTION_PASTE", ":")),
+                    KeyDef("b", "B", flickUp = ";", moreKeys = listOf(";")),
+                    KeyDef("n", "N", flickUp = "!", moreKeys = listOf("!")),
+                    KeyDef("m", "M", flickUp = "?", moreKeys = listOf("?")),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.5f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("?১২৩", type = KeyType.SYMBOLS, widthWeight = 1.5f, slidingInput = true),
+                    KeyDef(",", widthWeight = 1.0f, moreKeys = listOf("ACTION_SETTINGS", "ACTION_ONE_HANDED")),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
+                    KeyDef("।",  widthWeight = 1.0f, moreKeysColumns = 9, moreKeys = listOf(",", ".", "?", "!", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "%", "&")),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
+                )
+            )
+        )
+    )
+
     val BengaliProbhat = KeyboardLayoutDef(
         id = "bn_probhat",
         name = "Bengali (Probhat)",
@@ -434,6 +494,7 @@ object PredefinedLayouts {
     fun fromId(id: String): KeyboardLayoutDef {
         return when (id) {
             "bn_borno" -> BengaliBorno
+            "bn_avro" -> BengaliAvro
             "bn_probhat" -> BengaliProbhat
             "bn_national" -> BengaliNational
             "symbols_1" -> Symbols
@@ -445,6 +506,7 @@ object PredefinedLayouts {
     fun displayName(id: String): String {
         return when (id) {
             "bn_borno" -> "বর্ণ ফোনেটিক"
+            "bn_avro" -> "অভ্র"
             "bn_probhat" -> "প্রভাত"
             "bn_national" -> "জাতীয় (BSTI)"
             else -> "English"

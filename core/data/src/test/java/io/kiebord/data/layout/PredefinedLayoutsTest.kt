@@ -13,7 +13,28 @@ class PredefinedLayoutsTest {
         assertEquals("English", PredefinedLayouts.displayName("en_qwerty"))
         assertEquals("জাতীয় (BSTI)", PredefinedLayouts.displayName("bn_national"))
         assertEquals("বর্ণ ফোনেটিক", PredefinedLayouts.displayName("bn_borno"))
+        assertEquals("অভ্র", PredefinedLayouts.displayName("bn_avro"))
         assertEquals("প্রভাত", PredefinedLayouts.displayName("bn_probhat"))
+    }
+
+    @Test
+    fun testAvroLayoutResolution() {
+        val layout = PredefinedLayouts.fromId("bn_avro")
+        assertEquals("bn_avro", layout.id)
+        assertEquals("Bengali (Avro Phonetic)", layout.name)
+        assertEquals(4, layout.rows.size)
+
+        // Key 'a' in home row has no ঁ
+        val keyA = layout.rows[1].keys[0]
+        assertEquals("a", keyA.label)
+        assertEquals("@", keyA.flickUp)
+        assertEquals(listOf("@"), keyA.moreKeys)
+
+        // Key 'l' in home row has no ঃ
+        val keyL = layout.rows[1].keys[8]
+        assertEquals("l", keyL.label)
+        assertEquals(")", keyL.flickUp)
+        assertEquals(listOf(")"), keyL.moreKeys)
     }
 
     @Test

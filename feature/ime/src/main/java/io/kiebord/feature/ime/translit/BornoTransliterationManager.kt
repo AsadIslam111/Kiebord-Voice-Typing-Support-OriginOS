@@ -105,7 +105,7 @@ object TransliterationManagerFactory {
         return if (NativeEngine.isAvailable()) {
             NativeEngine.isPhoneticLayout(layoutId)
         } else {
-            layoutId == "bn_borno"
+            layoutId == "bn_borno" || layoutId == "bn_avro"
         }
     }
 

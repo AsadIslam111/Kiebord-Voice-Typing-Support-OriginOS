@@ -312,8 +312,9 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_getTransliterati
         Err(_) => String::new(),
     };
 
-    if layout == "bn_borno" {
-        let alts = BornoPhonetic::suggest_transliterations(&input);
+    if layout == "bn_borno" || layout == "bn_avro" {
+        let is_avro = layout == "bn_avro";
+        let alts = BornoPhonetic::suggest_transliterations_mode(&input, is_avro);
         let joined = alts.join("|");
         env.new_string(joined).unwrap().into_raw()
     } else {
