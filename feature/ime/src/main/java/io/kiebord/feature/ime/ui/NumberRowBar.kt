@@ -19,7 +19,7 @@ import io.kiebord.data.layout.PredefinedLayouts
 fun NumberRowBar(
     language: String,
     modifier: Modifier = Modifier,
-    height: Dp = 44.dp,
+    height: Dp = 50.dp,
     rowHeight: Dp = height,
     showKeyBorders: Boolean = true,
     showKeyPopups: Boolean = true,

@@ -292,7 +292,8 @@ private fun ThemePreviewBottomSheetContent(
                 val screenWidth = LocalConfiguration.current.screenWidthDp.dp
                 val baseWidth = if (screenWidth > 500.dp) 390.dp else screenWidth
                 val widthRatio = if (baseWidth > 0.dp) (maxWidth / baseWidth).coerceIn(0.5f, 1.0f) else 0.85f
-                val previewRowHeight = (58 * preferences.keyboardHeightScale * widthRatio).dp
+                val previewBase = if (preferences.showNumberRow) 54 else 61
+                val previewRowHeight = (previewBase * preferences.keyboardHeightScale * widthRatio).dp
 
                 KeyboardRootView(
                     layout = PredefinedLayouts.EnglishQwerty,

@@ -49,7 +49,7 @@ fun LiveResizerOverlay(
     onReset: () -> Unit,
     onDone: () -> Unit,
     onCancel: () -> Unit,
-    baseRowHeight: Dp = 58.dp,
+    baseRowHeight: Dp = 61.dp,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -296,7 +296,7 @@ fun LiveResizerOverlay(
 
                 // Scale / Height readout percentage
                 Text(
-                    text = "${(currentRowHeight.value / (if (baseRowHeight.value > 0f) baseRowHeight.value else 58f) * 100).toInt()}%",
+                    text = "${(currentRowHeight.value / (if (baseRowHeight.value > 0f) baseRowHeight.value else 61f) * 100).toInt()}%",
                     color = colorScheme.keyForeground,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp

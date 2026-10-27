@@ -141,7 +141,7 @@ fun KeyboardRootView(
     lastDeletedBatch: String? = null,
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
     onGestureLivePredict: ((List<Offset>, List<KeyCentroid>, Float) -> String?)? = null,
-    initialRowHeight: Dp = 58.dp,
+    initialRowHeight: Dp = 61.dp,
     heightScalePortrait: Float = 1.0f,
     heightScaleLandscape: Float = 1.0f,
     chinPaddingPortraitDp: Float = 8.0f,
@@ -433,8 +433,8 @@ fun KeyboardRootView(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val screenHeightDp = configuration.screenHeightDp.dp
 
-    // Baseline row height: in portrait 58dp
-    val basePortraitRowHeight = 58.dp
+    // Baseline row height: in portrait 61dp without number row, 54dp with number row
+    val basePortraitRowHeight = if (showNumberRow) 54.dp else 61.dp
 
     // In landscape, by default the keyboard height is 60% of landscape height
     val totalLandscapeRows = if (showNumberRow) 5f else 4f
@@ -444,14 +444,14 @@ fun KeyboardRootView(
 
     val activeBaseRowHeight = if (isLandscape) baseLandscapeRowHeight else basePortraitRowHeight
     val activeHeightScale = if (isLandscape) heightScaleLandscape else heightScalePortrait
-    val activeTargetRowHeight = if (initialRowHeight != 58.dp && !isLandscape) initialRowHeight else activeBaseRowHeight * activeHeightScale
+    val activeTargetRowHeight = if (initialRowHeight != 61.dp && initialRowHeight != 58.dp && initialRowHeight != 54.dp && initialRowHeight != 52.dp && !isLandscape) initialRowHeight else activeBaseRowHeight * activeHeightScale
 
     val activeChinPadding = if (isLandscape) chinPaddingLandscapeDp.dp else chinPaddingPortraitDp.dp
     val activeHorizontalMargin = if (isLandscape) horizontalMarginLandscapeDp.dp else horizontalMarginPortraitDp.dp
 
     var keyRowHeight by remember(isLandscape, activeTargetRowHeight) { mutableStateOf(activeTargetRowHeight) }
-    val scaleFactor = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 58f)).coerceIn(0.4f, 1.6f)
-    val toolbarHeight = if (isLandscape) (38 * scaleFactor).coerceIn(32f, 44f).dp else (44 * scaleFactor).dp
+    val scaleFactor = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.4f, 1.6f)
+    val toolbarHeight = if (isLandscape) (38 * scaleFactor).coerceIn(32f, 44f).dp else (48 * scaleFactor).dp
 
     var chinPadding by remember(isLandscape, activeChinPadding) {
         mutableStateOf(activeChinPadding)
@@ -615,7 +615,7 @@ fun KeyboardRootView(
     }
 
     val isKeysInteractive = isInteractive && !isResizerOpen
-    val numberRowEffectiveHeight = if (showNumberRow) (44 * scaleFactor).dp else 0.dp
+    val numberRowEffectiveHeight = if (showNumberRow) (50 * scaleFactor).dp else 0.dp
     val keyboardContentHeight = (keyRowHeight * 4) + numberRowEffectiveHeight
 
     val handleToolbarAction: (ToolbarAction) -> Unit = { action ->
@@ -740,8 +740,8 @@ fun KeyboardRootView(
     val oneHandedStart = if (oneHandedSide == "RIGHT") oneHandedSideWidth.dp else 0.dp
     val oneHandedEnd = if (oneHandedSide == "LEFT") oneHandedSideWidth.dp else 0.dp
 
-    val keyboardStartInset = (4 * scaleFactor).dp + horizontalMargin + oneHandedStart
-    val keyboardEndInset = (4 * scaleFactor).dp + horizontalMargin + oneHandedEnd
+    val keyboardStartInset = 12.5.dp + horizontalMargin + oneHandedStart
+    val keyboardEndInset = 12.5.dp + horizontalMargin + oneHandedEnd
 
     val keyboardLeftPx = with(density) { keyboardStartInset.toPx() }
     val keyboardRightPx = if (rootWidthPx > 0f) {
@@ -1380,7 +1380,7 @@ fun KeyboardRootView(
                         val isBottomRow = rowIndex == keyboardRows.lastIndex
                         val isTopNumberRow = showNumberRow && rowIndex == 0
                         val currentRowHeight = if (isTopNumberRow) {
-                            (44 * scaleFactor).dp
+                            (50 * scaleFactor).dp
                         } else {
                             keyRowHeight
                         }
@@ -1388,7 +1388,7 @@ fun KeyboardRootView(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(currentRowHeight)
-                                .then(if (isTopNumberRow) Modifier.padding(bottom = 2.dp) else Modifier)
+                                .then(if (isTopNumberRow) Modifier.padding(bottom = 1.dp) else Modifier)
                         ) {
                         if (row.startPaddingDp > 0f) {
                             Spacer(
@@ -1898,7 +1898,7 @@ fun KeyboardRootView(
                     onHeightScaleChange?.invoke(1.0f)
                 },
                 onDone = {
-                    val scale = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 58f)).coerceIn(0.6f, 1.5f)
+                    val scale = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.6f, 1.5f)
                     onResizerValuesChange?.invoke(
                         isLandscape,
                         scale,
@@ -2059,7 +2059,7 @@ fun SpacebarLayoutSliderOverlay(
     rootCoordinates: LayoutCoordinates? = null,
     scaleFactor: Float = 1.0f,
     totalBottomPadding: Dp = 8.dp,
-    keyRowHeight: Dp = 58.dp,
+    keyRowHeight: Dp = 61.dp,
     keyboardLeftPx: Float = 0f,
     keyboardRightPx: Float = 0f,
     modifier: Modifier = Modifier

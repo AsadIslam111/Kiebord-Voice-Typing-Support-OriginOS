@@ -68,7 +68,7 @@ fun KeycapView(
     showKeyBorders: Boolean = true,
     showSecondaryKeys: Boolean = true,
     showKeyPopups: Boolean = true,
-    rowHeight: Dp = 58.dp,
+    rowHeight: Dp = 61.dp,
     onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
@@ -95,7 +95,12 @@ fun KeycapView(
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
-    val scaleFactor = (rowHeight.value / 58f).coerceIn(0.4f, 1.6f)
+    val scaleFactor = (rowHeight.value / (if (rowHeight.value >= 58f) 61f else 54f)).coerceIn(0.4f, 1.6f)
+    // Capped scale factor for font, icons, and horizontal spacing:
+    // When keyboard height increases, font/horizontal scaling MUST NOT increase beyond 1.0f,
+    // otherwise keycap labels and bottom row keys expand horizontally and overlap.
+    val fontScaleFactor = scaleFactor.coerceAtMost(1.0f)
+    val iconScaleFactor = scaleFactor.coerceAtMost(1.0f)
     var isPressed by remember { mutableStateOf(false) }
     var isMoreKeysActive by remember { mutableStateOf(false) }
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -137,7 +142,7 @@ fun KeycapView(
 
     // Key shape: Enter key and Sym key (?123) are always rounded stadium pills.
     // In flat mode (!showKeyBorders), spacebar is also a stadium pill.
-    // When key borders are enabled, spacebar and standard character keys use standard scaled corner radius.
+    // When key borders are enabled, spacebar and standard character keys use standard scaled corner radius (8dp).
     val isPillShape = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
     val keyShape = if (isPillShape) {
         RoundedCornerShape(percent = 50)
@@ -147,8 +152,8 @@ fun KeycapView(
 
     // In flat theme (!showKeyBorders), reduce height of Space bar, Sym key, and Enter key
     val isReducedHeightKey = !showKeyBorders && isPillColoredKey
-    val horizontalPadding = (3 * scaleFactor).coerceIn(1f, 4f).dp
-    val verticalPadding = if (isReducedHeightKey) (7 * scaleFactor).coerceAtLeast(2f).dp else (3 * scaleFactor).coerceIn(1f, 4f).dp
+    val horizontalPadding = (2.8f * fontScaleFactor).coerceIn(1.5f, 3.2f).dp
+    val verticalPadding = if (isReducedHeightKey) (6.0f * scaleFactor).coerceAtLeast(2f).dp else (4.2f * scaleFactor).coerceIn(1.8f, 6.0f).dp
 
     // Capture latest parameters in updated states to allow pointerInput without gesture cancellation
     val currentKey = rememberUpdatedState(key)
@@ -468,20 +473,20 @@ fun KeycapView(
                 } else {
                     colorScheme.keyForeground.copy(alpha = 0.5f)
                 },
-                fontSize = (11 * scaleFactor).coerceAtLeast(6.5f).sp,
+                fontSize = (11.5f * fontScaleFactor).coerceAtLeast(6.5f).sp,
                 fontWeight = FontWeight.Normal,
                 fontFamily = KiebordTheme.fontFamily,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = (2.5f * scaleFactor).dp, end = (4 * scaleFactor).dp)
+                    .padding(top = (2.2f * fontScaleFactor).dp, end = (3.8f * fontScaleFactor).dp)
             )
         }
 
         // Key content: Vector Material Icons vs Typography label
-        val actionIconSize = (22 * scaleFactor).coerceAtLeast(12f).dp
+        val actionIconSize = (22 * iconScaleFactor).coerceAtLeast(12f).dp
         when (key.type) {
             KeyType.SHIFT -> {
-                val shiftIconSize = (25.5f * scaleFactor).coerceAtLeast(14f).dp
+                val shiftIconSize = (25f * iconScaleFactor).coerceAtLeast(14f).dp
                 when (shiftState) {
                     ShiftState.UNSHIFTED -> {
                         Icon(
@@ -530,7 +535,7 @@ fun KeycapView(
                     imageVector = Icons.Outlined.Language,
                     contentDescription = "Switch Language",
                     tint = foregroundColor,
-                    modifier = Modifier.size((20 * scaleFactor).coerceAtLeast(11f).dp)
+                    modifier = Modifier.size((20 * iconScaleFactor).coerceAtLeast(11f).dp)
                 )
             }
             KeyType.SPACE -> {
@@ -541,23 +546,27 @@ fun KeycapView(
                     } else {
                         colorScheme.keyForeground.copy(alpha = 0.45f)
                     },
-                    fontSize = (15.5f * scaleFactor).coerceAtLeast(8f).sp,
+                    fontSize = (15.5f * fontScaleFactor).coerceAtLeast(8f).sp,
                     fontWeight = FontWeight.Medium,
-                    fontFamily = KiebordTheme.fontFamily
+                    fontFamily = KiebordTheme.fontFamily,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
             else -> {
-                val baseCharSize = if (displaySymbolLabel.length > 2) 17f else if (displaySymbolLabel.length > 1) 20.5f else 25.5f
+                val baseCharSize = if (displaySymbolLabel.length > 2) 17f else if (displaySymbolLabel.length > 1) 21f else 26f
                 val rawSize = if (key.type == KeyType.SYMBOLS) 17f else baseCharSize
-                val textSize = (rawSize * scaleFactor).coerceAtLeast(8.5f).sp
+                val textSize = (rawSize * fontScaleFactor).coerceAtLeast(8.5f).sp
                 val isUppercase = displaySymbolLabel.length == 1 && displaySymbolLabel.first().isUpperCase()
-                val verticalShift = if (isUppercase) (1.5f * scaleFactor).dp else 0.dp
+                val verticalShift = if (isUppercase) (1.2f * fontScaleFactor).dp else 0.dp
                 Text(
                     text = displaySymbolLabel,
                     color = foregroundColor,
                     fontSize = textSize,
                     fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Bold else FontWeight.Medium,
                     fontFamily = KiebordTheme.fontFamily,
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = if (verticalShift > 0.dp) Modifier.offset(y = verticalShift) else Modifier,
                     style = androidx.compose.ui.text.TextStyle(
                         fontFamily = KiebordTheme.fontFamily,

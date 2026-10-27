@@ -148,7 +148,8 @@ fun OnboardingPreferencesStep(
             val screenWidth = LocalConfiguration.current.screenWidthDp.dp
             val baseWidth = if (screenWidth > 500.dp) 390.dp else screenWidth
             val widthRatio = if (baseWidth > 0.dp) (maxWidth / baseWidth).coerceIn(0.5f, 1.0f) else 0.88f
-            val demoRowHeight = (58 * widthRatio).dp
+            val demoBase = if (showNumberRow) 54 else 61
+            val demoRowHeight = (demoBase * widthRatio).dp
 
             KiebordTheme(colorScheme = keyboardColorScheme) {
                 KeyboardRootView(
