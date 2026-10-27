@@ -83,6 +83,7 @@ fun KeycapView(
     isSlidingSymbolMode: Boolean = false,
     isSlidingShiftMode: Boolean = false,
     showKeyBorders: Boolean = true,
+    showKeyShadows: Boolean = true,
     showSecondaryKeys: Boolean = true,
     showKeyPopups: Boolean = true,
     rowHeight: Dp = 61.dp,
@@ -124,13 +125,14 @@ fun KeycapView(
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     // Fully resolved keycap styling from rich themebase or flat color scheme
-    val keyVisual = remember(colorScheme, rowIndex, keyIndex, key, isPressed, showKeyBorders, scaleFactor) {
+    val keyVisual = remember(colorScheme, rowIndex, keyIndex, key, isPressed, showKeyBorders, showKeyShadows, scaleFactor) {
         colorScheme.resolveKeycapVisual(
             rowIndex = rowIndex,
             keyIndex = keyIndex,
             key = key,
             isPressed = isPressed,
             showKeyBorders = showKeyBorders,
+            showKeyShadows = showKeyShadows,
             scaleFactor = scaleFactor
         )
     }
@@ -205,12 +207,6 @@ fun KeycapView(
                             currentOnKeyPress.value(initialKey)
 
                             val isSymbolsToggleKey = initialKey.type == KeyType.SYMBOLS || initialKey.label == "?123" || initialKey.label == "?১২৩" || initialKey.label == "ABC"
-                            var isSymbolsHandledOnDown = false
-                            if (isSymbolsToggleKey) {
-                                isSymbolsHandledOnDown = true
-                                currentOnTap.value(initialKey)
-                            }
-
                             var isSlidingDrag = false
                             var isSpacebarDwellReady = false
                             var isSpacebarSwipingLayout = false
@@ -222,7 +218,7 @@ fun KeycapView(
                             var lastTrackpadX = 0f
                             val trackpadStepPx = with(density) { 14.dp.toPx() }
 
-                            val isSlidingInitiator = (initialKey.slidingInput || initialKey.type == KeyType.SHIFT) && !isSymbolsToggleKey
+                            val isSlidingInitiator = initialKey.slidingInput || initialKey.type == KeyType.SHIFT || isSymbolsToggleKey
 
                             val spacebarDwellJob = if (initialKey.type == KeyType.SPACE) {
                                 launch {
@@ -307,9 +303,6 @@ fun KeycapView(
                                 } else if (isDeleteLongPressActive || isLongPressTriggered) {
                                     change.consume()
                                     // Handled during long-press, do NOT emit tap on release
-                                } else if (isSymbolsHandledOnDown) {
-                                    change.consume()
-                                    // Handled on press down, do NOT emit tap on release
                                 } else {
                                     change.consume()
                                     currentOnTap.value(initialKey)

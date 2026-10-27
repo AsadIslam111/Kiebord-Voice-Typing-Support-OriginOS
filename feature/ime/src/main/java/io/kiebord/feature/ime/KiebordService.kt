@@ -304,6 +304,7 @@ class KiebordService : InputMethodService() {
                         serviceScope.launch { preferencesRepo.updateShowNumberRow(enabled) }
                     },
                     showKeyBorders = preferencesState.showKeyBorders,
+                    showKeyShadows = preferencesState.showKeyShadows,
                     defaultShowSecondaryKeys = preferencesState.showSecondaryKeys,
                     onSecondaryKeysToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateShowSecondaryKeys(enabled) }

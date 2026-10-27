@@ -364,6 +364,9 @@ fun KiebordSettingsApp(
                             onUpdateShowKeyBorders = { enabled ->
                                 scope.launch { preferencesRepo.updateShowKeyBorders(enabled) }
                             },
+                            onUpdateShowKeyShadows = { enabled ->
+                                scope.launch { preferencesRepo.updateShowKeyShadows(enabled) }
+                            },
                             onBack = navigateBack
                         )
                     }

@@ -34,6 +34,7 @@ data class KeyboardColorScheme(
         key: KeyDef,
         isPressed: Boolean = false,
         showKeyBorders: Boolean = true,
+        showKeyShadows: Boolean = true,
         size: Size = Size.Zero,
         scaleFactor: Float = 1.0f
     ): ResolvedKeyVisual {
@@ -87,13 +88,13 @@ data class KeyboardColorScheme(
             }
 
             val shadow = style.shadow
-            val shadowColor = if (showKeyBorders && shadow != null && shadow.elevationDp > 0f) {
+            val shadowColor = if (showKeyShadows && shadow != null && shadow.elevationDp > 0f) {
                 ThemeColorUtils.parseHexColor(shadow.color, keyShadow)
             } else {
                 Color.Transparent
             }
 
-            val shadowElevation = if (showKeyBorders && shadow != null && shadow.elevationDp > 0f) {
+            val shadowElevation = if (showKeyShadows && shadow != null && shadow.elevationDp > 0f) {
                 shadow.elevationDp.dp
             } else {
                 0.dp
@@ -150,8 +151,8 @@ data class KeyboardColorScheme(
         val isPillShape = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
         val strokeCol = if (showKeyBorders && keyBorder.alpha > 0.01f) keyBorder else Color.Transparent
         val strokeWidth = if (showKeyBorders && keyBorder.alpha > 0.01f) 0.5.dp else 0.dp
-        val shadowCol = if (showKeyBorders && keyShadow.alpha > 0.01f) keyShadow else Color.Transparent
-        val shadowElevation = if (showKeyBorders && keyShadow.alpha > 0.01f) (1.5f * scaleFactor).dp else 0.dp
+        val shadowCol = if (showKeyShadows && keyShadow.alpha > 0.01f) keyShadow else Color.Transparent
+        val shadowElevation = if (showKeyShadows && keyShadow.alpha > 0.01f) (1.5f * scaleFactor).dp else 0.dp
 
         return ResolvedKeyVisual(
             backgroundColor = activeBackground,

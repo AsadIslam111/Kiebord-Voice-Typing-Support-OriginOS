@@ -63,6 +63,7 @@ import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.theme.KiebordTheme
 import io.kiebord.theme.ThemeCategory
+import io.kiebord.theme.ThemeColorUtils
 import io.kiebord.theme.ThemeOptionItem
 import io.kiebord.theme.ThemeRepository
 
@@ -73,6 +74,7 @@ fun AppearanceThemesScreen(
     onUpdateTheme: (String) -> Unit,
     onUpdateHeightScale: (Float) -> Unit = {},
     onUpdateShowKeyBorders: (Boolean) -> Unit,
+    onUpdateShowKeyShadows: (Boolean) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -137,12 +139,12 @@ fun AppearanceThemesScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     categoryThemes.chunked(3).forEach { rowThemes ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             rowThemes.forEach { themeOption ->
                                 val isSelected = preferences.theme == themeOption.id
@@ -214,36 +216,50 @@ fun AppearanceThemesScreen(
     }
 
     if (previewThemeOption != null) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { previewThemeOption = null },
-            sheetState = sheetState,
-            containerColor = colors.cardBackground,
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-        ) {
-            ThemePreviewBottomSheetContent(
-                themeOption = previewThemeOption!!,
-                preferences = preferences,
-                showKeyBorders = preferences.showKeyBorders,
-                onToggleKeyBorders = onUpdateShowKeyBorders,
-                onApplyTheme = {
-                    onUpdateTheme(previewThemeOption!!.id)
-                    previewThemeOption = null
-                },
-                onDeleteTheme = if (previewThemeOption!!.isCustom) {
-                    {
-                        val targetId = previewThemeOption!!.id
-                        val targetName = previewThemeOption!!.name
-                        themeRepo.deleteCustomTheme(targetId)
-                        if (preferences.theme == targetId) {
-                            onUpdateTheme(KiebordPreferences.THEME_DEFAULT_DARK)
-                        }
-                        reloadTrigger++
+        val currentPreview = previewThemeOption
+        if (currentPreview != null) {
+            var previewShowKeyBorders by remember(currentPreview.id, preferences.showKeyBorders) {
+                mutableStateOf(preferences.showKeyBorders)
+            }
+            var previewShowKeyShadows by remember(currentPreview.id, preferences.showKeyShadows) {
+                mutableStateOf(preferences.showKeyShadows)
+            }
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+            ModalBottomSheet(
+                onDismissRequest = { previewThemeOption = null },
+                sheetState = sheetState,
+                containerColor = colors.cardBackground,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            ) {
+                ThemePreviewBottomSheetContent(
+                    themeOption = currentPreview,
+                    preferences = preferences,
+                    showKeyBorders = previewShowKeyBorders,
+                    showKeyShadows = previewShowKeyShadows,
+                    onToggleKeyBorders = { previewShowKeyBorders = it },
+                    onToggleKeyShadows = { previewShowKeyShadows = it },
+                    onApplyTheme = {
+                        onUpdateTheme(currentPreview.id)
+                        onUpdateShowKeyBorders(previewShowKeyBorders)
+                        onUpdateShowKeyShadows(previewShowKeyShadows)
                         previewThemeOption = null
-                        Toast.makeText(context, "Deleted $targetName", Toast.LENGTH_SHORT).show()
-                    }
-                } else null
-            )
+                    },
+                    onDeleteTheme = if (currentPreview.isCustom) {
+                        {
+                            val targetId = currentPreview.id
+                            val targetName = currentPreview.name
+                            themeRepo.deleteCustomTheme(targetId)
+                            if (preferences.theme == targetId) {
+                                onUpdateTheme(KiebordPreferences.THEME_DEFAULT_DARK)
+                            }
+                            reloadTrigger++
+                            previewThemeOption = null
+                            Toast.makeText(context, "Deleted $targetName", Toast.LENGTH_SHORT).show()
+                        }
+                    } else null
+                )
+            }
         }
     }
 }
@@ -270,7 +286,7 @@ private fun AbstractThemeCard(
         label = "themeBorder"
     )
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1.3f)
@@ -296,15 +312,23 @@ private fun AbstractThemeCard(
             )
             .clickable(onClick = onSelect)
     ) {
-        val sugBg = scheme.suggestionBackground
-        if (sugBg != Color.Transparent && sugBg != scheme.containerBackground && sugBg.alpha > 0.1f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.18f)
-                    .background(sugBg)
-            )
-        }
+        val cardWidth = maxWidth
+        val cardHeight = maxHeight
+
+        val keyHeight = cardHeight * 0.15f
+        val bottomMargin = cardHeight * 0.14f
+        val sideMargin = cardWidth * 0.14f
+        val keyGap = 6.dp
+
+        val keyShape = RoundedCornerShape(4.dp)
+        val keyBorderColor = scheme.keyBorder
+        val hasStroke = showKeyBorders && keyBorderColor != Color.Transparent && keyBorderColor.alpha > 0.05f
+
+        val spaceHex = scheme.themeSpec?.spaceKey?.background ?: scheme.themeSpec?.characterKey?.background
+        val spaceColor = if (spaceHex != null) ThemeColorUtils.parseHexColor(spaceHex, scheme.keyBackground) else scheme.keyBackground
+
+        val enterHex = scheme.themeSpec?.actionKey?.background
+        val enterColor = if (enterHex != null) ThemeColorUtils.parseHexColor(enterHex, scheme.accentColor) else scheme.accentColor
 
         if (themeOption.isCustom && !isSelected) {
             Box(
@@ -324,52 +348,44 @@ private fun AbstractThemeCard(
             }
         }
 
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.30f)
                 .align(Alignment.BottomCenter)
-                .padding(start = 14.dp, end = 14.dp, bottom = 12.dp)
+                .padding(start = sideMargin, end = sideMargin, bottom = bottomMargin)
+                .height(keyHeight),
+            horizontalArrangement = Arrangement.spacedBy(keyGap),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val spaceShape = RoundedCornerShape(4.dp)
-                val keyBorderColor = scheme.keyBorder
-                val hasStroke = showKeyBorders && keyBorderColor != Color.Transparent && keyBorderColor.alpha > 0.05f
+            Box(
+                modifier = Modifier
+                    .weight(0.58f)
+                    .fillMaxHeight()
+                    .then(
+                        if (hasStroke) {
+                            Modifier.border(0.75.dp, keyBorderColor, keyShape)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .clip(keyShape)
+                    .background(spaceColor)
+            )
 
-                Box(
-                    modifier = Modifier
-                        .weight(4.0f)
-                        .fillMaxHeight()
-                        .then(
-                            if (hasStroke) {
-                                Modifier.border(0.75.dp, keyBorderColor, spaceShape)
-                            } else {
-                                Modifier
-                            }
-                        )
-                        .clip(spaceShape)
-                        .background(scheme.keyBackground)
-                )
-
-                Box(
-                    modifier = Modifier
-                        .weight(1.0f)
-                        .fillMaxHeight()
-                        .then(
-                            if (hasStroke) {
-                                Modifier.border(0.75.dp, keyBorderColor, spaceShape)
-                            } else {
-                                Modifier
-                            }
-                        )
-                        .clip(spaceShape)
-                        .background(scheme.accentColor)
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .weight(0.14f)
+                    .fillMaxHeight()
+                    .then(
+                        if (hasStroke) {
+                            Modifier.border(0.75.dp, keyBorderColor, keyShape)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .clip(keyShape)
+                    .background(enterColor)
+            )
         }
 
         if (isSelected) {
@@ -398,11 +414,20 @@ private fun ThemePreviewBottomSheetContent(
     themeOption: ThemeOptionItem,
     preferences: KiebordPreferences,
     showKeyBorders: Boolean,
+    showKeyShadows: Boolean,
     onToggleKeyBorders: (Boolean) -> Unit,
+    onToggleKeyShadows: (Boolean) -> Unit,
     onApplyTheme: () -> Unit,
     onDeleteTheme: (() -> Unit)? = null
 ) {
     val colors = LocalSettingsColors.current
+
+    val themeHasShadow = remember(themeOption.scheme) {
+        val s = themeOption.scheme
+        s.keyShadow.alpha > 0.01f ||
+            (s.themeSpec?.characterKey?.shadow != null &&
+             (s.themeSpec?.characterKey?.shadow?.elevationDp ?: 0f) > 0f)
+    }
 
     Column(
         modifier = Modifier
@@ -439,6 +464,7 @@ private fun ThemePreviewBottomSheetContent(
                     onKeyTap = {},
                     onKeyLongPress = {},
                     showKeyBorders = showKeyBorders,
+                    showKeyShadows = showKeyShadows,
                     defaultShowNumberRow = preferences.showNumberRow,
                     defaultShowSecondaryKeys = false,
                     initialRowHeight = previewRowHeight,
@@ -471,9 +497,18 @@ private fun ThemePreviewBottomSheetContent(
                     title = "Key Borders",
                     subtitle = "Preview theme with keycap separation borders",
                     checked = showKeyBorders,
-                    position = GroupPosition.ALONE,
+                    position = if (themeHasShadow) GroupPosition.TOP else GroupPosition.ALONE,
                     onCheckedChange = onToggleKeyBorders
                 )
+                if (themeHasShadow) {
+                    SettingsToggleItem(
+                        title = "Key Shadows",
+                        subtitle = "Preview theme with key elevation shadows",
+                        checked = showKeyShadows,
+                        position = GroupPosition.BOTTOM,
+                        onCheckedChange = onToggleKeyShadows
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

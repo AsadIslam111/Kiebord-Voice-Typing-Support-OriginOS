@@ -31,6 +31,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val HORIZONTAL_MARGIN_LANDSCAPE = floatPreferencesKey("pref_horizontal_margin_landscape")
         val SHOW_NUMBER_ROW = booleanPreferencesKey("pref_show_number_row")
         val SHOW_KEY_BORDERS = booleanPreferencesKey("pref_show_key_borders")
+        val SHOW_KEY_SHADOWS = booleanPreferencesKey("pref_show_key_shadows")
         val SHOW_KEY_POPUPS = booleanPreferencesKey("pref_show_key_popups")
         val SHOW_SECONDARY_KEYS = booleanPreferencesKey("pref_show_secondary_keys")
 
@@ -88,6 +89,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 horizontalMarginLandscapeDp = prefs[PreferencesKeys.HORIZONTAL_MARGIN_LANDSCAPE] ?: 0.0f,
                 showNumberRow = prefs[PreferencesKeys.SHOW_NUMBER_ROW] ?: false,
                 showKeyBorders = prefs[PreferencesKeys.SHOW_KEY_BORDERS] ?: true,
+                showKeyShadows = prefs[PreferencesKeys.SHOW_KEY_SHADOWS] ?: true,
                 showKeyPopups = prefs[PreferencesKeys.SHOW_KEY_POPUPS] ?: true,
                 showSecondaryKeys = prefs[PreferencesKeys.SHOW_SECONDARY_KEYS] ?: true,
 
@@ -203,6 +205,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateShowKeyBorders(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.SHOW_KEY_BORDERS] = enabled }
+    }
+
+    suspend fun updateShowKeyShadows(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SHOW_KEY_SHADOWS] = enabled }
     }
 
     suspend fun updateShowKeyPopups(enabled: Boolean) {

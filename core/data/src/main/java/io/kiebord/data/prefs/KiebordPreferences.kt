@@ -14,6 +14,7 @@ data class KiebordPreferences(
     val horizontalMarginLandscapeDp: Float = 0.0f,
     val showNumberRow: Boolean = false,
     val showKeyBorders: Boolean = true,
+    val showKeyShadows: Boolean = true,
     val showKeyPopups: Boolean = true,
     val showSecondaryKeys: Boolean = true,
 
