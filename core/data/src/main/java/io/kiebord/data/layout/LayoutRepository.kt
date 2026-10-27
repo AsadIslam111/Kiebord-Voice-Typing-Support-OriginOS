@@ -19,6 +19,8 @@ data class LayoutItemMeta(
 class LayoutRepository private constructor(private val context: Context) {
 
     private val cache = ConcurrentHashMap<String, KeyboardLayoutDef>()
+    @Volatile
+    private var cachedAvailableLayouts: List<LayoutItemMeta>? = null
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -44,6 +46,17 @@ class LayoutRepository private constructor(private val context: Context) {
             cache[id]?.displayName ?: cache[id]?.name
         }
     }
+
+    fun preload() {
+        for (id in bundledAssetIds) {
+            getLayout(id)
+        }
+        getAvailableLayouts()
+    }
+
+    fun getCachedLayout(id: String): KeyboardLayoutDef? = cache[id]
+
+    fun getCachedAvailableLayouts(): List<LayoutItemMeta>? = cachedAvailableLayouts
 
     fun getLayout(id: String): KeyboardLayoutDef {
         cache[id]?.let { return it }
@@ -80,6 +93,7 @@ class LayoutRepository private constructor(private val context: Context) {
     }
 
     fun getAvailableLayouts(): List<LayoutItemMeta> {
+        cachedAvailableLayouts?.let { return it }
         val result = mutableListOf<LayoutItemMeta>()
         val seenIds = mutableSetOf<String>()
 
@@ -148,6 +162,7 @@ class LayoutRepository private constructor(private val context: Context) {
             }
         } catch (_: Exception) {}
 
+        cachedAvailableLayouts = result
         return result
     }
 
@@ -161,6 +176,7 @@ class LayoutRepository private constructor(private val context: Context) {
             cache[layout.id] = layout
             layout.effectiveSymbolsLayout()?.let { cache[it.id] = it }
             layout.effectiveMoreSymbolsLayout()?.let { cache[it.id] = it }
+            cachedAvailableLayouts = null
             layout
         }
     }
@@ -172,6 +188,7 @@ class LayoutRepository private constructor(private val context: Context) {
             val removed = cache.remove(id)
             removed?.effectiveSymbolsLayout()?.let { cache.remove(it.id) }
             removed?.effectiveMoreSymbolsLayout()?.let { cache.remove(it.id) }
+            cachedAvailableLayouts = null
         }
         return deleted
     }

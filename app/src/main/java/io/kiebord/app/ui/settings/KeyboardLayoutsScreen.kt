@@ -9,16 +9,18 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,22 +28,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Backspace
+import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,27 +57,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.automirrored.outlined.Backspace
-import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.layout.fillMaxHeight
 import io.kiebord.common.model.KeyRow
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
+import io.kiebord.data.layout.LayoutItemMeta
 import io.kiebord.data.layout.LayoutRepository
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private data class LayoutCardData(
     val id: String,
@@ -137,7 +152,12 @@ fun KeyboardLayoutsScreen(
         )
     }
 
-    val arabicLayout = remember(reloadTrigger) { layoutRepo.getLayout(KiebordPreferences.LAYOUT_AR_ARABIC) }
+    var arabicLayout by remember {
+        mutableStateOf(
+            layoutRepo.getCachedLayout(KiebordPreferences.LAYOUT_AR_ARABIC)
+                ?: PredefinedLayouts.fromId(KiebordPreferences.LAYOUT_AR_ARABIC)
+        )
+    }
     val arabicCard = remember(arabicLayout) {
         LayoutCardData(
             id = KiebordPreferences.LAYOUT_AR_ARABIC,
@@ -148,19 +168,38 @@ fun KeyboardLayoutsScreen(
         )
     }
 
-    val availableMeta = remember(reloadTrigger) { layoutRepo.getAvailableLayouts() }
-    val customMeta = remember(availableMeta) { availableMeta.filter { it.isCustom } }
-    val customCards = remember(customMeta, reloadTrigger) {
-        customMeta.map { meta ->
-            val def = layoutRepo.getLayout(meta.id)
-            LayoutCardData(
-                id = meta.id,
-                name = meta.displayName ?: meta.name,
-                badge = meta.language.uppercase(),
-                description = "Custom imported layout",
-                layoutDef = def
-            )
+    var availableMeta by remember {
+        mutableStateOf(layoutRepo.getCachedAvailableLayouts() ?: emptyList())
+    }
+
+    LaunchedEffect(reloadTrigger) {
+        val loadedArabic = withContext(Dispatchers.IO) {
+            layoutRepo.getLayout(KiebordPreferences.LAYOUT_AR_ARABIC)
         }
+        val loadedMeta = withContext(Dispatchers.IO) {
+            layoutRepo.getAvailableLayouts()
+        }
+        arabicLayout = loadedArabic
+        availableMeta = loadedMeta
+    }
+
+    val customMeta = remember(availableMeta) { availableMeta.filter { it.isCustom } }
+    var customCards by remember { mutableStateOf<List<LayoutCardData>>(emptyList()) }
+
+    LaunchedEffect(customMeta, reloadTrigger) {
+        val cards = withContext(Dispatchers.IO) {
+            customMeta.map { meta ->
+                val def = layoutRepo.getLayout(meta.id)
+                LayoutCardData(
+                    id = meta.id,
+                    name = meta.displayName ?: meta.name,
+                    badge = meta.language.uppercase(),
+                    description = "Custom imported layout",
+                    layoutDef = def
+                )
+            }
+        }
+        customCards = cards
     }
 
     val isEnglishEnabled = preferences.enabledLayoutIds.contains(englishCard.id)
@@ -329,13 +368,15 @@ fun KeyboardLayoutsScreen(
                                 .padding(bottom = 18.dp, top = 2.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(horizontal = 16.dp),
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                banglaCards.forEach { cardData ->
+                                items(
+                                    items = banglaCards,
+                                    key = { it.id }
+                                ) { cardData ->
                                     val isEnabled = preferences.enabledLayoutIds.contains(cardData.id)
                                     val isLastRemaining = preferences.enabledLayoutIds.size == 1 && isEnabled
 
@@ -567,13 +608,15 @@ fun KeyboardLayoutsScreen(
                                     .padding(bottom = 18.dp, top = 2.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .horizontalScroll(rememberScrollState())
-                                        .padding(horizontal = 16.dp),
+                                LazyRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
                                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    customCards.forEach { cardData ->
+                                    items(
+                                        items = customCards,
+                                        key = { it.id }
+                                    ) { cardData ->
                                         val isEnabled = preferences.enabledLayoutIds.contains(cardData.id)
                                         val hasExtraRows = cardData.layoutDef.extraRows.isNotEmpty()
                                         val isCardSettingsOpen = selectedCustomSettingsId == cardData.id
@@ -887,94 +930,142 @@ private fun KeyboardMiniPreview(
         enabledExtra + layout.rows
     }
 
-    Column(
+    val context = LocalContext.current
+    val typeface = remember(context) {
+        androidx.core.content.res.ResourcesCompat.getFont(context, io.kiebord.core.theme.R.font.keyboard_font)
+            ?: android.graphics.Typeface.DEFAULT
+    }
+
+    val textPaint = remember(typeface) {
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            textAlign = android.graphics.Paint.Align.CENTER
+            this.typeface = typeface
+        }
+    }
+
+    val shiftPainter = painterResource(io.kiebord.feature.ime.R.drawable.ic_shift)
+    val deletePainter = rememberVectorPainter(Icons.AutoMirrored.Outlined.Backspace)
+    val actionPainter = rememberVectorPainter(Icons.AutoMirrored.Outlined.KeyboardReturn)
+    val languagePainter = rememberVectorPainter(Icons.Outlined.Language)
+
+    Canvas(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 6.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+            .padding(horizontal = 6.dp, vertical = 8.dp)
     ) {
-        allRows.forEach { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (row.startPaddingWeight > 0f) {
-                    Spacer(modifier = Modifier.weight(row.startPaddingWeight))
-                }
-                row.keys.forEach { key ->
-                    val isComma = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
-                    val isPill = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
-                    val bg = when {
-                        key.type == KeyType.ACTION -> colorScheme.accentColor
-                        key.type == KeyType.SYMBOLS || isComma -> colorScheme.actionKeyBackground
-                        key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> colorScheme.keyBackground
-                        key.type == KeyType.SHIFT || key.type == KeyType.DELETE -> colorScheme.actionKeyBackground
-                        showKeyBorders -> colorScheme.keyBackground
-                        else -> colorScheme.containerBackground
-                    }
-                    val fg = when {
-                        key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
-                        else -> colorScheme.keyForeground
-                    }
-                    val shape = if (isPill) RoundedCornerShape(percent = 50) else RoundedCornerShape(3.dp)
+        val totalWidth = size.width
+        val totalHeight = size.height
+        val numRows = allRows.size
+        if (numRows == 0 || totalWidth <= 0f || totalHeight <= 0f) return@Canvas
 
-                    Box(
-                        modifier = Modifier
-                            .weight(key.widthWeight)
-                            .fillMaxHeight()
-                            .clip(shape)
-                            .background(bg),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (key.type == KeyType.CHARACTER || key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS) {
-                            val label = if (key.type == KeyType.SPACE) "" else key.label
-                            if (label.isNotEmpty()) {
-                                Text(
-                                    text = label,
-                                    color = fg,
-                                    fontSize = if (label.length > 2) 6.sp else 8.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                            }
-                        } else if (key.type == KeyType.SHIFT) {
-                            Icon(
-                                painter = painterResource(io.kiebord.feature.ime.R.drawable.ic_shift),
-                                contentDescription = null,
-                                tint = fg,
-                                modifier = Modifier.size(9.5.dp)
-                            )
-                        } else if (key.type == KeyType.DELETE) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.Backspace,
-                                contentDescription = null,
-                                tint = fg,
-                                modifier = Modifier.size(9.dp)
-                            )
-                        } else if (key.type == KeyType.ACTION) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
-                                contentDescription = null,
-                                tint = fg,
-                                modifier = Modifier.size(9.dp)
-                            )
-                        } else if (key.type == KeyType.SWITCH_LANGUAGE) {
-                            Icon(
-                                imageVector = Icons.Outlined.Language,
-                                contentDescription = null,
-                                tint = fg,
-                                modifier = Modifier.size(9.dp)
-                            )
+        val rowSpacingPx = 3.dp.toPx()
+        val keySpacingPx = 2.dp.toPx()
+        val cornerRadiusPx = 3.dp.toPx()
+
+        val totalRowSpacing = (numRows - 1) * rowSpacingPx
+        val rowHeight = ((totalHeight - totalRowSpacing) / numRows).coerceAtLeast(0f)
+
+        for ((rowIndex, row) in allRows.withIndex()) {
+            val rowY = rowIndex * (rowHeight + rowSpacingPx)
+            val hasStartPadding = row.startPaddingWeight > 0f
+            val hasEndPadding = row.endPaddingWeight > 0f
+            val totalItemCount = (if (hasStartPadding) 1 else 0) + row.keys.size + (if (hasEndPadding) 1 else 0)
+            val totalSpacing = if (totalItemCount > 1) (totalItemCount - 1) * keySpacingPx else 0f
+            val availableKeySpace = (totalWidth - totalSpacing).coerceAtLeast(0f)
+
+            val totalWeight = (if (hasStartPadding) row.startPaddingWeight else 0f) +
+                    (if (hasEndPadding) row.endPaddingWeight else 0f) +
+                    row.keys.sumOf { it.widthWeight.toDouble() }.toFloat()
+
+            var currentX = 0f
+            if (hasStartPadding && totalWeight > 0f) {
+                val startPadWidth = (row.startPaddingWeight / totalWeight) * availableKeySpace
+                currentX += startPadWidth + keySpacingPx
+            }
+
+            for (key in row.keys) {
+                val keyWidth = if (totalWeight > 0f) {
+                    (key.widthWeight / totalWeight) * availableKeySpace
+                } else 0f
+
+                val isComma = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
+                val isPill = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
+                val bg = when {
+                    key.type == KeyType.ACTION -> colorScheme.accentColor
+                    key.type == KeyType.SYMBOLS || isComma -> colorScheme.actionKeyBackground
+                    key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> colorScheme.keyBackground
+                    key.type == KeyType.SHIFT || key.type == KeyType.DELETE -> colorScheme.actionKeyBackground
+                    showKeyBorders -> colorScheme.keyBackground
+                    else -> colorScheme.containerBackground
+                }
+                val fg = when {
+                    key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
+                    else -> colorScheme.keyForeground
+                }
+
+                val keyCornerRadius = if (isPill) {
+                    CornerRadius(rowHeight / 2f, rowHeight / 2f)
+                } else {
+                    CornerRadius(cornerRadiusPx, cornerRadiusPx)
+                }
+
+                drawRoundRect(
+                    color = bg,
+                    topLeft = Offset(currentX, rowY),
+                    size = Size(keyWidth, rowHeight),
+                    cornerRadius = keyCornerRadius
+                )
+
+                if (key.type == KeyType.CHARACTER || key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS) {
+                    val label = if (key.type == KeyType.SPACE) "" else key.label
+                    if (label.isNotEmpty()) {
+                        textPaint.textSize = (if (label.length > 2) 6.sp else 8.sp).toPx()
+                        textPaint.color = fg.toArgb()
+                        val fontMetrics = textPaint.fontMetrics
+                        val baselineY = rowY + (rowHeight - fontMetrics.ascent - fontMetrics.descent) / 2f
+                        val centerX = currentX + keyWidth / 2f
+                        drawContext.canvas.nativeCanvas.drawText(label, centerX, baselineY, textPaint)
+                    }
+                } else if (key.type == KeyType.SHIFT) {
+                    val iconSize = 9.5.dp.toPx()
+                    val iconLeft = currentX + (keyWidth - iconSize) / 2f
+                    val iconTop = rowY + (rowHeight - iconSize) / 2f
+                    translate(left = iconLeft, top = iconTop) {
+                        with(shiftPainter) {
+                            draw(size = Size(iconSize, iconSize), colorFilter = ColorFilter.tint(fg))
+                        }
+                    }
+                } else if (key.type == KeyType.DELETE) {
+                    val iconSize = 9.dp.toPx()
+                    val iconLeft = currentX + (keyWidth - iconSize) / 2f
+                    val iconTop = rowY + (rowHeight - iconSize) / 2f
+                    translate(left = iconLeft, top = iconTop) {
+                        with(deletePainter) {
+                            draw(size = Size(iconSize, iconSize), colorFilter = ColorFilter.tint(fg))
+                        }
+                    }
+                } else if (key.type == KeyType.ACTION) {
+                    val iconSize = 9.dp.toPx()
+                    val iconLeft = currentX + (keyWidth - iconSize) / 2f
+                    val iconTop = rowY + (rowHeight - iconSize) / 2f
+                    translate(left = iconLeft, top = iconTop) {
+                        with(actionPainter) {
+                            draw(size = Size(iconSize, iconSize), colorFilter = ColorFilter.tint(fg))
+                        }
+                    }
+                } else if (key.type == KeyType.SWITCH_LANGUAGE) {
+                    val iconSize = 9.dp.toPx()
+                    val iconLeft = currentX + (keyWidth - iconSize) / 2f
+                    val iconTop = rowY + (rowHeight - iconSize) / 2f
+                    translate(left = iconLeft, top = iconTop) {
+                        with(languagePainter) {
+                            draw(size = Size(iconSize, iconSize), colorFilter = ColorFilter.tint(fg))
                         }
                     }
                 }
-                if (row.endPaddingWeight > 0f) {
-                    Spacer(modifier = Modifier.weight(row.endPaddingWeight))
-                }
+
+                currentX += keyWidth + keySpacingPx
             }
         }
     }

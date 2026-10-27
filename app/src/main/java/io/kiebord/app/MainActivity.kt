@@ -68,11 +68,14 @@ import io.kiebord.app.ui.settings.SettingsUnifiedTopBar
 import io.kiebord.app.ui.settings.VoiceTypingScreen
 import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.data.dictionary.UserDictionaryRepository
+import io.kiebord.data.layout.LayoutRepository
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.data.prefs.KiebordPreferencesRepository
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 
 class MainActivity : ComponentActivity() {
 
@@ -84,6 +87,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        lifecycleScope.launch(Dispatchers.IO) {
+            LayoutRepository.getInstance(applicationContext).preload()
+        }
         requestedNavigationTarget = intent?.getStringExtra("navigate_to")
             ?: if (intent?.action == "io.kiebord.action.THEMES") "themes" else null
         preferencesRepo = KiebordPreferencesRepository.getInstance(this)
