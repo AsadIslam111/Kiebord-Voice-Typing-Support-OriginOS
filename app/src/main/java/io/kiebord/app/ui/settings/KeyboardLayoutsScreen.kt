@@ -169,6 +169,8 @@ fun KeyboardLayoutsScreen(
     var isEnglishExpanded by remember { mutableStateOf(isEnglishEnabled) }
     var isBanglaExpanded by remember { mutableStateOf(isAnyBanglaEnabled) }
     var isArabicExpanded by remember { mutableStateOf(isArabicEnabled) }
+    var isArabicOptionsOpen by remember { mutableStateOf(false) }
+    var selectedCustomSettingsId by remember { mutableStateOf<String?>(null) }
     var isCustomExpanded by remember { mutableStateOf(customCards.any { preferences.enabledLayoutIds.contains(it.id) }) }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -411,20 +413,25 @@ fun KeyboardLayoutsScreen(
                                 isEnabled = isArabicEnabled,
                                 onToggle = {
                                     onToggleLayoutEnabled(arabicCard.id, !isArabicEnabled)
-                                }
+                                },
+                                onOpenSettings = { isArabicOptionsOpen = !isArabicOptionsOpen },
+                                isSettingsOpen = isArabicOptionsOpen
                             )
 
                             // Dynamic Extra Rows options
                             if (arabicCard.layoutDef.extraRows.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { isArabicOptionsOpen = !isArabicOptionsOpen }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
                                         imageVector = Icons.Outlined.Settings,
                                         contentDescription = "Options",
-                                        tint = colors.textSecondary,
+                                        tint = if (isArabicOptionsOpen) colors.accent else colors.textSecondary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -432,49 +439,73 @@ fun KeyboardLayoutsScreen(
                                         text = "Layout Options",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = colors.textSecondary
+                                        color = if (isArabicOptionsOpen) colors.accent else colors.textSecondary
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    val chevronRotation by animateFloatAsState(
+                                        targetValue = if (isArabicOptionsOpen) 90f else 0f,
+                                        label = "ArabicChevronRotation"
+                                    )
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = if (isArabicOptionsOpen) colors.accent else colors.textSecondary,
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .graphicsLayer { rotationZ = chevronRotation }
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(8.dp))
 
-                                for (extraRow in arabicCard.layoutDef.extraRows) {
-                                    val isRowEnabled = preferences.isExtraRowEnabled(
-                                        arabicCard.id,
-                                        extraRow.id,
-                                        extraRow.defaultEnabled
-                                    )
-                                    Row(
+                                AnimatedVisibility(
+                                    visible = isArabicOptionsOpen,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(colors.cardBackground.copy(alpha = 0.5f))
-                                            .border(1.dp, colors.cardBorder, RoundedCornerShape(10.dp))
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                            .padding(top = 8.dp)
                                     ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = extraRow.title,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = colors.textPrimary
+                                        for (extraRow in arabicCard.layoutDef.extraRows) {
+                                            val isRowEnabled = preferences.isExtraRowEnabled(
+                                                arabicCard.id,
+                                                extraRow.id,
+                                                extraRow.defaultEnabled
                                             )
-                                            Text(
-                                                text = "Show extra diacritics row above keyboard",
-                                                fontSize = 11.sp,
-                                                color = colors.textSecondary
-                                            )
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(10.dp))
+                                                    .background(colors.cardBackground.copy(alpha = 0.5f))
+                                                    .border(1.dp, colors.cardBorder, RoundedCornerShape(10.dp))
+                                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = extraRow.title,
+                                                        fontSize = 13.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        color = colors.textPrimary
+                                                    )
+                                                    Text(
+                                                        text = "Show extra diacritics row above keyboard",
+                                                        fontSize = 11.sp,
+                                                        color = colors.textSecondary
+                                                    )
+                                                }
+                                                Switch(
+                                                    checked = isRowEnabled,
+                                                    onCheckedChange = { checked ->
+                                                        onToggleExtraRow(arabicCard.id, extraRow.id, checked)
+                                                    },
+                                                    colors = SwitchDefaults.colors(
+                                                        checkedThumbColor = Color.White,
+                                                        checkedTrackColor = colors.accent
+                                                    )
+                                                )
+                                            }
                                         }
-                                        Switch(
-                                            checked = isRowEnabled,
-                                            onCheckedChange = { checked ->
-                                                onToggleExtraRow(arabicCard.id, extraRow.id, checked)
-                                            },
-                                            colors = SwitchDefaults.colors(
-                                                checkedThumbColor = Color.White,
-                                                checkedTrackColor = colors.accent
-                                            )
-                                        )
                                     }
                                 }
                             }
@@ -544,6 +575,8 @@ fun KeyboardLayoutsScreen(
                                 ) {
                                     customCards.forEach { cardData ->
                                         val isEnabled = preferences.enabledLayoutIds.contains(cardData.id)
+                                        val hasExtraRows = cardData.layoutDef.extraRows.isNotEmpty()
+                                        val isCardSettingsOpen = selectedCustomSettingsId == cardData.id
 
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             KeyboardLayoutPreviewItem(
@@ -552,24 +585,127 @@ fun KeyboardLayoutsScreen(
                                                 isEnabled = isEnabled,
                                                 onToggle = {
                                                     onToggleLayoutEnabled(cardData.id, !isEnabled)
-                                                }
-                                            )
-                                            IconButton(
-                                                onClick = {
-                                                    layoutRepo.deleteCustomLayout(cardData.id)
-                                                    onToggleLayoutEnabled(cardData.id, false)
-                                                    reloadTrigger++
-                                                    Toast.makeText(context, "Deleted ${cardData.name}", Toast.LENGTH_SHORT).show()
                                                 },
-                                                modifier = Modifier.size(28.dp)
+                                                onOpenSettings = if (hasExtraRows) {
+                                                    {
+                                                        selectedCustomSettingsId = if (selectedCustomSettingsId == cardData.id) null else cardData.id
+                                                    }
+                                                } else null,
+                                                isSettingsOpen = isCardSettingsOpen
+                                            )
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Icon(
-                                                    imageVector = Icons.Outlined.Delete,
-                                                    contentDescription = "Delete",
-                                                    tint = colors.textSecondary,
-                                                    modifier = Modifier.size(16.dp)
+                                                if (hasExtraRows) {
+                                                    IconButton(
+                                                        onClick = {
+                                                            selectedCustomSettingsId = if (selectedCustomSettingsId == cardData.id) null else cardData.id
+                                                        },
+                                                        modifier = Modifier.size(28.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Outlined.Settings,
+                                                            contentDescription = "Options",
+                                                            tint = if (isCardSettingsOpen) colors.accent else colors.textSecondary,
+                                                            modifier = Modifier.size(16.dp)
+                                                        )
+                                                    }
+                                                }
+                                                IconButton(
+                                                    onClick = {
+                                                        layoutRepo.deleteCustomLayout(cardData.id)
+                                                        onToggleLayoutEnabled(cardData.id, false)
+                                                        reloadTrigger++
+                                                        Toast.makeText(context, "Deleted ${cardData.name}", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    modifier = Modifier.size(28.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Outlined.Delete,
+                                                        contentDescription = "Delete",
+                                                        tint = colors.textSecondary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            val activeCustomSettingsCard = customCards.find { it.id == selectedCustomSettingsId }
+                            AnimatedVisibility(
+                                visible = activeCustomSettingsCard != null && activeCustomSettingsCard.layoutDef.extraRows.isNotEmpty(),
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                if (activeCustomSettingsCard != null) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 16.dp, end = 16.dp, bottom = 18.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Settings,
+                                                contentDescription = "Options",
+                                                tint = colors.accent,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "${activeCustomSettingsCard.name} Options",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = colors.accent
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        for (extraRow in activeCustomSettingsCard.layoutDef.extraRows) {
+                                            val isRowEnabled = preferences.isExtraRowEnabled(
+                                                activeCustomSettingsCard.id,
+                                                extraRow.id,
+                                                extraRow.defaultEnabled
+                                            )
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(10.dp))
+                                                    .background(colors.cardBackground.copy(alpha = 0.5f))
+                                                    .border(1.dp, colors.cardBorder, RoundedCornerShape(10.dp))
+                                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = extraRow.title,
+                                                        fontSize = 13.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        color = colors.textPrimary
+                                                    )
+                                                    Text(
+                                                        text = "Show optional extra row above keyboard",
+                                                        fontSize = 11.sp,
+                                                        color = colors.textSecondary
+                                                    )
+                                                }
+                                                Switch(
+                                                    checked = isRowEnabled,
+                                                    onCheckedChange = { checked ->
+                                                        onToggleExtraRow(activeCustomSettingsCard.id, extraRow.id, checked)
+                                                    },
+                                                    colors = SwitchDefaults.colors(
+                                                        checkedThumbColor = Color.White,
+                                                        checkedTrackColor = colors.accent
+                                                    )
                                                 )
                                             }
+                                            Spacer(modifier = Modifier.height(6.dp))
                                         }
                                     }
                                 }
@@ -637,7 +773,9 @@ private fun KeyboardLayoutPreviewItem(
     preferences: KiebordPreferences,
     isEnabled: Boolean,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenSettings: (() -> Unit)? = null,
+    isSettingsOpen: Boolean = false
 ) {
     val colors = LocalSettingsColors.current
     val currentScheme = when (preferences.theme) {
@@ -690,6 +828,30 @@ private fun KeyboardLayoutPreviewItem(
                         onClick = onToggle
                     )
             )
+
+            if (cardData.layoutDef.extraRows.isNotEmpty() && onOpenSettings != null) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(if (isSettingsOpen) colors.accent else currentScheme.keyBackground.copy(alpha = 0.9f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onOpenSettings
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Settings,
+                        contentDescription = "Options",
+                        tint = if (isSettingsOpen) Color.White else colors.textPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))

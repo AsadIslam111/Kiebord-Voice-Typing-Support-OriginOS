@@ -498,6 +498,7 @@ class PredefinedLayoutsTest {
         assertEquals(4, arabic.rows.size)
         assertEquals(1, arabic.extraRows.size)
         assertEquals("harakat", arabic.extraRows[0].id)
+        org.junit.Assert.assertFalse(arabic.extraRows[0].defaultEnabled)
         assertNotNull(arabic.numberRow)
 
         // Symbols (?123) and More Symbols (=\<) have 4 core rows and matching extra row for Harakat (Quranic marks)

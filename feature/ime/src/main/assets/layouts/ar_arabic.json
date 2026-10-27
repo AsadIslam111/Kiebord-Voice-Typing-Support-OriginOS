@@ -8,7 +8,7 @@
     {
       "id": "harakat",
       "title": "Harakat row (حركات)",
-      "defaultEnabled": true,
+      "defaultEnabled": false,
       "keys": [
         {
           "label": "ـَ",
@@ -476,7 +476,7 @@
       {
         "id": "harakat",
         "title": "Quranic symbols (علامات الوقف)",
-        "defaultEnabled": true,
+        "defaultEnabled": false,
         "keys": [
           {
             "label": "ۖ"
@@ -784,7 +784,7 @@
       {
         "id": "harakat",
         "title": "Quranic symbols (علامات الوقف)",
-        "defaultEnabled": true,
+        "defaultEnabled": false,
         "keys": [
           {
             "label": "ۖ"

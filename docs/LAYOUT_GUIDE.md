@@ -212,7 +212,7 @@ To provide an optional extra row (such as the Harakat row in Arabic or an accent
     {
       "id": "harakat",
       "title": "Harakat row (حركات)",
-      "defaultEnabled": true,
+      "defaultEnabled": false,
       "keys": [
         { "label": "ـَ", "commitText": "\u064E" },
         { "label": "ـً", "commitText": "\u064B" },
