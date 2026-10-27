@@ -56,10 +56,16 @@ data class KiebordPreferences(
     val pinnedTools: List<String> = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"),
     val drawerTools: List<String> = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE"),
 
+    // Voice Typing
+    val voiceTypingEnabled: Boolean = true,
+    val voiceTypingProvider: String = VOICE_PROVIDER_GOOGLE,
+
     // Onboarding / Setup status
     val setupCompleted: Boolean = false
 ) {
     companion object {
+        const val VOICE_PROVIDER_GOOGLE = "google"
+
         const val THEME_DEFAULT_DARK = "default_dark"
         const val THEME_AMOLED_BLACK = "amoled_black"
         const val THEME_TOKYO_NIGHT = "tokyo_night"

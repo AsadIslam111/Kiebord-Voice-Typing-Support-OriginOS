@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Spellcheck
@@ -227,8 +228,15 @@ fun SettingsMainScreen(
             SettingsNavigationItem(
                 title = "Clipboard",
                 icon = Icons.Outlined.ContentPaste,
-                position = GroupPosition.BOTTOM,
+                position = GroupPosition.MIDDLE,
                 onClick = { onNavigate(SettingsScreen.Clipboard) }
+            )
+
+            SettingsNavigationItem(
+                title = "Voice Typing",
+                icon = Icons.Outlined.Mic,
+                position = GroupPosition.BOTTOM,
+                onClick = { onNavigate(SettingsScreen.VoiceTyping) }
             )
         }
 

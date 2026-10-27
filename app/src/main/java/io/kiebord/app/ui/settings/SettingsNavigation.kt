@@ -10,6 +10,7 @@ sealed class SettingsScreen {
     data object Preferences : SettingsScreen()
     data object CorrectionsSuggestions : SettingsScreen()
     data object Clipboard : SettingsScreen()
+    data object VoiceTyping : SettingsScreen()
     data object About : SettingsScreen()
     data object Onboarding : SettingsScreen()
 }

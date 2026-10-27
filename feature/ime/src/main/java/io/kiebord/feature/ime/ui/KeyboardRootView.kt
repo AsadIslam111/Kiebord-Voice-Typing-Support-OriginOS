@@ -1,8 +1,14 @@
 package io.kiebord.feature.ime.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -61,7 +67,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import io.kiebord.feature.ime.voice.VoiceInputState
 import android.os.SystemClock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -179,6 +187,10 @@ fun KeyboardRootView(
     cursorTrackpadEnabled: Boolean = true,
     inputSessionId: Int = 0,
     vibrationEnabled: Boolean = true,
+    voiceInputState: VoiceInputState = VoiceInputState.Idle,
+    onStartVoiceTyping: () -> Unit = {},
+    onDismissVoiceTyping: () -> Unit = {},
+    voiceTypingEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -374,6 +386,9 @@ fun KeyboardRootView(
     var emojiSearchQuery by remember { mutableStateOf("") }
 
     val handleKeyTapUnified: (KeyDef) -> Unit = { key ->
+        if (voiceInputState is VoiceInputState.Listening) {
+            onDismissVoiceTyping()
+        }
         if (isEmojiSearchOpen) {
             when (key.type) {
                 KeyType.CHARACTER -> {
@@ -907,8 +922,18 @@ fun KeyboardRootView(
                         else -> suggestions
                     }
 
-                    // 2. Main content: Suggestion Strip OR Quick Paste/Undo Pill OR Toolbar Options
-                    if (displayedSuggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
+                    // 2. Main content: Voice Typing Status OR Suggestion Strip OR Quick Paste/Undo Pill OR Toolbar Options
+                    if (voiceInputState is VoiceInputState.Listening) {
+                        VoiceTypingCenterBar(
+                            statusText = voiceInputState.statusText,
+                            scaleFactor = scaleFactor,
+                            colorScheme = colorScheme,
+                            onClick = onDismissVoiceTyping,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    } else if (displayedSuggestions.isNotEmpty() && !isToolbarOptionsVisible && !isToolsDrawerOpen) {
                         SuggestionStripView(
                             candidates = displayedSuggestions,
                             onCandidateClick = { candidate ->
@@ -1095,6 +1120,52 @@ fun KeyboardRootView(
                                 .fillMaxHeight()
                         )
                     }
+
+                    // 3. Right edge key: Voice key with filled mic icon
+                    if (voiceTypingEnabled) {
+                        val isVoiceActive = voiceInputState is VoiceInputState.Listening
+                        val micButtonSize = (32 * scaleFactor).coerceAtLeast(24f).dp
+                        val micIconSize = (22 * scaleFactor).coerceAtLeast(17f).dp
+
+                        val infiniteTransition = rememberInfiniteTransition(label = "VoicePulse")
+                        val activeAlpha by if (isVoiceActive) {
+                            infiniteTransition.animateFloat(
+                                initialValue = 0.55f,
+                                targetValue = 1.0f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(650, easing = LinearEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "VoicePulseAlpha"
+                            )
+                        } else {
+                            rememberUpdatedState(1.0f)
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(micButtonSize)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isVoiceActive) colorScheme.accentColor.copy(alpha = activeAlpha) else colorScheme.keyBackground
+                                )
+                                .clickable {
+                                    if (isVoiceActive) {
+                                        onDismissVoiceTyping()
+                                    } else {
+                                        onStartVoiceTyping()
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_mic),
+                                contentDescription = if (isVoiceActive) "Stop Voice Typing" else "Start Voice Typing",
+                                tint = if (isVoiceActive) Color.White else colorScheme.keyForeground,
+                                modifier = Modifier.size(micIconSize)
+                            )
+                        }
+                    }
                 }
 
                 // Main content area below the top bar (height = keyboardContentHeight)
@@ -1108,6 +1179,9 @@ fun KeyboardRootView(
                     var keyboardColumnCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
                     val handleKeyPress: (KeyDef) -> Unit = { keyDef ->
+                        if (voiceInputState is VoiceInputState.Listening) {
+                            onDismissVoiceTyping()
+                        }
                         if (moreKeysState != null) {
                             moreKeysState = null
                         }
@@ -2449,6 +2523,95 @@ fun UnlearnWordConfirmationDialog(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun VoiceTypingCenterBar(
+    statusText: String,
+    scaleFactor: Float,
+    colorScheme: KeyboardColorScheme,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "VoiceDots")
+    val dotScale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(650, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "DotScale"
+    )
+
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        // Fixed-width indicator container so pulsating dots never shift the text
+        Box(
+            modifier = Modifier.width((30 * scaleFactor).dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy((4 * scaleFactor).dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size((6 * scaleFactor).dp)
+                        .graphicsLayer {
+                            scaleX = dotScale
+                            scaleY = dotScale
+                        }
+                        .clip(CircleShape)
+                        .background(colorScheme.accentColor)
+                )
+                Box(
+                    modifier = Modifier
+                        .size((8 * scaleFactor).dp)
+                        .graphicsLayer {
+                            val s = 2.05f - dotScale
+                            scaleX = s
+                            scaleY = s
+                        }
+                        .clip(CircleShape)
+                        .background(colorScheme.accentColor)
+                )
+                Box(
+                    modifier = Modifier
+                        .size((6 * scaleFactor).dp)
+                        .graphicsLayer {
+                            scaleX = dotScale
+                            scaleY = dotScale
+                        }
+                        .clip(CircleShape)
+                        .background(colorScheme.accentColor)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width((8 * scaleFactor).dp))
+
+        // Stable text container so text start position remains identical
+        Box(
+            modifier = Modifier.widthIn(min = (100 * scaleFactor).dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = statusText,
+                color = colorScheme.accentColor,
+                fontSize = (15 * scaleFactor).coerceIn(12f, 17f).sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

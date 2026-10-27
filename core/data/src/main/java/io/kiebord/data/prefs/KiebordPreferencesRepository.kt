@@ -64,6 +64,8 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
         val PINNED_TOOLS = stringPreferencesKey("pref_pinned_tools")
         val DRAWER_TOOLS = stringPreferencesKey("pref_drawer_tools")
+        val VOICE_TYPING_ENABLED = booleanPreferencesKey("pref_voice_typing_enabled")
+        val VOICE_TYPING_PROVIDER = stringPreferencesKey("pref_voice_typing_provider")
         val SETUP_COMPLETED = booleanPreferencesKey("pref_setup_completed")
     }
 
@@ -148,6 +150,8 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                     (rawDrawer.filter { it !in pinnedSet } +
                         allActionNames.filter { it !in pinnedSet }).distinct()
                 },
+                voiceTypingEnabled = prefs[PreferencesKeys.VOICE_TYPING_ENABLED] ?: true,
+                voiceTypingProvider = prefs[PreferencesKeys.VOICE_TYPING_PROVIDER] ?: KiebordPreferences.VOICE_PROVIDER_GOOGLE,
                 setupCompleted = prefs[PreferencesKeys.SETUP_COMPLETED] ?: false
             )
         }
@@ -350,6 +354,14 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
             it[PreferencesKeys.PINNED_TOOLS] = sanitizedPinned.joinToString(",")
             it[PreferencesKeys.DRAWER_TOOLS] = sanitizedDrawer.joinToString(",")
         }
+    }
+
+    suspend fun updateVoiceTypingEnabled(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.VOICE_TYPING_ENABLED] = enabled }
+    }
+
+    suspend fun updateVoiceTypingProvider(provider: String) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.VOICE_TYPING_PROVIDER] = provider }
     }
 
     suspend fun updateSetupCompleted(completed: Boolean) {

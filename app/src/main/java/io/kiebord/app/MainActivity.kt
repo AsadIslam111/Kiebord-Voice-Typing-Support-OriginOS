@@ -65,6 +65,7 @@ import io.kiebord.app.ui.settings.PreferencesScreen
 import io.kiebord.app.ui.settings.SettingsMainScreen
 import io.kiebord.app.ui.settings.SettingsScreen
 import io.kiebord.app.ui.settings.SettingsUnifiedTopBar
+import io.kiebord.app.ui.settings.VoiceTypingScreen
 import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.data.dictionary.UserDictionaryRepository
 import io.kiebord.data.prefs.KiebordPreferences
@@ -470,6 +471,18 @@ fun KiebordSettingsApp(
                         ClipboardSettingsScreen(
                             clipboardManager = SandboxedClipboardManager.getInstance(context),
                             onBack = navigateBack
+                        )
+                    }
+
+                    is SettingsScreen.VoiceTyping -> {
+                        VoiceTypingScreen(
+                            preferences = preferences,
+                            onUpdateVoiceTypingEnabled = { enabled ->
+                                scope.launch { preferencesRepo.updateVoiceTypingEnabled(enabled) }
+                            },
+                            onUpdateVoiceTypingProvider = { provider ->
+                                scope.launch { preferencesRepo.updateVoiceTypingProvider(provider) }
+                            }
                         )
                     }
 

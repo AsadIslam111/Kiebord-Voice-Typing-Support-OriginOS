@@ -20,6 +20,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +52,7 @@ import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
 import io.kiebord.feature.ime.ui.textedit.TextAction
 import io.kiebord.feature.ime.ui.toolbar.ToolbarAction
+import io.kiebord.feature.ime.voice.VoiceInputManager
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
 import kotlinx.coroutines.CoroutineScope
@@ -65,6 +67,7 @@ class KiebordService : InputMethodService() {
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private lateinit var preferencesRepo: KiebordPreferencesRepository
     private var preferencesState by mutableStateOf(KiebordPreferences())
+    private lateinit var voiceInputManager: VoiceInputManager
 
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
     private var transliterationManager: TransliterationManager =
@@ -127,6 +130,20 @@ class KiebordService : InputMethodService() {
         preferencesRepo = KiebordPreferencesRepository.getInstance(this)
         clipboardManager = SandboxedClipboardManager.getInstance(this)
         userDictionaryRepo = UserDictionaryRepository.getInstance(this)
+        voiceInputManager = VoiceInputManager(this).apply {
+            onPartialResult = { text ->
+                currentInputConnection?.setComposingText(text, 1)
+            }
+            onFinalResult = { text ->
+                currentInputConnection?.let { ic ->
+                    ic.commitText("$text ", 1)
+                }
+                updateSuggestions()
+            }
+            onSpeechDismissed = {
+                currentInputConnection?.finishComposingText()
+            }
+        }
         lifecycleOwner.onCreate()
         EmojiFontManager.initEmojiCompat(this)
         NativeEngine.ensureInitialized(this, "en")
@@ -231,6 +248,8 @@ class KiebordService : InputMethodService() {
                 try { ToolbarAction.valueOf(name) } catch (_: Exception) { null }
             }.filter { it !in pinnedSet } + ToolbarAction.values().filter { it !in pinnedSet }).distinct()
 
+            val voiceInputState by voiceInputManager.state.collectAsState()
+
             KiebordTheme(colorScheme = colorScheme) {
                 KeyboardRootView(
                     layout = activeLayout,
@@ -238,6 +257,13 @@ class KiebordService : InputMethodService() {
                     inputSessionId = inputSessionId,
                     navBarBottomInset = navBarBottomDp,
                     vibrationEnabled = preferencesState.vibrateOnKeypress,
+                    voiceInputState = voiceInputState,
+                    onStartVoiceTyping = {
+                        currentInputConnection?.finishComposingText()
+                        voiceInputManager.start(activeLayout.language)
+                    },
+                    onDismissVoiceTyping = { voiceInputManager.stop() },
+                    voiceTypingEnabled = preferencesState.voiceTypingEnabled,
                     onKeyPress = { performKeyFeedback() },
                     onKeyTap = ::handleKeyTap,
                     onKeyLongPress = ::handleKeyLongPress,
@@ -434,6 +460,9 @@ class KiebordService : InputMethodService() {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        if (::voiceInputManager.isInitialized) {
+            voiceInputManager.stop()
+        }
         try {
             (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                 ?.removePrimaryClipChangedListener(clipboardListener)
@@ -451,6 +480,9 @@ class KiebordService : InputMethodService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (::voiceInputManager.isInitialized) {
+            voiceInputManager.destroy()
+        }
         try {
             (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                 ?.removePrimaryClipChangedListener(clipboardListener)
@@ -614,6 +646,9 @@ class KiebordService : InputMethodService() {
     }
 
     private fun handleKeyTap(key: KeyDef) {
+        if (::voiceInputManager.isInitialized && voiceInputManager.isListening) {
+            voiceInputManager.stop()
+        }
         val ic = currentInputConnection ?: return
 
         if (key.type != KeyType.DELETE) {
