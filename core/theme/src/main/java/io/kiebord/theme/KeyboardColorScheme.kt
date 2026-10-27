@@ -46,16 +46,33 @@ data class KeyboardColorScheme(
 
             val isComma = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
             val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || isComma
+            val isPillColoredKey = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SPACE
 
             val defaultBg = when {
                 key.type == KeyType.ACTION -> accentColor
-                key.type == KeyType.SYMBOLS || isComma -> actionKeyBackground
+                key.type == KeyType.SYMBOLS -> actionKeyBackground
                 key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> keyBackground
                 showKeyBorders -> if (isActionOrModifier) actionKeyBackground else keyBackground
                 else -> containerBackground
             }
 
-            val baseBgColor = if (bgHex != null) ThemeColorUtils.parseHexColor(bgHex, defaultBg) else defaultBg
+            val baseBgColor = if (showKeyBorders) {
+                if (bgHex != null) ThemeColorUtils.parseHexColor(bgHex, defaultBg) else defaultBg
+            } else {
+                when {
+                    key.type == KeyType.ACTION -> if (bgHex != null) ThemeColorUtils.parseHexColor(bgHex, accentColor) else accentColor
+                    key.type == KeyType.SPACE -> {
+                        val spaceHex = spec.spaceKey?.background ?: style.background
+                        if (spaceHex != null) ThemeColorUtils.parseHexColor(spaceHex, keyBackground) else keyBackground
+                    }
+                    key.type == KeyType.SYMBOLS -> {
+                        val symHex = style.background
+                        if (symHex != null) ThemeColorUtils.parseHexColor(symHex, actionKeyBackground) else actionKeyBackground
+                    }
+                    else -> containerBackground
+                }
+            }
+
             val activeBgColor = if (isPressed) {
                 when {
                     style.pressedBackground != null -> ThemeColorUtils.parseHexColor(style.pressedBackground)
@@ -87,14 +104,15 @@ data class KeyboardColorScheme(
                 0.dp
             }
 
+            val hasKeyTile = showKeyBorders || isPillColoredKey
             val shadow = style.shadow
-            val shadowColor = if (showKeyShadows && shadow != null && shadow.elevationDp > 0f) {
+            val shadowColor = if (showKeyShadows && hasKeyTile && shadow != null && shadow.elevationDp > 0f) {
                 ThemeColorUtils.parseHexColor(shadow.color, keyShadow)
             } else {
                 Color.Transparent
             }
 
-            val shadowElevation = if (showKeyShadows && shadow != null && shadow.elevationDp > 0f) {
+            val shadowElevation = if (showKeyShadows && hasKeyTile && shadow != null && shadow.elevationDp > 0f) {
                 shadow.elevationDp.dp
             } else {
                 0.dp
@@ -103,7 +121,11 @@ data class KeyboardColorScheme(
             val isPill = style.isPill ?: (key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE))
             val cornerRadius = style.cornerRadiusDp?.dp
 
-            val brush = if (!isPressed) style.gradient?.toBrush(size) else null
+            val brush = if (!isPressed && (showKeyBorders || key.type == KeyType.ACTION || key.type == KeyType.SPACE)) {
+                style.gradient?.toBrush(size)
+            } else {
+                null
+            }
 
             return ResolvedKeyVisual(
                 backgroundColor = activeBgColor,
@@ -122,9 +144,10 @@ data class KeyboardColorScheme(
 
         val isCommaKey = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
         val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || isCommaKey
+        val isPillColoredKey = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SPACE
         val baseBackground = when {
             key.type == KeyType.ACTION -> accentColor
-            key.type == KeyType.SYMBOLS || isCommaKey -> actionKeyBackground
+            key.type == KeyType.SYMBOLS -> actionKeyBackground
             key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> keyBackground
             showKeyBorders -> if (isActionOrModifier) actionKeyBackground else keyBackground
             else -> containerBackground
@@ -149,10 +172,11 @@ data class KeyboardColorScheme(
         }
 
         val isPillShape = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
+        val hasTile = showKeyBorders || isPillColoredKey
         val strokeCol = if (showKeyBorders && keyBorder.alpha > 0.01f) keyBorder else Color.Transparent
         val strokeWidth = if (showKeyBorders && keyBorder.alpha > 0.01f) 0.5.dp else 0.dp
-        val shadowCol = if (showKeyShadows && keyShadow.alpha > 0.01f) keyShadow else Color.Transparent
-        val shadowElevation = if (showKeyShadows && keyShadow.alpha > 0.01f) (1.5f * scaleFactor).dp else 0.dp
+        val shadowCol = if (showKeyShadows && hasTile && keyShadow.alpha > 0.01f) keyShadow else Color.Transparent
+        val shadowElevation = if (showKeyShadows && hasTile && keyShadow.alpha > 0.01f) (1.5f * scaleFactor).dp else 0.dp
 
         return ResolvedKeyVisual(
             backgroundColor = activeBackground,
@@ -268,4 +292,23 @@ data class KeyboardColorScheme(
         )
     }
 }
+
+val KeyboardColorScheme.effectiveToolbarBackground: Color
+    get() = if (suggestionBackground != Color.Unspecified && suggestionBackground.alpha > 0.05f) {
+        suggestionBackground
+    } else {
+        containerBackground
+    }
+
+val KeyboardColorScheme.effectiveToolbarForeground: Color
+    get() {
+        val targetBg = effectiveToolbarBackground
+        val initialFg = if (suggestionForeground != Color.Unspecified && suggestionForeground.alpha > 0.25f) {
+            suggestionForeground
+        } else {
+            keyForeground
+        }
+        return ThemeColorUtils.ensureContrast(initialFg, targetBg)
+    }
+
 

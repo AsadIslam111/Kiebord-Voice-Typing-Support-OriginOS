@@ -123,6 +123,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
 import io.kiebord.theme.KeyboardColorScheme
+import io.kiebord.theme.ThemeColorUtils
+import io.kiebord.theme.effectiveToolbarBackground
+import io.kiebord.theme.effectiveToolbarForeground
 
 sealed class UndoRedoPillState {
     data class CanUndo(val text: String, val isPaste: Boolean = false, val isBatchDelete: Boolean = false) : UndoRedoPillState()
@@ -909,7 +912,7 @@ fun KeyboardRootView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(toolbarHeight)
-                        .background(colorScheme.containerBackground)
+                        .background(colorScheme.effectiveToolbarBackground)
                         .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -951,14 +954,14 @@ fun KeyboardRootView(
                                     isToolbarOptionsVisible -> "Show Suggestions"
                                     else -> "All Tools"
                                 },
-                                tint = colorScheme.keyForeground,
+                                tint = colorScheme.effectiveToolbarForeground,
                                 modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(16f).dp)
                             )
                         } else {
                             Icon(
                                 painter = painterResource(R.drawable.ic_kiebord_top),
                                 contentDescription = "All Tools",
-                                tint = colorScheme.keyForeground,
+                                tint = colorScheme.effectiveToolbarForeground,
                                 modifier = Modifier.size((29 * scaleFactor).coerceAtLeast(21f).dp)
                             )
                         }
@@ -1047,12 +1050,12 @@ fun KeyboardRootView(
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Outlined.Assignment,
                                         contentDescription = "Quick paste",
-                                        tint = colorScheme.keyForeground,
+                                        tint = colorScheme.effectiveToolbarForeground,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Text(
                                         text = ellipsized,
-                                        color = colorScheme.keyForeground,
+                                        color = colorScheme.effectiveToolbarForeground,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
@@ -1215,7 +1218,7 @@ fun KeyboardRootView(
                             Icon(
                                 painter = painterResource(R.drawable.ic_mic),
                                 contentDescription = if (isVoiceActive) "Stop Voice Typing" else "Start Voice Typing",
-                                tint = if (isVoiceActive) Color.White else colorScheme.keyForeground,
+                                tint = if (isVoiceActive) Color.White else ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.keyBackground),
                                 modifier = Modifier.size(micIconSize)
                             )
                         }

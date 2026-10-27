@@ -59,6 +59,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.res.painterResource
 import io.kiebord.feature.ime.R
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.effectiveToolbarForeground
 
 enum class ToolbarAction {
     TEXT_EDIT,
@@ -362,7 +363,7 @@ fun ReorderableToolbar(
                         val iconModifier = Modifier.size(iconSizeDp.dp)
                         val iconTint = when {
                             isDraggingThisItem || isActive || isHoveredByDrawerItem -> colorScheme.accentColor
-                            else -> colorScheme.keyForeground.copy(alpha = 0.85f)
+                            else -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.88f)
                         }
                         if (isHoveredByDrawerItem) {
                             Icon(

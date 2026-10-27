@@ -139,12 +139,12 @@ fun AppearanceThemesScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     categoryThemes.chunked(3).forEach { rowThemes ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             rowThemes.forEach { themeOption ->
                                 val isSelected = preferences.theme == themeOption.id

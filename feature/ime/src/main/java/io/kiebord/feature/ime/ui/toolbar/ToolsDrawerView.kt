@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.kiebord.feature.ime.R
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.ThemeColorUtils
 
 data class DrawerTool(
     val action: ToolbarAction,
@@ -370,7 +371,7 @@ private fun ToolGridItem(
             val iconTint = if (isDragging || isHovered || isActive) {
                 colorScheme.accentColor
             } else {
-                colorScheme.keyForeground
+                ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.keyBackground)
             }
             if (isHovered) {
                 Icon(
@@ -404,7 +405,7 @@ private fun ToolGridItem(
             color = if (isHovered || isActive) {
                 colorScheme.accentColor
             } else {
-                colorScheme.keyForeground
+                ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.containerBackground)
             },
             fontSize = 12.sp,
             fontWeight = if (isHovered || isActive) FontWeight.SemiBold else FontWeight.Normal,

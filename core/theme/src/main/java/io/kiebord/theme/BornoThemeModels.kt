@@ -113,6 +113,41 @@ object ThemeColorUtils {
         return luminance < 0.5
     }
 
+    fun calculateLuminance(color: Color): Float {
+        fun channel(c: Float): Float {
+            return if (c <= 0.03928f) c / 12.92f else Math.pow(((c + 0.055) / 1.055), 2.4).toFloat()
+        }
+        return 0.2126f * channel(color.red) + 0.7152f * channel(color.green) + 0.0722f * channel(color.blue)
+    }
+
+    fun contrastRatio(color1: Color, color2: Color): Float {
+        val l1 = calculateLuminance(color1)
+        val l2 = calculateLuminance(color2)
+        val lighter = maxOf(l1, l2)
+        val darker = minOf(l1, l2)
+        return (lighter + 0.05f) / (darker + 0.05f)
+    }
+
+    fun ensureContrast(
+        foreground: Color,
+        background: Color,
+        minContrast: Float = 2.8f,
+        fallbackLight: Color = Color.White,
+        fallbackDark: Color = Color(0xFF1B1B1F)
+    ): Color {
+        if (foreground == Color.Unspecified || foreground.alpha < 0.25f) {
+            val bgLum = calculateLuminance(background)
+            return if (bgLum < 0.5f) fallbackLight else fallbackDark
+        }
+        val ratio = contrastRatio(foreground, background)
+        if (ratio >= minContrast) {
+            return foreground
+        }
+        val contrastWithLight = contrastRatio(fallbackLight, background)
+        val contrastWithDark = contrastRatio(fallbackDark, background)
+        return if (contrastWithLight >= contrastWithDark) fallbackLight else fallbackDark
+    }
+
     private fun isTransparent(hex: String): Boolean {
         val clean = hex.trim()
         if (clean.isEmpty()) return true

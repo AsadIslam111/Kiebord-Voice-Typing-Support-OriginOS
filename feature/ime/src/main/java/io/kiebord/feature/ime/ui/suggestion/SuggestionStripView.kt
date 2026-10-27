@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.effectiveToolbarForeground
 
 data class SuggestionCandidate(
     val text: String,
@@ -171,7 +172,7 @@ fun SuggestionStripView(
                                     modifier = Modifier
                                         .height(18.dp)
                                         .width(1.dp)
-                                        .background(colorScheme.keyForeground.copy(alpha = 0.15f))
+                                        .background(colorScheme.effectiveToolbarForeground.copy(alpha = 0.15f))
                                 )
                             }
 
@@ -196,8 +197,8 @@ fun SuggestionStripView(
                                     text = candidate.text,
                                     color = when {
                                         isPrimary -> colorScheme.accentColor
-                                        isRaw -> colorScheme.keyForeground.copy(alpha = 0.88f)
-                                        else -> colorScheme.keyForeground.copy(alpha = 0.72f)
+                                        isRaw -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.88f)
+                                        else -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.72f)
                                     },
                                     fontSize = if (isPrimary) 18.5.sp else 17.5.sp,
                                     fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
@@ -258,8 +259,8 @@ fun SuggestionStripView(
                                     text = candidate.text,
                                     color = when {
                                         isPrimary -> colorScheme.accentColor
-                                        isRaw -> colorScheme.keyForeground.copy(alpha = 0.88f)
-                                        else -> colorScheme.keyForeground.copy(alpha = 0.72f)
+                                        isRaw -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.88f)
+                                        else -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.72f)
                                     },
                                     fontSize = if (isPrimary) 18.5.sp else 17.5.sp,
                                     fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
@@ -287,7 +288,7 @@ fun SuggestionStripView(
                     Icon(
                         imageVector = if (isExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
                         contentDescription = if (isExpanded) "Collapse suggestions" else "Expand suggestions",
-                        tint = if (isExpanded) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.7f),
+                        tint = if (isExpanded) colorScheme.accentColor else colorScheme.effectiveToolbarForeground.copy(alpha = 0.75f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
