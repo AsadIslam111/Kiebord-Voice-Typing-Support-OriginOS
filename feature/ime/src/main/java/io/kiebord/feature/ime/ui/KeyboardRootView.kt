@@ -1264,7 +1264,8 @@ fun KeyboardRootView(
                         val dims = MoreKeysLayoutHelper.calculateDimensions(
                             density = density.density,
                             scaleFactor = scaleFactor,
-                            keyboardWidthPx = effectiveKeyboardWidthPx
+                            keyboardWidthPx = effectiveKeyboardWidthPx,
+                            maxColumns = keyDef.moreKeysColumns ?: 5
                         )
                         val anchorXInKeyboard = (keyRect.center.x - keyboardLeftPx).coerceAtLeast(0f)
                         val layoutResult = MoreKeysLayoutHelper.computeLayout(
@@ -1333,32 +1334,40 @@ fun KeyboardRootView(
                             if (!isWithinBounds) {
                                 false
                             } else {
-                                val relX = fingerPosInRoot.x - (state.clampedLeft + state.dims.horizontalPaddingPx)
-                                val relY = fingerPosInRoot.y - (state.popupTop + state.dims.verticalPaddingPx)
+                                // While finger is resting on or touching the anchor key, lock hover to default item
+                                val isTouchingAnchorKey = fingerPosInRoot.y >= state.anchorRect.top - 8f &&
+                                    kotlin.math.abs(fingerPosInRoot.x - state.anchorRect.center.x) <= state.anchorRect.width / 2f + 16f
 
-                                val rowStep = state.dims.itemHeightPx + state.dims.rowGapPx
-                                val colStep = state.dims.itemWidthPx + state.dims.colGapPx
-
-                                val hoveredRow = if (state.layoutResult.numRows > 1 && rowStep > 0f) {
-                                    (relY / rowStep).toInt().coerceIn(0, state.layoutResult.numRows - 1)
+                                val targetItemIndex = if (isTouchingAnchorKey) {
+                                    state.layoutResult.defaultItemIndex
                                 } else {
-                                    0
-                                }
+                                    val relX = fingerPosInRoot.x - (state.clampedLeft + state.dims.horizontalPaddingPx)
+                                    val relY = fingerPosInRoot.y - (state.popupTop + state.dims.verticalPaddingPx)
 
-                                val hoveredCol = if (colStep > 0f) {
-                                    (relX / colStep).toInt().coerceIn(0, state.layoutResult.numColumns - 1)
-                                } else {
-                                    0
-                                }
+                                    val rowStep = state.dims.itemHeightPx + state.dims.rowGapPx
+                                    val colStep = state.dims.itemWidthPx + state.dims.colGapPx
 
-                                val targetItemIndex = state.layoutResult.grid.getOrNull(hoveredRow)?.getOrNull(hoveredCol)
-                                    ?: run {
-                                        val rowList = state.layoutResult.grid.getOrNull(hoveredRow) ?: emptyList()
-                                        rowList.filterNotNull().minByOrNull { itemIdx ->
-                                            val coords = state.layoutResult.itemPositions[itemIdx] ?: Pair(0, 0)
-                                            kotlin.math.abs(coords.second - hoveredCol)
-                                        }
+                                    val hoveredRow = if (state.layoutResult.numRows > 1 && rowStep > 0f) {
+                                        (relY / rowStep).toInt().coerceIn(0, state.layoutResult.numRows - 1)
+                                    } else {
+                                        0
                                     }
+
+                                    val hoveredCol = if (colStep > 0f) {
+                                        (relX / colStep).toInt().coerceIn(0, state.layoutResult.numColumns - 1)
+                                    } else {
+                                        0
+                                    }
+
+                                    state.layoutResult.grid.getOrNull(hoveredRow)?.getOrNull(hoveredCol)
+                                        ?: run {
+                                            val rowList = state.layoutResult.grid.getOrNull(hoveredRow) ?: emptyList()
+                                            rowList.filterNotNull().minByOrNull { itemIdx ->
+                                                val coords = state.layoutResult.itemPositions[itemIdx] ?: Pair(0, 0)
+                                                kotlin.math.abs(coords.second - hoveredCol)
+                                            }
+                                        }
+                                }
 
                                 if (targetItemIndex != null && targetItemIndex != selectedMoreKeyIndex) {
                                     selectedMoreKeyIndex = targetItemIndex

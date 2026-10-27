@@ -289,10 +289,12 @@ private fun MoreKeyCell(
                 )
             }
             else -> {
+                val isBangla = isBanglaText(item)
+                val finalFontSize = if (isBangla) fontSizeSp * 0.88f else fontSizeSp
                 Text(
                     text = item,
                     color = contentColor,
-                    fontSize = fontSizeSp.sp,
+                    fontSize = finalFontSize.sp,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
                 )
             }

@@ -38,7 +38,8 @@ object MoreKeysLayoutHelper {
     fun calculateDimensions(
         density: Float,
         scaleFactor: Float,
-        keyboardWidthPx: Float
+        keyboardWidthPx: Float,
+        maxColumns: Int = 8
     ): MoreKeysDimensions {
         val baseItemSizePx = 42f * scaleFactor * density
         val colGapPx = 3f * scaleFactor * density
@@ -48,12 +49,10 @@ object MoreKeysLayoutHelper {
 
         val maxAllowedWidthPx = (keyboardWidthPx - 16f * density).coerceAtLeast(100f)
 
-        // For default keyboard width, itemWidthPx is the full 42dp.
-        // Only scale down if the available keyboard width is extremely small (e.g. narrow one-handed mode or extreme margin).
-        val minCols = 4
-        val neededForMinCols = minCols * baseItemSizePx + (minCols - 1) * colGapPx + horizPaddingPx * 2
-        val itemWidthPx = if (maxAllowedWidthPx < neededForMinCols) {
-            ((maxAllowedWidthPx - horizPaddingPx * 2 - (minCols - 1) * colGapPx) / minCols).coerceAtLeast(26f * density)
+        // Ensure maxColumns fit within maxAllowedWidthPx
+        val neededWidth = maxColumns * baseItemSizePx + (maxColumns - 1) * colGapPx + horizPaddingPx * 2
+        val itemWidthPx = if (maxAllowedWidthPx < neededWidth) {
+            ((maxAllowedWidthPx - horizPaddingPx * 2 - (maxColumns - 1) * colGapPx) / maxColumns).coerceAtLeast(26f * density)
         } else {
             baseItemSizePx
         }
@@ -124,8 +123,11 @@ object MoreKeysLayoutHelper {
         val numLeftKeys = (numColumns - 1) / 2
         val numRightKeys = numColumns - numLeftKeys
 
-        val maxLeftKeys = (anchorCenterX / colWidth).toInt().coerceAtLeast(0)
-        val maxRightKeys = (((keyboardWidthPx - anchorCenterX).coerceAtLeast(0f)) / colWidth).toInt().coerceAtLeast(0)
+        // In standard keyboard layouts (AOSP / Borno), slot availability is determined by the
+        // parent keyboard's base key width (~keyboardWidth / 10).
+        val baseKeyWidth = if (keyboardWidthPx > 0f) keyboardWidthPx / 10f else colWidth
+        val maxLeftKeys = (anchorCenterX / baseKeyWidth).toInt().coerceAtLeast(0)
+        val maxRightKeys = (((keyboardWidthPx - anchorCenterX).coerceAtLeast(0f)) / baseKeyWidth).toInt().coerceAtLeast(0)
 
         var leftKeys = numLeftKeys.coerceIn(0, numColumns - 1)
         var rightKeys = numColumns - leftKeys
@@ -145,6 +147,16 @@ object MoreKeysLayoutHelper {
         if (maxRightKeys == rightKeys - 1 && rightKeys > 1) {
             leftKeys++
             rightKeys--
+        }
+
+        // Penultimate right-edge keys (like English period '.' or Bengali Dari '।'):
+        // With only the Action/Enter key to their right on the keyboard row, exactly 1 popup key
+        // is placed to the right of the default key (rightKeys = 2).
+        // This guarantees the default key is at column (numColumns - 2), directly above the anchor key,
+        // matching Borno keyboard identically.
+        if (numColumns >= 7 && anchorCenterX >= keyboardWidthPx * 0.70f) {
+            rightKeys = 2
+            leftKeys = numColumns - 2
         }
 
         leftKeys = leftKeys.coerceIn(0, numColumns - 1)

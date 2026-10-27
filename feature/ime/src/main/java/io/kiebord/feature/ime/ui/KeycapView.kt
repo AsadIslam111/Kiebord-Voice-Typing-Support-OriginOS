@@ -57,6 +57,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+/**
+ * Checks whether the given string contains any Bengali characters (letters, vowel signs, digits, punctuation).
+ */
+fun isBanglaText(str: String?): Boolean {
+    if (str.isNullOrEmpty()) return false
+    for (i in 0 until str.length) {
+        val c = str[i]
+        if ((c in '\u0980'..'\u09FF') || c == '\u0964' || c == '\u0965') {
+            return true
+        }
+    }
+    return false
+}
+
 @Composable
 fun KeycapView(
     key: KeyDef,
@@ -466,6 +480,8 @@ fun KeycapView(
         val activeFlickUp = key.flickUp(shiftState)
         val activeMoreKeys = key.moreKeys(shiftState)
         if (showSecondaryKeys && !activeFlickUp.isNullOrEmpty() && activeMoreKeys.isNotEmpty() && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode) {
+            val isBanglaBadge = isBanglaText(activeFlickUp)
+            val badgeFontSize = if (isBanglaBadge) 10f else 11.5f
             Text(
                 text = activeFlickUp,
                 color = if (isPressed && colorScheme.keyPressedForeground != Color.Unspecified) {
@@ -473,7 +489,7 @@ fun KeycapView(
                 } else {
                     colorScheme.keyForeground.copy(alpha = 0.5f)
                 },
-                fontSize = (11.5f * fontScaleFactor).coerceAtLeast(6.5f).sp,
+                fontSize = (badgeFontSize * fontScaleFactor).coerceAtLeast(6.0f).sp,
                 fontWeight = FontWeight.Normal,
                 fontFamily = KiebordTheme.fontFamily,
                 modifier = Modifier
@@ -554,8 +570,15 @@ fun KeycapView(
                 )
             }
             else -> {
-                val baseCharSize = if (displaySymbolLabel.length > 2) 17f else if (displaySymbolLabel.length > 1) 21f else 26f
-                val rawSize = if (key.type == KeyType.SYMBOLS) 17f else baseCharSize
+                val isBangla = isBanglaText(displaySymbolLabel)
+                val baseCharSize = if (displaySymbolLabel.length > 2) {
+                    if (isBangla) 15f else 17f
+                } else if (displaySymbolLabel.length > 1) {
+                    if (isBangla) 18.5f else 21f
+                } else {
+                    if (isBangla) 22.5f else 26f
+                }
+                val rawSize = if (key.type == KeyType.SYMBOLS) (if (isBangla) 15f else 17f) else baseCharSize
                 val textSize = (rawSize * fontScaleFactor).coerceAtLeast(8.5f).sp
                 val isUppercase = displaySymbolLabel.length == 1 && displaySymbolLabel.first().isUpperCase()
                 val verticalShift = if (isUppercase) (1.2f * fontScaleFactor).dp else 0.dp
@@ -655,10 +678,12 @@ fun KeycapView(
                     ),
                 contentAlignment = Alignment.Center
             ) {
+                val isBanglaPreview = isBanglaText(displaySymbolLabel)
+                val popupFontSize = if (isBanglaPreview) 23.5f else 27f
                 Text(
                     text = displaySymbolLabel,
                     color = colorScheme.keyForeground,
-                    fontSize = (27 * scaleFactor).coerceIn(21f, 34f).sp,
+                    fontSize = (popupFontSize * scaleFactor).coerceIn(18f, 34f).sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = KiebordTheme.fontFamily,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,

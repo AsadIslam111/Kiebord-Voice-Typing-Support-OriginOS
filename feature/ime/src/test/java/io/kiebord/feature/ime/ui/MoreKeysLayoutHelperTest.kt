@@ -81,4 +81,37 @@ class MoreKeysLayoutHelperTest {
         assertEquals(Pair(1, 0), result.itemPositions[0])
         assertEquals("@", items[result.grid[1][0]!!])
     }
+
+    @Test
+    fun testBengaliDariKeyLayoutPlacesPeriodAsDefaultHover() {
+        val items = listOf(".", ",", "?", "!", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "%", "&")
+        val result = MoreKeysLayoutHelper.computeLayout(
+            itemCount = items.size,
+            columnsHint = 9,
+            anchorCenterX = 850f,
+            keyboardWidthPx = 1080f,
+            columnWidthPx = 108f
+        )
+
+        assertEquals(9, result.numColumns)
+        assertEquals(2, result.numRows)
+        assertEquals(7, result.leftKeys)
+        assertEquals(2, result.rightKeys)
+        assertEquals(0, result.defaultItemIndex)
+
+        // Verify default item is English period "." at index 0, positioned at bottom row, col 7 (directly above Dari)
+        assertEquals(Pair(1, 7), result.itemPositions[0])
+        assertEquals(0, result.grid[1][7])
+        assertEquals(".", items[result.grid[1][7]!!])
+
+        // Verify Row 1 (bottom row): ; / ( ) # ! ? . ,
+        val expectedRow1 = listOf(";", "/", "(", ")", "#", "!", "?", ".", ",")
+        val actualRow1 = result.grid[1].map { items[it!!] }
+        assertEquals(expectedRow1, actualRow1)
+
+        // Verify Row 0 (top row): null & % + " - : ' @
+        val expectedRow0 = listOf(null, "&", "%", "+", "\"", "-", ":", "'", "@")
+        val actualRow0 = result.grid[0].map { it?.let { idx -> items[idx] } }
+        assertEquals(expectedRow0, actualRow0)
+    }
 }
