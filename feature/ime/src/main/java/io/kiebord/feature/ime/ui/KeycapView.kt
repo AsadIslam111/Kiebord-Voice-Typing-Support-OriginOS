@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import io.kiebord.feature.ime.R
 import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
@@ -76,6 +77,8 @@ fun KeycapView(
     key: KeyDef,
     shiftState: ShiftState,
     modifier: Modifier = Modifier,
+    rowIndex: Int = 0,
+    keyIndex: Int = 0,
     isBottomRow: Boolean = false,
     isSlidingSymbolMode: Boolean = false,
     isSlidingShiftMode: Boolean = false,
@@ -109,6 +112,7 @@ fun KeycapView(
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
+    val context = LocalContext.current
     val scaleFactor = (rowHeight.value / (if (rowHeight.value >= 58f) 61f else 54f)).coerceIn(0.4f, 1.6f)
     // Capped scale factor for font, icons, and horizontal spacing:
     // When keyboard height increases, font/horizontal scaling MUST NOT increase beyond 1.0f,
@@ -119,48 +123,30 @@ fun KeycapView(
     var isMoreKeysActive by remember { mutableStateOf(false) }
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
-    // Dynamic key background & foreground colors driven by configurable theme
-    // When showKeyBorders is false (flat theme): key color is same as containerBackground
-    // EXCEPT for Space bar, Sym key, and Enter key
-    val isCommaKey = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
-    val isPillColoredKey = key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS || key.type == KeyType.ACTION
-    val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || isCommaKey
-    val baseBackground = when {
-        key.type == KeyType.ACTION -> colorScheme.accentColor
-        key.type == KeyType.SYMBOLS || isCommaKey -> colorScheme.actionKeyBackground
-        key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> colorScheme.keyBackground
-        showKeyBorders -> {
-            if (isActionOrModifier) colorScheme.actionKeyBackground else colorScheme.keyBackground
-        }
-        else -> colorScheme.containerBackground
+    // Fully resolved keycap styling from rich themebase or flat color scheme
+    val keyVisual = remember(colorScheme, rowIndex, keyIndex, key, isPressed, showKeyBorders, scaleFactor) {
+        colorScheme.resolveKeycapVisual(
+            rowIndex = rowIndex,
+            keyIndex = keyIndex,
+            key = key,
+            isPressed = isPressed,
+            showKeyBorders = showKeyBorders,
+            scaleFactor = scaleFactor
+        )
     }
 
-    val activeBackground = if (isPressed) {
-        if (key.type == KeyType.ACTION) {
-            colorScheme.accentColor.copy(alpha = 0.8f)
-        } else if (colorScheme.keyPressedBackground != Color.Unspecified) {
-            colorScheme.keyPressedBackground
-        } else {
-            colorScheme.accentColor.copy(alpha = 0.28f)
-        }
-    } else {
-        baseBackground
-    }
-
-    val foregroundColor = when {
-        key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
-        isPressed && colorScheme.keyPressedForeground != Color.Unspecified -> colorScheme.keyPressedForeground
-        else -> colorScheme.keyForeground
-    }
-
+    val activeBackground = keyVisual.backgroundColor
+    val bgBrush = keyVisual.backgroundBrush
+    val foregroundColor = keyVisual.foregroundColor
     val displaySymbolLabel = key.displayLabel(shiftState)
 
-    // Key shape: Enter key and Sym key (?123) are always rounded stadium pills.
-    // In flat mode (!showKeyBorders), spacebar is also a stadium pill.
-    // When key borders are enabled, spacebar and standard character keys use standard scaled corner radius (8dp).
-    val isPillShape = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
-    val keyShape = if (isPillShape) {
+    // Key shape: stadium pills for action/sym keys or custom pill/radius specs from theme
+    val isPillColoredKey = key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS || key.type == KeyType.ACTION
+    val customRadiusDp = keyVisual.cornerRadiusDp
+    val keyShape = if (keyVisual.isPill) {
         RoundedCornerShape(percent = 50)
+    } else if (customRadiusDp != null) {
+        RoundedCornerShape(customRadiusDp)
     } else {
         RoundedCornerShape((8 * scaleFactor).coerceAtLeast(3f).dp)
     }
@@ -472,20 +458,37 @@ fun KeycapView(
                 .fillMaxSize()
                 .padding(horizontal = horizontalPadding, vertical = verticalPadding)
                 .then(
-                    if (showKeyBorders && colorScheme.keyShadow.alpha > 0.01f) {
+                    if (keyVisual.shadowElevationDp > 0.dp && keyVisual.shadowColor.alpha > 0.01f) {
                         Modifier.shadow(
-                            elevation = (1.5f * scaleFactor).dp,
+                            elevation = keyVisual.shadowElevationDp,
                             shape = keyShape,
                             clip = false,
-                            ambientColor = colorScheme.keyShadow,
-                            spotColor = colorScheme.keyShadow
+                            ambientColor = keyVisual.shadowColor,
+                            spotColor = keyVisual.shadowColor
                         )
                     } else {
                         Modifier
                     }
                 )
                 .clip(keyShape)
-                .background(activeBackground),
+                .then(
+                    if (bgBrush != null) {
+                        Modifier.background(bgBrush)
+                    } else {
+                        Modifier.background(activeBackground)
+                    }
+                )
+                .then(
+                    if (keyVisual.strokeWidthDp > 0.dp && keyVisual.strokeColor.alpha > 0.01f) {
+                        Modifier.border(
+                            width = keyVisual.strokeWidthDp,
+                            color = keyVisual.strokeColor,
+                            shape = keyShape
+                        )
+                    } else {
+                        Modifier
+                    }
+                ),
             contentAlignment = Alignment.Center
         ) {
         // Flick up preview badge in top right corner (hidden when sliding symbol/shift mode is active, secondary keys disabled, or no moreKeys exist)
@@ -510,9 +513,24 @@ fun KeycapView(
             )
         }
 
-        // Key content: Vector Material Icons vs Typography label
+        // Custom icon override lookup from theme
+        val customIconName = colorScheme.getCustomIconName(key.type, shiftState)
+        val customIconResId = remember(customIconName) {
+            if (!customIconName.isNullOrBlank()) {
+                context.resources.getIdentifier(customIconName, "drawable", context.packageName)
+            } else 0
+        }
+
+        // Key content: Custom Icon / Vector Material Icons vs Typography label
         val actionIconSize = (22 * iconScaleFactor).coerceAtLeast(12f).dp
-        when (key.type) {
+        if (customIconResId != 0) {
+            Icon(
+                painter = painterResource(customIconResId),
+                contentDescription = key.label,
+                tint = foregroundColor,
+                modifier = Modifier.size(actionIconSize)
+            )
+        } else when (key.type) {
             KeyType.SHIFT -> {
                 val shiftIconSize = (25f * iconScaleFactor).coerceAtLeast(14f).dp
                 when (shiftState) {

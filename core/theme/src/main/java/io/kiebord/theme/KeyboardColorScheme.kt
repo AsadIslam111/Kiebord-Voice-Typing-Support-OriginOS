@@ -1,7 +1,13 @@
 package io.kiebord.theme
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import io.kiebord.common.model.KeyDef
+import io.kiebord.common.model.KeyType
+import io.kiebord.common.model.ShiftState
 
 @Immutable
 data class KeyboardColorScheme(
@@ -19,8 +25,172 @@ data class KeyboardColorScheme(
     val suggestionBackground: Color,
     val suggestionForeground: Color,
     val keyPressedBackground: Color = Color.Unspecified,
-    val keyPressedForeground: Color = Color.Unspecified
+    val keyPressedForeground: Color = Color.Unspecified,
+    val themeSpec: KeyboardThemeSpec? = null
 ) {
+    fun resolveKeycapVisual(
+        rowIndex: Int = 0,
+        keyIndex: Int = 0,
+        key: KeyDef,
+        isPressed: Boolean = false,
+        showKeyBorders: Boolean = true,
+        size: Size = Size.Zero,
+        scaleFactor: Float = 1.0f
+    ): ResolvedKeyVisual {
+        val spec = themeSpec
+        if (spec != null) {
+            val style = spec.resolveKeycapStyle(rowIndex, keyIndex, key)
+            val bgHex = if (isPressed) (style.pressedBackground ?: style.background) else style.background
+            val fgHex = if (isPressed) (style.pressedForeground ?: style.foreground) else style.foreground
+
+            val isComma = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
+            val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || isComma
+
+            val defaultBg = when {
+                key.type == KeyType.ACTION -> accentColor
+                key.type == KeyType.SYMBOLS || isComma -> actionKeyBackground
+                key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> keyBackground
+                showKeyBorders -> if (isActionOrModifier) actionKeyBackground else keyBackground
+                else -> containerBackground
+            }
+
+            val baseBgColor = if (bgHex != null) ThemeColorUtils.parseHexColor(bgHex, defaultBg) else defaultBg
+            val activeBgColor = if (isPressed) {
+                when {
+                    style.pressedBackground != null -> ThemeColorUtils.parseHexColor(style.pressedBackground)
+                    key.type == KeyType.ACTION -> accentColor.copy(alpha = 0.8f)
+                    keyPressedBackground != Color.Unspecified -> keyPressedBackground
+                    else -> accentColor.copy(alpha = 0.28f)
+                }
+            } else {
+                baseBgColor
+            }
+
+            val fgColor = when {
+                fgHex != null -> ThemeColorUtils.parseHexColor(fgHex)
+                key.type == KeyType.ACTION -> actionKeyForeground
+                isPressed && keyPressedForeground != Color.Unspecified -> keyPressedForeground
+                else -> keyForeground
+            }
+
+            val stroke = style.stroke
+            val strokeColor = if (stroke != null && stroke.widthDp > 0f) {
+                ThemeColorUtils.parseHexColor(stroke.color, keyBorder).copy(alpha = stroke.alpha)
+            } else if (showKeyBorders && keyBorder.alpha > 0.01f) {
+                keyBorder
+            } else {
+                Color.Transparent
+            }
+
+            val strokeWidth = if (stroke != null && stroke.widthDp > 0f) {
+                stroke.widthDp.dp
+            } else if (showKeyBorders && keyBorder.alpha > 0.01f) {
+                0.5.dp
+            } else {
+                0.dp
+            }
+
+            val shadow = style.shadow
+            val shadowColor = if (shadow != null && shadow.elevationDp > 0f) {
+                ThemeColorUtils.parseHexColor(shadow.color, keyShadow)
+            } else if (showKeyBorders && keyShadow.alpha > 0.01f) {
+                keyShadow
+            } else {
+                Color.Transparent
+            }
+
+            val shadowElevation = if (shadow != null && shadow.elevationDp > 0f) {
+                shadow.elevationDp.dp
+            } else if (showKeyBorders && keyShadow.alpha > 0.01f) {
+                (1.5f * scaleFactor).dp
+            } else {
+                0.dp
+            }
+
+            val isPill = style.isPill ?: (key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE))
+            val cornerRadius = style.cornerRadiusDp?.dp
+
+            val brush = if (!isPressed) style.gradient?.toBrush(size) else null
+
+            return ResolvedKeyVisual(
+                backgroundColor = activeBgColor,
+                backgroundBrush = brush,
+                foregroundColor = fgColor,
+                strokeColor = strokeColor,
+                strokeWidthDp = strokeWidth,
+                shadowColor = shadowColor,
+                shadowElevationDp = shadowElevation,
+                cornerRadiusDp = cornerRadius,
+                isPill = isPill,
+                skin = style.skin,
+                alpha = style.alpha
+            )
+        }
+
+        val isCommaKey = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
+        val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || isCommaKey
+        val baseBackground = when {
+            key.type == KeyType.ACTION -> accentColor
+            key.type == KeyType.SYMBOLS || isCommaKey -> actionKeyBackground
+            key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> keyBackground
+            showKeyBorders -> if (isActionOrModifier) actionKeyBackground else keyBackground
+            else -> containerBackground
+        }
+
+        val activeBackground = if (isPressed) {
+            if (key.type == KeyType.ACTION) {
+                accentColor.copy(alpha = 0.8f)
+            } else if (keyPressedBackground != Color.Unspecified) {
+                keyPressedBackground
+            } else {
+                accentColor.copy(alpha = 0.28f)
+            }
+        } else {
+            baseBackground
+        }
+
+        val fg = when {
+            key.type == KeyType.ACTION -> actionKeyForeground
+            isPressed && keyPressedForeground != Color.Unspecified -> keyPressedForeground
+            else -> keyForeground
+        }
+
+        val isPillShape = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
+        val strokeCol = if (showKeyBorders && keyBorder.alpha > 0.01f) keyBorder else Color.Transparent
+        val strokeWidth = if (showKeyBorders && keyBorder.alpha > 0.01f) 0.5.dp else 0.dp
+        val shadowCol = if (showKeyBorders && keyShadow.alpha > 0.01f) keyShadow else Color.Transparent
+        val shadowElevation = if (showKeyBorders && keyShadow.alpha > 0.01f) (1.5f * scaleFactor).dp else 0.dp
+
+        return ResolvedKeyVisual(
+            backgroundColor = activeBackground,
+            backgroundBrush = null,
+            foregroundColor = fg,
+            strokeColor = strokeCol,
+            strokeWidthDp = strokeWidth,
+            shadowColor = shadowCol,
+            shadowElevationDp = shadowElevation,
+            cornerRadiusDp = null,
+            isPill = isPillShape,
+            skin = null,
+            alpha = 1.0f
+        )
+    }
+
+    fun getCustomIconName(keyType: KeyType, shiftState: ShiftState = ShiftState.UNSHIFTED): String? {
+        val icons = themeSpec?.icons ?: return null
+        return when (keyType) {
+            KeyType.SHIFT -> when (shiftState) {
+                ShiftState.UNSHIFTED -> icons.shift
+                ShiftState.ONE_SHOT -> icons.shiftOneShot ?: icons.shift
+                ShiftState.CAPS_LOCK -> icons.capsLock ?: icons.shift
+            }
+            KeyType.DELETE -> icons.backspace
+            KeyType.ACTION -> icons.action
+            KeyType.SWITCH_LANGUAGE -> icons.language
+            else -> null
+        }
+    }
+
     companion object {
         val DefaultDark = KeyboardColorScheme(
             containerBackground = Color(0xFF1B1B1F),

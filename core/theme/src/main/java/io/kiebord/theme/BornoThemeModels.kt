@@ -163,6 +163,117 @@ object ThemeColorUtils {
         )
     }
 
+    fun CustomThemeDef.toKeyboardThemeSpec(): KeyboardThemeSpec {
+        val isFlatBorder = keyBorder.isBlank() || keyBorder == "#00000000"
+        val isFlatShadow = keyShadow.isBlank() || keyShadow == "#00000000"
+        return KeyboardThemeSpec(
+            id = id,
+            name = name,
+            isDark = isDark,
+            background = ThemeBackgroundSpec(solidColor = containerBackground),
+            characterKey = KeycapStyleSpec(
+                background = keyBackground,
+                foreground = keyForeground,
+                stroke = if (!isFlatBorder) StrokeSpec(color = keyBorder, widthDp = 0.5f) else null,
+                shadow = if (!isFlatShadow) ShadowSpec(color = keyShadow, elevationDp = 1.5f) else null,
+                pressedBackground = if (keyPressedBackground.isNotBlank()) keyPressedBackground else null,
+                pressedForeground = if (keyPressedForeground.isNotBlank()) keyPressedForeground else null
+            ),
+            functionalKey = KeycapStyleSpec(
+                background = actionKeyBackground,
+                foreground = actionKeyForeground,
+                stroke = if (!isFlatBorder) StrokeSpec(color = keyBorder, widthDp = 0.5f) else null,
+                shadow = if (!isFlatShadow) ShadowSpec(color = keyShadow, elevationDp = 1.5f) else null
+            ),
+            actionKey = KeycapStyleSpec(
+                background = accentColor,
+                foreground = actionKeyForeground,
+                isPill = true
+            ),
+            accentColor = accentColor,
+            shiftActiveColor = shiftActiveColor,
+            suggestionBackground = ThemeBackgroundSpec(solidColor = suggestionBackground),
+            suggestionForeground = suggestionForeground,
+            moreKeysBackground = moreKeysBackground,
+            guidelineColor = guidelineColor
+        )
+    }
+
+    fun BornoColorTheme.toKeyboardThemeSpec(customId: String? = null): KeyboardThemeSpec {
+        val assignedId = customId ?: if (id != null) "borno_$id" else "borno_${name.lowercase().replace("[^a-z0-9]".toRegex(), "_")}"
+        val bgColor = parseHexColor(backgroundColor, Color.Black)
+        val dark = isColorDark(bgColor)
+
+        val bgSpec = if (backgroundType == 2 && gradStart.isNotBlank() && gradEnd.isNotBlank() && gradStart != "#ffffffff") {
+            ThemeBackgroundSpec(
+                gradient = GradientSpec(
+                    type = GradientType.LINEAR,
+                    colors = listOf(gradStart, gradEnd),
+                    angle = 90f
+                )
+            )
+        } else {
+            ThemeBackgroundSpec(solidColor = backgroundColor)
+        }
+
+        val stroke = if (keyStrokeSize > 0 && keyStrokeColor.isNotBlank() && keyStrokeColor != "#00000000") {
+            StrokeSpec(color = keyStrokeColor, widthDp = keyStrokeSize.toFloat().coerceAtLeast(0.5f))
+        } else if (dark) {
+            StrokeSpec(color = "#1FFFFFFF", widthDp = 0.5f)
+        } else null
+
+        val shadow = if (keyShadowSize > 0 && keyShadowColor.isNotBlank() && keyShadowColor != "#00000000") {
+            ShadowSpec(color = keyShadowColor, elevationDp = keyShadowSize.toFloat().coerceAtLeast(1.0f))
+        } else null
+
+        val cornerRadius = if (keyRadius > 0f && keyRadius != 8f && keyRadius != 9f) keyRadius else null
+
+        val stripBg = if (isTransparent(stripColor)) backgroundColor else stripColor
+        val stripFg = if (stripIcoColor.isNotBlank() && !isTransparent(stripIcoColor)) stripIcoColor else labelKeyColor
+
+        return KeyboardThemeSpec(
+            id = assignedId,
+            name = name.trim(),
+            isDark = dark,
+            background = bgSpec,
+            characterKey = KeycapStyleSpec(
+                background = keyColor,
+                foreground = labelKeyColor,
+                stroke = stroke,
+                shadow = shadow,
+                cornerRadiusDp = cornerRadius,
+                pressedBackground = if (pressedKeyColor.isNotBlank()) pressedKeyColor else null
+            ),
+            functionalKey = KeycapStyleSpec(
+                background = functionalKeyColor,
+                foreground = labelFunctionalKeyColor,
+                stroke = stroke,
+                shadow = shadow,
+                cornerRadiusDp = cornerRadius
+            ),
+            actionKey = KeycapStyleSpec(
+                background = enterColor,
+                foreground = enterColorIcon.ifBlank { "#ffffffff" },
+                isPill = true
+            ),
+            spaceKey = if (spaceColor.isNotBlank() && spaceColor != keyColor) {
+                KeycapStyleSpec(
+                    background = spaceColor,
+                    foreground = labelKeyColor,
+                    stroke = stroke,
+                    shadow = shadow,
+                    cornerRadiusDp = cornerRadius
+                )
+            } else null,
+            accentColor = enterColor,
+            shiftActiveColor = if (selectedKeyColor.isNotBlank()) selectedKeyColor else enterColor,
+            suggestionBackground = ThemeBackgroundSpec(solidColor = stripBg),
+            suggestionForeground = stripFg,
+            moreKeysBackground = if (popupColor.isNotBlank()) popupColor else keyColor,
+            guidelineColor = enterColor
+        )
+    }
+
     fun CustomThemeDef.toKeyboardColorScheme(): KeyboardColorScheme {
         val darkDefault = if (isDark) KeyboardColorScheme.DefaultDark else KeyboardColorScheme.DefaultLight
         return KeyboardColorScheme(
@@ -180,7 +291,8 @@ object ThemeColorUtils {
             suggestionBackground = parseHexColor(suggestionBackground, darkDefault.suggestionBackground),
             suggestionForeground = parseHexColor(suggestionForeground, darkDefault.suggestionForeground),
             keyPressedBackground = parseHexColor(keyPressedBackground, darkDefault.keyPressedBackground),
-            keyPressedForeground = parseHexColor(keyPressedForeground, darkDefault.keyPressedForeground)
+            keyPressedForeground = parseHexColor(keyPressedForeground, darkDefault.keyPressedForeground),
+            themeSpec = toKeyboardThemeSpec()
         )
     }
 }

@@ -805,6 +805,11 @@ fun KeyboardRootView(
     }
     val effectiveKeyboardWidthPx = (keyboardRightPx - keyboardLeftPx).coerceAtLeast(100f)
 
+    val containerBgBrush = remember(colorScheme, rootWidthPx) {
+        colorScheme.themeSpec?.background?.toBrush(Size(if (rootWidthPx > 0f) rootWidthPx else 1080f, 1000f))
+    }
+    val bgImageSpec = colorScheme.themeSpec?.background?.image
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -812,8 +817,17 @@ fun KeyboardRootView(
                 rootCoordinates = coords
                 rootWidthPx = coords.size.width.toFloat()
             }
-            .background(colorScheme.containerBackground)
+            .then(
+                if (containerBgBrush != null) {
+                    Modifier.background(containerBgBrush)
+                } else {
+                    Modifier.background(colorScheme.containerBackground)
+                }
+            )
     ) {
+        if (bgImageSpec != null) {
+            io.kiebord.theme.ThemeImageBackgroundView(spec = bgImageSpec)
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1545,6 +1559,8 @@ fun KeyboardRootView(
                                 KeycapView(
                                 key = effectiveKey,
                                 shiftState = effectiveShiftState,
+                                rowIndex = rowIndex,
+                                keyIndex = keyIndex,
                                 isBottomRow = isBottomRow,
                                 isSlidingSymbolMode = isSlidingSymbolMode,
                                 isSlidingShiftMode = isSlidingShiftMode,

@@ -40,10 +40,12 @@ fun NumberRowBar(
             .height(height)
             .padding(bottom = 2.dp)
     ) {
-        numberKeys.forEach { key ->
+        numberKeys.forEachIndexed { keyIndex, key ->
             KeycapView(
                 key = key,
                 shiftState = ShiftState.UNSHIFTED,
+                rowIndex = -1,
+                keyIndex = keyIndex,
                 showKeyBorders = showKeyBorders,
                 showKeyPopups = showKeyPopups,
                 showSecondaryKeys = false,

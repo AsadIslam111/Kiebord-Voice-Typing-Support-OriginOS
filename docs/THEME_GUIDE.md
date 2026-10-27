@@ -70,7 +70,7 @@ Kiebord accepts three theme file formats:
 }
 ```
 
-### Format C: Native Kiebord Theme Definition (`.json`)
+### Format C: Native Kiebord Flat Theme Definition (`.json`)
 ```json
 {
   "id": "custom_neon_cyber",
