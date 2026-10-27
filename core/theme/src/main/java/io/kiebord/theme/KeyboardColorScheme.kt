@@ -74,35 +74,27 @@ data class KeyboardColorScheme(
             }
 
             val stroke = style.stroke
-            val strokeColor = if (stroke != null && stroke.widthDp > 0f) {
+            val strokeColor = if (showKeyBorders && stroke != null && stroke.widthDp > 0f) {
                 ThemeColorUtils.parseHexColor(stroke.color, keyBorder).copy(alpha = stroke.alpha)
-            } else if (showKeyBorders && keyBorder.alpha > 0.01f) {
-                keyBorder
             } else {
                 Color.Transparent
             }
 
-            val strokeWidth = if (stroke != null && stroke.widthDp > 0f) {
+            val strokeWidth = if (showKeyBorders && stroke != null && stroke.widthDp > 0f) {
                 stroke.widthDp.dp
-            } else if (showKeyBorders && keyBorder.alpha > 0.01f) {
-                0.5.dp
             } else {
                 0.dp
             }
 
             val shadow = style.shadow
-            val shadowColor = if (shadow != null && shadow.elevationDp > 0f) {
+            val shadowColor = if (showKeyBorders && shadow != null && shadow.elevationDp > 0f) {
                 ThemeColorUtils.parseHexColor(shadow.color, keyShadow)
-            } else if (showKeyBorders && keyShadow.alpha > 0.01f) {
-                keyShadow
             } else {
                 Color.Transparent
             }
 
-            val shadowElevation = if (shadow != null && shadow.elevationDp > 0f) {
+            val shadowElevation = if (showKeyBorders && shadow != null && shadow.elevationDp > 0f) {
                 shadow.elevationDp.dp
-            } else if (showKeyBorders && keyShadow.alpha > 0.01f) {
-                (1.5f * scaleFactor).dp
             } else {
                 0.dp
             }

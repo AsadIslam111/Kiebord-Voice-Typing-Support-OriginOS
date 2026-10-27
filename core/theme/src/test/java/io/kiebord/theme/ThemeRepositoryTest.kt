@@ -341,24 +341,47 @@ class ThemeRepositoryTest {
 
             assertEquals(54, themes.size)
 
+            var zeroStrokeCount = 0
+            var withStrokeCount = 0
+
             for (theme in themes) {
                 assertTrue("Theme ${theme.id} name is empty", theme.name.isNotBlank())
                 assertEquals("Theme ${theme.name} must have 8.0 keyRadius", 8.0f, theme.keyRadius, 0.01f)
-                assertTrue("Theme ${theme.name} must have keyStrokeSize >= 1", theme.keyStrokeSize >= 1)
-                assertTrue("Theme ${theme.name} must have keyShadowSize >= 1", theme.keyShadowSize >= 1)
 
                 val spec = theme.toKeyboardThemeSpec()
                 assertNotNull(spec)
                 assertEquals(theme.name, spec.name)
                 assertEquals(null, spec.characterKey.cornerRadiusDp)
+
+                if (theme.keyStrokeSize == 0) {
+                    zeroStrokeCount++
+                    assertEquals("Zero-stroke theme ${theme.name} must have null stroke spec", null, spec.characterKey.stroke)
+                } else {
+                    withStrokeCount++
+                    assertNotNull("Stroke theme ${theme.name} must have stroke spec", spec.characterKey.stroke)
+                    assertEquals(theme.keyStrokeSize.toFloat(), spec.characterKey.stroke?.widthDp ?: 0f, 0.01f)
+                }
             }
+
+            assertEquals("Exactly 40 themes must have 0 stroke", 40, zeroStrokeCount)
+            assertEquals("Exactly 14 themes must have stroke > 0", 14, withStrokeCount)
+
+            val matLight = themes.first { it.id == 1001 }
+            assertEquals("Pure Chalk", matLight.name)
+            assertEquals(0, matLight.keyStrokeSize)
+            assertEquals(null, matLight.toKeyboardThemeSpec().characterKey.stroke)
+
+            val amoled = themes.first { it.id == 1011 }
+            assertEquals("Cyber AMOLED", amoled.name)
+            assertEquals(1, amoled.keyStrokeSize)
+            assertEquals("#505050", amoled.keyStrokeColor)
+            assertEquals(1.0f, amoled.toKeyboardThemeSpec().characterKey.stroke?.widthDp ?: 0f, 0.01f)
 
             val cosmic = themes.first { it.id == 1012 }
             assertEquals("Cosmic Nebula", cosmic.name)
-            assertEquals(2, cosmic.backgroundType)
-            val cosmicSpec = cosmic.toKeyboardThemeSpec()
-            assertEquals(GradientType.LINEAR, cosmicSpec.background.gradient?.type)
-            assertEquals(2, cosmicSpec.background.gradient?.colors?.size)
+            assertEquals(2, cosmic.keyStrokeSize)
+            assertEquals("#4b0082", cosmic.keyStrokeColor)
+            assertEquals(2.0f, cosmic.toKeyboardThemeSpec().characterKey.stroke?.widthDp ?: 0f, 0.01f)
         }
     }
 }

@@ -361,7 +361,7 @@ data class KeyboardThemeSpec(
             ?: if (isDark) Color(0xFF04294E) else Color(0xFFFFFFFF)
 
         val strokeCol = characterKey.stroke?.color?.let { ThemeColorUtils.parseHexColor(it) }
-            ?: if (isDark) Color(0x1FFFFFFF) else Color(0x00000000)
+            ?: Color(0x00000000)
         val shadowCol = characterKey.shadow?.color?.let { ThemeColorUtils.parseHexColor(it) }
             ?: Color(0x00000000)
 

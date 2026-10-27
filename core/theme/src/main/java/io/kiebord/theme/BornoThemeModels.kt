@@ -132,10 +132,10 @@ object ThemeColorUtils {
         val bgColor = parseHexColor(backgroundColor, Color.Black)
         val dark = isColorDark(bgColor)
 
-        val border = when {
-            keyStrokeSize > 0 && keyStrokeColor.isNotBlank() && keyStrokeColor != "#00000000" -> keyStrokeColor
-            dark -> "#1FFFFFFF"
-            else -> "#00000000"
+        val border = if (keyStrokeSize > 0 && keyStrokeColor.isNotBlank() && keyStrokeColor != "#00000000") {
+            keyStrokeColor
+        } else {
+            "#00000000"
         }
 
         val stripBg = if (isTransparent(stripColor)) backgroundColor else stripColor
@@ -218,8 +218,6 @@ object ThemeColorUtils {
 
         val stroke = if (keyStrokeSize > 0 && keyStrokeColor.isNotBlank() && keyStrokeColor != "#00000000") {
             StrokeSpec(color = keyStrokeColor, widthDp = keyStrokeSize.toFloat().coerceAtLeast(0.5f))
-        } else if (dark) {
-            StrokeSpec(color = "#1FFFFFFF", widthDp = 0.5f)
         } else null
 
         val shadow = if (keyShadowSize > 0 && keyShadowColor.isNotBlank() && keyShadowColor != "#00000000") {
