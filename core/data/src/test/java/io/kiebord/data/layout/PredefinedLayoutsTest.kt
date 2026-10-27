@@ -283,4 +283,315 @@ class PredefinedLayoutsTest {
         )
         assertEquals("Test Custom 2", withoutDisplay.effectiveDisplayName())
     }
+
+    @Test
+    fun testSymbolsLayoutResolutionAndFallback() {
+        val customSym = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "custom_sym",
+            name = "Custom Symbols",
+            language = "sym",
+            rows = listOf(
+                io.kiebord.common.model.KeyRow(listOf(io.kiebord.common.model.KeyDef("1"))),
+                io.kiebord.common.model.KeyRow(listOf(io.kiebord.common.model.KeyDef("@"))),
+                io.kiebord.common.model.KeyRow(listOf(io.kiebord.common.model.KeyDef("*"))),
+                io.kiebord.common.model.KeyRow(listOf(io.kiebord.common.model.KeyDef("ABC"))),
+                io.kiebord.common.model.KeyRow(listOf(io.kiebord.common.model.KeyDef("extra")))
+            )
+        )
+        val customWithSym = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "custom_with_sym",
+            name = "Custom With Symbols",
+            language = "custom",
+            symbolsLayout = customSym,
+            rows = emptyList()
+        )
+        assertEquals(customSym, customWithSym.effectiveSymbolsLayout())
+        assertEquals(5, customWithSym.effectiveSymbolsLayout()!!.rows.size)
+        assertTrue(customSym.isSymbolsLayout())
+
+        // Default / predefined layouts without symbolsLayout safely return null and fall back
+        val borno = PredefinedLayouts.BengaliBorno
+        org.junit.Assert.assertNull(borno.effectiveSymbolsLayout())
+        org.junit.Assert.assertFalse(borno.isSymbolsLayout())
+        val fallback = borno.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
+        assertEquals("symbols_1", fallback.id)
+    }
+
+    @Test
+    fun testJsonSerializationWithCustomSymbolsLayout() {
+        val jsonString = """
+            {
+              "id": "test_layout",
+              "name": "Test Layout",
+              "language": "xx",
+              "rows": [
+                { "keys": [{ "label": "a" }] }
+              ],
+              "symbolsLayout": {
+                "id": "test_symbols",
+                "name": "Test Symbols",
+                "rows": [
+                  { "keys": [{ "label": "1" }, { "label": "2" }] },
+                  { "keys": [{ "label": "@" }, { "label": "#" }] },
+                  { "keys": [{ "label": "!" }, { "label": "?" }] },
+                  { "keys": [{ "label": "ABC" }] },
+                  { "keys": [{ "label": "extra_row" }] }
+                ]
+              }
+            }
+        """.trimIndent()
+
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val parsed = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(jsonString)
+
+        assertEquals("test_layout", parsed.id)
+        assertNotNull(parsed.effectiveSymbolsLayout())
+        val sym = parsed.effectiveSymbolsLayout()!!
+        assertEquals("test_symbols", sym.id)
+        assertEquals(5, sym.rows.size)
+        assertEquals("1", sym.rows[0].keys[0].label)
+        assertEquals("extra_row", sym.rows[4].keys[0].label)
+        assertTrue(sym.isSymbolsLayout())
+    }
+
+    @Test
+    fun testDuplicateRowDetection() {
+        val extraRowNums = io.kiebord.common.model.LayoutExtraRow(
+            id = "extra_nums",
+            title = "Numbers",
+            keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0").map { io.kiebord.common.model.KeyDef(label = it) }
+        )
+        val symRowNums = io.kiebord.common.model.KeyRow(
+            keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0").map { io.kiebord.common.model.KeyDef(label = it) }
+        )
+        val symRowSymbols = io.kiebord.common.model.KeyRow(
+            keys = listOf("@", "#", "$", "%", "&", "-", "+", "(", ")", "/").map { io.kiebord.common.model.KeyDef(label = it) }
+        )
+
+        // Numbers duplicate spotted
+        assertTrue(io.kiebord.common.model.KeyboardLayoutDef.isDuplicateRow(extraRowNums, listOf(symRowNums, symRowSymbols)))
+
+        // Non-duplicate Harakat row
+        val harakatRow = io.kiebord.common.model.LayoutExtraRow(
+            id = "ar_harakat",
+            title = "Harakat",
+            keys = listOf("\u064e", "\u064b", "\u064f", "\u064c", "\u0650", "\u064d", "\u0652", "\u0651", "\u0640", "\u061f").map { io.kiebord.common.model.KeyDef(label = it) }
+        )
+        org.junit.Assert.assertFalse(io.kiebord.common.model.KeyboardLayoutDef.isDuplicateRow(harakatRow, listOf(symRowNums, symRowSymbols)))
+
+        // Row ID matching existing extra row
+        val existingExtra = listOf(
+            io.kiebord.common.model.LayoutExtraRow(
+                id = "ar_harakat",
+                title = "Existing Harakat",
+                keys = emptyList()
+            )
+        )
+        assertTrue(io.kiebord.common.model.KeyboardLayoutDef.isDuplicateRow(harakatRow, listOf(symRowSymbols), existingExtra))
+    }
+
+    @Test
+    fun testResolveExtraRowsForSymbolsCarriesOverWhenRowCountEquals() {
+        val harakatRow = io.kiebord.common.model.LayoutExtraRow(
+            id = "ar_harakat",
+            title = "Harakat",
+            defaultEnabled = true,
+            keys = listOf("\u064e", "\u064b", "\u064f", "\u064c", "\u0650", "\u064d", "\u0652", "\u0651", "\u0640", "\u061f").map { io.kiebord.common.model.KeyDef(label = it) }
+        )
+
+        val alphaLayout = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "ar_arabic",
+            name = "Arabic",
+            extraRows = listOf(harakatRow),
+            rows = List(4) { io.kiebord.common.model.KeyRow(keys = listOf(io.kiebord.common.model.KeyDef("a"))) }
+        )
+
+        val symbolsLayout = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "symbols",
+            name = "Symbols",
+            rows = List(4) { io.kiebord.common.model.KeyRow(keys = listOf(io.kiebord.common.model.KeyDef("1"))) }
+        )
+
+        // Alpha has 4 + 1 = 5 rows, symbols has 4 rows -> extra row moved to symbols
+        val extraForSymbols = symbolsLayout.resolveExtraRowsForSymbols(alphaLayout)
+        assertEquals(1, extraForSymbols.size)
+        assertEquals(10, extraForSymbols[0].keys.size)
+        assertEquals("\u064e", extraForSymbols[0].keys[0].label)
+
+        // If Harakat is disabled via override, no extra row moved
+        val overrides = mapOf("ar_arabic_ar_harakat" to false)
+        val extraWhenDisabled = symbolsLayout.resolveExtraRowsForSymbols(alphaLayout, overrides)
+        assertEquals(0, extraWhenDisabled.size)
+    }
+
+    @Test
+    fun testResolveExtraRowsForSymbolsUsesCorrespondingRowWhenFound() {
+        val alphaHarakat = io.kiebord.common.model.LayoutExtraRow(
+            id = "harakat",
+            title = "Harakat",
+            defaultEnabled = true,
+            keys = listOf(io.kiebord.common.model.KeyDef("ـَ"))
+        )
+        val alphaLayout = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "ar_arabic",
+            name = "Arabic",
+            extraRows = listOf(alphaHarakat),
+            rows = List(4) { io.kiebord.common.model.KeyRow(keys = listOf(io.kiebord.common.model.KeyDef("a"))) }
+        )
+
+        val symbolQuranic = io.kiebord.common.model.LayoutExtraRow(
+            id = "harakat",
+            title = "Quranic",
+            defaultEnabled = true,
+            keys = listOf(io.kiebord.common.model.KeyDef("ۖ"))
+        )
+        val symbolsLayout = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "ar_symbols_1",
+            name = "Symbols",
+            extraRows = listOf(symbolQuranic),
+            rows = List(4) { io.kiebord.common.model.KeyRow(keys = listOf(io.kiebord.common.model.KeyDef("1"))) }
+        )
+
+        // Found matching id -> uses corresponding row from symbols layout
+        val extra = symbolsLayout.resolveExtraRowsForSymbols(alphaLayout)
+        assertEquals(1, extra.size)
+        assertEquals("ۖ", extra[0].keys[0].label)
+    }
+
+    @Test
+    fun testResolveExtraRowsForSymbolsMovesExtraRowWhenNotFound() {
+        val alphaExtra = io.kiebord.common.model.LayoutExtraRow(
+            id = "custom_feature",
+            title = "Custom",
+            defaultEnabled = true,
+            keys = listOf(io.kiebord.common.model.KeyDef("★"))
+        )
+        val alphaLayout = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "custom_lang",
+            name = "Custom",
+            extraRows = listOf(alphaExtra),
+            rows = List(4) { io.kiebord.common.model.KeyRow(keys = listOf(io.kiebord.common.model.KeyDef("a"))) }
+        )
+
+        val symbolsLayout = io.kiebord.common.model.KeyboardLayoutDef(
+            id = "custom_symbols",
+            name = "Symbols",
+            extraRows = emptyList(),
+            rows = List(4) { io.kiebord.common.model.KeyRow(keys = listOf(io.kiebord.common.model.KeyDef("1"))) }
+        )
+
+        // Not found in symbol page -> moves extra row to symbol page
+        val extra = symbolsLayout.resolveExtraRowsForSymbols(alphaLayout)
+        assertEquals(1, extra.size)
+        assertEquals("★", extra[0].keys[0].label)
+    }
+
+    @Test
+    fun testRealArabicJsonRowCountMatching() {
+        val jsonFile = java.io.File("../../feature/ime/src/main/assets/layouts/ar_arabic.json")
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val arabic = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(jsonFile.readText())
+        val sym = arabic.effectiveSymbolsLayout()!!
+        val moreSym = arabic.effectiveMoreSymbolsLayout()!!
+
+        // Base layout has 4 rows, 1 extra row (Harakat) and 1 numberRow
+        assertEquals(4, arabic.rows.size)
+        assertEquals(1, arabic.extraRows.size)
+        assertEquals("harakat", arabic.extraRows[0].id)
+        assertNotNull(arabic.numberRow)
+
+        // Symbols (?123) and More Symbols (=\<) have 4 core rows and matching extra row for Harakat (Quranic marks)
+        assertEquals(4, sym.rows.size)
+        assertEquals(1, sym.extraRows.size)
+        assertEquals("harakat", sym.extraRows[0].id)
+        assertEquals("ۖ", sym.extraRows[0].keys[0].label)
+        assertEquals("١", sym.rows[0].keys[0].label)
+
+        assertEquals(4, moreSym.rows.size)
+        assertEquals(1, moreSym.extraRows.size)
+        assertEquals("harakat", moreSym.extraRows[0].id)
+        assertEquals("ۖ", moreSym.extraRows[0].keys[0].label)
+        assertEquals("~", moreSym.rows[0].keys[0].label)
+    }
+
+    @Test
+    fun testArabicLayoutRowCountsInAllPermutations() {
+        val jsonFile = java.io.File("../../feature/ime/src/main/assets/layouts/ar_arabic.json")
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val arabic = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(jsonFile.readText())
+        val sym = arabic.effectiveSymbolsLayout()!!
+        val moreSym = arabic.effectiveMoreSymbolsLayout()!!
+
+        // Helper simulating KeyboardRootView row construction
+        fun buildRows(
+            display: io.kiebord.common.model.KeyboardLayoutDef,
+            baseAlpha: io.kiebord.common.model.KeyboardLayoutDef,
+            showNumberRow: Boolean,
+            overrides: Map<String, Boolean>
+        ): List<io.kiebord.common.model.KeyRow> {
+            val isSymbol = display.isSymbolsLayout()
+            val numRow: List<io.kiebord.common.model.KeyRow> = if (showNumberRow) {
+                listOf(display.numberRow ?: baseAlpha.numberRow ?: PredefinedLayouts.createNumberRow(baseAlpha.language))
+            } else {
+                emptyList()
+            }
+            val extraRows: List<io.kiebord.common.model.KeyRow> = if (isSymbol) {
+                display.resolveExtraRowsForSymbols(baseAlpha, overrides)
+            } else {
+                display.extraRows.filter { extra ->
+                    overrides["${display.id}_${extra.id}"] ?: extra.defaultEnabled
+                }.map { io.kiebord.common.model.KeyRow(it.keys) }
+            }
+            val coreRows: List<io.kiebord.common.model.KeyRow> = if (isSymbol) {
+                display.resolveCoreRowsForSymbols(showNumberRow)
+            } else {
+                display.rows
+            }
+            return numRow + extraRows + coreRows
+        }
+
+        // Permutation 1: Both number row and harakat enabled
+        val p1Overrides = mapOf("ar_arabic_harakat" to true)
+        val p1Alpha = buildRows(arabic, arabic, showNumberRow = true, p1Overrides)
+        val p1Sym = buildRows(sym, arabic, showNumberRow = true, p1Overrides)
+        val p1More = buildRows(moreSym, arabic, showNumberRow = true, p1Overrides)
+        assertEquals(6, p1Alpha.size)
+        assertEquals(6, p1Sym.size)
+        assertEquals(6, p1More.size)
+        assertEquals(p1Alpha.size, p1Sym.size)
+        assertEquals(p1Alpha.size, p1More.size)
+
+        // Permutation 2: Number row enabled, harakat disabled
+        val p2Overrides = mapOf("ar_arabic_harakat" to false)
+        val p2Alpha = buildRows(arabic, arabic, showNumberRow = true, p2Overrides)
+        val p2Sym = buildRows(sym, arabic, showNumberRow = true, p2Overrides)
+        val p2More = buildRows(moreSym, arabic, showNumberRow = true, p2Overrides)
+        assertEquals(5, p2Alpha.size)
+        assertEquals(5, p2Sym.size)
+        assertEquals(5, p2More.size)
+        assertEquals(p2Alpha.size, p2Sym.size)
+        assertEquals(p2Alpha.size, p2More.size)
+
+        // Permutation 3: Number row disabled, harakat enabled
+        val p3Overrides = mapOf("ar_arabic_harakat" to true)
+        val p3Alpha = buildRows(arabic, arabic, showNumberRow = false, p3Overrides)
+        val p3Sym = buildRows(sym, arabic, showNumberRow = false, p3Overrides)
+        val p3More = buildRows(moreSym, arabic, showNumberRow = false, p3Overrides)
+        assertEquals(5, p3Alpha.size)
+        assertEquals(5, p3Sym.size)
+        assertEquals(5, p3More.size)
+        assertEquals(p3Alpha.size, p3Sym.size)
+        assertEquals(p3Alpha.size, p3More.size)
+
+        // Permutation 4: Both number row and harakat disabled
+        val p4Overrides = mapOf("ar_arabic_harakat" to false)
+        val p4Alpha = buildRows(arabic, arabic, showNumberRow = false, p4Overrides)
+        val p4Sym = buildRows(sym, arabic, showNumberRow = false, p4Overrides)
+        val p4More = buildRows(moreSym, arabic, showNumberRow = false, p4Overrides)
+        assertEquals(4, p4Alpha.size)
+        assertEquals(4, p4Sym.size)
+        assertEquals(4, p4More.size)
+        assertEquals(p4Alpha.size, p4Sym.size)
+        assertEquals(p4Alpha.size, p4More.size)
+    }
 }

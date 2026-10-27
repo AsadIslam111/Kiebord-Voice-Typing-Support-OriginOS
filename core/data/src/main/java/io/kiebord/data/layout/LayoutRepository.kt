@@ -54,6 +54,8 @@ class LayoutRepository private constructor(private val context: Context) {
             try {
                 val layout = json.decodeFromString<KeyboardLayoutDef>(customFile.readText(Charsets.UTF_8))
                 cache[id] = layout
+                layout.effectiveSymbolsLayout()?.let { cache[it.id] = it }
+                layout.effectiveMoreSymbolsLayout()?.let { cache[it.id] = it }
                 return layout
             } catch (_: Exception) {}
         }
@@ -65,6 +67,8 @@ class LayoutRepository private constructor(private val context: Context) {
                 val content = stream.bufferedReader(Charsets.UTF_8).readText()
                 val layout = json.decodeFromString<KeyboardLayoutDef>(content)
                 cache[id] = layout
+                layout.effectiveSymbolsLayout()?.let { cache[it.id] = it }
+                layout.effectiveMoreSymbolsLayout()?.let { cache[it.id] = it }
                 return layout
             }
         } catch (_: Exception) {}
@@ -155,6 +159,8 @@ class LayoutRepository private constructor(private val context: Context) {
             val file = File(customLayoutsDir, "${layout.id}.json")
             file.writeText(jsonContent, Charsets.UTF_8)
             cache[layout.id] = layout
+            layout.effectiveSymbolsLayout()?.let { cache[it.id] = it }
+            layout.effectiveMoreSymbolsLayout()?.let { cache[it.id] = it }
             layout
         }
     }
@@ -163,7 +169,9 @@ class LayoutRepository private constructor(private val context: Context) {
         val file = File(customLayoutsDir, "$id.json")
         val deleted = file.delete()
         if (deleted) {
-            cache.remove(id)
+            val removed = cache.remove(id)
+            removed?.effectiveSymbolsLayout()?.let { cache.remove(it.id) }
+            removed?.effectiveMoreSymbolsLayout()?.let { cache.remove(it.id) }
         }
         return deleted
     }

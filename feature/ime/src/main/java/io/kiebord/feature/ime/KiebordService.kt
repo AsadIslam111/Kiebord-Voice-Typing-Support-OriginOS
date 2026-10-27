@@ -108,7 +108,7 @@ class KiebordService : InputMethodService() {
     }
 
     // Configurable state
-    private var primaryAlphaLayout: KeyboardLayoutDef = PredefinedLayouts.EnglishQwerty
+    private var primaryAlphaLayout by mutableStateOf(PredefinedLayouts.EnglishQwerty)
     private var activeLayout by mutableStateOf(PredefinedLayouts.EnglishQwerty)
     private var shiftState by mutableStateOf(ShiftState.UNSHIFTED)
     private var lastShiftTapTime: Long = 0L
@@ -253,6 +253,7 @@ class KiebordService : InputMethodService() {
             KiebordTheme(colorScheme = colorScheme) {
                 KeyboardRootView(
                     layout = activeLayout,
+                    primaryAlphaLayout = primaryAlphaLayout,
                     shiftState = shiftState,
                     inputSessionId = inputSessionId,
                     navBarBottomInset = navBarBottomDp,
@@ -507,8 +508,10 @@ class KiebordService : InputMethodService() {
     fun switchToLayout(layoutId: String) {
         finishComposing()
         primaryAlphaLayout = layoutRepo.getLayout(layoutId)
-        if (!isSymbolsMode) {
-            activeLayout = primaryAlphaLayout
+        activeLayout = if (!isSymbolsMode) {
+            primaryAlphaLayout
+        } else {
+            primaryAlphaLayout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
         }
         if (!shouldAutoCapitalize()) {
             shiftState = ShiftState.UNSHIFTED
@@ -917,11 +920,11 @@ class KiebordService : InputMethodService() {
                             primaryAlphaLayout = activeLayout
                             isSymbolsMode = true
                         }
-                        activeLayout = PredefinedLayouts.Symbols
+                        activeLayout = primaryAlphaLayout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
                     }
                     "=\\<", "=<" -> {
                         isSymbolsMode = true
-                        activeLayout = PredefinedLayouts.SymbolsMore
+                        activeLayout = primaryAlphaLayout.effectiveMoreSymbolsLayout() ?: PredefinedLayouts.SymbolsMore
                     }
                     "ABC" -> {
                         isSymbolsMode = false
@@ -940,7 +943,7 @@ class KiebordService : InputMethodService() {
                         } else {
                             primaryAlphaLayout = activeLayout
                             isSymbolsMode = true
-                            activeLayout = PredefinedLayouts.Symbols
+                            activeLayout = primaryAlphaLayout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
                         }
                     }
                 }

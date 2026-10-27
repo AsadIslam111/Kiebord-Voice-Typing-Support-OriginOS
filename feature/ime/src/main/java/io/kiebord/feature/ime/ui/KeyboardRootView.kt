@@ -132,6 +132,7 @@ sealed class UndoRedoPillState {
 @Composable
 fun KeyboardRootView(
     layout: KeyboardLayoutDef,
+    primaryAlphaLayout: KeyboardLayoutDef = layout,
     shiftState: ShiftState,
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit,
@@ -542,9 +543,9 @@ fun KeyboardRootView(
     }
 
     // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
-    val rawDisplayLayout = if (isSlidingSymbolMode) PredefinedLayouts.Symbols else layout
+    val rawDisplayLayout = if (isSlidingSymbolMode) (layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols) else layout
     val displayLayout = remember(rawDisplayLayout, showNumberRow) {
-        if (rawDisplayLayout.id.startsWith("symbols")) {
+        if (rawDisplayLayout.id.startsWith("symbols") && (rawDisplayLayout === PredefinedLayouts.Symbols || rawDisplayLayout === PredefinedLayouts.SymbolsMore)) {
             PredefinedLayouts.getSymbolsLayout(rawDisplayLayout.id, showNumberRow)
         } else {
             rawDisplayLayout
@@ -553,26 +554,39 @@ fun KeyboardRootView(
 
     val effectiveShiftState = if (isSlidingShiftMode) ShiftState.ONE_SHOT else shiftState
     val isShiftActive = effectiveShiftState != ShiftState.UNSHIFTED
+    val isSymbolLayout = displayLayout.isSymbolsLayout()
+    val baseAlphaLayout = if (isSymbolLayout) (if (isSlidingSymbolMode) layout else primaryAlphaLayout) else displayLayout
 
-    val keyboardRows: List<KeyRow> = remember(displayLayout, showNumberRow, extraRowOverrides, isShiftActive) {
-        val numberRow: List<KeyRow> = if (showNumberRow && !displayLayout.id.startsWith("symbols")) {
+    val keyboardRows: List<KeyRow> = remember(displayLayout, baseAlphaLayout, showNumberRow, extraRowOverrides, isShiftActive) {
+        val numberRow: List<KeyRow> = if (showNumberRow) {
             val baseRow = if (isShiftActive && displayLayout.shiftedNumberRow != null) {
                 displayLayout.shiftedNumberRow!!
             } else {
-                displayLayout.numberRow ?: PredefinedLayouts.createNumberRow(displayLayout.language)
+                displayLayout.numberRow
+                    ?: (if (isSymbolLayout) (if (isShiftActive && baseAlphaLayout.shiftedNumberRow != null) baseAlphaLayout.shiftedNumberRow else baseAlphaLayout.numberRow) else null)
+                    ?: PredefinedLayouts.createNumberRow(if (isSymbolLayout) baseAlphaLayout.language else displayLayout.language)
             }
             listOf(baseRow)
         } else {
             emptyList()
         }
-        val enabledExtra: List<KeyRow> = if (!displayLayout.id.startsWith("symbols")) {
-            displayLayout.extraRows.filter { extraRow ->
-                extraRowOverrides["${displayLayout.id}_${extraRow.id}"] ?: extraRow.defaultEnabled
-            }.map { KeyRow(it.keys) }
+        val extraRowsToRender: List<KeyRow> = if (isSymbolLayout) {
+            displayLayout.resolveExtraRowsForSymbols(baseAlphaLayout, extraRowOverrides)
         } else {
-            emptyList()
+            displayLayout.extraRows.filter { extraRow ->
+                val primaryId = displayLayout.id.removeSuffix("_symbols").removeSuffix("_symbols_more").removeSuffix("_1").removeSuffix("_2")
+                extraRowOverrides["${displayLayout.id}_${extraRow.id}"]
+                    ?: extraRowOverrides["${primaryId}_${extraRow.id}"]
+                    ?: extraRowOverrides[extraRow.id]
+                    ?: extraRow.defaultEnabled
+            }.map { KeyRow(it.keys) }
         }
-        numberRow + enabledExtra + displayLayout.rows
+        val coreRowsToRender: List<KeyRow> = if (isSymbolLayout) {
+            displayLayout.resolveCoreRowsForSymbols(showNumberRow)
+        } else {
+            displayLayout.rows
+        }
+        numberRow + extraRowsToRender + coreRowsToRender
     }
 
     val isQwertyBasedLayout = displayLayout.id == "en_qwerty" || displayLayout.id == "bn_borno" || displayLayout.id == "bn_avro"
@@ -648,7 +662,7 @@ fun KeyboardRootView(
     }
 
     val isKeysInteractive = isInteractive && !isResizerOpen
-    val hasTopNumberRow = showNumberRow && !displayLayout.id.startsWith("symbols")
+    val hasTopNumberRow = showNumberRow
     val keyboardContentHeight = remember(keyboardRows, keyRowHeight, scaleFactor, hasTopNumberRow) {
         var total = 0.dp
         keyboardRows.forEachIndexed { index, _ ->
@@ -1259,7 +1273,7 @@ fun KeyboardRootView(
                                                         minDistance = dist
                                                         val rawKey = row.keys[c]
                                                         closestKey = if (rawKey.type == KeyType.SPACE && rawKey.label.isBlank()) {
-                                                            val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
+                                                            val spaceLabel = if (displayLayout.isSymbolsLayout()) {
                                                                 "Space"
                                                             } else {
                                                                 displayLayout.displayName ?: PredefinedLayouts.displayName(displayLayout.id)
@@ -1486,7 +1500,7 @@ fun KeyboardRootView(
                     // Keyboard rows (stable layout without recomposition shifts)
                     keyboardRows.forEachIndexed { rowIndex, row ->
                         val isBottomRow = rowIndex == keyboardRows.lastIndex
-                        val isTopNumberRow = showNumberRow && rowIndex == 0
+                        val isTopNumberRow = hasTopNumberRow && rowIndex == 0
                         val currentRowHeight = if (isTopNumberRow) {
                             (50 * scaleFactor).dp
                         } else {
@@ -1515,7 +1529,7 @@ fun KeyboardRootView(
 
                         row.keys.forEachIndexed { keyIndex, key ->
                             val effectiveKey = if (key.type == KeyType.SPACE && key.label.isBlank()) {
-                                val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
+                                val spaceLabel = if (displayLayout.isSymbolsLayout()) {
                                     "Space"
                                 } else {
                                     displayLayout.displayName ?: PredefinedLayouts.displayName(displayLayout.id)
@@ -1663,7 +1677,7 @@ fun KeyboardRootView(
                                                 if (rect.contains(currentFingerInRoot)) {
                                                     val rawKey = row.keys[c]
                                                     val effectiveKey = if (rawKey.type == KeyType.SPACE && rawKey.label.isBlank()) {
-                                                        val spaceLabel = if (displayLayout.id.startsWith("symbols")) {
+                                                        val spaceLabel = if (displayLayout.isSymbolsLayout()) {
                                                             "Space"
                                                         } else {
                                                             displayLayout.displayName ?: PredefinedLayouts.displayName(displayLayout.id)

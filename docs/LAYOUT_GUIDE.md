@@ -36,7 +36,23 @@ Layouts are parsed with compile-time serializers and cached in memory to ensure 
 | `extraRows` | Array of `LayoutExtraRow` | No | Optional feature rows that appear above the main alphabet keys. |
 | `numberRow` | `KeyRow` | No | Optional layout-specific number row override. |
 | `shiftedNumberRow` | `KeyRow` | No | Optional layout-specific number row displayed when Shift or Caps Lock is active. |
+| `symbolsLayout` | `KeyboardLayoutDef` | No | Optional layout-specific symbols page (`?123`). Used to match row count and supply language-specific symbols. Falls back to default symbols if omitted. |
+| `moreSymbolsLayout` | `KeyboardLayoutDef` | No | Optional secondary symbols page (`=\<`). Falls back to default more symbols if omitted. |
 | `rows` | Array of `KeyRow` | Yes | List of main keyboard rows from top to bottom. |
+
+---
+
+### Custom Symbol Pages (`?123` and `=\<`)
+
+Layouts can optionally provide their own `symbolsLayout` and `moreSymbolsLayout`.
+- **Row Height and Count Synchronization**: Whether switching between the alphabet page and `?123` (or `=\<`), Kiebord preserves identical row heights and row counts:
+  - If the top number row is enabled (`showNumberRow`), both the alphabet and symbol pages render the top number row at row index 0 with matching height `(50 * scaleFactor).dp`.
+  - If an extra row (such as Arabic Harakat diacritics or custom feature rows) is enabled, both the alphabet and symbol pages render the extra row with matching standard height `keyRowHeight`.
+  - If either row is disabled by the user or layout configuration, neither page renders it.
+- **Dynamic Extra Row Carry-Over and Linking**: If an alphabet layout defines an enabled extra row (such as `harakat`), the symbols page can either provide its own corresponding extra row under the same `id` (e.g. Quranic stop marks for Arabic symbols), or Kiebord automatically carries over the alphabet extra row to the symbols page if row counts need matching. Toggling the feature in Settings updates both pages in lockstep.
+- **Duplicate Number Avoidance**: When the top number row is enabled on a symbol layout whose first core row contains digits, Kiebord automatically replaces that core row with the alternate symbols row (`~ < > _ ` º \ = { }` or shifted symbols) so numbers are not repeated across consecutive rows.
+- **Localized Symbols**: Language-specific punctuation (such as Arabic question mark `؟`, comma `،`, semicolon `؛`, Eastern Arabic numbers `١, ٢, ٣...`, or Quranic stop marks) can be positioned directly on the symbol page.
+- **Automatic Fallback**: If a layout does not specify `symbolsLayout` (such as English QWERTY or Bengali layouts), Kiebord automatically falls back to the standard built-in symbols page with synchronized top number row behavior.
 
 ---
 
@@ -222,6 +238,9 @@ When Kiebord loads this layout:
 1. It automatically adds a **Harakat row (حركات)** switch under the layout card in **Settings > Languages & Layouts**.
 2. Users can toggle the row on or off with immediate live preview updating.
 3. The choice is preserved across reboots in app preferences.
+4. On symbol pages (`?123` and `=\<`):
+   - For each enabled extra row in the alphabet layout, if the symbol page defines a corresponding extra row (matching `id`), that row is used. If not found, the alphabet extra row is moved to the symbol page so row counts and heights match.
+   - If the top number row is enabled, the symbol page uses its own defined `numberRow` or automatically places the alphabet layout's number row at the top.
 
 ---
 

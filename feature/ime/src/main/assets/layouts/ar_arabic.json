@@ -466,5 +466,553 @@
         }
       ]
     }
-  ]
+  ],
+  "symbolsLayout": {
+    "id": "ar_symbols_1",
+    "name": "Symbols",
+    "language": "ar",
+    "direction": "RTL",
+    "extraRows": [
+      {
+        "id": "harakat",
+        "title": "Quranic symbols (علامات الوقف)",
+        "defaultEnabled": true,
+        "keys": [
+          {
+            "label": "ۖ"
+          },
+          {
+            "label": "ۗ"
+          },
+          {
+            "label": "ۘ"
+          },
+          {
+            "label": "ۙ"
+          },
+          {
+            "label": "ۚ"
+          },
+          {
+            "label": "ۛ"
+          },
+          {
+            "label": "ۜ"
+          },
+          {
+            "label": "۝"
+          },
+          {
+            "label": "۞"
+          },
+          {
+            "label": "؞"
+          }
+        ]
+      }
+    ],
+    "rows": [
+      {
+        "keys": [
+          {
+            "label": "١",
+            "moreKeys": [
+              "1",
+              "١"
+            ]
+          },
+          {
+            "label": "٢",
+            "moreKeys": [
+              "2",
+              "٢"
+            ]
+          },
+          {
+            "label": "٣",
+            "moreKeys": [
+              "3",
+              "٣"
+            ]
+          },
+          {
+            "label": "٤",
+            "moreKeys": [
+              "4",
+              "٤"
+            ]
+          },
+          {
+            "label": "٥",
+            "moreKeys": [
+              "5",
+              "٥"
+            ]
+          },
+          {
+            "label": "٦",
+            "moreKeys": [
+              "6",
+              "٦"
+            ]
+          },
+          {
+            "label": "٧",
+            "moreKeys": [
+              "7",
+              "٧"
+            ]
+          },
+          {
+            "label": "٨",
+            "moreKeys": [
+              "8",
+              "٨"
+            ]
+          },
+          {
+            "label": "٩",
+            "moreKeys": [
+              "9",
+              "٩"
+            ]
+          },
+          {
+            "label": "٠",
+            "moreKeys": [
+              "0",
+              "٠"
+            ]
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "@"
+          },
+          {
+            "label": "#"
+          },
+          {
+            "label": "$",
+            "moreKeys": [
+              "$",
+              "﷼",
+              "د.إ",
+              "ج.م",
+              "€",
+              "£"
+            ]
+          },
+          {
+            "label": "٪",
+            "moreKeys": [
+              "٪",
+              "%",
+              "‰"
+            ]
+          },
+          {
+            "label": "&"
+          },
+          {
+            "label": "-",
+            "moreKeys": [
+              "-",
+              "_",
+              "–",
+              "—",
+              "·"
+            ]
+          },
+          {
+            "label": "+",
+            "moreKeys": [
+              "+",
+              "±"
+            ]
+          },
+          {
+            "label": "(",
+            "moreKeys": [
+              "(",
+              "[",
+              "{",
+              "<",
+              "«"
+            ]
+          },
+          {
+            "label": ")",
+            "moreKeys": [
+              ")",
+              "]",
+              "}",
+              ">",
+              "»"
+            ]
+          },
+          {
+            "label": "ZWNJ",
+            "commitText": "‌",
+            "moreKeys": [
+              "ZWJ",
+              "/"
+            ]
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "=\\<",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": "*",
+            "moreKeys": [
+              "*",
+              "★"
+            ]
+          },
+          {
+            "label": "\"",
+            "moreKeys": [
+              "\"",
+              "”",
+              "“",
+              "«",
+              "»"
+            ]
+          },
+          {
+            "label": "'",
+            "moreKeys": [
+              "'",
+              "’",
+              "‘"
+            ]
+          },
+          {
+            "label": ":"
+          },
+          {
+            "label": "؛",
+            "moreKeys": [
+              "؛",
+              ";"
+            ]
+          },
+          {
+            "label": "!"
+          },
+          {
+            "label": "؟",
+            "moreKeys": [
+              "؟",
+              "?"
+            ]
+          },
+          {
+            "type": "DELETE",
+            "icon": "backspace",
+            "widthWeight": 1.5
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "ABC",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": "،",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "،",
+              ","
+            ]
+          },
+          {
+            "label": "_",
+            "widthWeight": 1.0
+          },
+          {
+            "label": " ",
+            "type": "SPACE",
+            "icon": "space",
+            "widthWeight": 3.0
+          },
+          {
+            "label": "/",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "/",
+              "\\"
+            ]
+          },
+          {
+            "label": ".",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              ".",
+              "…"
+            ]
+          },
+          {
+            "type": "ACTION",
+            "icon": "enter",
+            "widthWeight": 1.5,
+            "moreKeys": [
+              "ACTION_EMOJI"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "moreSymbolsLayout": {
+    "id": "ar_symbols_2",
+    "name": "More Symbols",
+    "language": "ar",
+    "direction": "RTL",
+    "extraRows": [
+      {
+        "id": "harakat",
+        "title": "Quranic symbols (علامات الوقف)",
+        "defaultEnabled": true,
+        "keys": [
+          {
+            "label": "ۖ"
+          },
+          {
+            "label": "ۗ"
+          },
+          {
+            "label": "ۘ"
+          },
+          {
+            "label": "ۙ"
+          },
+          {
+            "label": "ۚ"
+          },
+          {
+            "label": "ۛ"
+          },
+          {
+            "label": "ۜ"
+          },
+          {
+            "label": "۝"
+          },
+          {
+            "label": "۞"
+          },
+          {
+            "label": "؞"
+          }
+        ]
+      }
+    ],
+    "rows": [
+      {
+        "keys": [
+          {
+            "label": "~"
+          },
+          {
+            "label": "`"
+          },
+          {
+            "label": "|"
+          },
+          {
+            "label": "•",
+            "moreKeys": [
+              "•",
+              "♪",
+              "♥",
+              "♠",
+              "♦",
+              "♣"
+            ]
+          },
+          {
+            "label": "√"
+          },
+          {
+            "label": "π",
+            "moreKeys": [
+              "π",
+              "Π"
+            ]
+          },
+          {
+            "label": "÷"
+          },
+          {
+            "label": "×"
+          },
+          {
+            "label": "¶",
+            "moreKeys": [
+              "¶",
+              "§"
+            ]
+          },
+          {
+            "label": "∆"
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "£"
+          },
+          {
+            "label": "¢"
+          },
+          {
+            "label": "€"
+          },
+          {
+            "label": "¥"
+          },
+          {
+            "label": "^",
+            "moreKeys": [
+              "^",
+              "↑",
+              "↓",
+              "←",
+              "→"
+            ]
+          },
+          {
+            "label": "°",
+            "moreKeys": [
+              "°",
+              "′",
+              "″"
+            ]
+          },
+          {
+            "label": "=",
+            "moreKeys": [
+              "=",
+              "≠",
+              "≈",
+              "∞"
+            ]
+          },
+          {
+            "label": "{"
+          },
+          {
+            "label": "}"
+          }
+        ],
+        "startPaddingWeight": 0.5,
+        "endPaddingWeight": 0.5
+      },
+      {
+        "keys": [
+          {
+            "label": "?123",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": "\\"
+          },
+          {
+            "label": "©"
+          },
+          {
+            "label": "®"
+          },
+          {
+            "label": "™"
+          },
+          {
+            "label": "℅"
+          },
+          {
+            "label": "["
+          },
+          {
+            "label": "]"
+          },
+          {
+            "type": "DELETE",
+            "icon": "backspace",
+            "widthWeight": 1.5
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "ABC",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": "،",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "،",
+              ","
+            ]
+          },
+          {
+            "label": "<",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "<",
+              "«",
+              "≤"
+            ]
+          },
+          {
+            "label": " ",
+            "type": "SPACE",
+            "icon": "space",
+            "widthWeight": 3.0
+          },
+          {
+            "label": ">",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              ">",
+              "»",
+              "≥"
+            ]
+          },
+          {
+            "label": ".",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              ".",
+              "…"
+            ]
+          },
+          {
+            "type": "ACTION",
+            "icon": "enter",
+            "widthWeight": 1.5,
+            "moreKeys": [
+              "ACTION_EMOJI"
+            ]
+          }
+        ]
+      }
+    ]
+  }
 }
