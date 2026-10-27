@@ -9,11 +9,11 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 enum class ThemeCategory(val title: String) {
-    ORIGINALS("Kiebord Originals"),
-    BORNO_AMOLED("Borno Classics & Dark"),
-    BORNO_AESTHETIC("Borno Aesthetic & Vibrant"),
-    BORNO_COLORS("Borno Colors & Pastels"),
-    CUSTOM("Custom Imported Themes")
+    ORIGINALS("Originals"),
+    BORNO_AMOLED("Dark & AMOLED"),
+    BORNO_AESTHETIC("Aesthetic"),
+    BORNO_COLORS("Colors"),
+    CUSTOM("Custom Themes")
 }
 
 data class ThemeOptionItem(
@@ -235,12 +235,7 @@ class ThemeRepository private constructor(private val context: Context) {
     }
 
     private fun categorizeBornoTheme(id: String): ThemeCategory {
-        val num = id.removePrefix("borno_").toIntOrNull() ?: return ThemeCategory.BORNO_COLORS
-        return when (num) {
-            in 1001..1011 -> ThemeCategory.BORNO_AMOLED
-            in 1012..1035 -> ThemeCategory.BORNO_AESTHETIC
-            else -> ThemeCategory.BORNO_COLORS
-        }
+        return ThemeCategory.BORNO_COLORS
     }
 
     fun parseThemeFile(jsonContent: String): Result<List<CustomThemeDef>> {
