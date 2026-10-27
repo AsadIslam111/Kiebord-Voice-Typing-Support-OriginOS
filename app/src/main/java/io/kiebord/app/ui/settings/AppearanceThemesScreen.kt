@@ -1,7 +1,11 @@
 package io.kiebord.app.ui.settings
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,13 +29,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -44,22 +49,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.feature.ime.ui.KeyboardRootView
-import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
-
-private data class ThemeOption(
-    val id: String,
-    val name: String,
-    val description: String,
-    val scheme: KeyboardColorScheme
-)
+import io.kiebord.theme.ThemeCategory
+import io.kiebord.theme.ThemeOptionItem
+import io.kiebord.theme.ThemeRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,40 +72,47 @@ fun AppearanceThemesScreen(
     onUpdateShowKeyBorders: (Boolean) -> Unit,
     onBack: () -> Unit = {}
 ) {
-    val scrollState = rememberScrollState()
-    var previewThemeOption by remember { mutableStateOf<ThemeOption?>(null) }
+    val context = LocalContext.current
+    val themeRepo = remember(context) { ThemeRepository.getInstance(context) }
+    var reloadTrigger by remember { mutableStateOf(0) }
+    val allThemes = remember(reloadTrigger) { themeRepo.getAvailableThemes() }
 
-    val themes = listOf(
-        ThemeOption(
-            id = KiebordPreferences.THEME_DEFAULT_DARK,
-            name = "Default Dark",
-            description = "Material dark charcoal with Google pastel blue accents",
-            scheme = KeyboardColorScheme.DefaultDark
-        ),
-        ThemeOption(
-            id = KiebordPreferences.THEME_AMOLED_BLACK,
-            name = "AMOLED Black",
-            description = "Pitch black with high-contrast keys and blue pill accents",
-            scheme = KeyboardColorScheme.AmoledBlack
-        ),
-        ThemeOption(
-            id = KiebordPreferences.THEME_TOKYO_NIGHT,
-            name = "Tokyo Night",
-            description = "Deep indigo twilight inspired by neon cityscapes",
-            scheme = KeyboardColorScheme.TokyoNight
-        ),
-        ThemeOption(
-            id = KiebordPreferences.THEME_NORD,
-            name = "Nord Frost",
-            description = "Arctic slate blue and cool glacial hues",
-            scheme = KeyboardColorScheme.Nord
-        ),
-        ThemeOption(
-            id = KiebordPreferences.THEME_DEFAULT_LIGHT,
-            name = "Default Light",
-            description = "Crisp white floating keycaps on light grey with Google Blue accents",
-            scheme = KeyboardColorScheme.DefaultLight
-        )
+    val scrollState = rememberScrollState()
+    var previewThemeOption by remember { mutableStateOf<ThemeOptionItem?>(null) }
+    val colors = LocalSettingsColors.current
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val jsonContent = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.bufferedReader(Charsets.UTF_8).readText()
+                }
+                if (jsonContent != null) {
+                    val result = themeRepo.importTheme(jsonContent)
+                    result.onSuccess { importedList ->
+                        reloadTrigger++
+                        if (importedList.isNotEmpty()) {
+                            onUpdateTheme(importedList.first().id)
+                            Toast.makeText(context, "Imported ${importedList.size} theme(s)", Toast.LENGTH_SHORT).show()
+                        }
+                    }.onFailure { err ->
+                        Toast.makeText(context, "Import failed: ${err.message ?: "Invalid JSON"}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error reading file: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    val categories = listOf(
+        ThemeCategory.ORIGINALS,
+        ThemeCategory.BORNO_AMOLED,
+        ThemeCategory.BORNO_AESTHETIC,
+        ThemeCategory.BORNO_COLORS,
+        ThemeCategory.CUSTOM
     )
 
     Column(
@@ -112,41 +121,91 @@ fun AppearanceThemesScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
-        SettingsCategoryHeader(title = "Color Themes")
+        for (category in categories) {
+            val categoryThemes = allThemes.filter { it.category == category }
+            if (categoryThemes.isNotEmpty()) {
+                SettingsCategoryHeader(title = category.title)
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            themes.chunked(3).forEach { rowThemes ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    rowThemes.forEach { themeOption ->
-                        val isSelected = preferences.theme == themeOption.id
-                        AbstractThemeCard(
-                            themeOption = themeOption,
-                            isSelected = isSelected,
-                            showKeyBorders = preferences.showKeyBorders,
-                            modifier = Modifier.weight(1f),
-                            onSelect = { previewThemeOption = themeOption }
-                        )
-                    }
-                    repeat(3 - rowThemes.size) {
-                        Spacer(modifier = Modifier.weight(1f))
+                    categoryThemes.chunked(3).forEach { rowThemes ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            rowThemes.forEach { themeOption ->
+                                val isSelected = preferences.theme == themeOption.id
+                                AbstractThemeCard(
+                                    themeOption = themeOption,
+                                    isSelected = isSelected,
+                                    showKeyBorders = preferences.showKeyBorders,
+                                    modifier = Modifier.weight(1f),
+                                    onSelect = { previewThemeOption = themeOption }
+                                )
+                            }
+                            repeat(3 - rowThemes.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
             }
         }
 
+        Spacer(modifier = Modifier.height(24.dp))
+
+        SettingsCategoryHeader(title = "Theme Tools")
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SettingsItemCard(
+                position = GroupPosition.ALONE,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            importLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(colors.accent.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Add,
+                            contentDescription = "Import",
+                            tint = colors.accent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Import Custom Theme (.kbtheme / .json)",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textPrimary
+                        )
+                        Text(
+                            text = "Load external Borno theme or color schema file",
+                            fontSize = 12.sp,
+                            color = colors.textSecondary
+                        )
+                    }
+                }
+            }
+        }
     }
 
-    val colors = LocalSettingsColors.current
-
-    // Modal Bottom Sheet showing real actual KeyboardRootView in theme colors and Key borders toggle
     if (previewThemeOption != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
@@ -163,7 +222,20 @@ fun AppearanceThemesScreen(
                 onApplyTheme = {
                     onUpdateTheme(previewThemeOption!!.id)
                     previewThemeOption = null
-                }
+                },
+                onDeleteTheme = if (previewThemeOption!!.isCustom) {
+                    {
+                        val targetId = previewThemeOption!!.id
+                        val targetName = previewThemeOption!!.name
+                        themeRepo.deleteCustomTheme(targetId)
+                        if (preferences.theme == targetId) {
+                            onUpdateTheme(KiebordPreferences.THEME_DEFAULT_DARK)
+                        }
+                        reloadTrigger++
+                        previewThemeOption = null
+                        Toast.makeText(context, "Deleted $targetName", Toast.LENGTH_SHORT).show()
+                    }
+                } else null
             )
         }
     }
@@ -171,7 +243,7 @@ fun AppearanceThemesScreen(
 
 @Composable
 private fun AbstractThemeCard(
-    themeOption: ThemeOption,
+    themeOption: ThemeOptionItem,
     isSelected: Boolean,
     showKeyBorders: Boolean = true,
     modifier: Modifier = Modifier,
@@ -217,9 +289,23 @@ private fun AbstractThemeCard(
                         modifier = Modifier.size(12.dp)
                     )
                 }
+            } else if (themeOption.isCustom) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(colors.accent.copy(alpha = 0.2f))
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        .align(Alignment.TopEnd)
+                ) {
+                    Text(
+                        text = "CUSTOM",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.accent
+                    )
+                }
             }
 
-            // Stylized mini keyboard preview swatches: Space key swatch & Enter key accent swatch
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -253,18 +339,20 @@ private fun AbstractThemeCard(
             fontSize = 12.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = if (isSelected) colors.accent else colors.textPrimary,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
 
 @Composable
 private fun ThemePreviewBottomSheetContent(
-    themeOption: ThemeOption,
+    themeOption: ThemeOptionItem,
     preferences: KiebordPreferences,
     showKeyBorders: Boolean,
     onToggleKeyBorders: (Boolean) -> Unit,
-    onApplyTheme: () -> Unit
+    onApplyTheme: () -> Unit,
+    onDeleteTheme: (() -> Unit)? = null
 ) {
     val colors = LocalSettingsColors.current
 
@@ -282,7 +370,6 @@ private fun ThemePreviewBottomSheetContent(
             modifier = Modifier.padding(bottom = 14.dp)
         )
 
-        // Live Actual Keyboard View preview scaled down proportionally, keeping standard aspect ratio
         KiebordTheme(colorScheme = themeOption.scheme) {
             BoxWithConstraints(
                 modifier = Modifier
@@ -312,7 +399,6 @@ private fun ThemePreviewBottomSheetContent(
                     navBarBottomInset = 0.dp
                 )
 
-                // Transparent interceptor layer so the demo keyboard is 100% non-touchable
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -327,7 +413,6 @@ private fun ThemePreviewBottomSheetContent(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Key Border Toggle & Action buttons with standard margins
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -361,6 +446,32 @@ private fun ThemePreviewBottomSheetContent(
                     fontWeight = FontWeight.Bold,
                     color = if (colors.isDark) Color(0xFF0F141C) else Color.White
                 )
+            }
+
+            if (onDeleteTheme != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = onDeleteTheme,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE53935))
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Delete",
+                        tint = Color(0xFFE53935),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Delete Custom Theme",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFE53935)
+                    )
+                }
             }
         }
     }

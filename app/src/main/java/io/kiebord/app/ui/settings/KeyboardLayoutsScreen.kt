@@ -813,12 +813,9 @@ private fun KeyboardLayoutPreviewItem(
     modifier: Modifier = Modifier
 ) {
     val colors = LocalSettingsColors.current
-    val currentScheme = when (preferences.theme) {
-        KiebordPreferences.THEME_AMOLED_BLACK -> KeyboardColorScheme.AmoledBlack
-        KiebordPreferences.THEME_TOKYO_NIGHT -> KeyboardColorScheme.TokyoNight
-        KiebordPreferences.THEME_NORD -> KeyboardColorScheme.Nord
-        KiebordPreferences.THEME_DEFAULT_LIGHT -> KeyboardColorScheme.DefaultLight
-        else -> KeyboardColorScheme.DefaultDark
+    val context = LocalContext.current
+    val currentScheme = remember(context, preferences.theme) {
+        io.kiebord.theme.ThemeRepository.getInstance(context).getColorScheme(preferences.theme)
     }
 
     val itemWidth = 164.dp

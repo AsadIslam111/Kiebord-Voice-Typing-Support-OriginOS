@@ -75,14 +75,9 @@ fun OnboardingPreferencesStep(
         PredefinedLayouts.fromId(primaryLayoutId)
     }
 
-    val keyboardColorScheme = remember(theme) {
-        when (theme) {
-            KiebordPreferences.THEME_AMOLED_BLACK -> KeyboardColorScheme.AmoledBlack
-            KiebordPreferences.THEME_TOKYO_NIGHT -> KeyboardColorScheme.TokyoNight
-            KiebordPreferences.THEME_NORD -> KeyboardColorScheme.Nord
-            KiebordPreferences.THEME_DEFAULT_LIGHT -> KeyboardColorScheme.DefaultLight
-            else -> KeyboardColorScheme.DefaultDark
-        }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val keyboardColorScheme = remember(context, theme) {
+        io.kiebord.theme.ThemeRepository.getInstance(context).getColorScheme(theme)
     }
 
     Column(

@@ -164,13 +164,7 @@ class KiebordService : InputMethodService() {
         serviceScope.launch {
             preferencesRepo.preferencesFlow.collect { prefs ->
                 preferencesState = prefs
-                colorScheme = when (prefs.theme) {
-                    KiebordPreferences.THEME_AMOLED_BLACK -> KeyboardColorScheme.AmoledBlack
-                    KiebordPreferences.THEME_TOKYO_NIGHT -> KeyboardColorScheme.TokyoNight
-                    KiebordPreferences.THEME_NORD -> KeyboardColorScheme.Nord
-                    KiebordPreferences.THEME_DEFAULT_LIGHT -> KeyboardColorScheme.DefaultLight
-                    else -> KeyboardColorScheme.DefaultDark
-                }
+                colorScheme = io.kiebord.theme.ThemeRepository.getInstance(this@KiebordService).getColorScheme(prefs.theme)
                 val availableMeta = layoutRepo.getAvailableLayouts().map { it.id }.toSet()
                 val enabledIds = prefs.enabledLayoutIds.toList().filter { id ->
                     id in availableMeta || id == KiebordPreferences.LAYOUT_AR_ARABIC
