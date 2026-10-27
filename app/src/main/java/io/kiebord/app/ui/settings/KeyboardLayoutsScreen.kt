@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.fillMaxHeight
 import io.kiebord.common.model.KeyRow
 import io.kiebord.common.model.KeyType
@@ -936,6 +938,13 @@ private fun KeyboardMiniPreview(
                                     softWrap = false
                                 )
                             }
+                        } else if (key.type == KeyType.SHIFT) {
+                            Icon(
+                                painter = painterResource(io.kiebord.feature.ime.R.drawable.ic_shift),
+                                contentDescription = null,
+                                tint = fg,
+                                modifier = Modifier.size(9.5.dp)
+                            )
                         } else if (key.type == KeyType.DELETE) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.Backspace,
@@ -946,6 +955,13 @@ private fun KeyboardMiniPreview(
                         } else if (key.type == KeyType.ACTION) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
+                                contentDescription = null,
+                                tint = fg,
+                                modifier = Modifier.size(9.dp)
+                            )
+                        } else if (key.type == KeyType.SWITCH_LANGUAGE) {
+                            Icon(
+                                imageVector = Icons.Outlined.Language,
                                 contentDescription = null,
                                 tint = fg,
                                 modifier = Modifier.size(9.dp)
