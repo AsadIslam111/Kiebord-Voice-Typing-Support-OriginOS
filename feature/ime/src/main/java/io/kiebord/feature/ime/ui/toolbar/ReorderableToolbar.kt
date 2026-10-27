@@ -7,8 +7,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -281,73 +284,82 @@ fun ReorderableToolbar(
                                 },
                                 shape = tileShape
                             )
-                            .pointerInput(action) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = { localOffset ->
-                                        draggingAction = action
-                                        dragStartIndex = currentPinnedTools.indexOf(action)
-                                        accumulatedDragX = 0f
-                                        accumulatedDragY = 0f
-                                        itemCoordinates?.let { coords ->
-                                            rootCoordinates?.let { root ->
-                                                if (coords.isAttached && root.isAttached) {
-                                                    val myBox = root.localBoundingBoxOf(coords)
-                                                    itemStartOffsetInRoot = myBox.topLeft + localOffset
-                                                    currentOnDraggingStateChange(action, itemStartOffsetInRoot)
+                            .pointerInput(action, isCustomizeMode) {
+                                if (isCustomizeMode) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = { localOffset ->
+                                            draggingAction = action
+                                            dragStartIndex = currentPinnedTools.indexOf(action)
+                                            accumulatedDragX = 0f
+                                            accumulatedDragY = 0f
+                                            itemCoordinates?.let { coords ->
+                                                rootCoordinates?.let { root ->
+                                                    if (coords.isAttached && root.isAttached) {
+                                                        val myBox = root.localBoundingBoxOf(coords)
+                                                        itemStartOffsetInRoot = myBox.topLeft + localOffset
+                                                        currentOnDraggingStateChange(action, itemStartOffsetInRoot)
+                                                    }
                                                 }
                                             }
-                                        }
-                                    },
-                                    onDrag = { change, dragAmount ->
-                                        change.consume()
-                                        accumulatedDragX += dragAmount.x
-                                        accumulatedDragY += dragAmount.y
-                                        val currentFinger = itemStartOffsetInRoot + Offset(accumulatedDragX, accumulatedDragY)
-                                        currentOnDraggingStateChange(action, currentFinger)
-                                    },
-                                    onDragEnd = {
-                                        val draggedAct = draggingAction
-                                        if (draggedAct != null) {
-                                            val currentPinned = currentPinnedTools
-                                            val fromIndex = currentPinned.indexOf(draggedAct)
-                                            val targetSlot = if (slotWidthPx > 0f && currentPinned.isNotEmpty()) {
-                                                val fingerCenterX = (fromIndex.coerceAtLeast(0) + 0.5f) * slotWidthPx + accumulatedDragX
-                                                (fingerCenterX / slotWidthPx).toInt().coerceIn(0, currentPinned.lastIndex)
-                                            } else fromIndex
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            accumulatedDragX += dragAmount.x
+                                            accumulatedDragY += dragAmount.y
+                                            val currentFinger = itemStartOffsetInRoot + Offset(accumulatedDragX, accumulatedDragY)
+                                            currentOnDraggingStateChange(action, currentFinger)
+                                        },
+                                        onDragEnd = {
+                                            val draggedAct = draggingAction
+                                            if (draggedAct != null) {
+                                                val currentPinned = currentPinnedTools
+                                                val fromIndex = currentPinned.indexOf(draggedAct)
+                                                val targetSlot = if (slotWidthPx > 0f && currentPinned.isNotEmpty()) {
+                                                    val fingerCenterX = (fromIndex.coerceAtLeast(0) + 0.5f) * slotWidthPx + accumulatedDragX
+                                                    (fingerCenterX / slotWidthPx).toInt().coerceIn(0, currentPinned.lastIndex)
+                                                } else fromIndex
 
-                                            if (currentIsCustomizeMode && currentHoveredDrawerAction != null && currentHoveredDrawerAction != draggedAct) {
-                                                // Dragged directly over a specific drawer item -> SWAP!
-                                                currentOnInterchange(draggedAct, currentHoveredDrawerAction!!)
-                                            } else if (currentIsCustomizeMode && (currentIsOverBlankSpace || accumulatedDragY > removeThresholdPx)) {
-                                                // Dragged down to drawer gap or blank space -> PLACE IN DRAWER!
-                                                currentOnMoveToDrawer(draggedAct)
-                                            } else {
-                                                if (fromIndex != -1 && targetSlot in 0..currentPinned.lastIndex && fromIndex != targetSlot) {
-                                                    // Reorder within toolbar with safe distinct list
-                                                    val mutable = currentPinned.toMutableList()
-                                                    val moved = mutable.removeAt(fromIndex)
-                                                    mutable.add(targetSlot, moved)
-                                                    currentOnPinnedChange(mutable.distinct())
+                                                if (currentIsCustomizeMode && currentHoveredDrawerAction != null && currentHoveredDrawerAction != draggedAct) {
+                                                    // Dragged directly over a specific drawer item -> SWAP!
+                                                    currentOnInterchange(draggedAct, currentHoveredDrawerAction!!)
+                                                } else if (currentIsCustomizeMode && (currentIsOverBlankSpace || accumulatedDragY > removeThresholdPx)) {
+                                                    // Dragged down to drawer gap or blank space -> PLACE IN DRAWER!
+                                                    currentOnMoveToDrawer(draggedAct)
+                                                } else {
+                                                    if (fromIndex != -1 && targetSlot in 0..currentPinned.lastIndex && fromIndex != targetSlot) {
+                                                        // Reorder within toolbar with safe distinct list
+                                                        val mutable = currentPinned.toMutableList()
+                                                        val moved = mutable.removeAt(fromIndex)
+                                                        mutable.add(targetSlot, moved)
+                                                        currentOnPinnedChange(mutable.distinct())
+                                                    }
                                                 }
                                             }
+                                            draggingAction = null
+                                            accumulatedDragX = 0f
+                                            accumulatedDragY = 0f
+                                            currentOnDraggingStateChange(null, null)
+                                        },
+                                        onDragCancel = {
+                                            draggingAction = null
+                                            accumulatedDragX = 0f
+                                            accumulatedDragY = 0f
+                                            currentOnDraggingStateChange(null, null)
                                         }
-                                        draggingAction = null
-                                        accumulatedDragX = 0f
-                                        accumulatedDragY = 0f
-                                        currentOnDraggingStateChange(null, null)
-                                    },
-                                    onDragCancel = {
-                                        draggingAction = null
-                                        accumulatedDragX = 0f
-                                        accumulatedDragY = 0f
-                                        currentOnDraggingStateChange(null, null)
+                                    )
+                                } else {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        onActionClick(item.action)
+                                        waitForUpOrCancellation()
                                     }
-                                )
+                                }
                             }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                                enabled = draggingAction == null
+                                enabled = isCustomizeMode && draggingAction == null
                             ) {
                                 onActionClick(item.action)
                             },

@@ -909,20 +909,27 @@ fun KeyboardRootView(
                             .background(
                                 if (isToolsExpanded) Color(0x22FFFFFF) else Color.Transparent
                             )
-                            .clickable {
-                                when {
-                                    isSuggestionsExpanded -> {
-                                        performHaptic(HapticFeedbackType.TextHandleMove)
-                                        isSuggestionsExpanded = false
+                            .pointerInput(isSuggestionsExpanded, isToolsDrawerOpen, isToolbarOptionsVisible) {
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false)
+                                    down.consume()
+                                    when {
+                                        isSuggestionsExpanded -> {
+                                            performHaptic(HapticFeedbackType.TextHandleMove)
+                                            isSuggestionsExpanded = false
+                                        }
+                                        isToolsDrawerOpen || isToolbarOptionsVisible -> {
+                                            performHaptic(HapticFeedbackType.TextHandleMove)
+                                            isToolsDrawerOpen = false
+                                            isToolbarOptionsVisible = false
+                                        }
+                                        else -> {
+                                            performHaptic(HapticFeedbackType.TextHandleMove)
+                                            isToolsDrawerOpen = true
+                                            isToolbarOptionsVisible = true
+                                        }
                                     }
-                                    isToolsDrawerOpen || isToolbarOptionsVisible -> {
-                                        isToolsDrawerOpen = false
-                                        isToolbarOptionsVisible = false
-                                    }
-                                    else -> {
-                                        isToolsDrawerOpen = true
-                                        isToolbarOptionsVisible = true
-                                    }
+                                    waitForUpOrCancellation()
                                 }
                             },
                         contentAlignment = Alignment.Center
@@ -1188,11 +1195,16 @@ fun KeyboardRootView(
                                 .background(
                                     if (isVoiceActive) colorScheme.accentColor.copy(alpha = activeAlpha) else colorScheme.keyBackground
                                 )
-                                .clickable {
-                                    if (isVoiceActive) {
-                                        onDismissVoiceTyping()
-                                    } else {
-                                        onStartVoiceTyping()
+                                .pointerInput(isVoiceActive) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        if (isVoiceActive) {
+                                            onDismissVoiceTyping()
+                                        } else {
+                                            onStartVoiceTyping()
+                                        }
+                                        waitForUpOrCancellation()
                                     }
                                 },
                             contentAlignment = Alignment.Center

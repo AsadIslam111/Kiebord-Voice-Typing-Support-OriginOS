@@ -217,6 +217,14 @@ fun KeycapView(
                             isPressed = true
                             isMoreKeysActive = false
                             currentOnKeyPress.value(initialKey)
+
+                            val isSymbolsToggleKey = initialKey.type == KeyType.SYMBOLS || initialKey.label == "?123" || initialKey.label == "?১২৩" || initialKey.label == "ABC"
+                            var isSymbolsHandledOnDown = false
+                            if (isSymbolsToggleKey) {
+                                isSymbolsHandledOnDown = true
+                                currentOnTap.value(initialKey)
+                            }
+
                             var isSlidingDrag = false
                             var isSpacebarDwellReady = false
                             var isSpacebarSwipingLayout = false
@@ -228,7 +236,7 @@ fun KeycapView(
                             var lastTrackpadX = 0f
                             val trackpadStepPx = with(density) { 14.dp.toPx() }
 
-                            val isSlidingInitiator = initialKey.slidingInput || initialKey.type == KeyType.SHIFT
+                            val isSlidingInitiator = (initialKey.slidingInput || initialKey.type == KeyType.SHIFT) && !isSymbolsToggleKey
 
                             val spacebarDwellJob = if (initialKey.type == KeyType.SPACE) {
                                 launch {
@@ -240,7 +248,7 @@ fun KeycapView(
 
                             var isLongPressTriggered = false
                             var isDeleteLongPressActive = false
-                            val longPressJob = if (isSlidingInitiator) null else launch {
+                            val longPressJob = if (isSlidingInitiator || isSymbolsToggleKey) null else launch {
                                 val delayDuration = if (initialKey.type == KeyType.DELETE) {
                                     currentLongPressDelay.value.coerceIn(250L, 400L)
                                 } else {
@@ -313,6 +321,9 @@ fun KeycapView(
                                 } else if (isDeleteLongPressActive || isLongPressTriggered) {
                                     change.consume()
                                     // Handled during long-press, do NOT emit tap on release
+                                } else if (isSymbolsHandledOnDown) {
+                                    change.consume()
+                                    // Handled on press down, do NOT emit tap on release
                                 } else {
                                     change.consume()
                                     currentOnTap.value(initialKey)
