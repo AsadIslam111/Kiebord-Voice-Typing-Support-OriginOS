@@ -126,6 +126,30 @@ fun AppearanceThemesScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
+        Text(
+            text = "Create",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.textPrimary,
+            modifier = Modifier.padding(start = 18.dp, top = 22.dp, bottom = 14.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            BlankThemePlusCard(
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    Toast.makeText(context, "Not yet implemented", Toast.LENGTH_SHORT).show()
+                }
+            )
+            repeat(2) {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+
         for (category in categories) {
             val categoryThemes = allThemes.filter { it.category == category }
             if (categoryThemes.isNotEmpty()) {
@@ -162,55 +186,6 @@ fun AppearanceThemesScreen(
                                 Spacer(modifier = Modifier.weight(1f))
                             }
                         }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        SettingsCategoryHeader(title = "Theme Tools")
-        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-            SettingsItemCard(
-                position = GroupPosition.ALONE,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            importLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
-                        }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(colors.accent.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Add,
-                            contentDescription = "Import",
-                            tint = colors.accent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Import Custom Theme (.kbtheme / .json)",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.textPrimary
-                        )
-                        Text(
-                            text = "Load external Borno theme or color schema file",
-                            fontSize = 12.sp,
-                            color = colors.textSecondary
-                        )
                     }
                 }
             }
@@ -263,6 +238,41 @@ fun AppearanceThemesScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun BlankThemePlusCard(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val colors = LocalSettingsColors.current
+    val cardShape = RoundedCornerShape(20.dp)
+    val borderColor = if (colors.isDark) Color(0x18FFFFFF) else Color(0x0E000000)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(1.3f)
+            .shadow(
+                elevation = 2.dp,
+                shape = cardShape,
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.25f),
+                spotColor = Color.Black.copy(alpha = 0.25f)
+            )
+            .clip(cardShape)
+            .background(colors.cardBackground)
+            .border(width = 1.dp, color = borderColor, shape = cardShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Add,
+            contentDescription = "Create Theme",
+            tint = colors.textSecondary,
+            modifier = Modifier.size(30.dp)
+        )
     }
 }
 
@@ -502,7 +512,6 @@ private fun ThemePreviewBottomSheetContent(
             SettingsGroup {
                 SettingsToggleItem(
                     title = "Key Borders",
-                    subtitle = "Preview theme with keycap separation borders",
                     checked = showKeyBorders,
                     position = if (themeHasShadow) GroupPosition.TOP else GroupPosition.ALONE,
                     onCheckedChange = onToggleKeyBorders
@@ -510,7 +519,6 @@ private fun ThemePreviewBottomSheetContent(
                 if (themeHasShadow) {
                     SettingsToggleItem(
                         title = "Key Shadows",
-                        subtitle = "Preview theme with key elevation shadows",
                         checked = showKeyShadows,
                         position = GroupPosition.BOTTOM,
                         onCheckedChange = onToggleKeyShadows

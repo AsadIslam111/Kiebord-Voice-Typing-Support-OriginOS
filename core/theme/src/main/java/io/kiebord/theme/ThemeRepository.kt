@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 enum class ThemeCategory(val title: String) {
     ORIGINALS("Originals"),
-    BORNO_GRADIENT("Gradients & Glass"),
+    BORNO_GRADIENT("Gradients"),
     BORNO_AMOLED("Dark & AMOLED"),
     BORNO_AESTHETIC("Aesthetic"),
     BORNO_COLORS("Colors"),
@@ -164,7 +164,7 @@ class ThemeRepository private constructor(private val context: Context) {
             }
         }
 
-        val orderedBornoIds = (1..36).toList()
+        val orderedBornoIds = (1..42).toList()
 
         for (numId in orderedBornoIds) {
             val key = "borno_$numId"
@@ -213,7 +213,7 @@ class ThemeRepository private constructor(private val context: Context) {
             return ThemeCategory.BORNO_GRADIENT
         }
         val numId = id.removePrefix("borno_").toIntOrNull()
-        if (numId != null && numId in 1..6) {
+        if (numId != null && numId in 1..12) {
             return ThemeCategory.BORNO_GRADIENT
         }
         return ThemeCategory.BORNO_COLORS

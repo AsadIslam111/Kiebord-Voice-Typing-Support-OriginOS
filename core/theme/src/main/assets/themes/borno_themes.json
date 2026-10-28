@@ -68,6 +68,70 @@
         },
         {
           "id": 3,
+          "name": "Morning Dewdrop",
+          "backgroundColor": "#ffd1fae5",
+          "backgroundPath": "",
+          "backgroundType": 2,
+          "enterColor": "#ff0d9488",
+          "enterColorIcon": "#ffffffff",
+          "functionalKeyColor": "#59ffffff",
+          "gradAngle": 90.0,
+          "gradEnd": "#ffe0f2fe",
+          "gradStart": "#ffd1fae5",
+          "gradType": "linear",
+          "guidelineColor": "#ff0d9488",
+          "isFlat": true,
+          "keyColor": "#75ffffff",
+          "keyRadius": 8.0,
+          "keyShadowColor": "#00000000",
+          "keyShadowSize": 0,
+          "keyStrokeColor": "#00000000",
+          "keyStrokeSize": 0,
+          "labelFunctionalKeyColor": "#ff115e59",
+          "labelKeyColor": "#ff064e3b",
+          "popupColor": "#fff0fdfa",
+          "popupCorner": 8,
+          "pressedKeyColor": "#99ffffff",
+          "selectedKeyColor": "#ff14b8a6",
+          "spaceColor": "#80ffffff",
+          "stripColor": "#00000000",
+          "stripIcoColor": "#ff115e59",
+          "textSize": 0
+        },
+        {
+          "id": 4,
+          "name": "Sunlit Halo",
+          "backgroundColor": "#ffffedd5",
+          "backgroundPath": "",
+          "backgroundType": 2,
+          "enterColor": "#ffea580c",
+          "enterColorIcon": "#ffffffff",
+          "functionalKeyColor": "#59ffffff",
+          "gradAngle": 90.0,
+          "gradEnd": "#fffce7f3",
+          "gradStart": "#ffffedd5",
+          "gradType": "radial",
+          "guidelineColor": "#ffea580c",
+          "isFlat": true,
+          "keyColor": "#75ffffff",
+          "keyRadius": 8.0,
+          "keyShadowColor": "#00000000",
+          "keyShadowSize": 0,
+          "keyStrokeColor": "#00000000",
+          "keyStrokeSize": 0,
+          "labelFunctionalKeyColor": "#ff7c2d12",
+          "labelKeyColor": "#ff431407",
+          "popupColor": "#fffff7ed",
+          "popupCorner": 8,
+          "pressedKeyColor": "#99ffffff",
+          "selectedKeyColor": "#fff97316",
+          "spaceColor": "#80ffffff",
+          "stripColor": "#00000000",
+          "stripIcoColor": "#ff7c2d12",
+          "textSize": 0
+        },
+        {
+          "id": 5,
           "name": "Aurora Glass",
           "backgroundColor": "#ff0f172a",
           "backgroundPath": "",
@@ -99,7 +163,71 @@
           "textSize": 0
         },
         {
-          "id": 4,
+          "id": 6,
+          "name": "Oceanic Abyss",
+          "backgroundColor": "#ff082f49",
+          "backgroundPath": "",
+          "backgroundType": 2,
+          "enterColor": "#ff38bdf8",
+          "enterColorIcon": "#ff082f49",
+          "functionalKeyColor": "#2bffffff",
+          "gradAngle": 90.0,
+          "gradEnd": "#ff0f172a",
+          "gradStart": "#ff082f49",
+          "gradType": "linear",
+          "guidelineColor": "#ff38bdf8",
+          "isFlat": true,
+          "keyColor": "#21ffffff",
+          "keyRadius": 8.0,
+          "keyShadowColor": "#00000000",
+          "keyShadowSize": 0,
+          "keyStrokeColor": "#00000000",
+          "keyStrokeSize": 0,
+          "labelFunctionalKeyColor": "#e6f0f9ff",
+          "labelKeyColor": "#fff0f9ff",
+          "popupColor": "#ff0c4a6e",
+          "popupCorner": 8,
+          "pressedKeyColor": "#45ffffff",
+          "selectedKeyColor": "#ff38bdf8",
+          "spaceColor": "#26ffffff",
+          "stripColor": "#00000000",
+          "stripIcoColor": "#e6f0f9ff",
+          "textSize": 0
+        },
+        {
+          "id": 7,
+          "name": "Crimson Dusk",
+          "backgroundColor": "#ff1f1124",
+          "backgroundPath": "",
+          "backgroundType": 2,
+          "enterColor": "#fffb7185",
+          "enterColorIcon": "#ff2a0810",
+          "functionalKeyColor": "#2bffffff",
+          "gradAngle": 90.0,
+          "gradEnd": "#ff4c0519",
+          "gradStart": "#ff1f1124",
+          "gradType": "linear",
+          "guidelineColor": "#fffb7185",
+          "isFlat": true,
+          "keyColor": "#21ffffff",
+          "keyRadius": 8.0,
+          "keyShadowColor": "#00000000",
+          "keyShadowSize": 0,
+          "keyStrokeColor": "#00000000",
+          "keyStrokeSize": 0,
+          "labelFunctionalKeyColor": "#e6fff1f2",
+          "labelKeyColor": "#fffff1f2",
+          "popupColor": "#ff3b0a1e",
+          "popupCorner": 8,
+          "pressedKeyColor": "#45ffffff",
+          "selectedKeyColor": "#fffb7185",
+          "spaceColor": "#26ffffff",
+          "stripColor": "#00000000",
+          "stripIcoColor": "#e6fff1f2",
+          "textSize": 0
+        },
+        {
+          "id": 8,
           "name": "Cyber Synthwave",
           "backgroundColor": "#ff0b0726",
           "backgroundPath": "",
@@ -131,7 +259,7 @@
           "textSize": 0
         },
         {
-          "id": 5,
+          "id": 9,
           "name": "Emerald Lagoon",
           "backgroundColor": "#ff042927",
           "backgroundPath": "",
@@ -163,7 +291,7 @@
           "textSize": 0
         },
         {
-          "id": 6,
+          "id": 10,
           "name": "Sunset Prism",
           "backgroundColor": "#ff2d1436",
           "backgroundPath": "",
@@ -195,7 +323,71 @@
           "textSize": 0
         },
         {
-          "id": 7,
+          "id": 11,
+          "name": "Nebula Core",
+          "backgroundColor": "#ff170926",
+          "backgroundPath": "",
+          "backgroundType": 2,
+          "enterColor": "#ffc084fc",
+          "enterColorIcon": "#ff1e0536",
+          "functionalKeyColor": "#2bffffff",
+          "gradAngle": 90.0,
+          "gradEnd": "#ff090d16",
+          "gradStart": "#ff3b0764",
+          "gradType": "radial",
+          "guidelineColor": "#ffc084fc",
+          "isFlat": true,
+          "keyColor": "#1fffffff",
+          "keyRadius": 8.0,
+          "keyShadowColor": "#00000000",
+          "keyShadowSize": 0,
+          "keyStrokeColor": "#00000000",
+          "keyStrokeSize": 0,
+          "labelFunctionalKeyColor": "#e6faf5ff",
+          "labelKeyColor": "#fffaf5ff",
+          "popupColor": "#ff2e1065",
+          "popupCorner": 8,
+          "pressedKeyColor": "#45ffffff",
+          "selectedKeyColor": "#ffc084fc",
+          "spaceColor": "#26ffffff",
+          "stripColor": "#00000000",
+          "stripIcoColor": "#e6faf5ff",
+          "textSize": 0
+        },
+        {
+          "id": 12,
+          "name": "Solar Eclipse",
+          "backgroundColor": "#ff0f172a",
+          "backgroundPath": "",
+          "backgroundType": 2,
+          "enterColor": "#fff59e0b",
+          "enterColorIcon": "#ff1c1102",
+          "functionalKeyColor": "#2bffffff",
+          "gradAngle": 90.0,
+          "gradEnd": "#ff020617",
+          "gradStart": "#ff1e293b",
+          "gradType": "radial",
+          "guidelineColor": "#fff59e0b",
+          "isFlat": true,
+          "keyColor": "#1fffffff",
+          "keyRadius": 8.0,
+          "keyShadowColor": "#00000000",
+          "keyShadowSize": 0,
+          "keyStrokeColor": "#00000000",
+          "keyStrokeSize": 0,
+          "labelFunctionalKeyColor": "#e6f8fafc",
+          "labelKeyColor": "#fff8fafc",
+          "popupColor": "#ff1e293b",
+          "popupCorner": 8,
+          "pressedKeyColor": "#45ffffff",
+          "selectedKeyColor": "#fff59e0b",
+          "spaceColor": "#26ffffff",
+          "stripColor": "#00000000",
+          "stripIcoColor": "#e6f8fafc",
+          "textSize": 0
+        },
+        {
+          "id": 13,
           "name": "Pure Chalk",
           "backgroundColor": "#ffebeff2",
           "backgroundPath": "",
@@ -227,7 +419,7 @@
           "textSize": 0
         },
         {
-          "id": 8,
+          "id": 14,
           "name": "Monochrome Platinum",
           "backgroundColor": "#ffe0e0e0",
           "backgroundPath": "",
@@ -259,7 +451,7 @@
           "textSize": 0
         },
         {
-          "id": 9,
+          "id": 15,
           "name": "Cupertino Slate",
           "backgroundColor": "#ffcfd4d9",
           "backgroundPath": "",
@@ -291,7 +483,7 @@
           "textSize": 0
         },
         {
-          "id": 10,
+          "id": 16,
           "name": "Astral Mirage",
           "backgroundColor": "#fffeffff",
           "backgroundPath": "",
@@ -323,7 +515,7 @@
           "textSize": 0
         },
         {
-          "id": 11,
+          "id": 17,
           "name": "Blue Hydrangea",
           "backgroundColor": "#ffe3e2e6",
           "backgroundPath": "",
@@ -355,7 +547,7 @@
           "textSize": 0
         },
         {
-          "id": 12,
+          "id": 18,
           "name": "Celestial Sky",
           "backgroundColor": "#ffd2dbf7",
           "backgroundPath": "",
@@ -387,7 +579,7 @@
           "textSize": 0
         },
         {
-          "id": 13,
+          "id": 19,
           "name": "Eucalyptus Mist",
           "backgroundColor": "#fff0f1ec",
           "backgroundPath": "",
@@ -419,7 +611,7 @@
           "textSize": 0
         },
         {
-          "id": 14,
+          "id": 20,
           "name": "Pistachio Gelato",
           "backgroundColor": "#ffe3e8c3",
           "backgroundPath": "",
@@ -451,7 +643,7 @@
           "textSize": 0
         },
         {
-          "id": 15,
+          "id": 21,
           "name": "Lilac Haze",
           "backgroundColor": "#ffe3d2f7",
           "backgroundPath": "",
@@ -483,7 +675,7 @@
           "textSize": 0
         },
         {
-          "id": 16,
+          "id": 22,
           "name": "Cotton Candy Sunset",
           "backgroundColor": "#fffbeee9",
           "backgroundPath": "",
@@ -515,7 +707,7 @@
           "textSize": 0
         },
         {
-          "id": 17,
+          "id": 23,
           "name": "Sakura Blossom",
           "backgroundColor": "#fffdd3d7",
           "backgroundPath": "",
@@ -547,7 +739,7 @@
           "textSize": 0
         },
         {
-          "id": 18,
+          "id": 24,
           "name": "Raspberry Parfait",
           "backgroundColor": "#fff8d1de",
           "backgroundPath": "",
@@ -579,7 +771,7 @@
           "textSize": 0
         },
         {
-          "id": 19,
+          "id": 25,
           "name": "Coral Sorbet",
           "backgroundColor": "#fff7d2d2",
           "backgroundPath": "",
@@ -611,7 +803,7 @@
           "textSize": 0
         },
         {
-          "id": 20,
+          "id": 26,
           "name": "Bubblegum Pop",
           "backgroundColor": "#fff7b8c6",
           "backgroundPath": "",
@@ -643,7 +835,7 @@
           "textSize": 0
         },
         {
-          "id": 21,
+          "id": 27,
           "name": "Cashmere Rose",
           "backgroundColor": "#ffe5ddd5",
           "backgroundPath": "",
@@ -675,7 +867,7 @@
           "textSize": 0
         },
         {
-          "id": 22,
+          "id": 28,
           "name": "Toasted Almond",
           "backgroundColor": "#ffdacbc4",
           "backgroundPath": "",
@@ -707,7 +899,7 @@
           "textSize": 0
         },
         {
-          "id": 23,
+          "id": 29,
           "name": "Cobalt Depth",
           "backgroundColor": "#ff2165b4",
           "backgroundPath": "",
@@ -739,7 +931,7 @@
           "textSize": 0
         },
         {
-          "id": 24,
+          "id": 30,
           "name": "Pacific Midnight",
           "backgroundColor": "#ff3b5999",
           "backgroundPath": "",
@@ -771,7 +963,7 @@
           "textSize": 0
         },
         {
-          "id": 25,
+          "id": 31,
           "name": "Oceanic Teal",
           "backgroundColor": "#ff066c60",
           "backgroundPath": "",
@@ -803,7 +995,7 @@
           "textSize": 0
         },
         {
-          "id": 26,
+          "id": 32,
           "name": "Imperial Iris",
           "backgroundColor": "#ff574b90",
           "backgroundPath": "",
@@ -835,7 +1027,7 @@
           "textSize": 0
         },
         {
-          "id": 27,
+          "id": 33,
           "name": "Mystic Orchid",
           "backgroundColor": "#ff574396",
           "backgroundPath": "",
@@ -867,7 +1059,7 @@
           "textSize": 0
         },
         {
-          "id": 28,
+          "id": 34,
           "name": "Crimson Forge",
           "backgroundColor": "#ffbc3c3b",
           "backgroundPath": "",
@@ -899,7 +1091,7 @@
           "textSize": 0
         },
         {
-          "id": 29,
+          "id": 35,
           "name": "Roasted Espresso",
           "backgroundColor": "#ff553e39",
           "backgroundPath": "",
@@ -931,7 +1123,7 @@
           "textSize": 0
         },
         {
-          "id": 30,
+          "id": 36,
           "name": "Slate Mirage",
           "backgroundColor": "#ff36474f",
           "backgroundPath": "",
@@ -963,7 +1155,7 @@
           "textSize": 0
         },
         {
-          "id": 31,
+          "id": 37,
           "name": "Twilight Ember",
           "backgroundColor": "#ff313537",
           "backgroundPath": "",
@@ -995,7 +1187,7 @@
           "textSize": 0
         },
         {
-          "id": 32,
+          "id": 38,
           "name": "Deep Charcoal",
           "backgroundColor": "#ff273238",
           "backgroundPath": "",
@@ -1027,7 +1219,7 @@
           "textSize": 0
         },
         {
-          "id": 33,
+          "id": 39,
           "name": "Shadow Obsidian",
           "backgroundColor": "#ff292e32",
           "backgroundPath": "",
@@ -1059,7 +1251,7 @@
           "textSize": 0
         },
         {
-          "id": 34,
+          "id": 40,
           "name": "Midnight Carbon",
           "backgroundColor": "#ff151921",
           "backgroundPath": "",
@@ -1091,7 +1283,7 @@
           "textSize": 0
         },
         {
-          "id": 35,
+          "id": 41,
           "name": "Abyssal Void",
           "backgroundColor": "#ff000000",
           "backgroundPath": "",
@@ -1123,7 +1315,7 @@
           "textSize": 0
         },
         {
-          "id": 36,
+          "id": 42,
           "name": "Cyber AMOLED",
           "backgroundColor": "#ff000000",
           "backgroundPath": "",

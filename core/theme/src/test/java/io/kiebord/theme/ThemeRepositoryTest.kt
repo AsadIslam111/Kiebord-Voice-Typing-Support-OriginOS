@@ -339,8 +339,8 @@ class ThemeRepositoryTest {
             val bundle = json.decodeFromString<BornoThemeFile>(content)
             val themes = bundle.themes.flatMap { it.colors }
 
-            assertEquals(36, themes.size)
-            assertEquals((1..36).toList(), themes.map { it.id })
+            assertEquals(42, themes.size)
+            assertEquals((1..42).toList(), themes.map { it.id })
 
             var zeroStrokeCount = 0
             var withStrokeCount = 0
@@ -390,11 +390,11 @@ class ThemeRepositoryTest {
                 assertTrue("Theme ${theme.name} morekeys popup label contrast ($popupContrast) must be >= 3.0", popupContrast >= 3.0f)
             }
 
-            assertEquals("Exactly 35 themes must have 0 stroke", 35, zeroStrokeCount)
+            assertEquals("Exactly 41 themes must have 0 stroke", 41, zeroStrokeCount)
             assertEquals("Exactly 1 theme must have stroke > 0", 1, withStrokeCount)
-            assertEquals("Exactly 6 gradient themes must be present", 6, gradientCount)
+            assertEquals("Exactly 12 gradient themes must be present", 12, gradientCount)
 
-            val aurora = themes.first { it.id == 3 }
+            val aurora = themes.first { it.id == 5 }
             assertEquals("Aurora Glass", aurora.name)
             assertEquals(2, aurora.backgroundType)
             assertEquals(0, aurora.keyStrokeSize)
@@ -413,12 +413,17 @@ class ThemeRepositoryTest {
             assertEquals(0f, flatCharVisual.backgroundColor.alpha, 0.01f)
             assertEquals(0f, flatCharVisual.strokeColor.alpha, 0.01f)
 
-            val matLight = themes.first { it.id == 7 }
+            val nebula = themes.first { it.id == 11 }
+            assertEquals("Nebula Core", nebula.name)
+            assertEquals("radial", nebula.gradType)
+            assertEquals(GradientType.RADIAL, nebula.toKeyboardThemeSpec().background.gradient?.type)
+
+            val matLight = themes.first { it.id == 13 }
             assertEquals("Pure Chalk", matLight.name)
             assertEquals(0, matLight.keyStrokeSize)
             assertEquals(null, matLight.toKeyboardThemeSpec().characterKey.stroke)
 
-            val amoled = themes.first { it.id == 36 }
+            val amoled = themes.first { it.id == 42 }
             assertEquals("Cyber AMOLED", amoled.name)
             assertEquals(1, amoled.keyStrokeSize)
             assertEquals("#ff505050", amoled.keyStrokeColor)
