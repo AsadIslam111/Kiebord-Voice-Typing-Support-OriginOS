@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 enum class ThemeCategory(val title: String) {
     ORIGINALS("Originals"),
+    BORNO_GRADIENT("Gradients & Glass"),
     BORNO_AMOLED("Dark & AMOLED"),
     BORNO_AESTHETIC("Aesthetic"),
     BORNO_COLORS("Colors"),
@@ -37,39 +38,18 @@ class ThemeRepository private constructor(private val context: Context) {
         get() = File(context.filesDir, "themes").apply { if (!exists()) mkdirs() }
 
     private val originalThemes = linkedMapOf<String, ThemeOptionItem>(
-        "default_dark" to ThemeOptionItem(
-            id = "default_dark",
-            name = "Default Dark",
-            description = "Material dark charcoal with Google pastel blue accents",
-            scheme = KeyboardColorScheme.DefaultDark,
-            category = ThemeCategory.ORIGINALS
-        ),
-        "amoled_black" to ThemeOptionItem(
-            id = "amoled_black",
-            name = "AMOLED Black",
-            description = "Pitch black with high-contrast keys and blue pill accents",
-            scheme = KeyboardColorScheme.AmoledBlack,
-            category = ThemeCategory.ORIGINALS
-        ),
-        "tokyo_night" to ThemeOptionItem(
-            id = "tokyo_night",
-            name = "Tokyo Night",
-            description = "Deep indigo twilight inspired by neon cityscapes",
-            scheme = KeyboardColorScheme.TokyoNight,
-            category = ThemeCategory.ORIGINALS
-        ),
-        "nord" to ThemeOptionItem(
-            id = "nord",
-            name = "Nord Frost",
-            description = "Arctic slate blue and cool glacial hues",
-            scheme = KeyboardColorScheme.Nord,
-            category = ThemeCategory.ORIGINALS
-        ),
         "default_light" to ThemeOptionItem(
             id = "default_light",
             name = "Default Light",
-            description = "Crisp white floating keycaps on light grey with Google Blue accents",
+            description = "Crisp white floating keycaps on cool alpine grey with vibrant blue accents",
             scheme = KeyboardColorScheme.DefaultLight,
+            category = ThemeCategory.ORIGINALS
+        ),
+        "default_dark" to ThemeOptionItem(
+            id = "default_dark",
+            name = "Default Dark",
+            description = "Velvet graphite dark keycaps with vibrant indigo-blue accents",
+            scheme = KeyboardColorScheme.DefaultDark,
             category = ThemeCategory.ORIGINALS
         )
     )
@@ -184,14 +164,7 @@ class ThemeRepository private constructor(private val context: Context) {
             }
         }
 
-        val orderedBornoIds = listOf(
-            1001, 1002, 1003, 1004, 1005, 1006,
-            1008, 1009,
-            1010, 1011,
-            1012, 1013, 1014, 1015, 1016, 1017, 1018, 1023, 1025, 1028, 1029,
-            1034, 1038, 1040, 1041, 1042,
-            1043, 1044, 1045, 1046, 1047, 1048, 1049, 1050, 1051, 1052, 1053, 1054, 1055, 1056, 1057, 1058
-        )
+        val orderedBornoIds = (1..36).toList()
 
         for (numId in orderedBornoIds) {
             val key = "borno_$numId"
@@ -204,7 +177,7 @@ class ThemeRepository private constructor(private val context: Context) {
                         ThemeOptionItem(
                             id = def.id,
                             name = def.name,
-                            description = "Borno color theme",
+                            description = if (cat == ThemeCategory.BORNO_GRADIENT) "Gradient theme with translucent keys" else "Borno color theme",
                             scheme = scheme,
                             isCustom = false,
                             category = cat
@@ -235,6 +208,14 @@ class ThemeRepository private constructor(private val context: Context) {
     }
 
     private fun categorizeBornoTheme(id: String): ThemeCategory {
+        val rich = richThemes[id]
+        if (rich?.background?.gradient != null) {
+            return ThemeCategory.BORNO_GRADIENT
+        }
+        val numId = id.removePrefix("borno_").toIntOrNull()
+        if (numId != null && numId in 1..6) {
+            return ThemeCategory.BORNO_GRADIENT
+        }
         return ThemeCategory.BORNO_COLORS
     }
 

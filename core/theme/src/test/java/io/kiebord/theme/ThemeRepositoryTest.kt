@@ -339,10 +339,12 @@ class ThemeRepositoryTest {
             val bundle = json.decodeFromString<BornoThemeFile>(content)
             val themes = bundle.themes.flatMap { it.colors }
 
-            assertEquals(54, themes.size)
+            assertEquals(36, themes.size)
+            assertEquals((1..36).toList(), themes.map { it.id })
 
             var zeroStrokeCount = 0
             var withStrokeCount = 0
+            var gradientCount = 0
 
             for (theme in themes) {
                 assertTrue("Theme ${theme.id} name is empty", theme.name.isNotBlank())
@@ -353,6 +355,11 @@ class ThemeRepositoryTest {
                 assertEquals(theme.name, spec.name)
                 assertEquals(null, spec.characterKey.cornerRadiusDp)
 
+                if (theme.backgroundType == 2) {
+                    gradientCount++
+                    assertNotNull("Gradient theme ${theme.name} must have gradient spec", spec.background.gradient)
+                }
+
                 if (theme.keyStrokeSize == 0) {
                     zeroStrokeCount++
                     assertEquals("Zero-stroke theme ${theme.name} must have null stroke spec", null, spec.characterKey.stroke)
@@ -361,27 +368,67 @@ class ThemeRepositoryTest {
                     assertNotNull("Stroke theme ${theme.name} must have stroke spec", spec.characterKey.stroke)
                     assertEquals(theme.keyStrokeSize.toFloat(), spec.characterKey.stroke?.widthDp ?: 0f, 0.01f)
                 }
+
+                assertTrue("Theme ${theme.name} must have valid backgroundColor", theme.backgroundColor.startsWith("#"))
+                assertTrue("Theme ${theme.name} must have valid enterColor", theme.enterColor.startsWith("#"))
+                assertTrue("Theme ${theme.name} must have valid gradStart", theme.gradStart.startsWith("#") && theme.gradStart != "#ffffffff")
+                assertTrue("Theme ${theme.name} must have valid pressedKeyColor", theme.pressedKeyColor.startsWith("#"))
+                assertTrue("Theme ${theme.name} must have valid stripColor", theme.stripColor.startsWith("#"))
+                assertEquals(8, theme.popupCorner)
+
+                val scheme = spec.toKeyboardColorScheme()
+                val toolbarBg = if (scheme.effectiveToolbarBackground.alpha < 0.05f) scheme.containerBackground else scheme.effectiveToolbarBackground
+                val toolbarContrast = ThemeColorUtils.contrastRatio(scheme.effectiveToolbarForeground, toolbarBg)
+                assertTrue("Theme ${theme.name} toolbar contrast ($toolbarContrast) must be >= 2.8", toolbarContrast >= 2.8f)
+
+                val hoverLabelColor = ThemeColorUtils.ensureContrast(scheme.actionKeyForeground, scheme.accentColor, minContrast = 3.0f)
+                val hoverContrast = ThemeColorUtils.contrastRatio(hoverLabelColor, scheme.accentColor)
+                assertTrue("Theme ${theme.name} morekeys hover label contrast ($hoverContrast) must be >= 3.0", hoverContrast >= 3.0f)
+
+                val popupLabelColor = ThemeColorUtils.ensureContrast(scheme.keyForeground, scheme.moreKeysBackground, minContrast = 3.0f)
+                val popupContrast = ThemeColorUtils.contrastRatio(popupLabelColor, scheme.moreKeysBackground)
+                assertTrue("Theme ${theme.name} morekeys popup label contrast ($popupContrast) must be >= 3.0", popupContrast >= 3.0f)
             }
 
-            assertEquals("Exactly 40 themes must have 0 stroke", 40, zeroStrokeCount)
-            assertEquals("Exactly 14 themes must have stroke > 0", 14, withStrokeCount)
+            assertEquals("Exactly 35 themes must have 0 stroke", 35, zeroStrokeCount)
+            assertEquals("Exactly 1 theme must have stroke > 0", 1, withStrokeCount)
+            assertEquals("Exactly 6 gradient themes must be present", 6, gradientCount)
 
-            val matLight = themes.first { it.id == 1001 }
+            val aurora = themes.first { it.id == 3 }
+            assertEquals("Aurora Glass", aurora.name)
+            assertEquals(2, aurora.backgroundType)
+            assertEquals(0, aurora.keyStrokeSize)
+            val auroraSpec = aurora.toKeyboardThemeSpec()
+            assertNotNull(auroraSpec.background.gradient)
+            assertEquals(GradientType.LINEAR, auroraSpec.background.gradient?.type)
+            assertEquals(null, auroraSpec.characterKey.stroke)
+            val auroraKeyColor = ThemeColorUtils.parseHexColor(aurora.keyColor)
+            assertTrue("Aurora Glass keyColor must be translucent", auroraKeyColor.alpha < 0.5f)
+            val auroraScheme = auroraSpec.toKeyboardColorScheme()
+            assertEquals(0f, auroraScheme.effectiveToolbarBackground.alpha, 0.01f)
+            val flatCharVisual = auroraScheme.resolveKeycapVisual(
+                key = io.kiebord.common.model.KeyDef(label = "a", type = io.kiebord.common.model.KeyType.CHARACTER),
+                showKeyBorders = false
+            )
+            assertEquals(0f, flatCharVisual.backgroundColor.alpha, 0.01f)
+            assertEquals(0f, flatCharVisual.strokeColor.alpha, 0.01f)
+
+            val matLight = themes.first { it.id == 7 }
             assertEquals("Pure Chalk", matLight.name)
             assertEquals(0, matLight.keyStrokeSize)
             assertEquals(null, matLight.toKeyboardThemeSpec().characterKey.stroke)
 
-            val amoled = themes.first { it.id == 1011 }
+            val amoled = themes.first { it.id == 36 }
             assertEquals("Cyber AMOLED", amoled.name)
             assertEquals(1, amoled.keyStrokeSize)
-            assertEquals("#505050", amoled.keyStrokeColor)
+            assertEquals("#ff505050", amoled.keyStrokeColor)
             assertEquals(1.0f, amoled.toKeyboardThemeSpec().characterKey.stroke?.widthDp ?: 0f, 0.01f)
 
-            val cosmic = themes.first { it.id == 1012 }
-            assertEquals("Cosmic Nebula", cosmic.name)
-            assertEquals(2, cosmic.keyStrokeSize)
-            assertEquals("#4b0082", cosmic.keyStrokeColor)
-            assertEquals(2.0f, cosmic.toKeyboardThemeSpec().characterKey.stroke?.widthDp ?: 0f, 0.01f)
+            val globeKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.SWITCH_LANGUAGE, icon = "globe")
+            val lightGlobeFlat = KeyboardColorScheme.DefaultLight.resolveKeycapVisual(key = globeKey, showKeyBorders = false)
+            assertEquals(KeyboardColorScheme.DefaultLight.containerBackground, lightGlobeFlat.backgroundColor)
+            val darkGlobeFlat = KeyboardColorScheme.DefaultDark.resolveKeycapVisual(key = globeKey, showKeyBorders = false)
+            assertEquals(KeyboardColorScheme.DefaultDark.containerBackground, darkGlobeFlat.backgroundColor)
         }
     }
 }
