@@ -61,6 +61,7 @@ import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.feature.ime.ui.KeyboardRootView
+import io.kiebord.feature.ime.ui.ScaledKeyboardPreview
 import io.kiebord.theme.KiebordTheme
 import io.kiebord.theme.ThemeCategory
 import io.kiebord.theme.ThemeColorUtils
@@ -454,24 +455,29 @@ private fun ThemePreviewBottomSheetContent(
             ) {
                 val screenWidth = LocalConfiguration.current.screenWidthDp.dp
                 val baseWidth = if (screenWidth > 500.dp) 390.dp else screenWidth
-                val widthRatio = if (baseWidth > 0.dp) (maxWidth / baseWidth).coerceIn(0.5f, 1.0f) else 0.85f
-                val previewBase = if (preferences.showNumberRow) 54 else 61
-                val previewRowHeight = (previewBase * preferences.keyboardHeightScale * widthRatio).dp
+                val fullRowHeight = if (preferences.showNumberRow) 54.dp else 61.dp
+                val targetRowHeight = fullRowHeight * preferences.keyboardHeightScale
 
-                KeyboardRootView(
-                    layout = PredefinedLayouts.EnglishQwerty,
-                    shiftState = ShiftState.UNSHIFTED,
-                    onKeyTap = {},
-                    onKeyLongPress = {},
-                    showKeyBorders = showKeyBorders,
-                    showKeyShadows = showKeyShadows,
-                    defaultShowNumberRow = preferences.showNumberRow,
-                    defaultShowSecondaryKeys = false,
-                    initialRowHeight = previewRowHeight,
-                    applySystemInsets = false,
-                    isInteractive = false,
-                    navBarBottomInset = 0.dp
-                )
+                ScaledKeyboardPreview(
+                    baseWidth = baseWidth,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    KeyboardRootView(
+                        layout = PredefinedLayouts.EnglishQwerty,
+                        shiftState = ShiftState.UNSHIFTED,
+                        onKeyTap = {},
+                        onKeyLongPress = {},
+                        showKeyBorders = showKeyBorders,
+                        showKeyShadows = showKeyShadows,
+                        defaultShowNumberRow = preferences.showNumberRow,
+                        defaultShowSecondaryKeys = false,
+                        initialRowHeight = targetRowHeight,
+                        heightScalePortrait = preferences.keyboardHeightScale,
+                        applySystemInsets = false,
+                        isInteractive = false,
+                        navBarBottomInset = 0.dp
+                    )
+                }
 
                 Box(
                     modifier = Modifier

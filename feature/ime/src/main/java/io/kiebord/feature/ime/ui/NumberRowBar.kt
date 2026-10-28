@@ -50,6 +50,7 @@ fun NumberRowBar(
                 showKeyPopups = showKeyPopups,
                 showSecondaryKeys = false,
                 rowHeight = rowHeight,
+                scaleFactor = (rowHeight.value / 50f).coerceIn(0.4f, 1.6f),
                 isInteractive = isInteractive,
                 modifier = Modifier
                     .weight(1.0f)

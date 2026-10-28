@@ -51,6 +51,7 @@ import io.kiebord.common.model.ShiftState
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.feature.ime.ui.KeyboardRootView
+import io.kiebord.feature.ime.ui.ScaledKeyboardPreview
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
 
@@ -142,24 +143,27 @@ fun OnboardingPreferencesStep(
         ) {
             val screenWidth = LocalConfiguration.current.screenWidthDp.dp
             val baseWidth = if (screenWidth > 500.dp) 390.dp else screenWidth
-            val widthRatio = if (baseWidth > 0.dp) (maxWidth / baseWidth).coerceIn(0.5f, 1.0f) else 0.88f
-            val demoBase = if (showNumberRow) 54 else 61
-            val demoRowHeight = (demoBase * widthRatio).dp
+            val fullRowHeight = if (showNumberRow) 54.dp else 61.dp
 
             KiebordTheme(colorScheme = keyboardColorScheme) {
-                KeyboardRootView(
-                    layout = layoutDef,
-                    shiftState = ShiftState.UNSHIFTED,
-                    onKeyTap = {},
-                    onKeyLongPress = {},
-                    showKeyBorders = showKeyBorders,
-                    defaultShowNumberRow = showNumberRow,
-                    defaultShowSecondaryKeys = showSecondaryKeys,
-                    initialRowHeight = demoRowHeight,
-                    applySystemInsets = false,
-                    isInteractive = false,
-                    navBarBottomInset = 0.dp
-                )
+                ScaledKeyboardPreview(
+                    baseWidth = baseWidth,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    KeyboardRootView(
+                        layout = layoutDef,
+                        shiftState = ShiftState.UNSHIFTED,
+                        onKeyTap = {},
+                        onKeyLongPress = {},
+                        showKeyBorders = showKeyBorders,
+                        defaultShowNumberRow = showNumberRow,
+                        defaultShowSecondaryKeys = showSecondaryKeys,
+                        initialRowHeight = fullRowHeight,
+                        applySystemInsets = false,
+                        isInteractive = false,
+                        navBarBottomInset = 0.dp
+                    )
+                }
             }
 
             // Transparent overlay interceptor so preview is strictly non-touchable/non-flickering

@@ -154,7 +154,7 @@ fun KeyboardRootView(
     lastDeletedBatch: String? = null,
     onGestureCommit: (List<Offset>, List<KeyCentroid>, Float) -> Unit = { _, _, _ -> },
     onGestureLivePredict: ((List<Offset>, List<KeyCentroid>, Float) -> String?)? = null,
-    initialRowHeight: Dp = 61.dp,
+    initialRowHeight: Dp? = null,
     heightScalePortrait: Float = 1.0f,
     heightScaleLandscape: Float = 1.0f,
     chinPaddingPortraitDp: Float = 8.0f,
@@ -466,7 +466,7 @@ fun KeyboardRootView(
 
     val activeBaseRowHeight = if (isLandscape) baseLandscapeRowHeight else basePortraitRowHeight
     val activeHeightScale = if (isLandscape) heightScaleLandscape else heightScalePortrait
-    val activeTargetRowHeight = if (initialRowHeight != 61.dp && initialRowHeight != 58.dp && initialRowHeight != 54.dp && initialRowHeight != 52.dp && !isLandscape) initialRowHeight else activeBaseRowHeight * activeHeightScale
+    val activeTargetRowHeight = if (initialRowHeight != null && !isLandscape) initialRowHeight else activeBaseRowHeight * activeHeightScale
 
     val activeChinPadding = if (isLandscape) chinPaddingLandscapeDp.dp else chinPaddingPortraitDp.dp
     val activeHorizontalMargin = if (isLandscape) horizontalMarginLandscapeDp.dp else horizontalMarginPortraitDp.dp
@@ -830,7 +830,10 @@ fun KeyboardRootView(
             )
     ) {
         if (bgImageSpec != null) {
-            io.kiebord.theme.ThemeImageBackgroundView(spec = bgImageSpec)
+            io.kiebord.theme.ThemeImageBackgroundView(
+                spec = bgImageSpec,
+                modifier = Modifier.matchParentSize()
+            )
         }
         Box(
             modifier = Modifier
@@ -1574,6 +1577,7 @@ fun KeyboardRootView(
                                 showKeyPopups = showKeyPopups,
                                 isInteractive = areKeysInteractive,
                                 rowHeight = currentRowHeight,
+                                scaleFactor = scaleFactor,
                                 gestureTypingEnabled = isEffectiveGestureTypingEnabled,
                                 longPressDelayMs = longPressDelayMs,
                                 modifier = Modifier

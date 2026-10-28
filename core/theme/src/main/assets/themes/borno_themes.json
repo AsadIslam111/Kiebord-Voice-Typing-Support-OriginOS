@@ -327,7 +327,7 @@
           "keyShadowColor": "#800080",
           "keyShadowSize": 0,
           "keyStrokeColor": "#4b0082",
-          "keyStrokeSize": 2,
+          "keyStrokeSize": 1,
           "labelFunctionalKeyColor": "#E0B0FF",
           "labelKeyColor": "#E0B0FF",
           "popupColor": "#202040",
@@ -468,7 +468,7 @@
           "keyShadowColor": "#808080",
           "keyShadowSize": 0,
           "keyStrokeColor": "#757575",
-          "keyStrokeSize": 2,
+          "keyStrokeSize": 1,
           "labelFunctionalKeyColor": "#FFEFD5",
           "labelKeyColor": "#FFEFD5",
           "name": "Volcanic Basalt",
@@ -897,7 +897,7 @@
           "pressedKeyColor": "#13161e",
           "selectedKeyColor": "#000000",
           "spaceColor": "#13161e",
-          "stripColor": "#EFEFEF",
+          "stripColor": "#FFFFFF",
           "stripIcoColor": "#13161e"
         },
         {

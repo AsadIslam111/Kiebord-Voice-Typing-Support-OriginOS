@@ -87,6 +87,7 @@ fun KeycapView(
     showSecondaryKeys: Boolean = true,
     showKeyPopups: Boolean = true,
     rowHeight: Dp = 61.dp,
+    scaleFactor: Float = (rowHeight.value / (if (rowHeight.value >= 58f) 61f else 54f)).coerceIn(0.4f, 1.6f),
     onKeyPress: (KeyDef) -> Unit = {},
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit = {},
@@ -114,7 +115,6 @@ fun KeycapView(
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
     val context = LocalContext.current
-    val scaleFactor = (rowHeight.value / (if (rowHeight.value >= 58f) 61f else 54f)).coerceIn(0.4f, 1.6f)
     // Capped scale factor for font, icons, and horizontal spacing:
     // When keyboard height increases, font/horizontal scaling MUST NOT increase beyond 1.0f,
     // otherwise keycap labels and bottom row keys expand horizontally and overlap.
@@ -155,8 +155,8 @@ fun KeycapView(
 
     // In flat theme (!showKeyBorders), reduce height of Space bar, Sym key, and Enter key
     val isReducedHeightKey = !showKeyBorders && isPillColoredKey
-    val horizontalPadding = (2.8f * fontScaleFactor).coerceIn(1.5f, 3.2f).dp
-    val verticalPadding = if (isReducedHeightKey) (6.0f * scaleFactor).coerceAtLeast(2f).dp else (4.2f * scaleFactor).coerceIn(1.8f, 6.0f).dp
+    val horizontalPadding = (2.8f * fontScaleFactor).coerceIn(1.2f, 3.2f).dp
+    val verticalPadding = if (isReducedHeightKey) (6.0f * scaleFactor).coerceAtLeast(1.8f).dp else (4.2f * scaleFactor).coerceIn(1.5f, 6.0f).dp
 
     // Capture latest parameters in updated states to allow pointerInput without gesture cancellation
     val currentKey = rememberUpdatedState(key)
