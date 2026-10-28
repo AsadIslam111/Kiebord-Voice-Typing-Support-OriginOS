@@ -321,7 +321,19 @@ private fun MoreKeyCell(
     iconSizeDp: Float,
     colorScheme: KeyboardColorScheme
 ) {
-    val contentColor = if (isSelected) Color.White else colorScheme.keyForeground
+    val contentColor = if (isSelected) {
+        io.kiebord.theme.ThemeColorUtils.ensureContrast(
+            foreground = colorScheme.actionKeyForeground,
+            background = colorScheme.accentColor,
+            minContrast = 3.0f
+        )
+    } else {
+        io.kiebord.theme.ThemeColorUtils.ensureContrast(
+            foreground = colorScheme.keyForeground,
+            background = colorScheme.moreKeysBackground,
+            minContrast = 3.0f
+        )
+    }
 
     Box(
         modifier = Modifier

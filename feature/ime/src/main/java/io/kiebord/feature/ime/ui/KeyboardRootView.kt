@@ -1202,13 +1202,16 @@ fun KeyboardRootView(
                             rememberUpdatedState(1.0f)
                         }
 
+                        val micBgColor = when {
+                            isVoiceActive -> colorScheme.accentColor.copy(alpha = activeAlpha)
+                            colorScheme.keyBackground.alpha < 0.85f -> colorScheme.containerBackground
+                            else -> colorScheme.keyBackground
+                        }
                         Box(
                             modifier = Modifier
                                 .size(micButtonSize)
                                 .clip(CircleShape)
-                                .background(
-                                    if (isVoiceActive) colorScheme.accentColor.copy(alpha = activeAlpha) else colorScheme.keyBackground
-                                )
+                                .background(micBgColor)
                                 .clickable {
                                     if (isVoiceActive) {
                                         onDismissVoiceTyping()
@@ -1221,7 +1224,7 @@ fun KeyboardRootView(
                             Icon(
                                 painter = painterResource(R.drawable.ic_mic),
                                 contentDescription = if (isVoiceActive) "Stop Voice Typing" else "Start Voice Typing",
-                                tint = if (isVoiceActive) Color.White else ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.keyBackground),
+                                tint = if (isVoiceActive) Color.White else ThemeColorUtils.ensureContrast(colorScheme.keyForeground, micBgColor),
                                 modifier = Modifier.size(micIconSize)
                             )
                         }

@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.effectiveToolbarBackground
 import io.kiebord.theme.effectiveToolbarForeground
 
 data class SuggestionCandidate(
@@ -141,6 +142,18 @@ fun SuggestionStripView(
         val showExpandBtn = !isScrollableMode && onExpandToggle != null &&
             (candidates.size > visibleCandidates.size || isExpanded)
 
+        val primaryTextColor = remember(colorScheme) {
+            val rawBg = colorScheme.effectiveToolbarBackground
+            val targetBg = if (rawBg.alpha < 0.05f) colorScheme.containerBackground else rawBg
+            io.kiebord.theme.ThemeColorUtils.ensureContrast(
+                foreground = colorScheme.accentColor,
+                background = targetBg,
+                minContrast = 2.8f,
+                fallbackLight = colorScheme.effectiveToolbarForeground,
+                fallbackDark = colorScheme.effectiveToolbarForeground
+            )
+        }
+
         Row(
             modifier = Modifier.fillMaxHeight(),
             horizontalArrangement = Arrangement.Center,
@@ -196,7 +209,7 @@ fun SuggestionStripView(
                                 Text(
                                     text = candidate.text,
                                     color = when {
-                                        isPrimary -> colorScheme.accentColor
+                                        isPrimary -> primaryTextColor
                                         isRaw -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.88f)
                                         else -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.72f)
                                     },
@@ -258,7 +271,7 @@ fun SuggestionStripView(
                                 Text(
                                     text = candidate.text,
                                     color = when {
-                                        isPrimary -> colorScheme.accentColor
+                                        isPrimary -> primaryTextColor
                                         isRaw -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.88f)
                                         else -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.72f)
                                     },

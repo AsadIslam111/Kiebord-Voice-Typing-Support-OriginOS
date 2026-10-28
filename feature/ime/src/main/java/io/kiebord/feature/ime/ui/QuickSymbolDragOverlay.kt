@@ -123,6 +123,11 @@ fun QuickSymbolDragOverlay(
             val popupLeft = clampedCenterX - halfPopupPx
             val isLight = colorScheme == KeyboardColorScheme.DefaultLight
             val popupBg = colorScheme.moreKeysBackground
+            val popupFg = io.kiebord.theme.ThemeColorUtils.ensureContrast(
+                foreground = colorScheme.keyForeground,
+                background = popupBg,
+                minContrast = 3.0f
+            )
 
             Box(
                 modifier = Modifier
@@ -152,7 +157,7 @@ fun QuickSymbolDragOverlay(
             ) {
                 Text(
                     text = state.hoveredSymbol,
-                    color = colorScheme.keyForeground,
+                    color = popupFg,
                     fontSize = (25 * scaleFactor).coerceIn(19f, 32f).sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = KiebordTheme.fontFamily,
