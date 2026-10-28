@@ -13,12 +13,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,9 +40,9 @@ import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DragHandle
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -53,8 +53,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,12 +73,16 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import io.kiebord.common.model.KeyRow
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
@@ -94,12 +101,12 @@ private data class LayoutCardData(
     val layoutDef: KeyboardLayoutDef
 )
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun KeyboardLayoutsScreen(
     preferences: KiebordPreferences,
     onUpdatePrimaryLayout: (String) -> Unit,
     onToggleLayoutEnabled: (String, Boolean) -> Unit,
+    onReorderEnabledLayouts: (List<String>) -> Unit = {},
     onToggleExtraRow: (String, String, Boolean) -> Unit = { _, _, _ -> },
     onBack: () -> Unit = {}
 ) {
@@ -206,9 +213,24 @@ fun KeyboardLayoutsScreen(
     val allKnownCards = remember(englishCard, banglaCards, arabicCard, customCards) {
         listOf(englishCard) + banglaCards + listOf(arabicCard) + customCards
     }
-    val activeCards = remember(preferences.enabledLayoutIds, allKnownCards) {
-        allKnownCards.filter { preferences.enabledLayoutIds.contains(it.id) }
+    var orderedActiveIds by remember(preferences.enabledLayoutIds) {
+        mutableStateOf(preferences.enabledLayoutIds.toList())
     }
+    val activeCards = remember(orderedActiveIds, preferences.enabledLayoutIds, allKnownCards) {
+        val cardMap = allKnownCards.associateBy { it.id }
+        val ordered = orderedActiveIds.mapNotNull { cardMap[it] }
+        val remaining = allKnownCards.filter { preferences.enabledLayoutIds.contains(it.id) && it.id !in orderedActiveIds }
+        ordered + remaining
+    }
+    val currentActiveIdsState = rememberUpdatedState(activeCards.map { it.id })
+    var draggedLayoutId by remember { mutableStateOf<String?>(null) }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    var swipedLayoutId by remember { mutableStateOf<String?>(null) }
+    var swipeOffsetX by remember { mutableFloatStateOf(0f) }
+    var rowHeightPx by remember { mutableFloatStateOf(0f) }
+    val density = LocalDensity.current
+    val groupSpacingPx = with(density) { 3.dp.toPx() }
+    val swipeThresholdPx = with(density) { 72.dp.toPx() }
 
     val isEnglishEnabled = preferences.enabledLayoutIds.contains(englishCard.id)
     val isAnyBanglaEnabled = preferences.enabledLayoutIds.any { it.startsWith("bn") }
@@ -323,110 +345,187 @@ fun KeyboardLayoutsScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
-        // Active Layouts Summary & Primary Layout Selector
-        SettingsCategoryHeader(title = "Active Languages (${activeCards.size})")
+        SettingsCategoryHeader(title = "Active Layouts (${activeCards.size})")
 
         SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-            SettingsItemCard(
-                position = GroupPosition.ALONE,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Enabled Keyboard Layouts",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = colors.textPrimary
-                            )
-                            Text(
-                                text = "Tap a layout below to set it as your default starting keyboard",
-                                fontSize = 12.sp,
-                                color = colors.textSecondary,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
+            for ((index, card) in activeCards.withIndex()) {
+                key(card.id) {
+                    val position = when {
+                        activeCards.size == 1 -> GroupPosition.ALONE
+                        index == 0 -> GroupPosition.TOP
+                        index == activeCards.lastIndex -> GroupPosition.BOTTOM
+                        else -> GroupPosition.MIDDLE
                     }
+                    val isDragging = draggedLayoutId == card.id
+                    val isSwiping = swipedLayoutId == card.id
+                    val isPrimary = preferences.primaryLayoutId == card.id ||
+                        (!preferences.enabledLayoutIds.contains(preferences.primaryLayoutId) && index == 0)
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    SettingsItemCard(
+                        position = position,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .zIndex(if (isDragging) 1f else 0f)
+                            .onSizeChanged { size ->
+                                if (size.height > 0) {
+                                    rowHeightPx = size.height.toFloat()
+                                }
+                            }
+                            .pointerInput(card.id) {
+                                detectHorizontalDragGestures(
+                                    onDragStart = {
+                                        swipedLayoutId = card.id
+                                        swipeOffsetX = 0f
+                                    },
+                                    onDragEnd = {
+                                        val finalOffset = swipeOffsetX
+                                        swipedLayoutId = null
+                                        swipeOffsetX = 0f
+                                        if (kotlin.math.abs(finalOffset) >= swipeThresholdPx) {
+                                            handleToggleLayout(card)
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        swipedLayoutId = null
+                                        swipeOffsetX = 0f
+                                    },
+                                    onHorizontalDrag = { change, dragAmount ->
+                                        change.consume()
+                                        swipeOffsetX += dragAmount
+                                    }
+                                )
+                            }
+                            .graphicsLayer {
+                                translationX = if (isSwiping) swipeOffsetX else 0f
+                                translationY = if (isDragging) dragOffsetY else 0f
+                                alpha = if (isSwiping) {
+                                    (1f - (kotlin.math.abs(swipeOffsetX) / (swipeThresholdPx * 2f)).coerceIn(0f, 0.65f))
+                                } else 1f
+                                scaleX = if (isDragging) 1.02f else 1f
+                                scaleY = if (isDragging) 1.02f else 1f
+                                shadowElevation = if (isDragging) 12f else 0f
+                            }
                     ) {
-                        for (card in activeCards) {
-                            val isPrimary = preferences.primaryLayoutId == card.id ||
-                                    (!preferences.enabledLayoutIds.contains(preferences.primaryLayoutId) && card == activeCards.firstOrNull())
-
-                            Row(
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (!isPrimary) {
+                                        onUpdatePrimaryLayout(card.id)
+                                    }
+                                }
+                                .padding(start = 6.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .pointerInput(card.id) {
+                                        detectVerticalDragGestures(
+                                            onDragStart = {
+                                                draggedLayoutId = card.id
+                                                dragOffsetY = 0f
+                                            },
+                                            onDragEnd = {
+                                                draggedLayoutId = null
+                                                dragOffsetY = 0f
+                                                onReorderEnabledLayouts(currentActiveIdsState.value)
+                                            },
+                                            onDragCancel = {
+                                                draggedLayoutId = null
+                                                dragOffsetY = 0f
+                                            },
+                                            onVerticalDrag = { change, dragAmount ->
+                                                change.consume()
+                                                dragOffsetY += dragAmount
+                                                val stepPx = (if (rowHeightPx > 0f) rowHeightPx else 56.dp.toPx()) + groupSpacingPx
+                                                val currentList = currentActiveIdsState.value.toMutableList()
+                                                val curIdx = currentList.indexOf(card.id)
+                                                if (curIdx != -1 && stepPx > 0f) {
+                                                    if (dragOffsetY > stepPx * 0.55f && curIdx < currentList.lastIndex) {
+                                                        val next = currentList[curIdx + 1]
+                                                        currentList[curIdx + 1] = card.id
+                                                        currentList[curIdx] = next
+                                                        orderedActiveIds = currentList
+                                                        dragOffsetY -= stepPx
+                                                    } else if (dragOffsetY < -stepPx * 0.55f && curIdx > 0) {
+                                                        val prev = currentList[curIdx - 1]
+                                                        currentList[curIdx - 1] = card.id
+                                                        currentList[curIdx] = prev
+                                                        orderedActiveIds = currentList
+                                                        dragOffsetY += stepPx
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.DragHandle,
+                                    contentDescription = "Reorder",
+                                    tint = if (isDragging) colors.accent else colors.textSecondary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
                                     .background(
-                                        if (isPrimary) colors.accent.copy(alpha = 0.16f)
+                                        if (isPrimary) colors.accent.copy(alpha = 0.15f)
                                         else colors.iconBackground
                                     )
-                                    .border(
-                                        width = if (isPrimary) 1.5.dp else 1.dp,
-                                        color = if (isPrimary) colors.accent else colors.cardBorder,
-                                        shape = RoundedCornerShape(12.dp)
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = card.badge,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isPrimary) colors.accent else colors.textSecondary,
+                                    maxLines = 1
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = card.name,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colors.textPrimary
                                     )
-                                    .clickable {
-                                        if (!isPrimary) {
-                                            onUpdatePrimaryLayout(card.id)
-                                            Toast.makeText(
-                                                context,
-                                                "${card.name} set as primary layout",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                    if (isPrimary) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(colors.accent.copy(alpha = 0.15f))
+                                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "Default",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = colors.accent
+                                            )
                                         }
                                     }
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(
-                                            if (isPrimary) colors.accent
-                                            else colors.textSecondary.copy(alpha = 0.18f)
-                                        )
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = card.badge,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isPrimary) Color.White else colors.textPrimary
-                                    )
                                 }
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
                                 Text(
-                                    text = card.name,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (isPrimary) FontWeight.Bold else FontWeight.Medium,
-                                    color = colors.textPrimary
+                                    text = card.description,
+                                    fontSize = 12.sp,
+                                    color = colors.textSecondary,
+                                    modifier = Modifier.padding(top = 2.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-
-                                if (isPrimary) {
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Icon(
-                                        imageVector = Icons.Filled.Star,
-                                        contentDescription = "Primary Layout",
-                                        tint = colors.accent,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
                             }
                         }
                     }
@@ -645,7 +744,7 @@ fun KeyboardLayoutsScreen(
                                                 if (hasExtraRows) {
                                                     Row(
                                                         modifier = Modifier
-                                                            .clip(RoundedCornerShape(8.dp))
+                                                            .clip(CircleShape)
                                                             .background(
                                                                 if (isCardSettingsOpen) colors.accent.copy(alpha = 0.15f)
                                                                 else colors.iconBackground
@@ -675,7 +774,7 @@ fun KeyboardLayoutsScreen(
 
                                                 Row(
                                                     modifier = Modifier
-                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .clip(CircleShape)
                                                         .background(colors.iconBackground)
                                                         .clickable { pendingDeleteCard = cardData }
                                                         .padding(horizontal = 10.dp, vertical = 6.dp),
@@ -805,7 +904,7 @@ private fun LanguageSectionHeader(
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(CircleShape)
                 .background(
                     if (isAnyActive) colors.accent.copy(alpha = 0.15f)
                     else colors.iconBackground
@@ -834,12 +933,12 @@ private fun LanguageSectionHeader(
                 Spacer(modifier = Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(CircleShape)
                         .background(
                             if (isAnyActive) colors.accent.copy(alpha = 0.15f)
                             else colors.iconBackground
                         )
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = if (totalCount == 1) {
@@ -907,7 +1006,7 @@ private fun ExtraRowsOptionsSection(
     ) {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(CircleShape)
                 .clickable(onClick = onToggleOpen)
                 .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -1086,9 +1185,9 @@ private fun KeyboardLayoutPreviewItem(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(6.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(CircleShape)
                         .background(colors.accent)
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "Default",

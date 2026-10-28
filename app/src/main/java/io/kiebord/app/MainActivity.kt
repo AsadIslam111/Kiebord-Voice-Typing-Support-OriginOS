@@ -391,6 +391,9 @@ fun KiebordSettingsApp(
                             onToggleLayoutEnabled = { layoutId, enabled ->
                                 scope.launch { preferencesRepo.toggleLayoutEnabled(layoutId, enabled) }
                             },
+                            onReorderEnabledLayouts = { orderedIds ->
+                                scope.launch { preferencesRepo.updateEnabledLayoutsOrder(orderedIds) }
+                            },
                             onToggleExtraRow = { layoutId, rowId, enabled ->
                                 scope.launch { preferencesRepo.setLayoutExtraRowEnabled(layoutId, rowId, enabled) }
                             },

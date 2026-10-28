@@ -57,6 +57,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
         val PRIMARY_LAYOUT_ID = stringPreferencesKey("pref_primary_layout_id")
         val ENABLED_LAYOUT_IDS = stringSetPreferencesKey("pref_enabled_layout_ids")
+        val ENABLED_LAYOUT_ORDER = stringPreferencesKey("pref_enabled_layout_order")
 
         val SUGGESTIONS_ENABLED = booleanPreferencesKey("pref_suggestions_enabled")
         val NEXT_WORD_PREDICTION = booleanPreferencesKey("pref_next_word_prediction")
@@ -114,11 +115,21 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 selectiveDeleteMode = prefs[PreferencesKeys.SELECTIVE_DELETE_MODE] ?: KiebordPreferences.DELETE_MODE_WORD,
 
                 primaryLayoutId = prefs[PreferencesKeys.PRIMARY_LAYOUT_ID] ?: KiebordPreferences.LAYOUT_EN_QWERTY,
-                enabledLayoutIds = prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: setOf(
-                    KiebordPreferences.LAYOUT_EN_QWERTY,
-                    KiebordPreferences.LAYOUT_BN_BORNO,
-                    KiebordPreferences.LAYOUT_BN_NATIONAL
-                ),
+                enabledLayoutIds = run {
+                    val rawSet = prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: setOf(
+                        KiebordPreferences.LAYOUT_EN_QWERTY,
+                        KiebordPreferences.LAYOUT_BN_BORNO,
+                        KiebordPreferences.LAYOUT_BN_NATIONAL
+                    )
+                    val orderRaw = prefs[PreferencesKeys.ENABLED_LAYOUT_ORDER]
+                    if (!orderRaw.isNullOrBlank()) {
+                        val ordered = orderRaw.split(",").map { it.trim() }.filter { it.isNotEmpty() && it in rawSet }
+                        val remaining = rawSet.filter { it !in ordered }
+                        LinkedHashSet(ordered + remaining)
+                    } else {
+                        rawSet
+                    }
+                },
 
                 suggestionsEnabled = prefs[PreferencesKeys.SUGGESTIONS_ENABLED] ?: true,
                 nextWordPrediction = prefs[PreferencesKeys.NEXT_WORD_PREDICTION] ?: true,
@@ -307,6 +318,26 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 }
             }
             prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] = currentEnabled
+            val existingOrder = prefs[PreferencesKeys.ENABLED_LAYOUT_ORDER]
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() && it in currentEnabled }
+                ?.toMutableList()
+                ?: mutableListOf()
+            for (id in currentEnabled) {
+                if (id !in existingOrder) existingOrder.add(id)
+            }
+            prefs[PreferencesKeys.ENABLED_LAYOUT_ORDER] = existingOrder.joinToString(",")
+        }
+    }
+
+    suspend fun updateEnabledLayoutsOrder(orderedIds: List<String>) {
+        if (orderedIds.isEmpty()) return
+        context.kiebordDataStore.edit { prefs ->
+            val distinctIds = orderedIds.distinct()
+            prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] = distinctIds.toSet()
+            prefs[PreferencesKeys.ENABLED_LAYOUT_ORDER] = distinctIds.joinToString(",")
+            prefs[PreferencesKeys.PRIMARY_LAYOUT_ID] = distinctIds.first()
         }
     }
 

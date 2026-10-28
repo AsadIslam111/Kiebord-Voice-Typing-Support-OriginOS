@@ -177,7 +177,7 @@ fun SettingsUnifiedTopBar(
     val subtitle: String? = when (screen) {
         is SettingsScreen.Main -> null
         is SettingsScreen.AppearanceThemes -> "Themes & key styling"
-        is SettingsScreen.KeyboardLayouts -> "Active languages & preview"
+        is SettingsScreen.KeyboardLayouts -> "Active layouts & preview"
         is SettingsScreen.Preferences -> "Haptics, smart gestures & ergonomics"
         is SettingsScreen.CorrectionsSuggestions -> "Candidate strip, auto-fix & glide typing"
         is SettingsScreen.Clipboard -> "Manage copied items & pins"
