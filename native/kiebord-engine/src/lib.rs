@@ -323,6 +323,20 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_getTransliterati
 }
 
 #[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_getDictionaryMetadata(
+    mut env: JNIEnv,
+    _class: JClass,
+    lang_or_path: JString,
+) -> jstring {
+    let query: String = match env.get_string(&lang_or_path) {
+        Ok(s) => s.into(),
+        Err(_) => String::new(),
+    };
+    let result = dictionary::get_dictionary_metadata(&query);
+    env.new_string(result).unwrap().into_raw()
+}
+
+#[no_mangle]
 pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_ping(
     _env: JNIEnv,
     _class: JClass,

@@ -1,10 +1,11 @@
-use crate::dictionary::combined_parser::CombinedDictData;
+use crate::dictionary::combined_parser::{CombinedDictData, DictMetadata};
 use crate::dictionary::proximity::KeyProximity;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const MAGIC: u32 = 0x4B42_4443; // "KBDC" (Kiebord Dictionary Core)
-pub const VERSION: u16 = 4;
+pub const VERSION: u16 = 5;
 pub const FLAG_LABELS_U8: u16 = 1;
 pub const FLAG_DEGREE_U8: u16 = 2;
 pub const MAX_SYMBOLS: usize = 256;
@@ -37,6 +38,8 @@ pub struct BinaryDict<'a> {
     bigram_followers_off: usize,
     _bigram_freqs_off: usize,
     bigram_head_count: usize,
+    meta_off: usize,
+    meta_len: usize,
 }
 
 impl<'a> BinaryDict<'a> {
@@ -238,10 +241,19 @@ impl<'a> BinaryDict<'a> {
         bigram_run_start.push(bigram_followers.len() as u32);
         let total_bigrams = bigram_followers.len();
 
-        // 9. Layout sections and calculate offsets
-        let header_bytes = 4 + 2 + 2 + 4 * 6 + 11 * 4;
+        // 9. Resolve metadata & calculate section offsets
+        let mut meta = data.metadata.clone();
+        if meta.date == 0 {
+            meta.date = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+        }
+        let meta_bytes = meta.to_header_string().into_bytes();
+
+        let header_bytes = 4 + 2 + 2 + 4 * 6 + 12 * 4;
         let mut cursor = header_bytes;
-        let mut offsets = [0u32; 11];
+        let mut offsets = [0u32; 12];
 
         let mut alloc_section = |size: usize| -> u32 {
             let at = cursor;
@@ -260,6 +272,7 @@ impl<'a> BinaryDict<'a> {
         offsets[8] = alloc_section((bigram_head_count + 1) * 4); // bigram_run_start
         offsets[9] = alloc_section(total_bigrams * 4); // bigram_followers
         offsets[10] = alloc_section(total_bigrams); // bigram_freqs
+        offsets[11] = alloc_section(4 + meta_bytes.len()); // metadata section (u32 len + utf8 bytes)
 
         // 10. Write binary output
         let mut out = Vec::with_capacity(cursor);
@@ -351,6 +364,11 @@ impl<'a> BinaryDict<'a> {
 
         // Section 10: bigram_freqs
         out.extend_from_slice(&bigram_freqs);
+        while out.len() < offsets[11] as usize { out.push(0); }
+
+        // Section 11: metadata
+        out.extend_from_slice(&(meta_bytes.len() as u32).to_be_bytes());
+        out.extend_from_slice(&meta_bytes);
         while out.len() < cursor { out.push(0); }
 
         out
@@ -369,7 +387,7 @@ impl<'a> BinaryDict<'a> {
         }
 
         let version = u16::from_be_bytes(bytes[4..6].try_into().unwrap());
-        if version != VERSION {
+        if version != VERSION && version != 4 {
             return Err("Unsupported binary dict version");
         }
 
@@ -387,6 +405,18 @@ impl<'a> BinaryDict<'a> {
         for i in 0..11 {
             offsets[i] = u32::from_be_bytes(bytes[32 + i * 4..36 + i * 4].try_into().unwrap()) as usize;
         }
+
+        let (meta_off, meta_len) = if version >= 5 && bytes.len() >= 32 + 12 * 4 {
+            let m_off = u32::from_be_bytes(bytes[32 + 11 * 4..36 + 11 * 4].try_into().unwrap()) as usize;
+            if m_off + 4 <= bytes.len() {
+                let m_len = u32::from_be_bytes(bytes[m_off..m_off + 4].try_into().unwrap()) as usize;
+                (m_off, m_len)
+            } else {
+                (0, 0)
+            }
+        } else {
+            (0, 0)
+        };
 
         let mut symbols_table = [UNUSED_SYMBOL; 256];
         if labels_are_u8 {
@@ -415,7 +445,25 @@ impl<'a> BinaryDict<'a> {
             bigram_followers_off: offsets[9],
             _bigram_freqs_off: offsets[10],
             bigram_head_count,
+            meta_off,
+            meta_len,
         })
+    }
+
+    pub fn metadata(&self) -> DictMetadata {
+        if self.meta_len > 0 && self.meta_off + 4 + self.meta_len <= self.bytes.len() {
+            if let Ok(s) = std::str::from_utf8(&self.bytes[self.meta_off + 4..self.meta_off + 4 + self.meta_len]) {
+                return DictMetadata::from_header_str(s);
+            }
+        }
+        DictMetadata::default()
+    }
+
+    pub fn read_file_metadata(path: &std::path::Path) -> Result<(DictMetadata, u32), &'static str> {
+        let file = std::fs::File::open(path).map_err(|_| "Failed to open dict file")?;
+        let mmap = unsafe { memmap2::Mmap::map(&file) }.map_err(|_| "Failed to map dict file")?;
+        let dict = BinaryDict::from_bytes(&mmap[..])?;
+        Ok((dict.metadata(), dict.word_count()))
     }
 
     #[inline]

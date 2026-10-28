@@ -20,8 +20,20 @@ object NativeEngine {
     @JvmStatic
     external fun ping(): Boolean
 
+    data class DictionaryMetadata(
+        val name: String,
+        val author: String,
+        val version: Int,
+        val date: Long,
+        val license: String,
+        val wordCount: Int
+    )
+
     @JvmStatic
     external fun loadDictionary(lang: String, path: String): Boolean
+
+    @JvmStatic
+    external fun getDictionaryMetadata(langOrPath: String): String
 
     @JvmStatic
     external fun transliterateBorno(input: String): String
@@ -124,10 +136,57 @@ object NativeEngine {
                 }
             }
 
-            if (loadDictionary(baseLang, destFile.absolutePath)) {
+            var loaded = loadDictionary(baseLang, destFile.absolutePath)
+            if (!loaded && !needsCopy) {
+                context.assets.open(assetPath).use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                loaded = loadDictionary(baseLang, destFile.absolutePath)
+            }
+            if (loaded) {
                 initializedLangs.add(baseLang)
             }
         } catch (_: Throwable) {}
+    }
+
+    fun queryDictionaryMetadata(langOrPath: String): DictionaryMetadata? {
+        if (!isLoaded) return null
+        return try {
+            val raw = getDictionaryMetadata(langOrPath)
+            if (raw.isBlank()) return null
+            var name = "Kiebord Word Dictionary"
+            var author = "Jayed Ahsan Saad"
+            var version = 1
+            var date = 0L
+            var license = "Only for Kiebord"
+            var words = 0
+            for (part in raw.split(";")) {
+                val idx = part.indexOf('=')
+                if (idx <= 0) continue
+                val key = part.substring(0, idx).trim()
+                val value = part.substring(idx + 1).trim()
+                when (key) {
+                    "name" -> if (value.isNotEmpty()) name = value
+                    "author" -> if (value.isNotEmpty()) author = value
+                    "version" -> version = value.toIntOrNull() ?: version
+                    "date" -> date = value.toLongOrNull() ?: date
+                    "license" -> if (value.isNotEmpty()) license = value
+                    "words" -> words = value.toIntOrNull() ?: words
+                }
+            }
+            DictionaryMetadata(
+                name = name,
+                author = author,
+                version = version,
+                date = date,
+                license = license,
+                wordCount = words
+            )
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     fun querySuggestions(prefix: String, lang: String, maxResults: Int = 5): List<String> {

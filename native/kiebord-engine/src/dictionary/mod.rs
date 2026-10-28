@@ -103,6 +103,29 @@ pub fn compile_combined_file(src_path: &Path, out_path: &Path) -> std::io::Resul
     Ok(())
 }
 
+/// Returns dictionary metadata and word count formatted as `name=...;author=...;version=...;date=...;license=...;words=...;`.
+pub fn get_dictionary_metadata(lang_or_path: &str) -> String {
+    let trimmed = lang_or_path.trim();
+    if trimmed.ends_with(".dict") || trimmed.contains('/') || trimmed.contains('\\') {
+        if let Ok((meta, word_count)) = BinaryDict::read_file_metadata(Path::new(trimmed)) {
+            return format!("{}words={};", meta.to_header_string(), word_count);
+        }
+        return String::new();
+    }
+
+    let dict_opt = if trimmed.starts_with("bn") {
+        get_bn_binary_dict()
+    } else {
+        get_en_binary_dict()
+    };
+
+    if let Some(dict) = dict_opt {
+        format!("{}words={};", dict.metadata().to_header_string(), dict.word_count())
+    } else {
+        String::new()
+    }
+}
+
 /// Generates .dict binary files directly from .combined sources.
 pub fn generate_dict_assets(combined_dir: &Path, out_dir: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(out_dir)?;
@@ -561,5 +584,30 @@ fn test_iphone_casing() {
         // "wont" should suggest "won't" as #1
         let wont_sugs = dict.suggest("wont", 5, prox);
         assert_eq!(wont_sugs[0], "won't");
+    }
+
+    #[test]
+    fn test_dictionary_metadata_roundtrip_and_assets() {
+        let sample = "name=Kiebord Bangla Word Dictionary;author=Jayed Ahsan Saad;version=3;date=1761681600;license=Only for Kiebord;\nword=বাংলা,f=200\nword=ভাষা,f=180\n";
+        let parsed = CombinedParser::parse_str(sample);
+        let bytes = BinaryDict::compile_combined(&parsed);
+        let dict = BinaryDict::from_bytes(&bytes).expect("valid compiled dict");
+        let meta = dict.metadata();
+        assert_eq!(meta.name, "Kiebord Bangla Word Dictionary");
+        assert_eq!(meta.author, "Jayed Ahsan Saad");
+        assert_eq!(meta.version, 3);
+        assert_eq!(meta.date, 1761681600);
+        assert_eq!(meta.license, "Only for Kiebord");
+        assert_eq!(dict.word_count(), 2);
+
+        let bn_meta_str = get_dictionary_metadata("bn");
+        assert!(bn_meta_str.contains("name=Kiebord Bangla Word Dictionary;"), "bn meta: {}", bn_meta_str);
+        assert!(bn_meta_str.contains("author=Jayed Ahsan Saad;"), "bn meta: {}", bn_meta_str);
+        assert!(bn_meta_str.contains("license=Only for Kiebord;"), "bn meta: {}", bn_meta_str);
+
+        let en_meta_str = get_dictionary_metadata("en");
+        assert!(en_meta_str.contains("name=Kiebord English Word Dictionary;"), "en meta: {}", en_meta_str);
+        assert!(en_meta_str.contains("author=Jayed Ahsan Saad;"), "en meta: {}", en_meta_str);
+        assert!(en_meta_str.contains("license=Only for Kiebord;"), "en meta: {}", en_meta_str);
     }
 }

@@ -1,8 +1,87 @@
 use std::collections::HashMap;
 
-/// Parsed unigram and bigram data from a `.combined` file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DictMetadata {
+    pub name: String,
+    pub author: String,
+    pub version: u32,
+    pub date: u64,
+    pub license: String,
+}
+
+impl Default for DictMetadata {
+    fn default() -> Self {
+        Self {
+            name: "Kiebord Word Dictionary".to_string(),
+            author: "Jayed Ahsan Saad".to_string(),
+            version: 1,
+            date: 0,
+            license: "Only for Kiebord".to_string(),
+        }
+    }
+}
+
+impl DictMetadata {
+    pub fn apply_header_str(&mut self, header: &str) {
+        let delimiter = if header.contains(';') { ';' } else { ',' };
+        for part in header.split(delimiter) {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            if let Some((k, v)) = trimmed.split_once('=') {
+                let key = k.trim();
+                let val = v.trim();
+                match key {
+                    "name" | "description" => {
+                        if !val.is_empty() {
+                            self.name = val.to_string();
+                        }
+                    }
+                    "author" => {
+                        if !val.is_empty() {
+                            self.author = val.to_string();
+                        }
+                    }
+                    "version" => {
+                        if let Ok(ver) = val.parse::<u32>() {
+                            self.version = ver;
+                        }
+                    }
+                    "date" => {
+                        if let Ok(ts) = val.parse::<u64>() {
+                            self.date = ts;
+                        }
+                    }
+                    "license" => {
+                        if !val.is_empty() {
+                            self.license = val.to_string();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    pub fn from_header_str(header: &str) -> Self {
+        let mut meta = Self::default();
+        meta.apply_header_str(header);
+        meta
+    }
+
+    pub fn to_header_string(&self) -> String {
+        format!(
+            "name={};author={};version={};date={};license={};",
+            self.name, self.author, self.version, self.date, self.license
+        )
+    }
+}
+
+/// Parsed metadata, unigram, and bigram data from a `.combined` file.
 #[derive(Default, Debug, Clone)]
 pub struct CombinedDictData {
+    pub metadata: DictMetadata,
     pub unigrams: Vec<(String, u8)>,
     pub bigrams: HashMap<String, Vec<(String, u8)>>,
 }
@@ -10,8 +89,9 @@ pub struct CombinedDictData {
 pub struct CombinedParser;
 
 impl CombinedParser {
-    /// Parses `.combined` format text (with `word=...,f=...`, `bigram=...,f=...`, `prev_word[0]=...`).
+    /// Parses `.combined` format text (with optional header metadata, `word=...,f=...`, `bigram=...,f=...`, `prev_word[0]=...`).
     pub fn parse_str(content: &str) -> CombinedDictData {
+        let mut metadata = DictMetadata::default();
         let mut unigrams = Vec::new();
         let mut bigrams: HashMap<String, Vec<(String, u8)>> = HashMap::new();
 
@@ -63,6 +143,8 @@ impl CombinedParser {
                         curr_bigram = None;
                     }
                 }
+            } else if unigrams.is_empty() && (trimmed.contains("name=") || trimmed.contains("author=") || trimmed.contains("version=") || trimmed.contains("license=") || trimmed.contains("dictionary=")) {
+                metadata.apply_header_str(trimmed);
             }
         }
 
@@ -71,7 +153,11 @@ impl CombinedParser {
             list.sort_by(|a, b| b.1.cmp(&a.1));
         }
 
-        CombinedDictData { unigrams, bigrams }
+        CombinedDictData {
+            metadata,
+            unigrams,
+            bigrams,
+        }
     }
 }
 
@@ -82,6 +168,7 @@ mod tests {
     #[test]
     fn test_parse_combined_sample() {
         let sample = "\
+name=Kiebord Bangla Word Dictionary;author=Jayed Ahsan Saad;version=2;date=1761681600;license=Only for Kiebord;
 word=আমাদের,f=102
  bigram=এই,f=4
   prev_word[0]=আমাদের
@@ -96,6 +183,12 @@ word=আমি,f=100
   prev_word[0]=আমি";
 
         let data = CombinedParser::parse_str(sample);
+        assert_eq!(data.metadata.name, "Kiebord Bangla Word Dictionary");
+        assert_eq!(data.metadata.author, "Jayed Ahsan Saad");
+        assert_eq!(data.metadata.version, 2);
+        assert_eq!(data.metadata.date, 1761681600);
+        assert_eq!(data.metadata.license, "Only for Kiebord");
+
         assert_eq!(data.unigrams.len(), 2);
         assert_eq!(data.unigrams[0].0, "আমাদের");
         assert_eq!(data.unigrams[0].1, 102);
