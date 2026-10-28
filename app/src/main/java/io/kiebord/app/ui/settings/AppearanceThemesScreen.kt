@@ -115,6 +115,7 @@ fun AppearanceThemesScreen(
 
     val categories = listOf(
         ThemeCategory.ORIGINALS,
+        ThemeCategory.BORNO_GRADIENT,
         ThemeCategory.BORNO_COLORS,
         ThemeCategory.CUSTOM
     )

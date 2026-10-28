@@ -48,12 +48,15 @@ data class KeyboardColorScheme(
             val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || isComma
             val isPillColoredKey = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SPACE
 
+            val hasContainerBackdrop = spec.background.gradient != null || spec.background.image != null
+            val flatKeyBg = if (hasContainerBackdrop) Color.Transparent else containerBackground
+
             val defaultBg = when {
                 key.type == KeyType.ACTION -> accentColor
                 key.type == KeyType.SYMBOLS -> actionKeyBackground
-                key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> keyBackground
+                key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> if (showKeyBorders || key.type == KeyType.SPACE) keyBackground else flatKeyBg
                 showKeyBorders -> if (isActionOrModifier) actionKeyBackground else keyBackground
-                else -> containerBackground
+                else -> flatKeyBg
             }
 
             val baseBgColor = if (showKeyBorders) {
@@ -69,7 +72,7 @@ data class KeyboardColorScheme(
                         val symHex = style.background
                         if (symHex != null) ThemeColorUtils.parseHexColor(symHex, actionKeyBackground) else actionKeyBackground
                     }
-                    else -> containerBackground
+                    else -> flatKeyBg
                 }
             }
 
@@ -148,7 +151,7 @@ data class KeyboardColorScheme(
         val baseBackground = when {
             key.type == KeyType.ACTION -> accentColor
             key.type == KeyType.SYMBOLS -> actionKeyBackground
-            key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> keyBackground
+            key.type == KeyType.SPACE -> keyBackground
             showKeyBorders -> if (isActionOrModifier) actionKeyBackground else keyBackground
             else -> containerBackground
         }
@@ -210,19 +213,21 @@ data class KeyboardColorScheme(
 
     companion object {
         val DefaultDark = KeyboardColorScheme(
-            containerBackground = Color(0xFF1B1B1F),
-            keyBackground = Color(0xFF2C2C30),
-            keyForeground = Color(0xFFE3E2E6),
-            keyBorder = Color(0x1FFFFFFF),
-            keyShadow = Color(0x00000000),
-            actionKeyBackground = Color(0xFF242428),
-            actionKeyForeground = Color(0xFF04294E),
-            shiftActiveColor = Color(0xFFA8C7FA),
-            accentColor = Color(0xFFA8C7FA),
-            moreKeysBackground = Color(0xFF38383F),
-            guidelineColor = Color(0xFFA8C7FA),
-            suggestionBackground = Color(0xFF1B1B1F),
-            suggestionForeground = Color(0xFFE3E2E6)
+            containerBackground = Color(0xFF222222),
+            keyBackground = Color(0xFF424242),
+            keyForeground = Color(0xFFFFFFFF),
+            keyBorder = Color(0x00000000),
+            keyShadow = Color(0x4D000000),
+            actionKeyBackground = Color(0xFF313131),
+            actionKeyForeground = Color(0xFFFFFFFF),
+            shiftActiveColor = Color(0xFF426DEF),
+            accentColor = Color(0xFF426DEF),
+            moreKeysBackground = Color(0xFF424242),
+            guidelineColor = Color(0xFF426DEF),
+            suggestionBackground = Color(0xFF222222),
+            suggestionForeground = Color(0xBFFFFFFF),
+            keyPressedBackground = Color(0xFF1D1D1D),
+            keyPressedForeground = Color(0xFFFFFFFF)
         )
 
         val AmoledBlack = KeyboardColorScheme(
@@ -242,21 +247,21 @@ data class KeyboardColorScheme(
         )
 
         val DefaultLight = KeyboardColorScheme(
-            containerBackground = Color(0xFFF1F3F4),
+            containerBackground = Color(0xFFE9EAEE),
             keyBackground = Color(0xFFFFFFFF),
             keyForeground = Color(0xFF000000),
             keyBorder = Color(0x00000000),
-            keyShadow = Color(0x00000000),
-            actionKeyBackground = Color(0xFFDBDFE6),
+            keyShadow = Color(0x4D000000),
+            actionKeyBackground = Color(0xFFDCDFE5),
             actionKeyForeground = Color(0xFFFFFFFF),
-            shiftActiveColor = Color(0xFF4999FD),
-            accentColor = Color(0xFF4999FD),
-            moreKeysBackground = Color(0xFFF3F3F3),
-            guidelineColor = Color(0xFF4999FD),
-            suggestionBackground = Color(0xFFE8EAED),
-            suggestionForeground = Color(0xFF000000),
-            keyPressedBackground = Color(0xFFE8EAED),
-            keyPressedForeground = Color(0xFFA2A3A5)
+            shiftActiveColor = Color(0xFF90CAF9),
+            accentColor = Color(0xFF1973EA),
+            moreKeysBackground = Color(0xFFFFFFFF),
+            guidelineColor = Color(0xFF1973EA),
+            suggestionBackground = Color(0xFFE9EAEE),
+            suggestionForeground = Color(0xB3000000),
+            keyPressedBackground = Color(0xFFC1C8CD),
+            keyPressedForeground = Color(0xFF000000)
         )
 
         val TokyoNight = KeyboardColorScheme(
@@ -294,15 +299,16 @@ data class KeyboardColorScheme(
 }
 
 val KeyboardColorScheme.effectiveToolbarBackground: Color
-    get() = if (suggestionBackground != Color.Unspecified && suggestionBackground.alpha > 0.05f) {
-        suggestionBackground
-    } else {
-        containerBackground
+    get() = when {
+        suggestionBackground != Color.Unspecified && suggestionBackground.alpha > 0.05f -> suggestionBackground
+        themeSpec?.background?.gradient != null || themeSpec?.background?.image != null -> Color.Transparent
+        else -> containerBackground
     }
 
 val KeyboardColorScheme.effectiveToolbarForeground: Color
     get() {
-        val targetBg = effectiveToolbarBackground
+        val rawBg = effectiveToolbarBackground
+        val targetBg = if (rawBg.alpha < 0.05f) containerBackground else rawBg
         val initialFg = if (suggestionForeground != Color.Unspecified && suggestionForeground.alpha > 0.25f) {
             suggestionForeground
         } else {

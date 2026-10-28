@@ -23,8 +23,11 @@ data class BornoColorTheme(
     val enterColor: String,
     val enterColorIcon: String = "#ffffffff",
     val functionalKeyColor: String,
+    val gradAngle: Float = 90.0f,
     val gradEnd: String = "#ffffffff",
     val gradStart: String = "#ffffffff",
+    val gradType: String = "linear",
+    val guidelineColor: String = enterColor,
     val isFlat: Boolean = false,
     val keyColor: String,
     val keyRadius: Float = 9.0f,
@@ -173,7 +176,11 @@ object ThemeColorUtils {
             "#00000000"
         }
 
-        val stripBg = if (isTransparent(stripColor)) backgroundColor else stripColor
+        val stripBg = when {
+            isTransparent(stripColor) && backgroundType == 2 -> "#00000000"
+            isTransparent(stripColor) -> backgroundColor
+            else -> stripColor
+        }
         val stripFg = if (stripIcoColor.isNotBlank() && !isTransparent(stripIcoColor)) stripIcoColor else labelKeyColor
 
         return CustomThemeDef(
@@ -190,7 +197,7 @@ object ThemeColorUtils {
             shiftActiveColor = if (selectedKeyColor.isNotBlank()) selectedKeyColor else enterColor,
             accentColor = enterColor,
             moreKeysBackground = if (popupColor.isNotBlank()) popupColor else keyColor,
-            guidelineColor = enterColor,
+            guidelineColor = if (guidelineColor.isNotBlank()) guidelineColor else enterColor,
             suggestionBackground = stripBg,
             suggestionForeground = stripFg,
             keyPressedBackground = if (pressedKeyColor.isNotBlank()) pressedKeyColor else functionalKeyColor,
@@ -239,30 +246,49 @@ object ThemeColorUtils {
         val bgColor = parseHexColor(backgroundColor, Color.Black)
         val dark = isColorDark(bgColor)
 
-        val bgSpec = if (backgroundType == 2 && gradStart.isNotBlank() && gradEnd.isNotBlank() && gradStart != "#ffffffff") {
-            ThemeBackgroundSpec(
-                gradient = GradientSpec(
-                    type = GradientType.LINEAR,
-                    colors = listOf(gradStart, gradEnd),
-                    angle = 90f
+        val bgSpec = when {
+            backgroundType == 3 && backgroundPath.isNotBlank() -> {
+                ThemeBackgroundSpec(
+                    solidColor = backgroundColor,
+                    image = ImageBackgroundSpec(imagePath = backgroundPath)
                 )
-            )
-        } else {
-            ThemeBackgroundSpec(solidColor = backgroundColor)
+            }
+            backgroundType == 2 && gradStart.isNotBlank() && gradEnd.isNotBlank() && gradStart != "#ffffffff" -> {
+                val isRadial = gradType.equals("radial", ignoreCase = true)
+                ThemeBackgroundSpec(
+                    gradient = GradientSpec(
+                        type = if (isRadial) GradientType.RADIAL else GradientType.LINEAR,
+                        colors = listOf(gradStart, gradEnd),
+                        angle = gradAngle,
+                        centerX = 0.5f,
+                        centerY = 0.5f,
+                        radius = 0.85f
+                    )
+                )
+            }
+            else -> {
+                ThemeBackgroundSpec(solidColor = backgroundColor)
+            }
         }
 
         val stroke = if (keyStrokeSize > 0 && keyStrokeColor.isNotBlank() && keyStrokeColor != "#00000000") {
             StrokeSpec(color = keyStrokeColor, widthDp = keyStrokeSize.toFloat().coerceAtLeast(0.5f))
         } else null
 
-        val shadow = if (keyShadowSize > 0 && keyShadowColor.isNotBlank() && keyShadowColor != "#00000000") {
+        val shadow = if (!isFlat && keyShadowSize > 0 && keyShadowColor.isNotBlank() && keyShadowColor != "#00000000") {
             ShadowSpec(color = keyShadowColor, elevationDp = keyShadowSize.toFloat().coerceAtLeast(1.0f))
         } else null
 
         val cornerRadius = if (keyRadius > 0f && keyRadius != 8f && keyRadius != 9f) keyRadius else null
 
-        val stripBg = if (isTransparent(stripColor)) backgroundColor else stripColor
+        val stripBg = when {
+            isTransparent(stripColor) && backgroundType == 2 -> "#00000000"
+            isTransparent(stripColor) -> backgroundColor
+            else -> stripColor
+        }
         val stripFg = if (stripIcoColor.isNotBlank() && !isTransparent(stripIcoColor)) stripIcoColor else labelKeyColor
+
+        val resolvedPressedBg = pressedKeyColor.ifBlank { null }
 
         return KeyboardThemeSpec(
             id = assignedId,
@@ -275,14 +301,17 @@ object ThemeColorUtils {
                 stroke = stroke,
                 shadow = shadow,
                 cornerRadiusDp = cornerRadius,
-                pressedBackground = if (pressedKeyColor.isNotBlank()) pressedKeyColor else null
+                pressedBackground = resolvedPressedBg,
+                pressedForeground = labelKeyColor.ifBlank { null }
             ),
             functionalKey = KeycapStyleSpec(
                 background = functionalKeyColor,
                 foreground = labelFunctionalKeyColor,
                 stroke = stroke,
                 shadow = shadow,
-                cornerRadiusDp = cornerRadius
+                cornerRadiusDp = cornerRadius,
+                pressedBackground = resolvedPressedBg,
+                pressedForeground = labelFunctionalKeyColor.ifBlank { null }
             ),
             actionKey = KeycapStyleSpec(
                 background = enterColor,
@@ -295,7 +324,9 @@ object ThemeColorUtils {
                     foreground = labelKeyColor,
                     stroke = stroke,
                     shadow = shadow,
-                    cornerRadiusDp = cornerRadius
+                    cornerRadiusDp = cornerRadius,
+                    pressedBackground = resolvedPressedBg,
+                    pressedForeground = labelKeyColor.ifBlank { null }
                 )
             } else null,
             accentColor = enterColor,
@@ -303,7 +334,7 @@ object ThemeColorUtils {
             suggestionBackground = ThemeBackgroundSpec(solidColor = stripBg),
             suggestionForeground = stripFg,
             moreKeysBackground = if (popupColor.isNotBlank()) popupColor else keyColor,
-            guidelineColor = enterColor
+            guidelineColor = if (guidelineColor.isNotBlank()) guidelineColor else enterColor
         )
     }
 

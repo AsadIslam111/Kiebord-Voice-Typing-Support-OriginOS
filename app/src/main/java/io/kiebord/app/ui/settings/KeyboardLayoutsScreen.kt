@@ -1210,9 +1210,9 @@ private fun KeyboardMiniPreview(
                 val isPill = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
                 val bg = when {
                     key.type == KeyType.ACTION -> colorScheme.accentColor
-                    key.type == KeyType.SYMBOLS || isComma -> colorScheme.actionKeyBackground
-                    key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> colorScheme.keyBackground
-                    key.type == KeyType.SHIFT || key.type == KeyType.DELETE -> colorScheme.actionKeyBackground
+                    key.type == KeyType.SYMBOLS -> colorScheme.actionKeyBackground
+                    key.type == KeyType.SPACE -> colorScheme.keyBackground
+                    showKeyBorders && (key.type == KeyType.SHIFT || key.type == KeyType.DELETE || isComma) -> colorScheme.actionKeyBackground
                     showKeyBorders -> colorScheme.keyBackground
                     else -> colorScheme.containerBackground
                 }
