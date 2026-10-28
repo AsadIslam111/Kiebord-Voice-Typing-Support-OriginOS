@@ -21,6 +21,16 @@ private val Context.kiebordDataStore: DataStore<Preferences> by preferencesDataS
 
 class KiebordPreferencesRepository private constructor(private val context: Context) {
 
+    private val fastCache = context.getSharedPreferences("kiebord_fast_cache", Context.MODE_PRIVATE)
+
+    fun isSetupCompletedSync(): Boolean {
+        return fastCache.getBoolean("setup_completed", false)
+    }
+
+    fun getInitialPreferences(): KiebordPreferences {
+        return KiebordPreferences(setupCompleted = isSetupCompletedSync())
+    }
+
     private object PreferencesKeys {
         val THEME = stringPreferencesKey("pref_theme")
         val KEYBOARD_HEIGHT_SCALE = floatPreferencesKey("pref_keyboard_height_scale")
@@ -163,7 +173,11 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                     }
                     overrides
                 },
-                setupCompleted = prefs[PreferencesKeys.SETUP_COMPLETED] ?: false
+                setupCompleted = (prefs[PreferencesKeys.SETUP_COMPLETED] ?: false).also { isCompleted ->
+                    if (isCompleted && !fastCache.getBoolean("setup_completed", false)) {
+                        fastCache.edit().putBoolean("setup_completed", true).apply()
+                    }
+                } || fastCache.getBoolean("setup_completed", false)
             )
         }
 
@@ -380,6 +394,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
     }
 
     suspend fun updateSetupCompleted(completed: Boolean) {
+        fastCache.edit().putBoolean("setup_completed", completed).apply()
         context.kiebordDataStore.edit { it[PreferencesKeys.SETUP_COMPLETED] = completed }
     }
 
@@ -390,6 +405,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     // Reset
     suspend fun resetToDefaults() {
+        fastCache.edit().clear().apply()
         context.kiebordDataStore.edit { it.clear() }
     }
 

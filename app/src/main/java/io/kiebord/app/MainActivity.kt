@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val preferences by preferencesRepo.preferencesFlow.collectAsState(
-                initial = KiebordPreferences()
+                initial = preferencesRepo.getInitialPreferences()
             )
 
             val isDark = isSystemInDarkTheme()
@@ -210,17 +210,28 @@ fun KiebordSettingsApp(
     onSwitchIme: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val initialScreen = remember(preferences.setupCompleted) {
-        val target = (context as? android.app.Activity)?.intent?.getStringExtra("navigate_to")
+    val isSetupFinished = preferences.setupCompleted || preferencesRepo.isSetupCompletedSync() || (isImeEnabled && isImeSelected)
+
+    LaunchedEffect(isImeEnabled, isImeSelected) {
+        if (isImeEnabled && isImeSelected && !preferences.setupCompleted) {
+            preferencesRepo.updateSetupCompleted(true)
+        }
+    }
+
+    val initialScreen = remember(isSetupFinished) {
+        val target = navigationTarget
+            ?: (context as? android.app.Activity)?.intent?.getStringExtra("navigate_to")
             ?: if ((context as? android.app.Activity)?.intent?.action == "io.kiebord.action.THEMES") "themes" else null
-        if (!preferences.setupCompleted) {
-            SettingsScreen.Onboarding
-        } else if (target == "layouts") {
+        if (target == "layouts") {
             SettingsScreen.KeyboardLayouts
         } else if (target == "themes" || target == "appearance") {
             SettingsScreen.AppearanceThemes
         } else if (target == "clipboard") {
             SettingsScreen.Clipboard
+        } else if (target == "preferences") {
+            SettingsScreen.Preferences
+        } else if (!isSetupFinished) {
+            SettingsScreen.Onboarding
         } else {
             SettingsScreen.Main
         }
