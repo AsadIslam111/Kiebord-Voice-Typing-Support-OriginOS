@@ -920,12 +920,18 @@ fun KeyboardRootView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible || isSuggestionsExpanded
-                        val leadingNavWidth = (36 * scaleFactor).coerceAtLeast(26f).dp + (4 * scaleFactor).coerceAtLeast(2f).dp
+                    val leadingButtonSize = (36 * scaleFactor).coerceAtLeast(26f).dp
+                    val micButtonSize = (32 * scaleFactor).coerceAtLeast(24f).dp
+                    val trailingBalanceWidth = if (voiceTypingEnabled) {
+                        (leadingButtonSize - micButtonSize).coerceAtLeast(0.dp)
+                    } else {
+                        leadingButtonSize
+                    }
 
                     // 1. Expand / Back / Toggle button on far left
                     Box(
                         modifier = Modifier
-                            .size((36 * scaleFactor).coerceAtLeast(26f).dp)
+                            .size(leadingButtonSize)
                             .clip(CircleShape)
                             .background(
                                 if (isToolsExpanded) Color(0x22FFFFFF) else Color.Transparent
@@ -1142,8 +1148,9 @@ fun KeyboardRootView(
                                 }
                             }
                         }
-                        // Balance the left leading button so the pill is exactly centered relative to the whole bar
-                        Spacer(modifier = Modifier.width(leadingNavWidth))
+                        if (trailingBalanceWidth > 0.dp) {
+                            Spacer(modifier = Modifier.width(trailingBalanceWidth))
+                        }
                     } else {
                         ReorderableToolbar(
                             pinnedTools = pinnedTools,
@@ -1184,7 +1191,6 @@ fun KeyboardRootView(
                     // 3. Right edge key: Voice key with filled mic icon
                     if (voiceTypingEnabled) {
                         val isVoiceActive = voiceInputState is VoiceInputState.Listening
-                        val micButtonSize = (32 * scaleFactor).coerceAtLeast(24f).dp
                         val micIconSize = (22 * scaleFactor).coerceAtLeast(17f).dp
 
                         val infiniteTransition = rememberInfiniteTransition(label = "VoicePulse")
