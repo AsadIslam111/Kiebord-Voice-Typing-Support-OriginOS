@@ -20,20 +20,31 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalDensity
@@ -47,7 +58,12 @@ import io.kiebord.common.model.KeyDef
 import io.kiebord.feature.ime.R
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
+import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.roundToInt
+
+private const val HOVER_FOLLOW = 0.35f
 
 data class MoreKeysPopupState(
     val anchorKey: KeyDef,
@@ -93,6 +109,85 @@ fun MoreKeysPopup(
     val isLight = colorScheme == KeyboardColorScheme.DefaultLight
     val currentSelectedIndex = selectedIndexProvider()
 
+    val isRectangularHover = dims.itemWidthPx > dims.itemHeightPx * 1.15f
+    val insetPx = 4f * density.density
+    val hoverHalfWidth = if (isRectangularHover) {
+        (dims.itemWidthPx * 0.5f - insetPx).coerceAtLeast(1f)
+    } else {
+        (min(dims.itemWidthPx, dims.itemHeightPx) * 0.5f).roundToInt() - 1f
+    }
+    val hoverHalfHeight = if (isRectangularHover) {
+        (dims.itemHeightPx * 0.5f - insetPx).coerceAtLeast(1f)
+    } else {
+        (min(dims.itemWidthPx, dims.itemHeightPx) * 0.5f).roundToInt() - 1f
+    }
+
+    fun keyLeft(visualCol: Int): Float =
+        dims.horizontalPaddingPx + visualCol * (dims.itemWidthPx + dims.colGapPx)
+
+    fun keyTop(visualRow: Int): Float =
+        dims.verticalPaddingPx + visualRow * (dims.itemHeightPx + dims.rowGapPx)
+
+    fun keyCenterX(visualCol: Int): Float =
+        keyLeft(visualCol) + dims.itemWidthPx * 0.5f
+
+    fun keyCenterY(visualRow: Int): Float =
+        keyTop(visualRow) + dims.itemHeightPx * 0.5f
+
+    val selectedPos = layoutResult.itemPositions[currentSelectedIndex]
+        ?: layoutResult.itemPositions[layoutResult.defaultItemIndex]
+        ?: Pair(0, 0)
+
+    val hoverTargetX = keyCenterX(selectedPos.second)
+    val hoverTargetY = keyCenterY(selectedPos.first)
+
+    var hoverVisible by remember(state.anchorKey, state.anchorRect) { mutableStateOf(false) }
+    var hoverCenterX by remember(state.anchorKey, state.anchorRect) { mutableFloatStateOf(hoverTargetX) }
+    var hoverCenterY by remember(state.anchorKey, state.anchorRect) { mutableFloatStateOf(hoverTargetY) }
+
+    LaunchedEffect(state.anchorKey, state.anchorRect, hoverTargetX, hoverTargetY) {
+        if (!hoverVisible) {
+            hoverVisible = true
+            hoverCenterX = hoverTargetX
+            hoverCenterY = hoverTargetY
+            return@LaunchedEffect
+        }
+
+        var lastFrameNanos = 0L
+        while (true) {
+            withFrameNanos { frameNanos ->
+                val dtFrames = if (lastFrameNanos == 0L) {
+                    1f
+                } else {
+                    ((frameNanos - lastFrameNanos) / 16_666_667f).coerceIn(0.25f, 3.0f)
+                }
+                lastFrameNanos = frameNanos
+
+                val stepFactor = 1f - (1f - HOVER_FOLLOW).pow(dtFrames)
+                val dx = hoverTargetX - hoverCenterX
+                val dy = hoverTargetY - hoverCenterY
+                hoverCenterX += dx * stepFactor
+                hoverCenterY += dy * stepFactor
+            }
+
+            val remDx = hoverTargetX - hoverCenterX
+            val remDy = hoverTargetY - hoverCenterY
+            if (abs(remDx) < 0.75f && abs(remDy) < 0.75f) {
+                hoverCenterX = hoverTargetX
+                hoverCenterY = hoverTargetY
+                break
+            }
+        }
+    }
+
+    fun isUnderHover(visualRow: Int, visualCol: Int): Boolean {
+        if (!hoverVisible) return false
+        val left = keyLeft(visualCol)
+        val top = keyTop(visualRow)
+        return hoverCenterX >= left && hoverCenterX < left + dims.itemWidthPx &&
+            hoverCenterY >= top && hoverCenterY < top + dims.itemHeightPx
+    }
+
     // Outer Box holds the FIXED precomputed position so there is ZERO jumping or re-layout
     Box(
         modifier = modifier
@@ -135,6 +230,28 @@ fun MoreKeysPopup(
                             Modifier
                         }
                     )
+                    .drawBehind {
+                        if (hoverVisible) {
+                            if (isRectangularHover) {
+                                val cornerRadius = min(hoverHalfWidth, hoverHalfHeight)
+                                drawRoundRect(
+                                    color = colorScheme.accentColor,
+                                    topLeft = Offset(
+                                        hoverCenterX - hoverHalfWidth,
+                                        hoverCenterY - hoverHalfHeight
+                                    ),
+                                    size = Size(hoverHalfWidth * 2f, hoverHalfHeight * 2f),
+                                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                                )
+                            } else {
+                                drawCircle(
+                                    color = colorScheme.accentColor,
+                                    radius = hoverHalfWidth,
+                                    center = Offset(hoverCenterX, hoverCenterY)
+                                )
+                            }
+                        }
+                    }
                     .padding(horizontal = horizontalPaddingDp, vertical = verticalPaddingDp)
             ) {
                 // Keys Grid
@@ -142,23 +259,23 @@ fun MoreKeysPopup(
                     verticalArrangement = Arrangement.spacedBy(rowGapDp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    layoutResult.grid.forEach { rowItems ->
+                    layoutResult.grid.forEachIndexed { visualRow, rowItems ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(colGapDp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            rowItems.forEach { originalItemIndex ->
+                            rowItems.forEachIndexed { visualCol, originalItemIndex ->
                                 if (originalItemIndex == null) {
                                     androidx.compose.foundation.layout.Spacer(
                                         modifier = Modifier.size(itemWidthDp, itemHeightDp)
                                     )
                                 } else {
                                     val item = state.items[originalItemIndex]
-                                    val isSelected = originalItemIndex == currentSelectedIndex
+                                    val isFocused = isUnderHover(visualRow, visualCol)
 
                                     MoreKeyCell(
                                         item = item,
-                                        isSelected = isSelected,
+                                        isSelected = isFocused,
                                         widthDp = itemWidthDp,
                                         heightDp = itemHeightDp,
                                         fontSizeSp = dims.fontSizeSp,
@@ -205,13 +322,11 @@ private fun MoreKeyCell(
     colorScheme: KeyboardColorScheme
 ) {
     val contentColor = if (isSelected) Color.White else colorScheme.keyForeground
-    val cellBackground = if (isSelected) colorScheme.accentColor else Color.Transparent
 
     Box(
         modifier = Modifier
             .size(widthDp, heightDp)
-            .clip(CircleShape)
-            .background(cellBackground),
+            .clip(CircleShape),
         contentAlignment = Alignment.Center
     ) {
         val actionIconSize = iconSizeDp.dp
