@@ -236,12 +236,12 @@ fun KeyboardLayoutsScreen(
     val isAnyBanglaEnabled = preferences.enabledLayoutIds.any { it.startsWith("bn") }
     val isArabicEnabled = preferences.enabledLayoutIds.contains(arabicCard.id)
 
-    var isEnglishExpanded by remember { mutableStateOf(isEnglishEnabled) }
-    var isBanglaExpanded by remember { mutableStateOf(isAnyBanglaEnabled) }
-    var isArabicExpanded by remember { mutableStateOf(isArabicEnabled) }
-    var isArabicOptionsOpen by remember { mutableStateOf(isArabicEnabled) }
+    var isEnglishExpanded by remember { mutableStateOf(false) }
+    var isBanglaExpanded by remember { mutableStateOf(false) }
+    var isArabicExpanded by remember { mutableStateOf(false) }
+    var isArabicOptionsOpen by remember { mutableStateOf(false) }
     var selectedCustomSettingsId by remember { mutableStateOf<String?>(null) }
-    var isCustomExpanded by remember { mutableStateOf(true) }
+    var isCustomExpanded by remember { mutableStateOf(false) }
     var pendingDeleteCard by remember { mutableStateOf<LayoutCardData?>(null) }
 
     val handleToggleLayout: (LayoutCardData) -> Unit = { card ->
@@ -258,30 +258,7 @@ fun KeyboardLayoutsScreen(
         }
     }
 
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            try {
-                val jsonContent = context.contentResolver.openInputStream(uri)?.use { stream ->
-                    stream.bufferedReader(Charsets.UTF_8).readText()
-                }
-                if (jsonContent != null) {
-                    val result = layoutRepo.importLayout(jsonContent)
-                    result.onSuccess { newLayout ->
-                        onToggleLayoutEnabled(newLayout.id, true)
-                        isCustomExpanded = true
-                        reloadTrigger++
-                        Toast.makeText(context, "Imported ${newLayout.name}", Toast.LENGTH_SHORT).show()
-                    }.onFailure { err ->
-                        Toast.makeText(context, "Import failed: ${err.message ?: "Invalid JSON"}", Toast.LENGTH_LONG).show()
-                    }
-                }
-            } catch (e: Exception) {
-                Toast.makeText(context, "Error reading file: ${e.message}", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
+
 
     if (pendingDeleteCard != null) {
         val target = pendingDeleteCard!!
@@ -828,54 +805,7 @@ fun KeyboardLayoutsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
 
-        // Import Layout Button
-        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-            SettingsItemCard(
-                position = GroupPosition.ALONE,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            importLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
-                        }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(colors.accent.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Add,
-                            contentDescription = "Import",
-                            tint = colors.accent,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Import Custom Layout (.json)",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.textPrimary
-                        )
-                        Text(
-                            text = "Load an external keyboard layout definition from storage",
-                            fontSize = 12.sp,
-                            color = colors.textSecondary
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -1336,12 +1266,24 @@ private fun KeyboardMiniPreview(
                 if (key.type == KeyType.CHARACTER || key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS) {
                     val label = if (key.type == KeyType.SPACE) "" else key.label
                     if (label.isNotEmpty()) {
-                        textPaint.textSize = (if (label.length > 2) 6.sp else 8.sp).toPx()
                         textPaint.color = fg.toArgb()
-                        val fontMetrics = textPaint.fontMetrics
-                        val baselineY = rowY + (rowHeight - fontMetrics.ascent - fontMetrics.descent) / 2f
                         val centerX = currentX + keyWidth / 2f
-                        drawContext.canvas.nativeCanvas.drawText(label, centerX, baselineY, textPaint)
+                        if (label.contains("\n")) {
+                            val lines = label.split("\n")
+                            textPaint.textSize = 5.sp.toPx()
+                            val fontMetrics = textPaint.fontMetrics
+                            val lineHeight = fontMetrics.descent - fontMetrics.ascent
+                            val totalH = lineHeight * lines.size
+                            val startY = rowY + (rowHeight - totalH) / 2f - fontMetrics.ascent
+                            for ((lineIdx, line) in lines.withIndex()) {
+                                drawContext.canvas.nativeCanvas.drawText(line, centerX, startY + lineIdx * lineHeight, textPaint)
+                            }
+                        } else {
+                            textPaint.textSize = (if (label.length > 2) 6.sp else 8.sp).toPx()
+                            val fontMetrics = textPaint.fontMetrics
+                            val baselineY = rowY + (rowHeight - fontMetrics.ascent - fontMetrics.descent) / 2f
+                            drawContext.canvas.nativeCanvas.drawText(label, centerX, baselineY, textPaint)
+                        }
                     }
                 } else if (key.type == KeyType.SHIFT) {
                     val iconSize = 9.5.dp.toPx()
