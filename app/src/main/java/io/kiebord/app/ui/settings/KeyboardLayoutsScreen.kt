@@ -447,27 +447,6 @@ fun KeyboardLayoutsScreen(
                                 )
                             }
 
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (isPrimary) colors.accent.copy(alpha = 0.15f)
-                                        else colors.iconBackground
-                                    )
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = card.badge,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isPrimary) colors.accent else colors.textSecondary,
-                                    maxLines = 1
-                                )
-                            }
-
                             Spacer(modifier = Modifier.width(12.dp))
 
                             Column(modifier = Modifier.weight(1f)) {
