@@ -1507,7 +1507,7 @@ fun KeyboardRootView(
                                     }
                                     else -> {
                                         val charToCommit = when (selectedChar) {
-                                            "ZWNJ" -> "\u200C"
+                                            "ZWNJ", "ZW\nNJ" -> "\u200C"
                                             "ZWJ" -> "\u200D"
                                             else -> selectedChar
                                         }
@@ -1740,7 +1740,15 @@ fun KeyboardRootView(
                                     }
 
                                     val isShiftDrag = isSlidingShiftMode || slidingInitiatorKey?.type == KeyType.SHIFT
-                                    val symbol = if (hoveredKey != null && hoveredKey.type != KeyType.SYMBOLS && hoveredKey.type != KeyType.SHIFT) {
+                                    val isSpecialNoPopupKey = hoveredKey != null && (
+                                        hoveredKey.type == KeyType.SPACE ||
+                                        hoveredKey.type == KeyType.SYMBOLS ||
+                                        hoveredKey.type == KeyType.SHIFT ||
+                                        hoveredKey.commitText == "\u200C" ||
+                                        hoveredKey.label.contains("ZWNJ") ||
+                                        hoveredKey.label.replace("\n", "") == "ZWNJ"
+                                    )
+                                    val symbol = if (hoveredKey != null && !isSpecialNoPopupKey) {
                                         if (isShiftDrag) {
                                             if (hoveredKey.type == KeyType.CHARACTER) {
                                                 hoveredKey.displayLabel(ShiftState.ONE_SHOT)

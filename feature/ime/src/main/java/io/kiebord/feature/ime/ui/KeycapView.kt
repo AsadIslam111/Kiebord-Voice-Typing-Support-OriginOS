@@ -183,7 +183,8 @@ fun KeycapView(
     val currentLongPressDelay = rememberUpdatedState(longPressDelayMs)
     val currentShiftState = rememberUpdatedState(shiftState)
 
-    val showCircularPopup = showKeyPopups && isPressed && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode && !isMoreKeysActive
+    val isSpecialNoPopupKey = key.type == KeyType.SPACE || key.commitText == "\u200C" || displaySymbolLabel.contains("ZWNJ") || displaySymbolLabel.contains("\n")
+    val showCircularPopup = showKeyPopups && isPressed && key.type == KeyType.CHARACTER && !isSlidingSymbolMode && !isSlidingShiftMode && !isMoreKeysActive && !isSpecialNoPopupKey
 
     // Key styling: cleanly toggles between keyborder mode (keycap boxes) and flat mode (no boxes except accent pills)
     Box(
@@ -594,14 +595,17 @@ fun KeycapView(
             }
             else -> {
                 val isBangla = isBanglaText(displaySymbolLabel)
-                val baseCharSize = if (displaySymbolLabel.length > 2) {
+                val isMultiline = displaySymbolLabel.contains("\n")
+                val baseCharSize = if (isMultiline) {
+                    11.5f
+                } else if (displaySymbolLabel.length > 2) {
                     if (isBangla) 15f else 17f
                 } else if (displaySymbolLabel.length > 1) {
                     if (isBangla) 18.5f else 21f
                 } else {
                     if (isBangla) 22.5f else 26f
                 }
-                val rawSize = if (key.type == KeyType.SYMBOLS) (if (isBangla) 15f else 17f) else baseCharSize
+                val rawSize = if (isMultiline) 11.5f else if (key.type == KeyType.SYMBOLS) (if (isBangla) 15f else 17f) else baseCharSize
                 val textSize = (rawSize * fontScaleFactor).coerceAtLeast(8.5f).sp
                 val isUppercase = displaySymbolLabel.length == 1 && displaySymbolLabel.first().isUpperCase()
                 val verticalShift = if (isUppercase) (1.2f * fontScaleFactor).dp else 0.dp
@@ -611,13 +615,13 @@ fun KeycapView(
                     fontSize = textSize,
                     fontWeight = if (key.type == KeyType.SYMBOLS) FontWeight.Bold else FontWeight.Medium,
                     fontFamily = KiebordTheme.fontFamily,
-                    maxLines = 1,
-                    softWrap = false,
+                    maxLines = if (isMultiline) 2 else 1,
+                    softWrap = isMultiline,
                     modifier = if (verticalShift > 0.dp) Modifier.offset(y = verticalShift) else Modifier,
                     style = androidx.compose.ui.text.TextStyle(
                         fontFamily = KiebordTheme.fontFamily,
                         platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
-                        lineHeight = textSize,
+                        lineHeight = if (isMultiline) (12f * fontScaleFactor).sp else textSize,
                         lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
                             alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
                             trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both

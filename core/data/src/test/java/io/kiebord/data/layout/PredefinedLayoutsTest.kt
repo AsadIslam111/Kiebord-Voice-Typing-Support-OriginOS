@@ -145,7 +145,7 @@ class PredefinedLayoutsTest {
         assertEquals("0", standard.rows[0].keys[9].label)
         // Row 1 is @, #, $, %, etc.
         assertEquals("@", standard.rows[1].keys[0].label)
-        assertEquals("ZWNJ", standard.rows[1].keys[9].label)
+        assertEquals("ZW\nNJ", standard.rows[1].keys[9].label)
         assertEquals("\u200C", standard.rows[1].keys[9].textToCommit(io.kiebord.common.model.ShiftState.UNSHIFTED))
         // Row 2 is =<, *, ", etc.
         assertEquals("=\\<", standard.rows[2].keys[0].label)

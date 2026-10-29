@@ -346,7 +346,7 @@ object PredefinedLayouts {
                     KeyDef("+", moreKeys = listOf("+", "±", "⁺")),
                     KeyDef("(", moreKeys = listOf("(", "[", "{", "<")),
                     KeyDef(")", moreKeys = listOf(")", "]", "}", ">")),
-                    KeyDef("ZWNJ", commitText = "\u200C", moreKeys = listOf("ZWJ", "/"))
+                    KeyDef("ZW\nNJ", commitText = "\u200C", moreKeys = listOf("ZWJ", "/"))
                 )
             ),
             KeyRow(
