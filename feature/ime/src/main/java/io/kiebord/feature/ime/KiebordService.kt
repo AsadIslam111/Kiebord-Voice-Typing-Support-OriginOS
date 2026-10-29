@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
@@ -49,6 +50,8 @@ import androidx.compose.ui.unit.dp
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.data.prefs.KiebordPreferencesRepository
 import io.kiebord.feature.ime.translit.TransliterationManagerFactory
+import io.kiebord.feature.ime.action.ActionKeyResolver
+import io.kiebord.feature.ime.action.ActionKeyVisual
 import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
 import io.kiebord.feature.ime.ui.textedit.TextAction
@@ -68,6 +71,7 @@ class KiebordService : InputMethodService() {
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private lateinit var preferencesRepo: KiebordPreferencesRepository
     private var preferencesState by mutableStateOf(KiebordPreferences())
+    private var currentEditorInfoState by mutableStateOf<EditorInfo?>(null)
     private lateinit var voiceInputManager: VoiceInputManager
 
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
@@ -244,9 +248,14 @@ class KiebordService : InputMethodService() {
 
             val voiceInputState by voiceInputManager.state.collectAsState()
 
+            val currentActionVisual = remember(currentEditorInfoState, shiftState) {
+                ActionKeyResolver.resolve(currentEditorInfoState, shiftState)
+            }
+
             KiebordTheme(colorScheme = colorScheme) {
                 KeyboardRootView(
                     layout = activeLayout,
+                    actionKeyVisual = currentActionVisual,
                     primaryAlphaLayout = primaryAlphaLayout,
                     shiftState = shiftState,
                     inputSessionId = inputSessionId,
@@ -385,8 +394,14 @@ class KiebordService : InputMethodService() {
         } catch (_: Exception) {}
     }
 
+    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(attribute, restarting)
+        currentEditorInfoState = attribute
+    }
+
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        currentEditorInfoState = info
         clipboardManager.syncFromSystemClipboard(this)
         window?.window?.decorView?.let { decorView ->
             lifecycleOwner.attachToView(decorView)
@@ -860,9 +875,17 @@ class KiebordService : InputMethodService() {
             }
             KeyType.ACTION -> {
                 finishComposing()
-                val currentAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
-                if (currentAction != null && currentAction != EditorInfo.IME_ACTION_NONE && currentAction != EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    ic.performEditorAction(currentAction)
+                val visual = ActionKeyResolver.resolve(currentInputEditorInfo, shiftState)
+                if (visual.isAction) {
+                    val actionIdToPerform = if (currentInputEditorInfo?.actionId != 0 && currentInputEditorInfo?.actionId != null) {
+                        currentInputEditorInfo!!.actionId
+                    } else {
+                        visual.actionId
+                    }
+                    val handled = ic.performEditorAction(actionIdToPerform)
+                    if (!handled && actionIdToPerform == EditorInfo.IME_ACTION_UNSPECIFIED) {
+                        sendKeyChar('\n')
+                    }
                 } else {
                     sendKeyChar('\n')
                     if (shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {
@@ -1822,9 +1845,17 @@ class KiebordService : InputMethodService() {
             TextAction.ENTER -> {
                 selectionAnchor = null
                 selectionCursor = null
-                val currentAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
-                if (currentAction != null && currentAction != EditorInfo.IME_ACTION_NONE && currentAction != EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    ic.performEditorAction(currentAction)
+                val visual = ActionKeyResolver.resolve(currentInputEditorInfo, shiftState)
+                if (visual.isAction) {
+                    val actionIdToPerform = if (currentInputEditorInfo?.actionId != 0 && currentInputEditorInfo?.actionId != null) {
+                        currentInputEditorInfo!!.actionId
+                    } else {
+                        visual.actionId
+                    }
+                    val handled = ic.performEditorAction(actionIdToPerform)
+                    if (!handled && actionIdToPerform == EditorInfo.IME_ACTION_UNSPECIFIED) {
+                        sendKeyChar('\n')
+                    }
                 } else {
                     sendKeyChar('\n')
                     if (shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {

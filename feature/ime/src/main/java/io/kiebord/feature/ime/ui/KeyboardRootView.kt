@@ -106,6 +106,7 @@ import io.kiebord.feature.ime.ui.emoji.EmojiSearchResultsGrid
 import io.kiebord.feature.ime.ui.emoji.EmojiSearchResultsStrip
 import io.kiebord.feature.ime.ui.emoji.EmojiSearchCatalog
 import io.kiebord.feature.ime.ui.resizer.LiveResizerOverlay
+import io.kiebord.feature.ime.action.ActionKeyVisual
 import io.kiebord.feature.ime.ui.textedit.TextAction
 import io.kiebord.feature.ime.ui.textedit.TextEditPanelView
 import io.kiebord.feature.ime.ui.suggestion.ExpandedSuggestionsPanelView
@@ -193,6 +194,7 @@ fun KeyboardRootView(
     longPressDelayMs: Long = 300L,
     cursorTrackpadEnabled: Boolean = true,
     inputSessionId: Int = 0,
+    actionKeyVisual: ActionKeyVisual = ActionKeyVisual.DefaultEnter,
     vibrationEnabled: Boolean = true,
     voiceInputState: VoiceInputState = VoiceInputState.Idle,
     onStartVoiceTyping: () -> Unit = {},
@@ -1568,6 +1570,7 @@ fun KeyboardRootView(
                                 KeycapView(
                                 key = effectiveKey,
                                 shiftState = effectiveShiftState,
+                                actionKeyVisual = actionKeyVisual,
                                 rowIndex = rowIndex,
                                 keyIndex = keyIndex,
                                 isBottomRow = isBottomRow,

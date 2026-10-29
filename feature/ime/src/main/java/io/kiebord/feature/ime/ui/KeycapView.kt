@@ -17,6 +17,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Search
+import io.kiebord.feature.ime.action.ActionKeyType
+import io.kiebord.feature.ime.action.ActionKeyVisual
+
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Language
@@ -76,6 +84,7 @@ fun isBanglaText(str: String?): Boolean {
 fun KeycapView(
     key: KeyDef,
     shiftState: ShiftState,
+    actionKeyVisual: ActionKeyVisual = ActionKeyVisual.DefaultEnter,
     modifier: Modifier = Modifier,
     rowIndex: Int = 0,
     keyIndex: Int = 0,
@@ -137,9 +146,26 @@ fun KeycapView(
         )
     }
 
-    val activeBackground = keyVisual.backgroundColor
-    val bgBrush = keyVisual.backgroundBrush
-    val foregroundColor = keyVisual.foregroundColor
+    val isActionWithoutAccent = key.type == KeyType.ACTION && !actionKeyVisual.isAccentStyle
+    val activeBackground = if (isActionWithoutAccent) {
+        if (isPressed) {
+            if (colorScheme.keyPressedBackground != Color.Unspecified) colorScheme.keyPressedBackground else colorScheme.actionKeyBackground.copy(alpha = 0.8f)
+        } else {
+            colorScheme.actionKeyBackground
+        }
+    } else {
+        keyVisual.backgroundColor
+    }
+    val bgBrush = if (isActionWithoutAccent) null else keyVisual.backgroundBrush
+    val foregroundColor = if (isActionWithoutAccent) {
+        if (isPressed && colorScheme.keyPressedForeground != Color.Unspecified) {
+            colorScheme.keyPressedForeground
+        } else {
+            colorScheme.keyForeground
+        }
+    } else {
+        keyVisual.foregroundColor
+    }
     val displaySymbolLabel = key.displayLabel(shiftState)
 
     // Key shape: stadium pills for action/sym keys or custom pill/radius specs from theme
@@ -563,12 +589,33 @@ fun KeycapView(
                 )
             }
             KeyType.ACTION -> {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
-                    contentDescription = "Enter",
-                    tint = foregroundColor,
-                    modifier = Modifier.size(actionIconSize)
-                )
+                if (actionKeyVisual.customLabel != null) {
+                    Text(
+                        text = actionKeyVisual.customLabel,
+                        color = foregroundColor,
+                        fontSize = (13f * fontScaleFactor).coerceAtLeast(8f).sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = KiebordTheme.fontFamily,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                } else {
+                    val icon = when (actionKeyVisual.type) {
+                        ActionKeyType.SEARCH -> Icons.Outlined.Search
+                        ActionKeyType.SEND -> Icons.AutoMirrored.Outlined.Send
+                        ActionKeyType.GO -> Icons.AutoMirrored.Outlined.ArrowForward
+                        ActionKeyType.NEXT -> Icons.AutoMirrored.Outlined.ArrowForward
+                        ActionKeyType.DONE -> Icons.Outlined.Check
+                        ActionKeyType.PREVIOUS -> Icons.AutoMirrored.Outlined.ArrowBack
+                        ActionKeyType.ENTER, ActionKeyType.CUSTOM_LABEL -> Icons.AutoMirrored.Outlined.KeyboardReturn
+                    }
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = actionKeyVisual.contentDescription,
+                        tint = foregroundColor,
+                        modifier = Modifier.size(actionIconSize)
+                    )
+                }
             }
             KeyType.SWITCH_LANGUAGE -> {
                 Icon(
