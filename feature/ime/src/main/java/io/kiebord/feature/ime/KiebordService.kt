@@ -435,6 +435,43 @@ class KiebordService : InputMethodService() {
         candidatesEnd: Int
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        val translitMgr = getTransliterationManager()
+        val isComposing = translitMgr.isComposing || composingBuffer.isNotEmpty()
+
+        if (isComposing) {
+            // When typing normally, the cursor stays collapsed at the end of the candidate region.
+            // If the user touched another position, the cursor or selection moved away from candidatesEnd,
+            // or the composing span was cleared/invalidated by the host view.
+            val cursorMovedAway = candidatesStart < 0 ||
+                    candidatesEnd < 0 ||
+                    newSelStart != candidatesEnd ||
+                    newSelEnd != candidatesEnd ||
+                    newSelStart < candidatesStart ||
+                    newSelEnd > candidatesEnd
+
+            if (cursorMovedAway) {
+                val ic = currentInputConnection
+                val wordToLearn = when {
+                    translitMgr.isComposing -> translitMgr.currentTransliteration.trim()
+                    composingBuffer.isNotEmpty() -> BengaliBstiEngine.cleanPending(composingBuffer.toString()).trim()
+                    else -> ""
+                }
+                if (preferencesState.learnedWordsEnabled && wordToLearn.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                    val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
+                    userDictionaryRepo.recordWord(wordToLearn, prevWord)
+                }
+
+                translitMgr.reset()
+                composingBuffer.clear()
+                lastGestureCommittedWord = ""
+                isGestureAlternativeActive = false
+
+                ic?.finishComposingText()
+                updateSuggestions()
+                return
+            }
+        }
+
         if (isGestureAlternativeActive && lastGestureCommittedWord.isNotEmpty()) {
             val ic = currentInputConnection
             val textBefore = ic?.getTextBeforeCursor(lastGestureCommittedWord.length + 1, 0)?.toString() ?: ""
@@ -445,7 +482,6 @@ class KiebordService : InputMethodService() {
                 lastGestureCommittedWord = ""
             }
         }
-        val translitMgr = getTransliterationManager()
         if (!translitMgr.isComposing && composingBuffer.isEmpty()) {
             updateSuggestions()
         }
