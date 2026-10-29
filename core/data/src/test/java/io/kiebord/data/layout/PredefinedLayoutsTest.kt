@@ -595,4 +595,73 @@ class PredefinedLayoutsTest {
         assertEquals(p4Alpha.size, p4Sym.size)
         assertEquals(p4Alpha.size, p4More.size)
     }
+
+    @Test
+    fun testAllPredefinedLayoutsRowCountsMatchAcrossAllStates() {
+        fun buildRows(
+            display: io.kiebord.common.model.KeyboardLayoutDef,
+            baseAlpha: io.kiebord.common.model.KeyboardLayoutDef,
+            showNumberRow: Boolean
+        ): List<io.kiebord.common.model.KeyRow> {
+            val isSymbol = display.isSymbolsLayout()
+            val numRow: List<io.kiebord.common.model.KeyRow> = if (showNumberRow) {
+                listOf(display.numberRow ?: baseAlpha.numberRow ?: PredefinedLayouts.createNumberRow(baseAlpha.language))
+            } else {
+                emptyList()
+            }
+            val extraRows: List<io.kiebord.common.model.KeyRow> = if (isSymbol) {
+                display.resolveExtraRowsForSymbols(baseAlpha, emptyMap())
+            } else {
+                display.extraRows.filter { it.defaultEnabled }.map { io.kiebord.common.model.KeyRow(it.keys) }
+            }
+            val coreRows: List<io.kiebord.common.model.KeyRow> = if (isSymbol) {
+                display.resolveCoreRowsForSymbols(showNumberRow)
+            } else {
+                display.rows
+            }
+            return numRow + extraRows + coreRows
+        }
+
+        for (layout in PredefinedLayouts.allPredefined) {
+            val sym = layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
+            val moreSym = layout.effectiveMoreSymbolsLayout() ?: PredefinedLayouts.SymbolsMore
+
+            // 1. With number row enabled: ABC, ?123, and =< MUST all have 5 rows
+            val rowsAlphaWithNum = buildRows(layout, layout, showNumberRow = true)
+            val rowsSymWithNum = buildRows(sym, layout, showNumberRow = true)
+            val rowsMoreWithNum = buildRows(moreSym, layout, showNumberRow = true)
+
+            assertEquals("${layout.id} ABC row count with number row must be 5", 5, rowsAlphaWithNum.size)
+            assertEquals("${layout.id} Symbols (?123) row count with number row must be 5", 5, rowsSymWithNum.size)
+            assertEquals("${layout.id} More Symbols (=<) row count with number row must be 5", 5, rowsMoreWithNum.size)
+            assertEquals("${layout.id} row counts must match across ABC and ?123", rowsAlphaWithNum.size, rowsSymWithNum.size)
+            assertEquals("${layout.id} row counts must match across ABC and =<", rowsAlphaWithNum.size, rowsMoreWithNum.size)
+
+            // 2. With number row disabled: ABC, ?123, and =< MUST all have 4 rows
+            val rowsAlphaNoNum = buildRows(layout, layout, showNumberRow = false)
+            val rowsSymNoNum = buildRows(sym, layout, showNumberRow = false)
+            val rowsMoreNoNum = buildRows(moreSym, layout, showNumberRow = false)
+
+            assertEquals("${layout.id} ABC row count without number row must be 4", 4, rowsAlphaNoNum.size)
+            assertEquals("${layout.id} Symbols (?123) row count without number row must be 4", 4, rowsSymNoNum.size)
+            assertEquals("${layout.id} More Symbols (=<) row count without number row must be 4", 4, rowsMoreNoNum.size)
+            assertEquals("${layout.id} row counts must match across ABC and ?123", rowsAlphaNoNum.size, rowsSymNoNum.size)
+            assertEquals("${layout.id} row counts must match across ABC and =<", rowsAlphaNoNum.size, rowsMoreNoNum.size)
+        }
+    }
+
+    @Test
+    fun testResolveCoreRowsForSymbolsAlwaysReturnsFourCoreRows() {
+        // 4-row layouts
+        assertEquals(4, PredefinedLayouts.Symbols.resolveCoreRowsForSymbols(showNumberRow = true).size)
+        assertEquals(4, PredefinedLayouts.Symbols.resolveCoreRowsForSymbols(showNumberRow = false).size)
+        assertEquals(4, PredefinedLayouts.SymbolsMore.resolveCoreRowsForSymbols(showNumberRow = true).size)
+        assertEquals(4, PredefinedLayouts.SymbolsMore.resolveCoreRowsForSymbols(showNumberRow = false).size)
+
+        // 5-row layouts (such as SymbolsWithNumberRow and SymbolsMoreWithNumberRow)
+        assertEquals(4, PredefinedLayouts.SymbolsWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = true).size)
+        assertEquals(4, PredefinedLayouts.SymbolsWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = false).size)
+        assertEquals(4, PredefinedLayouts.SymbolsMoreWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = true).size)
+        assertEquals(4, PredefinedLayouts.SymbolsMoreWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = false).size)
+    }
 }

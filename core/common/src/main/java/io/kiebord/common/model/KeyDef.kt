@@ -138,20 +138,27 @@ data class KeyboardLayoutDef(
     fun resolveCoreRowsForSymbols(showNumberRow: Boolean): List<KeyRow> {
         if (this.rows.isEmpty()) return emptyList()
 
+        val isMoreSymbols = this.id.contains("symbols_2") || this.id.contains("more")
+
         if (!showNumberRow) {
-            return if (this.rows.size >= 5 && isDigitsRow(this.rows[0])) {
-                listOf(this.rows[0]) + this.rows.drop(2)
+            return if (this.rows.size >= 5) {
+                if (isDigitsRow(this.rows[0]) || isMoreSymbols) {
+                    listOf(this.rows[0]) + this.rows.drop(2)
+                } else {
+                    this.rows
+                }
             } else {
                 this.rows
             }
         }
 
         // When showNumberRow is true:
-        if (this.rows.size >= 5 && isDigitsRow(this.rows[0])) {
-            return this.rows.drop(1)
+        if (this.rows.size >= 5) {
+            if (isDigitsRow(this.rows[0]) || isMoreSymbols) {
+                return this.rows.drop(1)
+            }
         }
 
-        val isMoreSymbols = this.id.contains("symbols_2") || this.id.contains("more")
         if (this.rows.size == 4) {
             if (isMoreSymbols) {
                 return listOf(SymbolsMoreAlternateRow) + this.rows.drop(1)

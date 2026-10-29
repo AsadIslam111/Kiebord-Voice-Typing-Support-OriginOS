@@ -547,14 +547,7 @@ fun KeyboardRootView(
     }
 
     // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
-    val rawDisplayLayout = if (isSlidingSymbolMode) (layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols) else layout
-    val displayLayout = remember(rawDisplayLayout, showNumberRow) {
-        if (rawDisplayLayout.id.startsWith("symbols") && (rawDisplayLayout === PredefinedLayouts.Symbols || rawDisplayLayout === PredefinedLayouts.SymbolsMore)) {
-            PredefinedLayouts.getSymbolsLayout(rawDisplayLayout.id, showNumberRow)
-        } else {
-            rawDisplayLayout
-        }
-    }
+    val displayLayout = if (isSlidingSymbolMode) (layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols) else layout
 
     val effectiveShiftState = if (isSlidingShiftMode) ShiftState.ONE_SHOT else shiftState
     val isShiftActive = effectiveShiftState != ShiftState.UNSHIFTED
