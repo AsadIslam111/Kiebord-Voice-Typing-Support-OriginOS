@@ -153,7 +153,7 @@ fun KeyboardLayoutsScreen(
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_NATIONAL,
                 name = "জাতীয় (BSTI)",
-                badge = "জাতীয়",
+                badge = "জাতীয়",
                 description = "National BSTI layout",
                 layoutDef = PredefinedLayouts.BengaliNational
             ),

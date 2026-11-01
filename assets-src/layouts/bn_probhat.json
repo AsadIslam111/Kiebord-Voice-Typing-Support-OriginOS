@@ -40,7 +40,7 @@
         { "normal": "া", "shifted": "আ" },
         { "normal": "ে", "shifted": "এ" },
         { "normal": "ো", "shifted": "ও" },
-        { "normal": "য়", "shifted": "য়" },
+        { "normal": "য়", "shifted": "য়" },
         { "normal": "র", "shifted": "র্" },
         { "normal": "ল", "shifted": "৲", "moreKeys": ["ল্প", "ল্ক"] }
       ]
