@@ -146,26 +146,9 @@ fun KeycapView(
         )
     }
 
-    val isActionWithoutAccent = key.type == KeyType.ACTION && !actionKeyVisual.isAccentStyle
-    val activeBackground = if (isActionWithoutAccent) {
-        if (isPressed) {
-            if (colorScheme.keyPressedBackground != Color.Unspecified) colorScheme.keyPressedBackground else colorScheme.actionKeyBackground.copy(alpha = 0.8f)
-        } else {
-            colorScheme.actionKeyBackground
-        }
-    } else {
-        keyVisual.backgroundColor
-    }
-    val bgBrush = if (isActionWithoutAccent) null else keyVisual.backgroundBrush
-    val foregroundColor = if (isActionWithoutAccent) {
-        if (isPressed && colorScheme.keyPressedForeground != Color.Unspecified) {
-            colorScheme.keyPressedForeground
-        } else {
-            colorScheme.keyForeground
-        }
-    } else {
-        keyVisual.foregroundColor
-    }
+    val activeBackground = keyVisual.backgroundColor
+    val bgBrush = keyVisual.backgroundBrush
+    val foregroundColor = keyVisual.foregroundColor
     val displaySymbolLabel = key.displayLabel(shiftState)
 
     // Key shape: stadium pills for action/sym keys or custom pill/radius specs from theme
@@ -182,7 +165,7 @@ fun KeycapView(
     // In flat theme (!showKeyBorders), reduce height of Space bar, Sym key, and Enter key
     val isReducedHeightKey = !showKeyBorders && isPillColoredKey
     val horizontalPadding = (2.8f * fontScaleFactor).coerceIn(1.2f, 3.2f).dp
-    val verticalPadding = if (isReducedHeightKey) (6.0f * scaleFactor).coerceAtLeast(1.8f).dp else (4.2f * scaleFactor).coerceIn(1.5f, 6.0f).dp
+    val verticalPadding = if (isReducedHeightKey) (8.5f * scaleFactor).coerceAtLeast(2.8f).dp else (4.2f * scaleFactor).coerceIn(1.5f, 6.0f).dp
 
     // Capture latest parameters in updated states to allow pointerInput without gesture cancellation
     val currentKey = rememberUpdatedState(key)

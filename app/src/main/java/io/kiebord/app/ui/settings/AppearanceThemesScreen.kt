@@ -509,11 +509,12 @@ private fun ThemePreviewBottomSheetContent(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
         ) {
-            SettingsGroup {
+            SettingsGroup(spacing = 2.dp) {
                 SettingsToggleItem(
                     title = "Key Borders",
                     checked = showKeyBorders,
                     position = if (themeHasShadow) GroupPosition.TOP else GroupPosition.ALONE,
+                    verticalPadding = 6.dp,
                     onCheckedChange = onToggleKeyBorders
                 )
                 if (themeHasShadow) {
@@ -521,6 +522,7 @@ private fun ThemePreviewBottomSheetContent(
                         title = "Key Shadows",
                         checked = showKeyShadows,
                         position = GroupPosition.BOTTOM,
+                        verticalPadding = 8.dp,
                         onCheckedChange = onToggleKeyShadows
                     )
                 }

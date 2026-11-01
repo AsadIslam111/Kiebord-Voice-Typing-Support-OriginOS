@@ -646,6 +646,7 @@ fun SettingsToggleItem(
     checked: Boolean,
     position: GroupPosition? = null,
     showDivider: Boolean = true,
+    verticalPadding: Dp = 14.dp,
     onCheckedChange: (Boolean) -> Unit
 ) {
     val colors = LocalSettingsColors.current
@@ -664,7 +665,7 @@ fun SettingsToggleItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onCheckedChange(!checked) }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = verticalPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (icon != null || iconResId != null) {
