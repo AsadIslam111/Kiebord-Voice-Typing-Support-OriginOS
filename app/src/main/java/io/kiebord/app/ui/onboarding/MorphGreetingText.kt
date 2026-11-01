@@ -41,6 +41,10 @@ fun MorphGreetingText(
         "Privacy Focused"
     ),
     textColor: Color = if (isSystemInDarkTheme()) Color.White else Color.Black,
+    fontSize: androidx.compose.ui.unit.TextUnit = 38.sp,
+    height: androidx.compose.ui.unit.Dp = 72.dp,
+    centerAligned: Boolean = true,
+    holdDurationMs: Long = 2200L,
     modifier: Modifier = Modifier
 ) {
     if (words.isEmpty()) return
@@ -49,9 +53,9 @@ fun MorphGreetingText(
     var nextIndex by remember { mutableIntStateOf((currentIndex + 1) % words.size) }
     val progress = remember { Animatable(0f) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(words, holdDurationMs) {
         while (true) {
-            delay(2200L) // Hold word
+            delay(holdDurationMs) // Hold word
             progress.snapTo(0f)
             progress.animateTo(
                 targetValue = 1f,
@@ -64,8 +68,8 @@ fun MorphGreetingText(
     }
 
     val density = LocalDensity.current
-    val textSizePx = with(density) { 38.sp.toPx() }
-    val moveDistancePx = with(density) { 26.dp.toPx() }
+    val textSizePx = with(density) { fontSize.toPx() }
+    val moveDistancePx = with(density) { (fontSize.value * 0.68f).dp.toPx() }
 
     val exitEasing = remember { CubicBezierEasing(0.4f, 0.0f, 1.0f, 1.0f) }
     val enterEasing = remember { CubicBezierEasing(0.0f, 0.0f, 0.2f, 1.0f) }
@@ -90,7 +94,7 @@ fun MorphGreetingText(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(height)
     ) {
         val w = size.width
         val h = size.height
@@ -123,14 +127,14 @@ fun MorphGreetingText(
             if (p == 0f) {
                 // Static draw of current word
                 val totalWidth = paint.measureText(fromWord)
-                val startX = (w - totalWidth) / 2f
+                val startX = if (centerAligned) (w - totalWidth) / 2f else 0f
                 paint.alpha = 255
                 drawText(fromWord, startX, baseline, paint)
             } else {
                 // 1. Exiting characters: cascade upward and fade out
                 val totalFrom = rawClustersFrom.size
                 val wholeWidthFrom = paint.measureText(fromWord)
-                val startXFrom = (w - wholeWidthFrom) / 2f
+                val startXFrom = if (centerAligned) (w - wholeWidthFrom) / 2f else 0f
                 var charXFrom = startXFrom
 
                 for (i in rawClustersFrom.indices) {
@@ -153,7 +157,7 @@ fun MorphGreetingText(
                 // 2. Entering characters: cascade upward from below and fade in
                 val totalTo = rawClustersTo.size
                 val wholeWidthTo = paint.measureText(toWord)
-                val startXTo = (w - wholeWidthTo) / 2f
+                val startXTo = if (centerAligned) (w - wholeWidthTo) / 2f else 0f
                 var charXTo = startXTo
 
                 val enterGlobalP = ((p - 0.12f) / 0.88f).coerceIn(0f, 1f)

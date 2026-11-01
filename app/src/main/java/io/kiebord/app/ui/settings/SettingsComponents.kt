@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.app.R
+import io.kiebord.app.ui.onboarding.MorphGreetingText
 
 @Immutable
 data class SettingsColors(
@@ -231,13 +232,24 @@ fun SettingsUnifiedTopBar(
             modifier = Modifier.weight(1f)
         ) { (t, s) ->
             Column {
-                Text(
-                    text = t,
-                    fontSize = if (isMain) 28.sp else 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary,
-                    lineHeight = if (isMain) 34.sp else 28.sp
-                )
+                if (isMain) {
+                    MorphGreetingText(
+                        words = listOf("Kiebord", "Borno CE"),
+                        textColor = colors.textPrimary,
+                        fontSize = 28.sp,
+                        height = 36.dp,
+                        centerAligned = false,
+                        holdDurationMs = 2600L
+                    )
+                } else {
+                    Text(
+                        text = t,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
+                        lineHeight = 28.sp
+                    )
+                }
                 if (!s.isNullOrBlank()) {
                     Text(
                         text = s,
