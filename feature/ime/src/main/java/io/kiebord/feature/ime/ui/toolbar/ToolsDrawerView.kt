@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.CropFree
+import androidx.compose.material.icons.outlined.Dialpad
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
@@ -122,7 +123,8 @@ fun ToolsDrawerView(
             ToolbarAction.SETTINGS to DrawerTool(ToolbarAction.SETTINGS, icon = Icons.Filled.Settings, label = "Settings"),
             ToolbarAction.TRADITIONAL_MODE to DrawerTool(ToolbarAction.TRADITIONAL_MODE, iconResId = R.drawable.ic_traditional, label = "Traditional"),
             ToolbarAction.UNDO to DrawerTool(ToolbarAction.UNDO, iconResId = R.drawable.ic_undo, label = "Undo"),
-            ToolbarAction.REDO to DrawerTool(ToolbarAction.REDO, iconResId = R.drawable.ic_redo, label = "Redo")
+            ToolbarAction.REDO to DrawerTool(ToolbarAction.REDO, iconResId = R.drawable.ic_redo, label = "Redo"),
+            ToolbarAction.NUMBER_PAD to DrawerTool(ToolbarAction.NUMBER_PAD, icon = Icons.Outlined.Dialpad, label = "Number Pad")
         )
     }
 

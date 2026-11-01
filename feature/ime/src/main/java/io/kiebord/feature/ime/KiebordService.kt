@@ -85,6 +85,7 @@ class KiebordService : InputMethodService() {
     private var lastAutoSpacePunctuationTime: Long = 0L
 
     private fun isTransliterationLayout(): Boolean {
+        if (PredefinedLayouts.isNumberLayout(activeLayout.id)) return false
         return TransliterationManagerFactory.isTransliterationLayout(activeLayout.id)
     }
 
@@ -309,8 +310,17 @@ class KiebordService : InputMethodService() {
             KiebordTheme(colorScheme = colorScheme) {
                 KeyboardRootView(
                     layout = activeLayout,
-                    actionKeyVisual = currentActionVisual,
                     primaryAlphaLayout = primaryAlphaLayout,
+                    isNumberPadActive = activeLayout.id == PredefinedLayouts.NumberPadExtended.id,
+                    onToggleNumberPad = {
+                        finishComposing()
+                        if (activeLayout.id == PredefinedLayouts.NumberPadExtended.id) {
+                            activeLayout = primaryAlphaLayout
+                        } else {
+                            activeLayout = PredefinedLayouts.NumberPadExtended
+                        }
+                    },
+                    actionKeyVisual = currentActionVisual,
                     shiftState = shiftState,
                     isBornoEasyKarMode = isBornoEasyKarMode,
                     bornoEasyTypedCluster = bornoEasyTypedCluster,
@@ -485,7 +495,11 @@ class KiebordService : InputMethodService() {
         if (cachedLayoutId != null && cachedLayoutId != primaryAlphaLayout.id) {
             primaryAlphaLayout = layoutRepo.getLayout(cachedLayoutId)
         }
-        activeLayout = primaryAlphaLayout
+        val inputType = info?.inputType ?: 0
+        val inputClass = inputType and InputType.TYPE_MASK_CLASS
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        val numberLayout = PredefinedLayouts.resolveNumberLayout(inputClass, variation)
+        activeLayout = numberLayout ?: primaryAlphaLayout
         val initialCaps = if (shouldAutoCapitalize() && info != null) {
             info.initialCapsMode
         } else 0
@@ -1090,8 +1104,15 @@ class KiebordService : InputMethodService() {
                             shiftState = ShiftState.UNSHIFTED
                         }
                     }
+                    "*#" -> {
+                        if (!isSymbolsMode) {
+                            primaryAlphaLayout = activeLayout
+                            isSymbolsMode = true
+                        }
+                        activeLayout = primaryAlphaLayout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
+                    }
                     else -> {
-                        if (isSymbolsMode) {
+                        if (isSymbolsMode || PredefinedLayouts.isNumberLayout(activeLayout.id)) {
                             isSymbolsMode = false
                             activeLayout = primaryAlphaLayout
                             if (!shouldAutoCapitalize()) {
@@ -2190,7 +2211,7 @@ class KiebordService : InputMethodService() {
     }
 
     private fun updateSuggestions() {
-        if (!preferencesState.suggestionsEnabled || !NativeEngine.isAvailable() || isSymbolsMode) {
+        if (!preferencesState.suggestionsEnabled || !NativeEngine.isAvailable() || isSymbolsMode || PredefinedLayouts.isNumberLayout(activeLayout.id)) {
             activeSuggestions = emptyList()
             return
         }

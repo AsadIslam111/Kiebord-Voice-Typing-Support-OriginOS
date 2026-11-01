@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.CropFree
+import androidx.compose.material.icons.outlined.Dialpad
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Palette
@@ -74,7 +75,8 @@ enum class ToolbarAction {
     SETTINGS,
     TRADITIONAL_MODE,
     UNDO,
-    REDO
+    REDO,
+    NUMBER_PAD
 }
 
 data class ToolbarItem(
@@ -106,6 +108,7 @@ fun ReorderableToolbar(
     isTextEditActive: Boolean = false,
     isClipboardActive: Boolean = false,
     isTraditionalModeActive: Boolean = false,
+    isNumberPadActive: Boolean = false,
     isCustomizeMode: Boolean = false,
     scaleFactor: Float = 1.0f,
     onDraggingStateChange: (draggingAction: ToolbarAction?, fingerPosInRoot: Offset?) -> Unit = { _, _ -> }
@@ -154,7 +157,8 @@ fun ReorderableToolbar(
             ToolbarAction.SETTINGS to ToolbarItem(ToolbarAction.SETTINGS, icon = Icons.Filled.Settings, description = "Settings"),
             ToolbarAction.TRADITIONAL_MODE to ToolbarItem(ToolbarAction.TRADITIONAL_MODE, iconResId = R.drawable.ic_traditional, description = "Traditional Mode"),
             ToolbarAction.UNDO to ToolbarItem(ToolbarAction.UNDO, iconResId = R.drawable.ic_undo, description = "Undo"),
-            ToolbarAction.REDO to ToolbarItem(ToolbarAction.REDO, iconResId = R.drawable.ic_redo, description = "Redo")
+            ToolbarAction.REDO to ToolbarItem(ToolbarAction.REDO, iconResId = R.drawable.ic_redo, description = "Redo"),
+            ToolbarAction.NUMBER_PAD to ToolbarItem(ToolbarAction.NUMBER_PAD, icon = Icons.Outlined.Dialpad, description = "Number Pad")
         )
     }
 
@@ -204,6 +208,7 @@ fun ReorderableToolbar(
                         ToolbarAction.TEXT_EDIT -> isTextEditActive
                         ToolbarAction.CLIPBOARD -> isClipboardActive
                         ToolbarAction.TRADITIONAL_MODE -> isTraditionalModeActive
+                        ToolbarAction.NUMBER_PAD -> isNumberPadActive
                         else -> false
                     }
                     val isDraggingThisItem = draggingAction == action

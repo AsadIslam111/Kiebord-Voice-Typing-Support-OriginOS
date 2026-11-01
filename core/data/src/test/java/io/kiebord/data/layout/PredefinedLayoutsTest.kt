@@ -18,6 +18,11 @@ class PredefinedLayoutsTest {
         assertEquals("Arabic", PredefinedLayouts.displayName("ar_arabic"))
         assertEquals("বর্ণ ইজি", PredefinedLayouts.displayName("bn_easy"))
         assertEquals("বর্ণ ইজি", PredefinedLayouts.displayName("borno_easy"))
+        assertEquals("Number Pad", PredefinedLayouts.displayName("num_extended"))
+        assertEquals("123", PredefinedLayouts.displayName("num_normal"))
+        assertEquals("Date & Time", PredefinedLayouts.displayName("num_datetime"))
+        assertEquals("Phone", PredefinedLayouts.displayName("num_phone"))
+        assertEquals("PIN", PredefinedLayouts.displayName("num_password"))
     }
 
     @Test
@@ -750,5 +755,114 @@ class PredefinedLayoutsTest {
         assertEquals(4, PredefinedLayouts.SymbolsWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = false).size)
         assertEquals(4, PredefinedLayouts.SymbolsMoreWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = true).size)
         assertEquals(4, PredefinedLayouts.SymbolsMoreWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = false).size)
+    }
+
+    @Test
+    fun testNumberPadExtendedLayout() {
+        val layout = PredefinedLayouts.fromId("num_extended")
+        assertEquals("num_extended", layout.id)
+        assertEquals(4, layout.rows.size)
+
+        // Rows 0-2 must each sum to 10.0f
+        for (r in 0..2) {
+            val keys = layout.rows[r].keys
+            assertEquals(5, keys.size)
+            val sum = keys.map { it.widthWeight }.sum()
+            assertEquals(10.0f, sum, 0.01f)
+        }
+
+        // Row 3 (bottom row) must sum to 10.0f
+        val r3 = layout.rows[3].keys
+        assertEquals(6, r3.size)
+        val r3Sum = r3.map { it.widthWeight }.sum()
+        assertEquals(10.0f, r3Sum, 0.01f)
+
+        // Check key types and labels
+        assertEquals("ABC", r3[0].label)
+        assertEquals(KeyType.SYMBOLS, r3[0].type)
+        assertEquals(KeyType.SPACE, r3[1].type)
+        assertEquals("0", r3[2].label)
+        assertEquals(".", r3[3].label)
+        assertEquals(",", r3[4].label)
+        assertEquals(KeyType.ACTION, r3[5].type)
+
+        // Check delete key in row 2
+        assertEquals(KeyType.DELETE, layout.rows[2].keys[4].type)
+    }
+
+    @Test
+    fun testNumberPadNormalAndVariants() {
+        // Normal Numpad
+        val normal = PredefinedLayouts.fromId("num_normal")
+        assertEquals("num_normal", normal.id)
+        assertEquals(4, normal.rows.size)
+        for (row in normal.rows) {
+            assertEquals(4, row.keys.size)
+            assertEquals(4.0f, row.keys.map { it.widthWeight }.sum(), 0.01f)
+        }
+
+        // DateTime Numpad
+        val dt = PredefinedLayouts.fromId("num_datetime")
+        assertEquals("num_datetime", dt.id)
+        assertEquals(4, dt.rows.size)
+        assertEquals("/", dt.rows[3].keys[0].label)
+        assertEquals(":", dt.rows[3].keys[2].label)
+
+        // Phone Numpad
+        val phone = PredefinedLayouts.fromId("num_phone")
+        assertEquals("num_phone", phone.id)
+        assertEquals(4, phone.rows.size)
+        assertEquals("*#", phone.rows[3].keys[0].label)
+        assertEquals(KeyType.SYMBOLS, phone.rows[3].keys[0].type)
+        assertEquals("ABC", phone.rows[0].keys[1].shiftedLabel)
+        assertEquals("WXYZ", phone.rows[2].keys[2].shiftedLabel)
+
+        // Password PIN Pad (Centered with side padding)
+        val pin = PredefinedLayouts.fromId("num_password")
+        assertEquals("num_password", pin.id)
+        assertEquals(4, pin.rows.size)
+        for (row in pin.rows) {
+            assertEquals(3, row.keys.size)
+            assertEquals(0.375f, row.startPaddingWeight, 0.01f)
+            assertEquals(0.375f, row.endPaddingWeight, 0.01f)
+        }
+        assertEquals(KeyType.DELETE, pin.rows[3].keys[0].type)
+        assertEquals("0", pin.rows[3].keys[1].label)
+        assertEquals(KeyType.ACTION, pin.rows[3].keys[2].type)
+    }
+
+    @Test
+    fun testNumberLayoutRoutingAndHelpers() {
+        assertTrue(PredefinedLayouts.isNumberLayout("num_extended"))
+        assertTrue(PredefinedLayouts.isNumberLayout("num_normal"))
+        assertTrue(PredefinedLayouts.isNumberLayout("num_datetime"))
+        assertTrue(PredefinedLayouts.isNumberLayout("num_phone"))
+        assertTrue(PredefinedLayouts.isNumberLayout("num_password"))
+        org.junit.Assert.assertFalse(PredefinedLayouts.isNumberLayout("en_qwerty"))
+        org.junit.Assert.assertFalse(PredefinedLayouts.isNumberLayout("bn_borno"))
+
+        // Resolver tests
+        assertEquals(
+            "num_phone",
+            PredefinedLayouts.resolveNumberLayout(android.text.InputType.TYPE_CLASS_PHONE, 0)?.id
+        )
+        assertEquals(
+            "num_datetime",
+            PredefinedLayouts.resolveNumberLayout(android.text.InputType.TYPE_CLASS_DATETIME, 0)?.id
+        )
+        assertEquals(
+            "num_normal",
+            PredefinedLayouts.resolveNumberLayout(android.text.InputType.TYPE_CLASS_NUMBER, 0)?.id
+        )
+        assertEquals(
+            "num_password",
+            PredefinedLayouts.resolveNumberLayout(
+                android.text.InputType.TYPE_CLASS_NUMBER,
+                android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            )?.id
+        )
+        org.junit.Assert.assertNull(
+            PredefinedLayouts.resolveNumberLayout(android.text.InputType.TYPE_CLASS_TEXT, 0)
+        )
     }
 }

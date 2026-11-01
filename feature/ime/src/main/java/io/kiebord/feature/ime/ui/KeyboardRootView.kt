@@ -12,6 +12,12 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -54,8 +60,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import io.kiebord.theme.ResolvedKeyVisual
 import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
@@ -202,6 +212,8 @@ fun KeyboardRootView(
     onStartVoiceTyping: () -> Unit = {},
     onDismissVoiceTyping: () -> Unit = {},
     voiceTypingEnabled: Boolean = true,
+    isNumberPadActive: Boolean = false,
+    onToggleNumberPad: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -789,6 +801,15 @@ fun KeyboardRootView(
             ToolbarAction.REDO -> {
                 onTextAction(TextAction.REDO, false)
             }
+            ToolbarAction.NUMBER_PAD -> {
+                isToolsDrawerOpen = false
+                isEmojiOpen = false
+                isTextEditOpen = false
+                isClipboardOpen = false
+                isResizerOpen = false
+                isSuggestionsExpanded = false
+                onToggleNumberPad()
+            }
         }
     }
 
@@ -803,6 +824,7 @@ fun KeyboardRootView(
             ToolbarAction.RESIZER -> isResizerOpen
             ToolbarAction.CLIPBOARD -> isClipboardOpen
             ToolbarAction.TEXT_EDIT -> isTextEditOpen
+            ToolbarAction.NUMBER_PAD -> isNumberPadActive
             else -> false
         }
     }
@@ -1188,6 +1210,7 @@ fun KeyboardRootView(
                             isTextEditActive = isTextEditOpen,
                             isClipboardActive = isClipboardOpen,
                             isTraditionalModeActive = traditionalMode,
+                            isNumberPadActive = isNumberPadActive,
                             isCustomizeMode = isToolsDrawerOpen,
                             scaleFactor = scaleFactor,
                             onDraggingStateChange = { action, fingerPos ->
@@ -1540,7 +1563,29 @@ fun KeyboardRootView(
 
 
                     // Keyboard rows (stable layout without recomposition shifts)
-                    keyboardRows.forEachIndexed { rowIndex, row ->
+                    if (displayLayout.id == "num_extended" && keyboardRows.size >= 4) {
+                        NumberPadExtendedLayout(
+                            keyboardRows = keyboardRows,
+                            keyRowHeight = keyRowHeight,
+                            scaleFactor = scaleFactor,
+                            areKeysInteractive = areKeysInteractive,
+                            colorScheme = colorScheme,
+                            showKeyBorders = showKeyBorders,
+                            showKeyShadows = showKeyShadows,
+                            showSecondaryKeys = showSecondaryKeys,
+                            showKeyPopups = showKeyPopups,
+                            actionKeyVisual = actionKeyVisual,
+                            longPressDelayMs = longPressDelayMs,
+                            handleKeyPress = handleKeyPress,
+                            handleKeyTapUnified = handleKeyTapUnified,
+                            onKeyLongPress = onKeyLongPress,
+                            onDeleteSwipeMove = onDeleteSwipeMove,
+                            onDeleteSwipeEnd = onDeleteSwipeEnd,
+                            onDeleteSwipeCancel = onDeleteSwipeCancel,
+                            handleShowMoreKeys = handleShowMoreKeys
+                        )
+                    } else {
+                        keyboardRows.forEachIndexed { rowIndex, row ->
                         val isBottomRow = rowIndex == keyboardRows.lastIndex
                         val isTopNumberRow = hasTopNumberRow && rowIndex == 0
                         val currentRowHeight = if (isTopNumberRow) {
@@ -1952,6 +1997,7 @@ fun KeyboardRootView(
                         }
                     }
                 }
+            }
             }
 
             // 2. Full-screen panels (Tools Drawer, Clipboard, Emoji)
@@ -2714,6 +2760,359 @@ private fun VoiceTypingCenterBar(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun NumberPadExtendedLayout(
+    keyboardRows: List<KeyRow>,
+    keyRowHeight: Dp,
+    scaleFactor: Float,
+    areKeysInteractive: Boolean,
+    colorScheme: KeyboardColorScheme,
+    showKeyBorders: Boolean,
+    showKeyShadows: Boolean,
+    showSecondaryKeys: Boolean,
+    showKeyPopups: Boolean,
+    actionKeyVisual: ActionKeyVisual,
+    longPressDelayMs: Long,
+    handleKeyPress: (KeyDef) -> Unit,
+    handleKeyTapUnified: (KeyDef) -> Unit,
+    onKeyLongPress: (KeyDef) -> Unit,
+    onDeleteSwipeMove: (Float) -> Unit,
+    onDeleteSwipeEnd: () -> Unit,
+    onDeleteSwipeCancel: () -> Unit,
+    handleShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit
+) {
+    val extendedOperators = remember { listOf("+", "-", "*", "/", "(", ")", "#") }
+    val opScrollState = rememberScrollState()
+    val topRowsHeight = keyRowHeight * 3
+    val scrollbarColor = colorScheme.accentColor.takeIf { it != Color.Unspecified } ?: colorScheme.keyForeground
+
+    val fontScaleFactor = scaleFactor.coerceAtMost(1.0f)
+    val horizontalPadding = (2.8f * fontScaleFactor).coerceIn(1.2f, 3.2f).dp
+    val verticalPadding = (4.2f * scaleFactor).coerceIn(1.5f, 6.0f).dp
+
+    val sampleKeyDef = remember { KeyDef(label = "+", type = KeyType.CHARACTER) }
+    val baseVisual = colorScheme.resolveKeycapVisual(
+        rowIndex = 0,
+        keyIndex = 0,
+        key = sampleKeyDef,
+        isPressed = false,
+        showKeyBorders = showKeyBorders,
+        showKeyShadows = showKeyShadows,
+        scaleFactor = scaleFactor
+    )
+    val baseVisualPressed = colorScheme.resolveKeycapVisual(
+        rowIndex = 0,
+        keyIndex = 0,
+        key = sampleKeyDef,
+        isPressed = true,
+        showKeyBorders = showKeyBorders,
+        showKeyShadows = showKeyShadows,
+        scaleFactor = scaleFactor
+    )
+    val containerShape = RoundedCornerShape(baseVisual.cornerRadiusDp ?: (8 * scaleFactor).coerceAtLeast(3f).dp)
+    val containerBrush = baseVisual.backgroundBrush
+
+    // Top section: Left scrollable operator strip + Right 3x3 numeric grid & right column
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(topRowsHeight)
+    ) {
+        // Left Column: Scrollable operator strip container (width 14%)
+        Box(
+            modifier = Modifier
+                .weight(1.4f)
+                .fillMaxHeight()
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding)
+                .then(
+                    if (showKeyShadows && baseVisual.shadowElevationDp > 0.dp && baseVisual.shadowColor.alpha > 0.01f) {
+                        Modifier.shadow(
+                            elevation = baseVisual.shadowElevationDp,
+                            shape = containerShape,
+                            clip = false,
+                            ambientColor = baseVisual.shadowColor,
+                            spotColor = baseVisual.shadowColor
+                        )
+                    } else Modifier
+                )
+                .clip(containerShape)
+                .then(
+                    if (containerBrush != null) {
+                        Modifier.background(containerBrush, shape = containerShape)
+                    } else {
+                        Modifier.background(baseVisual.backgroundColor, shape = containerShape)
+                    }
+                )
+                .then(
+                    if (showKeyBorders && baseVisual.strokeWidthDp > 0.dp && baseVisual.strokeColor.alpha > 0.01f) {
+                        Modifier.border(
+                            width = baseVisual.strokeWidthDp,
+                            color = baseVisual.strokeColor,
+                            shape = containerShape
+                        )
+                    } else Modifier
+                )
+        ) {
+            val innerHeight = topRowsHeight - verticalPadding * 2
+            val opKeyHeight = innerHeight / 4
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    }
+                    .drawWithContent {
+                        drawContent()
+                        val fadeHeight = 16.dp.toPx()
+                        val maxScroll = opScrollState.maxValue
+                        val currentScroll = opScrollState.value.toFloat()
+
+                        // Top fading edge when scrolled down
+                        if (currentScroll > 0f) {
+                            val topAlpha = (currentScroll / fadeHeight).coerceIn(0f, 1f)
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black),
+                                    startY = 0f,
+                                    endY = fadeHeight
+                                ),
+                                topLeft = Offset.Zero,
+                                size = Size(size.width, fadeHeight),
+                                blendMode = BlendMode.DstIn,
+                                alpha = topAlpha
+                            )
+                        }
+
+                        // Bottom fading edge when more items below
+                        if (maxScroll > 0 && currentScroll < maxScroll.toFloat()) {
+                            val bottomAlpha = ((maxScroll - currentScroll) / fadeHeight).coerceIn(0f, 1f)
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Black, Color.Transparent),
+                                    startY = size.height - fadeHeight,
+                                    endY = size.height
+                                ),
+                                topLeft = Offset(0f, size.height - fadeHeight),
+                                size = Size(size.width, fadeHeight),
+                                blendMode = BlendMode.DstIn,
+                                alpha = bottomAlpha
+                            )
+                        }
+
+                        // Scrollbar track & thumb indicator
+                        if (maxScroll > 0) {
+                            val totalHeight = size.height
+                            val visibleRatio = totalHeight / (totalHeight + maxScroll)
+                            val thumbHeight = (totalHeight * visibleRatio).coerceIn(18.dp.toPx(), totalHeight)
+                            val scrollFraction = currentScroll / maxScroll.toFloat()
+                            val thumbY = (totalHeight - thumbHeight) * scrollFraction
+                            val thumbWidth = 2.5.dp.toPx()
+                            val thumbX = size.width - thumbWidth - 1.5.dp.toPx()
+
+                            drawRoundRect(
+                                color = scrollbarColor.copy(alpha = 0.12f),
+                                topLeft = Offset(thumbX, 0f),
+                                size = Size(thumbWidth, totalHeight),
+                                cornerRadius = CornerRadius(thumbWidth / 2f, thumbWidth / 2f)
+                            )
+
+                            drawRoundRect(
+                                color = scrollbarColor.copy(alpha = 0.65f),
+                                topLeft = Offset(thumbX, thumbY),
+                                size = Size(thumbWidth, thumbHeight),
+                                cornerRadius = CornerRadius(thumbWidth / 2f, thumbWidth / 2f)
+                            )
+                        }
+                    }
+                    .verticalScroll(opScrollState)
+            ) {
+                extendedOperators.forEachIndexed { index, op ->
+                    key("ext_op_$op") {
+                        ScrollableOperatorKey(
+                            operator = op,
+                            height = opKeyHeight,
+                            scaleFactor = scaleFactor,
+                            isInteractive = areKeysInteractive,
+                            visual = baseVisual,
+                            pressedVisual = baseVisualPressed,
+                            showDivider = showKeyBorders && index < extendedOperators.lastIndex,
+                            onClick = {
+                                val keyDef = KeyDef(label = op, commitText = op)
+                                handleKeyPress(keyDef)
+                                handleKeyTapUnified(keyDef)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Right Section: 3 Rows of 4 keys (width 8.6f)
+        Column(
+            modifier = Modifier
+                .weight(8.6f)
+                .fillMaxHeight()
+        ) {
+            for (rIdx in 0..2) {
+                val row = keyboardRows[rIdx]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(keyRowHeight)
+                ) {
+                    row.keys.drop(1).forEachIndexed { keyIndex, key ->
+                        key("cell_${rIdx}_${keyIndex + 1}") {
+                            KeycapView(
+                                key = key,
+                                shiftState = ShiftState.UNSHIFTED,
+                                actionKeyVisual = actionKeyVisual,
+                                rowIndex = rIdx,
+                                keyIndex = keyIndex + 1,
+                                isBottomRow = false,
+                                isSlidingSymbolMode = false,
+                                isSlidingShiftMode = false,
+                                showKeyBorders = showKeyBorders,
+                                showKeyShadows = showKeyShadows,
+                                showSecondaryKeys = showSecondaryKeys,
+                                showKeyPopups = showKeyPopups,
+                                isInteractive = areKeysInteractive,
+                                rowHeight = keyRowHeight,
+                                scaleFactor = scaleFactor,
+                                gestureTypingEnabled = false,
+                                longPressDelayMs = longPressDelayMs,
+                                modifier = Modifier
+                                    .weight(key.widthWeight)
+                                    .fillMaxHeight(),
+                                onKeyPress = handleKeyPress,
+                                onKeyTap = handleKeyTapUnified,
+                                onKeyLongPress = onKeyLongPress,
+                                onDeleteSwipeMove = onDeleteSwipeMove,
+                                onDeleteSwipeEnd = onDeleteSwipeEnd,
+                                onDeleteSwipeCancel = onDeleteSwipeCancel,
+                                onShowMoreKeys = handleShowMoreKeys
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Bottom Row: ABC, Space, 0, ., ,, Enter
+    val bottomRow = keyboardRows[3]
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(keyRowHeight)
+    ) {
+        bottomRow.keys.forEachIndexed { keyIndex, key ->
+            val effectiveKey = if (key.type == KeyType.SPACE && key.label.isBlank()) {
+                key.copy(label = "Space")
+            } else {
+                key
+            }
+            key("cell_3_$keyIndex") {
+                KeycapView(
+                    key = effectiveKey,
+                    shiftState = ShiftState.UNSHIFTED,
+                    actionKeyVisual = actionKeyVisual,
+                    rowIndex = 3,
+                    keyIndex = keyIndex,
+                    isBottomRow = true,
+                    isSlidingSymbolMode = false,
+                    isSlidingShiftMode = false,
+                    showKeyBorders = showKeyBorders,
+                    showKeyShadows = showKeyShadows,
+                    showSecondaryKeys = showSecondaryKeys,
+                    showKeyPopups = showKeyPopups,
+                    isInteractive = areKeysInteractive,
+                    rowHeight = keyRowHeight,
+                    scaleFactor = scaleFactor,
+                    gestureTypingEnabled = false,
+                    longPressDelayMs = longPressDelayMs,
+                    modifier = Modifier
+                        .weight(effectiveKey.widthWeight)
+                        .fillMaxHeight(),
+                    onKeyPress = handleKeyPress,
+                    onKeyTap = handleKeyTapUnified,
+                    onKeyLongPress = onKeyLongPress,
+                    onDeleteSwipeMove = onDeleteSwipeMove,
+                    onDeleteSwipeEnd = onDeleteSwipeEnd,
+                    onDeleteSwipeCancel = onDeleteSwipeCancel,
+                    onShowMoreKeys = handleShowMoreKeys
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScrollableOperatorKey(
+    operator: String,
+    height: Dp,
+    scaleFactor: Float,
+    isInteractive: Boolean,
+    visual: ResolvedKeyVisual,
+    pressedVisual: ResolvedKeyVisual,
+    showDivider: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val fontScaleFactor = scaleFactor.coerceAtMost(1.0f)
+    val backgroundBrush = visual.backgroundBrush
+    val pressedBrush = pressedVisual.backgroundBrush
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .then(
+                if (isPressed) {
+                    if (pressedBrush != null) {
+                        Modifier.background(pressedBrush)
+                    } else {
+                        Modifier.background(pressedVisual.backgroundColor)
+                    }
+                } else {
+                    if (backgroundBrush != null) {
+                        Modifier.background(backgroundBrush)
+                    } else {
+                        Modifier.background(visual.backgroundColor)
+                    }
+                }
+            )
+            .clickable(
+                enabled = isInteractive,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = operator,
+            color = if (isPressed) pressedVisual.foregroundColor else visual.foregroundColor,
+            fontSize = (20 * fontScaleFactor).coerceAtLeast(14f).sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = KiebordTheme.fontFamily,
+            textAlign = TextAlign.Center
+        )
+
+        if (showDivider && visual.strokeWidthDp > 0.dp && visual.strokeColor.alpha > 0.01f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(visual.strokeWidthDp)
+                    .align(Alignment.BottomCenter)
+                    .background(visual.strokeColor.copy(alpha = 0.35f))
             )
         }
     }

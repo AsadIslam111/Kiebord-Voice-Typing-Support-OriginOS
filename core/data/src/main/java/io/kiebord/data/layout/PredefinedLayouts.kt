@@ -840,6 +840,238 @@ object PredefinedLayouts {
         )
     )
 
+    val NumberPadExtended = KeyboardLayoutDef(
+        id = "num_extended",
+        name = "Number Pad Extended",
+        displayName = "Number Pad",
+        language = "sym",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("+", widthWeight = 1.4f, moreKeys = listOf("(", ")", "#"), flickUp = "("),
+                    KeyDef("1", widthWeight = 2.4f),
+                    KeyDef("2", widthWeight = 2.4f),
+                    KeyDef("3", widthWeight = 2.4f),
+                    KeyDef("≠", widthWeight = 1.4f, moreKeys = listOf("≈", "≡", "/"), flickUp = "≈")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("-", widthWeight = 1.4f, moreKeys = listOf("—", "–"), flickUp = "—"),
+                    KeyDef("4", widthWeight = 2.4f),
+                    KeyDef("5", widthWeight = 2.4f),
+                    KeyDef("6", widthWeight = 2.4f),
+                    KeyDef("=", widthWeight = 1.4f, moreKeys = listOf("±"), flickUp = "±")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("*", widthWeight = 1.4f, moreKeys = listOf("×", "/"), flickUp = "×"),
+                    KeyDef("7", widthWeight = 2.4f),
+                    KeyDef("8", widthWeight = 2.4f),
+                    KeyDef("9", widthWeight = 2.4f),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.4f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.4f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 2.4f),
+                    KeyDef("0", widthWeight = 2.4f),
+                    KeyDef(".", widthWeight = 1.2f),
+                    KeyDef(",", widthWeight = 1.2f),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.4f)
+                )
+            )
+        )
+    )
+
+    val NumberPadNormal = KeyboardLayoutDef(
+        id = "num_normal",
+        name = "Number Pad",
+        displayName = "123",
+        language = "sym",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("1", widthWeight = 1.0f),
+                    KeyDef("2", widthWeight = 1.0f),
+                    KeyDef("3", widthWeight = 1.0f),
+                    KeyDef("-", widthWeight = 1.0f, moreKeys = listOf("+"), flickUp = "+")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("4", widthWeight = 1.0f),
+                    KeyDef("5", widthWeight = 1.0f),
+                    KeyDef("6", widthWeight = 1.0f),
+                    KeyDef(",", widthWeight = 1.0f, moreKeys = listOf("."))
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("7", widthWeight = 1.0f),
+                    KeyDef("8", widthWeight = 1.0f),
+                    KeyDef("9", widthWeight = 1.0f),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.0f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef(".", widthWeight = 1.0f, moreKeys = listOf(",")),
+                    KeyDef("0", widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 1.0f),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.0f)
+                )
+            )
+        )
+    )
+
+    val NumberPadDateTime = KeyboardLayoutDef(
+        id = "num_datetime",
+        name = "Date Time Pad",
+        displayName = "Date & Time",
+        language = "sym",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("1", widthWeight = 1.0f),
+                    KeyDef("2", widthWeight = 1.0f),
+                    KeyDef("3", widthWeight = 1.0f),
+                    KeyDef("-", widthWeight = 1.0f, moreKeys = listOf("+"), flickUp = "+")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("4", widthWeight = 1.0f),
+                    KeyDef("5", widthWeight = 1.0f),
+                    KeyDef("6", widthWeight = 1.0f),
+                    KeyDef(".", widthWeight = 1.0f, moreKeys = listOf("AM", "PM"))
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("7", widthWeight = 1.0f),
+                    KeyDef("8", widthWeight = 1.0f),
+                    KeyDef("9", widthWeight = 1.0f),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.0f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("/", widthWeight = 1.0f, moreKeys = listOf(":")),
+                    KeyDef("0", widthWeight = 1.0f),
+                    KeyDef(":", widthWeight = 1.0f, moreKeys = listOf("/")),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.0f)
+                )
+            )
+        )
+    )
+
+    val NumberPadPhone = KeyboardLayoutDef(
+        id = "num_phone",
+        name = "Phone Pad",
+        displayName = "Phone",
+        language = "sym",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("1", widthWeight = 1.0f),
+                    KeyDef("2", shiftedLabel = "ABC", flickUp = "ABC", widthWeight = 1.0f),
+                    KeyDef("3", shiftedLabel = "DEF", flickUp = "DEF", widthWeight = 1.0f),
+                    KeyDef("-", widthWeight = 1.0f, moreKeys = listOf("+"), flickUp = "+")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("4", shiftedLabel = "GHI", flickUp = "GHI", widthWeight = 1.0f),
+                    KeyDef("5", shiftedLabel = "JKL", flickUp = "JKL", widthWeight = 1.0f),
+                    KeyDef("6", shiftedLabel = "MNO", flickUp = "MNO", widthWeight = 1.0f),
+                    KeyDef(".", widthWeight = 1.0f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("7", shiftedLabel = "PQRS", flickUp = "PQRS", widthWeight = 1.0f),
+                    KeyDef("8", shiftedLabel = "TUV", flickUp = "TUV", widthWeight = 1.0f),
+                    KeyDef("9", shiftedLabel = "WXYZ", flickUp = "WXYZ", widthWeight = 1.0f),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.0f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("*#", type = KeyType.SYMBOLS, widthWeight = 1.0f, moreKeys = listOf("*", "#", "(", ")")),
+                    KeyDef("0", widthWeight = 1.0f, moreKeys = listOf("+"), flickUp = "+"),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 1.0f),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.0f)
+                )
+            )
+        )
+    )
+
+    val NumberPadPassword = KeyboardLayoutDef(
+        id = "num_password",
+        name = "PIN Pad",
+        displayName = "PIN",
+        language = "sym",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("1", widthWeight = 1.0f),
+                    KeyDef("2", widthWeight = 1.0f),
+                    KeyDef("3", widthWeight = 1.0f)
+                ),
+                startPaddingWeight = 0.375f,
+                endPaddingWeight = 0.375f
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("4", widthWeight = 1.0f),
+                    KeyDef("5", widthWeight = 1.0f),
+                    KeyDef("6", widthWeight = 1.0f)
+                ),
+                startPaddingWeight = 0.375f,
+                endPaddingWeight = 0.375f
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("7", widthWeight = 1.0f),
+                    KeyDef("8", widthWeight = 1.0f),
+                    KeyDef("9", widthWeight = 1.0f)
+                ),
+                startPaddingWeight = 0.375f,
+                endPaddingWeight = 0.375f
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.0f),
+                    KeyDef("0", widthWeight = 1.0f, moreKeys = listOf("+"), flickUp = "+"),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.0f)
+                ),
+                startPaddingWeight = 0.375f,
+                endPaddingWeight = 0.375f
+            )
+        )
+    )
+
+    fun isNumberLayout(id: String): Boolean =
+        id == "num_extended" || id == "num_normal" || id == "num_datetime" || id == "num_phone" || id == "num_password"
+
+    fun resolveNumberLayout(inputClass: Int, variation: Int): KeyboardLayoutDef? {
+        return when (inputClass) {
+            android.text.InputType.TYPE_CLASS_PHONE -> NumberPadPhone
+            android.text.InputType.TYPE_CLASS_DATETIME -> NumberPadDateTime
+            android.text.InputType.TYPE_CLASS_NUMBER -> {
+                if (variation == android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD) {
+                    NumberPadPassword
+                } else {
+                    NumberPadNormal
+                }
+            }
+            else -> null
+        }
+    }
+
     fun getSymbolsLayout(id: String, hasNumberRow: Boolean): KeyboardLayoutDef {
         return when (id) {
             "symbols_2" -> if (hasNumberRow) SymbolsMoreWithNumberRow else SymbolsMore
@@ -860,6 +1092,11 @@ object PredefinedLayouts {
             "bn_national" -> BengaliNational
             "symbols_1" -> Symbols
             "symbols_2" -> SymbolsMore
+            "num_extended" -> NumberPadExtended
+            "num_normal" -> NumberPadNormal
+            "num_datetime" -> NumberPadDateTime
+            "num_phone" -> NumberPadPhone
+            "num_password" -> NumberPadPassword
             else -> EnglishQwerty
         }
     }
@@ -876,6 +1113,11 @@ object PredefinedLayouts {
             "bn_national" -> "জাতীয় (BSTI)"
             "ar_arabic" -> "Arabic"
             "en_qwerty" -> "English"
+            "num_extended" -> "Number Pad"
+            "num_normal" -> "123"
+            "num_datetime" -> "Date & Time"
+            "num_phone" -> "Phone"
+            "num_password" -> "PIN"
             else -> "English"
         }
     }

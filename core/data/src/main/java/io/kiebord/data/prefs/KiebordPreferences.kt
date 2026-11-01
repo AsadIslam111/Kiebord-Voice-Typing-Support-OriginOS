@@ -1,4 +1,4 @@
-﻿package io.kiebord.data.prefs
+package io.kiebord.data.prefs
 
 /**
  * Immutable snapshot of all user-configurable settings and preferences for Kiebord.
@@ -55,7 +55,7 @@ data class KiebordPreferences(
 
     // Toolbar rearrangement persistence
     val pinnedTools: List<String> = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"),
-    val drawerTools: List<String> = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE"),
+    val drawerTools: List<String> = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "NUMBER_PAD", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE"),
 
     // Voice Typing
     val voiceTypingEnabled: Boolean = true,
