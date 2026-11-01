@@ -1,4 +1,4 @@
-use kiebord_engine::dictionary::compile_combined_file;
+use borno_engine::dictionary::compile_combined_file;
 use std::fs;
 use std::path::Path;
 

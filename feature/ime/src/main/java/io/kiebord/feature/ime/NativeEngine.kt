@@ -6,7 +6,7 @@ object NativeEngine {
 
     init {
         try {
-            System.loadLibrary("kiebord_engine")
+            System.loadLibrary("borno_engine")
             isLoaded = true
         } catch (_: UnsatisfiedLinkError) {
             isLoaded = false

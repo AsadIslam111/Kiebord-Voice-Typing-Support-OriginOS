@@ -1,4 +1,4 @@
-# Kiebord
+# Kiebord (Borno Community Edition)
 
 [![CI Build](https://img.shields.io/github/actions/workflow/status/JayedAhsan/Kiebord/build-apk.yml?branch=main&label=CI%20Build)](https://github.com/JayedAhsan/Kiebord/actions)
 [![Latest Release](https://img.shields.io/github/v/release/JayedAhsan/Kiebord?include_prereleases&label=Latest%20Release)](https://github.com/JayedAhsan/Kiebord/releases)
@@ -13,7 +13,7 @@ A free, open-source input method editor (IME) for Android built with Jetpack Com
 
 ## Overview
 
-Kiebord (Borno Community Edition) is the result of over 6 years of development on Borno Keyboard, heavily relying on its foundational transliteration architecture while introducing improved gesture typing, spatial touch modeling, and optimized runtime performance.
+Kiebord is the result of over 6 years of development on Borno Keyboard, heavily relying on its foundational transliteration architecture while introducing improved gesture typing, spatial touch modeling, and optimized runtime performance.
 
 The codebase represents an extensive modernization from legacy Java and C++ into modern Kotlin, Jetpack Compose, and a pure Rust core (`kiebord-engine`), with every migration step manually audited, refined, and verified.
 
@@ -99,7 +99,7 @@ Build the release Android App Bundle (for Google Play):
 ./gradlew bundleRelease
 ```
 
-Precompiled native shared libraries (`libkiebord_engine.so`) and binary dictionary assets (`.dict`) are tracked in the repository. Standard Android builds run directly without requiring local Cargo or dictionary compilation steps.
+Precompiled native shared libraries (`libborno_engine.so`) and binary dictionary assets (`.dict`) are tracked in the repository. Standard Android builds run directly without requiring local Cargo or dictionary compilation steps.
 
 ---
 
