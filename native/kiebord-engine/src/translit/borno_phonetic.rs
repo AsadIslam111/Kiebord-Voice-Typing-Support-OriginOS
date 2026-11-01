@@ -88,6 +88,8 @@ impl BornoPhonetic {
         let tokens = Self::tokenize_mode(&corrected, is_avro);
         let mut output = String::with_capacity(corrected.len() * 3);
         let mut last_type = PrevTokenType::StartOfWord;
+        let mut last_vowel_token: Option<&str> = None;
+        let mut prev_vowel_token: Option<&str> = None;
 
         let phola_map = Self::get_phola_map();
         let consonants_map = Self::get_consonants_map();
@@ -303,14 +305,24 @@ impl BornoPhonetic {
                     } else if let Some(sign) = vowel_signs_map.get(token) {
                         output.push_str(sign);
                     }
+                    prev_vowel_token = None;
+                    last_vowel_token = Some(token);
                 } else if last_type == PrevTokenType::Vowel {
                     if token == "o" {
                         output.push_str("ও");
+                    } else if is_avro && (token == "a" || token == "A") && last_vowel_token != Some("a") && last_vowel_token != Some("A") {
+                        output.push_str("য়া");
+                    } else if !is_avro && (token == "a" || token == "A") && (last_vowel_token == Some("i") || last_vowel_token == Some("I")) && (prev_vowel_token == Some("a") || prev_vowel_token == Some("A")) {
+                        output.push_str("য়া");
                     } else if let Some(after) = after_vowel_map.get(token) {
                         output.push_str(after);
                     }
+                    prev_vowel_token = last_vowel_token;
+                    last_vowel_token = Some(token);
                 } else {
                     output.push_str(val);
+                    prev_vowel_token = None;
+                    last_vowel_token = Some(token);
                 }
                 last_type = PrevTokenType::Vowel;
                 i += 1;
@@ -1244,6 +1256,15 @@ mod tests {
         assert_eq!(BornoPhonetic::convert("bangla"), "বাংলা");
         assert_eq!(BornoPhonetic::convert("sobai"), "সবাই");
         assert_eq!(BornoPhonetic::convert("shanti"), "শান্তি");
+
+        // Borno vs Avro phonetic rules
+        assert_eq!(BornoPhonetic::convert("mia"), "মিআ");
+        assert_eq!(BornoPhonetic::convert("vaia"), "ভাইয়া");
+        assert_eq!(BornoPhonetic::convert("mia vaia"), "মিআ ভাইয়া");
+        assert_eq!(BornoPhonetic::convert("mua"), "মুআ");
+        assert_eq!(BornoPhonetic::convert("aa"), "আআ");
+        assert_eq!(BornoPhonetic::convert("ia"), "ইআ");
+        assert_eq!(BornoPhonetic::convert("ka ba"), "কা বা");
     }
 
     #[test]
@@ -1361,6 +1382,15 @@ mod tests {
     fn test_avro_conversions() {
         assert_eq!(BornoPhonetic::convert_avro("ami"), "আমি");
         assert_eq!(BornoPhonetic::convert_avro("bhalO"), "ভালো");
+
+        // Avro vowel-after-vowel rules
+        assert_eq!(BornoPhonetic::convert_avro("mia"), "মিয়া");
+        assert_eq!(BornoPhonetic::convert_avro("vaia"), "ভাইয়া");
+        assert_eq!(BornoPhonetic::convert_avro("mia vaia"), "মিয়া ভাইয়া");
+        assert_eq!(BornoPhonetic::convert_avro("mua"), "মুয়া");
+        assert_eq!(BornoPhonetic::convert_avro("aa"), "আআ");
+        assert_eq!(BornoPhonetic::convert_avro("ia"), "ইয়া");
+        assert_eq!(BornoPhonetic::convert_avro("ka ba"), "কা বা");
 
         // Avro specific: 'cb' and 'qq' for chandrabindu
         assert_eq!(BornoPhonetic::convert_avro("cacbd"), "চাঁদ");
