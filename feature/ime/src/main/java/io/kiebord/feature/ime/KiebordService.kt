@@ -2348,7 +2348,7 @@ class KiebordService : InputMethodService() {
 
                 // 5. Dictionary completions from bn.dict matching primary transliteration prefix
                 if (primaryWord.isNotEmpty() && list.size < 12) {
-                    val dictMatches = if (preferencesState.bengaliSmartPhonetic) {
+                    val dictMatches = if (preferencesState.bengaliSmartPhonetic && activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO) {
                         NativeEngine.querySuggestions(primaryWord, activeLayout.id, 12)
                     } else {
                         NativeEngine.querySuggestions(primaryWord, "bn_exact", 12)

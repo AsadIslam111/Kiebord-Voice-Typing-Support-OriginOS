@@ -270,15 +270,14 @@ impl KeyProximity {
 
         // 2. Check if a PhoneticTransliterator defines layout proximity
         if let Some(translit) = crate::translit::get_phonetic_transliterator(layout_id) {
-            if let Some(prox) = translit.proximity() {
-                return prox;
-            }
+            return translit.proximity().unwrap_or_else(|| EMPTY_PROXIMITY.get_or_init(Self::new));
         }
 
         // 3. Fallback to predefined layout proximities
         match layout_id {
             "bn_borno" | "bn_national" => BORNO_PROXIMITY.get_or_init(Self::borno_phonetic),
             "bn_probhat" => PROBHAT_PROXIMITY.get_or_init(Self::probhat),
+            "bn_avro" => EMPTY_PROXIMITY.get_or_init(Self::new),
             "bn" => BORNO_PROXIMITY.get_or_init(Self::borno_phonetic),
             "en_qwerty" | "en" => QWERTY_PROXIMITY.get_or_init(Self::qwerty),
             _ => {
@@ -405,6 +404,7 @@ mod tests {
 
         let qwerty = KeyProximity::for_layout("en_qwerty");
         assert!(qwerty.are_neighbors('q', 'w'));
+
 
         // Test dynamic registration for future layouts
         let mut custom = KeyProximity::new();

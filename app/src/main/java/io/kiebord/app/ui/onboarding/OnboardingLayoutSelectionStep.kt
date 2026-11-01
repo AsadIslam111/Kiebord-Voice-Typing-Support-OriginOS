@@ -82,6 +82,11 @@ fun OnboardingLayoutSelectionStep(
                 subtitle = "Popular phonetic parser by OmicronLab"
             ),
             LayoutOption(
+                id = KiebordPreferences.LAYOUT_BN_EASY,
+                title = "বর্ণ ইজি",
+                subtitle = "Easy alphabetical layout"
+            ),
+            LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_NATIONAL,
                 title = "জাতীয় (BSTI)",
                 subtitle = "Official national standard Bengali layout"
@@ -90,11 +95,6 @@ fun OnboardingLayoutSelectionStep(
                 id = KiebordPreferences.LAYOUT_BN_PROBHAT,
                 title = "প্রভাত",
                 subtitle = "Popular fixed Bengali layout"
-            ),
-            LayoutOption(
-                id = KiebordPreferences.LAYOUT_BN_EASY,
-                title = "বর্ণ ইজি",
-                subtitle = "Easy alphabetical layout"
             )
         )
     }

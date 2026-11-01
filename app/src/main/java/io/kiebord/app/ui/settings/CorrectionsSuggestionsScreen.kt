@@ -118,8 +118,8 @@ fun CorrectionsSuggestionsScreen(
                 )
 
                 SettingsToggleItem(
-                    title = "Show Proximity Suggestions in Phonetic Layout",
-                    subtitle = "Suggest dictionary words and proximity corrections while typing phonetically",
+                    title = "Show Proximity Suggestions in Borno Phonetic Layout",
+                    subtitle = "Suggest dictionary words and proximity corrections while typing in Borno Phonetic",
                     checked = preferences.bengaliSmartPhonetic,
                     position = GroupPosition.MIDDLE,
                     onCheckedChange = onUpdateBengaliSmartPhonetic

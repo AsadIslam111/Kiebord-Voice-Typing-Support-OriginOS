@@ -31,9 +31,11 @@ data class KiebordPreferences(
 
     // Keyboard Layouts
     val primaryLayoutId: String = LAYOUT_EN_QWERTY,
-    val enabledLayoutIds: Set<String> = setOf(
+    val enabledLayoutIds: Set<String> = linkedSetOf(
         LAYOUT_EN_QWERTY,
         LAYOUT_BN_BORNO,
+        LAYOUT_BN_AVRO,
+        LAYOUT_BN_EASY,
         LAYOUT_BN_NATIONAL
     ),
 

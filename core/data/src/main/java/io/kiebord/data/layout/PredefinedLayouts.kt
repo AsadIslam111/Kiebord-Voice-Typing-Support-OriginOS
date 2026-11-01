@@ -1080,7 +1080,7 @@ object PredefinedLayouts {
     }
 
     val allPredefined: List<KeyboardLayoutDef> by lazy {
-        listOf(EnglishQwerty, BengaliBorno, BengaliAvro, BengaliNational, BengaliProbhat, BengaliBornoEasy)
+        listOf(EnglishQwerty, BengaliBorno, BengaliAvro, BengaliBornoEasy, BengaliNational, BengaliProbhat)
     }
 
     fun fromId(id: String): KeyboardLayoutDef {

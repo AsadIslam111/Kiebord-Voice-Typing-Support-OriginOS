@@ -144,6 +144,13 @@ fun KeyboardLayoutsScreen(
                 layoutDef = PredefinedLayouts.BengaliAvro
             ),
             LayoutCardData(
+                id = KiebordPreferences.LAYOUT_BN_EASY,
+                name = "বর্ণ ইজি",
+                badge = "বর্ণ ইজি",
+                description = "Easy 5-row alphabetical layout",
+                layoutDef = PredefinedLayouts.BengaliBornoEasy
+            ),
+            LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_NATIONAL,
                 name = "জাতীয় (BSTI)",
                 badge = "জাতীয়",
@@ -156,13 +163,6 @@ fun KeyboardLayoutsScreen(
                 badge = "প্রভাত",
                 description = "Fixed traditional layout",
                 layoutDef = PredefinedLayouts.BengaliProbhat
-            ),
-            LayoutCardData(
-                id = KiebordPreferences.LAYOUT_BN_EASY,
-                name = "বর্ণ ইজি",
-                badge = "বর্ণ ইজি",
-                description = "Easy 5-row alphabetical layout",
-                layoutDef = PredefinedLayouts.BengaliBornoEasy
             )
         )
     }

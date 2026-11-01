@@ -116,9 +116,11 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
                 primaryLayoutId = prefs[PreferencesKeys.PRIMARY_LAYOUT_ID] ?: KiebordPreferences.LAYOUT_EN_QWERTY,
                 enabledLayoutIds = run {
-                    val rawSet = prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: setOf(
+                    val rawSet = prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: linkedSetOf(
                         KiebordPreferences.LAYOUT_EN_QWERTY,
                         KiebordPreferences.LAYOUT_BN_BORNO,
+                        KiebordPreferences.LAYOUT_BN_AVRO,
+                        KiebordPreferences.LAYOUT_BN_EASY,
                         KiebordPreferences.LAYOUT_BN_NATIONAL
                     )
                     val orderRaw = prefs[PreferencesKeys.ENABLED_LAYOUT_ORDER]
@@ -285,9 +287,11 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
     suspend fun updatePrimaryLayoutId(layoutId: String) {
         context.kiebordDataStore.edit { prefs ->
             prefs[PreferencesKeys.PRIMARY_LAYOUT_ID] = layoutId
-            val currentEnabled = prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: setOf(
+            val currentEnabled = prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: linkedSetOf(
                 KiebordPreferences.LAYOUT_EN_QWERTY,
                 KiebordPreferences.LAYOUT_BN_BORNO,
+                KiebordPreferences.LAYOUT_BN_AVRO,
+                KiebordPreferences.LAYOUT_BN_EASY,
                 KiebordPreferences.LAYOUT_BN_NATIONAL
             )
             if (!currentEnabled.contains(layoutId)) {
@@ -298,9 +302,11 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun toggleLayoutEnabled(layoutId: String, enabled: Boolean) {
         context.kiebordDataStore.edit { prefs ->
-            val currentEnabled = (prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: setOf(
+            val currentEnabled = (prefs[PreferencesKeys.ENABLED_LAYOUT_IDS] ?: linkedSetOf(
                 KiebordPreferences.LAYOUT_EN_QWERTY,
                 KiebordPreferences.LAYOUT_BN_BORNO,
+                KiebordPreferences.LAYOUT_BN_AVRO,
+                KiebordPreferences.LAYOUT_BN_EASY,
                 KiebordPreferences.LAYOUT_BN_NATIONAL
             )).toMutableSet()
 
