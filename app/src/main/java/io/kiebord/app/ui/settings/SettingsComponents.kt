@@ -234,7 +234,7 @@ fun SettingsUnifiedTopBar(
             Column {
                 if (isMain) {
                     MorphGreetingText(
-                        words = listOf("Kiebord", "Borno CE"),
+                        words = listOf("Kiebord", "Borno Keyboard CE"),
                         textColor = colors.textPrimary,
                         fontSize = 28.sp,
                         height = 36.dp,
