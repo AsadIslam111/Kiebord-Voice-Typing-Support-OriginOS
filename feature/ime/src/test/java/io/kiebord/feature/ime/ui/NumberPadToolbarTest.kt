@@ -16,9 +16,13 @@ class NumberPadToolbarTest {
     }
 
     @Test
-    fun testKiebordPreferencesContainsNumberPadInDrawer() {
+    fun testKiebordPreferencesContainsNumberPadInPinnedTools() {
         val prefs = KiebordPreferences()
-        assertTrue("drawerTools must contain NUMBER_PAD by default", prefs.drawerTools.contains("NUMBER_PAD"))
+        assertTrue("pinnedTools must contain NUMBER_PAD by default", prefs.pinnedTools.contains("NUMBER_PAD"))
+        assertEquals(
+            listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE"),
+            prefs.pinnedTools
+        )
     }
 }
 

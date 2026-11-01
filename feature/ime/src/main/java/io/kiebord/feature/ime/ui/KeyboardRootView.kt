@@ -289,19 +289,22 @@ fun KeyboardRootView(
 
     // Phase 5, 6 & 8: Toolbar, Emoji, Resizer, Number row, TextEdit, Clipboard, and Tools Drawer states
     val defaultPinned = listOf(
+        ToolbarAction.EMOJI,
         ToolbarAction.TEXT_EDIT,
+        ToolbarAction.NUMBER_PAD,
         ToolbarAction.CLIPBOARD,
-        ToolbarAction.THEME_TOGGLE,
-        ToolbarAction.RESIZER
+        ToolbarAction.THEME_TOGGLE
     )
     val defaultDrawer = listOf(
+        ToolbarAction.RESIZER,
         ToolbarAction.NUMBER_ROW_TOGGLE,
         ToolbarAction.SECONDARY_KEYS_TOGGLE,
-        ToolbarAction.EMOJI,
+        ToolbarAction.KEY_POPUP_TOGGLE,
         ToolbarAction.ONE_HANDED,
+        ToolbarAction.SETTINGS,
+        ToolbarAction.TRADITIONAL_MODE,
         ToolbarAction.UNDO,
-        ToolbarAction.REDO,
-        ToolbarAction.SETTINGS
+        ToolbarAction.REDO
     )
     var pinnedTools by remember(initialPinnedTools) {
         val pinned = (initialPinnedTools ?: defaultPinned).distinct()
@@ -373,8 +376,8 @@ fun KeyboardRootView(
 
     val moveDrawerToToolbar: (ToolbarAction) -> Unit = { drawerAct ->
         if (drawerTools.contains(drawerAct)) {
-            if (pinnedTools.size >= 4) {
-                // Toolbar is already at capacity (4 tools max): swap with the slot at finger position
+            if (pinnedTools.size >= 5) {
+                // Toolbar is already at capacity (5 tools max): swap with the slot at finger position
                 val finger = currentFingerInRoot
                 val targetIndex = if (finger != null && rootWidthPx > 0f) {
                     val slotWidth = rootWidthPx / pinnedTools.size
@@ -385,7 +388,7 @@ fun KeyboardRootView(
                 val targetToolbarAct = pinnedTools[targetIndex]
                 interchangeTools(drawerAct, targetToolbarAct)
             } else {
-                // Toolbar has space (< 4 items): ADD TO TOOLBAR at finger slot position!
+                // Toolbar has space (< 5 items): ADD TO TOOLBAR at finger slot position!
                 val finger = currentFingerInRoot
                 val newPinned = pinnedTools.toMutableList()
                 if (finger != null && rootWidthPx > 0f && pinnedTools.isNotEmpty()) {

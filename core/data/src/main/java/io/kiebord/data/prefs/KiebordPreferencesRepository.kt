@@ -147,10 +147,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 suggestionBarMode = prefs[PreferencesKeys.SUGGESTION_BAR_MODE] ?: KiebordPreferences.SUGGESTION_BAR_MODE_NORMAL,
 
                 pinnedTools = run {
-                    val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
+                    val defaultPinned = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE")
                     val allActionNames = listOf(
-                        "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
-                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
+                        "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
+                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
                         "UNDO", "REDO"
                     )
                     prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
@@ -158,11 +158,11 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                     } ?: defaultPinned
                 },
                 drawerTools = run {
-                    val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
-                    val defaultDrawer = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO")
+                    val defaultPinned = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE")
+                    val defaultDrawer = listOf("RESIZER", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO")
                     val allActionNames = listOf(
-                        "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
-                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
+                        "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
+                        "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
                         "UNDO", "REDO"
                     )
                     val pinnedList = prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
@@ -399,10 +399,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
     }
 
     suspend fun updateToolbarTools(pinned: List<String>, drawer: List<String>) {
-        val defaultPinned = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER")
+        val defaultPinned = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE")
         val allActionNames = listOf(
-            "TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
-            "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
+            "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
+            "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
             "UNDO", "REDO"
         )
         val sanitizedPinned = pinned.filter { it in allActionNames }.distinct()

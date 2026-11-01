@@ -54,8 +54,8 @@ data class KiebordPreferences(
     val suggestionBarMode: String = SUGGESTION_BAR_MODE_NORMAL,
 
     // Toolbar rearrangement persistence
-    val pinnedTools: List<String> = listOf("TEXT_EDIT", "CLIPBOARD", "THEME_TOGGLE", "RESIZER"),
-    val drawerTools: List<String> = listOf("NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "NUMBER_PAD", "EMOJI", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE"),
+    val pinnedTools: List<String> = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE"),
+    val drawerTools: List<String> = listOf("RESIZER", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO"),
 
     // Voice Typing
     val voiceTypingEnabled: Boolean = true,

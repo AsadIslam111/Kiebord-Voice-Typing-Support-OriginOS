@@ -292,7 +292,7 @@ class KiebordService : InputMethodService() {
             val density = LocalDensity.current
             val navBarBottomDp = with(density) { navBarInsetBottomPx.toDp() }
 
-            val defaultPinnedActions = listOf(ToolbarAction.TEXT_EDIT, ToolbarAction.CLIPBOARD, ToolbarAction.THEME_TOGGLE, ToolbarAction.RESIZER)
+            val defaultPinnedActions = listOf(ToolbarAction.EMOJI, ToolbarAction.TEXT_EDIT, ToolbarAction.NUMBER_PAD, ToolbarAction.CLIPBOARD, ToolbarAction.THEME_TOGGLE)
             val pinnedToolbarActions = preferencesState.pinnedTools.mapNotNull { name ->
                 try { ToolbarAction.valueOf(name) } catch (_: Exception) { null }
             }.distinct()
