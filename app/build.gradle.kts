@@ -10,7 +10,7 @@ android {
     ndkVersion = "26.2.11394342"
 
     defaultConfig {
-        applicationId = "com.jayed.kiebord"
+        applicationId = "com.codepotro.borno.kiebord"
         minSdk = 24
         targetSdk = 35
         versionCode = 2

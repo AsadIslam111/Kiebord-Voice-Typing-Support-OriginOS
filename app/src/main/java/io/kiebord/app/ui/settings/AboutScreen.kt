@@ -321,7 +321,7 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-                text = "Kiebord is a FREE, Open Source IME for Android",
+                text = "Kiebord (Borno Community Edition) is a FREE, Open Source IME for Android",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = colors.textSecondary,
