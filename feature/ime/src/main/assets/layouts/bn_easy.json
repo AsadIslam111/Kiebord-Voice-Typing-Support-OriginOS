@@ -1,0 +1,283 @@
+{
+  "id": "bn_easy",
+  "name": "বর্ণ ইজি",
+  "displayName": "বর্ণ ইজি",
+  "language": "bn",
+  "direction": "LTR",
+  "rows": [
+    {
+      "keys": [
+        {
+          "label": "অ"
+        },
+        {
+          "label": "আ",
+          "flickUp": "া"
+        },
+        {
+          "label": "ই",
+          "flickUp": "ি"
+        },
+        {
+          "label": "ঈ",
+          "flickUp": "ী"
+        },
+        {
+          "label": "উ",
+          "flickUp": "ু"
+        },
+        {
+          "label": "ঊ",
+          "flickUp": "ূ"
+        },
+        {
+          "label": "ঋ",
+          "flickUp": "ৃ"
+        },
+        {
+          "label": "এ",
+          "flickUp": "ে"
+        },
+        {
+          "label": "ঐ",
+          "flickUp": "ৈ"
+        },
+        {
+          "label": "ও",
+          "flickUp": "ো"
+        },
+        {
+          "label": "ঔ",
+          "flickUp": "ৌ"
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "ক"
+        },
+        {
+          "label": "খ"
+        },
+        {
+          "label": "গ"
+        },
+        {
+          "label": "ঘ"
+        },
+        {
+          "label": "ঙ"
+        },
+        {
+          "label": "চ"
+        },
+        {
+          "label": "ছ"
+        },
+        {
+          "label": "জ"
+        },
+        {
+          "label": "ঝ"
+        },
+        {
+          "label": "ঞ"
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "ট"
+        },
+        {
+          "label": "ঠ"
+        },
+        {
+          "label": "ড"
+        },
+        {
+          "label": "ঢ"
+        },
+        {
+          "label": "ণ"
+        },
+        {
+          "label": "ত"
+        },
+        {
+          "label": "থ"
+        },
+        {
+          "label": "দ"
+        },
+        {
+          "label": "ধ"
+        },
+        {
+          "label": "ন"
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "প"
+        },
+        {
+          "label": "ফ"
+        },
+        {
+          "label": "ব"
+        },
+        {
+          "label": "ভ"
+        },
+        {
+          "label": "ম"
+        },
+        {
+          "label": "য"
+        },
+        {
+          "label": "র"
+        },
+        {
+          "label": "ল"
+        },
+        {
+          "label": "শ"
+        },
+        {
+          "label": "ষ"
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "স",
+          "moreKeys": [
+            "ACTION_SELECT_ALL"
+          ]
+        },
+        {
+          "label": "হ",
+          "moreKeys": [
+            "ACTION_CUT"
+          ]
+        },
+        {
+          "label": "ড়",
+          "moreKeys": [
+            "ACTION_COPY"
+          ]
+        },
+        {
+          "label": "ঢ়",
+          "moreKeys": [
+            "ACTION_PASTE"
+          ]
+        },
+        {
+          "label": "য়"
+        },
+        {
+          "label": "ৎ"
+        },
+        {
+          "label": "ং"
+        },
+        {
+          "label": "ঃ"
+        },
+        {
+          "label": "ঁ"
+        },
+        {
+          "label": "্",
+          "moreKeys": [
+            "্য",
+            "্র",
+            "়"
+          ]
+        },
+        {
+          "type": "DELETE",
+          "icon": "backspace",
+          "widthWeight": 1.25
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "?১২৩",
+          "type": "SYMBOLS",
+          "widthWeight": 1.5,
+          "slidingInput": true
+        },
+        {
+          "label": ",",
+          "widthWeight": 1.0,
+          "moreKeys": [
+            "ACTION_SETTINGS",
+            "ACTION_ONE_HANDED"
+          ]
+        },
+        {
+          "type": "SWITCH_LANGUAGE",
+          "icon": "globe",
+          "widthWeight": 1.0
+        },
+        {
+          "label": " ",
+          "type": "SPACE",
+          "icon": "space",
+          "widthWeight": 3.0
+        },
+        {
+          "label": "ZW\nNJ",
+          "commitText": "‌",
+          "widthWeight": 1.0,
+          "moreKeys": [
+            "ZWJ"
+          ]
+        },
+        {
+          "label": "।",
+          "widthWeight": 1.0,
+          "moreKeysColumns": 9,
+          "moreKeys": [
+            ".",
+            ",",
+            "?",
+            "!",
+            "#",
+            ")",
+            "(",
+            "/",
+            ";",
+            "'",
+            "@",
+            ":",
+            "-",
+            "\"",
+            "+",
+            "%",
+            "&"
+          ]
+        },
+        {
+          "type": "ACTION",
+          "icon": "enter",
+          "widthWeight": 1.5,
+          "moreKeys": [
+            "ACTION_EMOJI"
+          ]
+        }
+      ]
+    }
+  ]
+}

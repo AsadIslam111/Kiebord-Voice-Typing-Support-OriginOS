@@ -138,6 +138,11 @@ data class KeyboardLayoutDef(
     fun resolveCoreRowsForSymbols(showNumberRow: Boolean): List<KeyRow> {
         if (this.rows.isEmpty()) return emptyList()
 
+        // 6-row layouts (e.g. Borno Easy symbols) preserve all 6 core rows across both modes
+        if (this.rows.size >= 6) {
+            return this.rows
+        }
+
         val isMoreSymbols = this.id.contains("symbols_2") || this.id.contains("more")
 
         if (!showNumberRow) {

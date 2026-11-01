@@ -90,11 +90,16 @@ fun OnboardingLayoutSelectionStep(
                 id = KiebordPreferences.LAYOUT_BN_PROBHAT,
                 title = "প্রভাত",
                 subtitle = "Popular fixed Bengali layout"
+            ),
+            LayoutOption(
+                id = KiebordPreferences.LAYOUT_BN_EASY,
+                title = "বর্ণ ইজি",
+                subtitle = "Easy alphabetical layout"
             )
         )
     }
 
-    val displayedLayouts = remember(layoutOptions) { layoutOptions.take(5) }
+    val displayedLayouts = remember(layoutOptions) { layoutOptions.take(6) }
 
     var enabledLayouts by remember(initialEnabledLayouts) { mutableStateOf(initialEnabledLayouts) }
     var primaryLayout by remember(initialPrimaryLayout) { mutableStateOf(initialPrimaryLayout) }

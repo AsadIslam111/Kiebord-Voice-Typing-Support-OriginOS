@@ -7,6 +7,60 @@ import io.kiebord.common.model.KeyboardLayoutDef
 
 object PredefinedLayouts {
 
+    val NumberRowAr: KeyRow = KeyRow(
+        listOf(
+            KeyDef("١", shiftedLabel = "!", moreKeys = listOf("1", "١")),
+            KeyDef("٢", shiftedLabel = "@", moreKeys = listOf("2", "٢")),
+            KeyDef("٣", shiftedLabel = "#", moreKeys = listOf("3", "٣")),
+            KeyDef("٤", shiftedLabel = "$", moreKeys = listOf("4", "٤")),
+            KeyDef("٥", shiftedLabel = "٪", moreKeys = listOf("5", "٥", "%")),
+            KeyDef("٦", shiftedLabel = "^", moreKeys = listOf("6", "٦")),
+            KeyDef("٧", shiftedLabel = "&", moreKeys = listOf("7", "٧")),
+            KeyDef("٨", shiftedLabel = "*", moreKeys = listOf("8", "٨")),
+            KeyDef("٩", shiftedLabel = ")", moreKeys = listOf("9", "٩")),
+            KeyDef("٠", shiftedLabel = "(", moreKeys = listOf("0", "٠"))
+        )
+    )
+
+    val NumberRowBn: KeyRow = KeyRow(
+        listOf(
+            KeyDef("১", shiftedLabel = "!", moreKeys = listOf("1", "১")),
+            KeyDef("২", shiftedLabel = "@", moreKeys = listOf("2", "২")),
+            KeyDef("৩", shiftedLabel = "#", moreKeys = listOf("3", "৩")),
+            KeyDef("৪", shiftedLabel = "৳", moreKeys = listOf("4", "৪", "$", "₹")),
+            KeyDef("৫", shiftedLabel = "%", moreKeys = listOf("5", "৫")),
+            KeyDef("৬", shiftedLabel = "^", moreKeys = listOf("6", "৬")),
+            KeyDef("৭", shiftedLabel = "&", moreKeys = listOf("7", "৭")),
+            KeyDef("৮", shiftedLabel = "*", moreKeys = listOf("8", "৮")),
+            KeyDef("৯", shiftedLabel = "(", moreKeys = listOf("9", "৯")),
+            KeyDef("০", shiftedLabel = ")", moreKeys = listOf("0", "০"))
+        )
+    )
+
+    val NumberRowEn: KeyRow = KeyRow(
+        listOf(
+            KeyDef("1", shiftedLabel = "!", moreKeys = listOf("1", "¹", "½", "১")),
+            KeyDef("2", shiftedLabel = "@", moreKeys = listOf("2", "²", "⅔", "২")),
+            KeyDef("3", shiftedLabel = "#", moreKeys = listOf("3", "³", "¾", "৩")),
+            KeyDef("4", shiftedLabel = "$", moreKeys = listOf("4", "⁴", "৪")),
+            KeyDef("5", shiftedLabel = "%", moreKeys = listOf("5", "⁵", "৫")),
+            KeyDef("6", shiftedLabel = "^", moreKeys = listOf("6", "⁶", "৬")),
+            KeyDef("7", shiftedLabel = "&", moreKeys = listOf("7", "⁷", "৭")),
+            KeyDef("8", shiftedLabel = "*", moreKeys = listOf("8", "⁸", "৮")),
+            KeyDef("9", shiftedLabel = "(", moreKeys = listOf("9", "⁹", "৯")),
+            KeyDef("0", shiftedLabel = ")", moreKeys = listOf("0", "⁰", "০", "∅"))
+        )
+    )
+
+    fun createNumberRow(language: String): KeyRow {
+        return when (language) {
+            "bn" -> NumberRowBn
+            "ar" -> NumberRowAr
+            else -> NumberRowEn
+        }
+    }
+
+
     val EnglishQwerty = KeyboardLayoutDef(
         id = "en_qwerty",
         name = "English",
@@ -316,6 +370,303 @@ object PredefinedLayouts {
         )
     )
 
+
+    val BengaliBornoEasyVowelRow: KeyRow = KeyRow(
+        listOf(
+            KeyDef("অ"),
+            KeyDef("আ", flickUp = "া"),
+            KeyDef("ই", flickUp = "ি"),
+            KeyDef("ঈ", flickUp = "ী"),
+            KeyDef("উ", flickUp = "ু"),
+            KeyDef("ঊ", flickUp = "ূ"),
+            KeyDef("ঋ", flickUp = "ৃ"),
+            KeyDef("এ", flickUp = "ে"),
+            KeyDef("ঐ", flickUp = "ৈ"),
+            KeyDef("ও", flickUp = "ো"),
+            KeyDef("ঔ", flickUp = "ৌ")
+        )
+    )
+
+    fun getBornoEasyFirstRow(isKarMode: Boolean, cluster: String = ""): KeyRow {
+        if (!isKarMode) return BengaliBornoEasyVowelRow
+
+        val c = cluster.ifEmpty { "" }
+        return KeyRow(
+            listOf(
+                KeyDef(
+                    label = c.ifEmpty { "অ" },
+                    commitText = "",
+                    flickUp = "অ"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09BE" else "\u09BE",
+                    commitText = "\u09BE",
+                    flickUp = "আ"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09BF" else "\u09BF",
+                    commitText = "\u09BF",
+                    flickUp = "ই"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09C0" else "\u09C0",
+                    commitText = "\u09C0",
+                    flickUp = "ঈ"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09C1" else "\u09C1",
+                    commitText = "\u09C1",
+                    flickUp = "উ"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09C2" else "\u09C2",
+                    commitText = "\u09C2",
+                    flickUp = "ঊ"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09C3" else "\u09C3",
+                    commitText = "\u09C3",
+                    flickUp = "ঋ"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09C7" else "\u09C7",
+                    commitText = "\u09C7",
+                    flickUp = "এ"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09C8" else "\u09C8",
+                    commitText = "\u09C8",
+                    flickUp = "ঐ"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09CB" else "\u09CB",
+                    commitText = "\u09CB",
+                    flickUp = "ও"
+                ),
+                KeyDef(
+                    label = if (c.isNotEmpty()) "$c\u09CC" else "\u09CC",
+                    commitText = "\u09CC",
+                    flickUp = "ঔ"
+                )
+            )
+        )
+    }
+
+    val BengaliBornoEasySymbols: KeyboardLayoutDef = KeyboardLayoutDef(
+        id = "bn_easy_symbols",
+        name = "বর্ণ ইজি Symbols",
+        displayName = "বর্ণ ইজি",
+        language = "bn",
+        numberRow = NumberRowBn,
+        rows = listOf(
+            NumberRowBn,
+            KeyRow(
+                listOf(
+                    KeyDef("1"),
+                    KeyDef("2"),
+                    KeyDef("3"),
+                    KeyDef("4"),
+                    KeyDef("5"),
+                    KeyDef("6"),
+                    KeyDef("7"),
+                    KeyDef("8"),
+                    KeyDef("9"),
+                    KeyDef("0")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("!"),
+                    KeyDef("@"),
+                    KeyDef("#"),
+                    KeyDef("$"),
+                    KeyDef("%"),
+                    KeyDef("^"),
+                    KeyDef("&"),
+                    KeyDef("*"),
+                    KeyDef("("),
+                    KeyDef(")")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("-"),
+                    KeyDef("_"),
+                    KeyDef("="),
+                    KeyDef("+"),
+                    KeyDef("["),
+                    KeyDef("]"),
+                    KeyDef("{"),
+                    KeyDef("}"),
+                    KeyDef(";"),
+                    KeyDef(":")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("'"),
+                    KeyDef("\""),
+                    KeyDef("`"),
+                    KeyDef("~"),
+                    KeyDef("<"),
+                    KeyDef(">"),
+                    KeyDef("?"),
+                    KeyDef("/"),
+                    KeyDef("|"),
+                    KeyDef("\\")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.5f),
+                    KeyDef(",", widthWeight = 1.0f, moreKeys = listOf("ACTION_SETTINGS", "ACTION_ONE_HANDED")),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 3.0f),
+                    KeyDef("ZW\nNJ", commitText = "\u200C", widthWeight = 1.0f, moreKeys = listOf("ZWJ")),
+                    KeyDef("।", widthWeight = 1.0f, moreKeys = listOf(".", "…")),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
+                )
+            )
+        )
+    )
+
+    val BengaliBornoEasySymbolsMore: KeyboardLayoutDef = KeyboardLayoutDef(
+        id = "bn_easy_symbols_more",
+        name = "বর্ণ ইজি Symbols More",
+        displayName = "বর্ণ ইজি",
+        language = "bn",
+        numberRow = NumberRowBn,
+        rows = listOf(
+            NumberRowBn,
+            KeyRow(
+                listOf(
+                    KeyDef("~"),
+                    KeyDef("`"),
+                    KeyDef("|"),
+                    KeyDef("•", moreKeys = listOf("•", "♪", "♥", "♠", "♦", "♣")),
+                    KeyDef("√"),
+                    KeyDef("π", moreKeys = listOf("π", "Π")),
+                    KeyDef("÷"),
+                    KeyDef("×"),
+                    KeyDef("¶", moreKeys = listOf("¶", "§")),
+                    KeyDef("∆")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("£"),
+                    KeyDef("¢"),
+                    KeyDef("€"),
+                    KeyDef("¥"),
+                    KeyDef("^", moreKeys = listOf("^", "↑", "↓", "←", "→")),
+                    KeyDef("°", moreKeys = listOf("°", "′", "″")),
+                    KeyDef("=", moreKeys = listOf("=", "≠", "≈", "∞")),
+                    KeyDef("{"),
+                    KeyDef("}"),
+                    KeyDef("\\")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("™"),
+                    KeyDef("®"),
+                    KeyDef("©"),
+                    KeyDef("§"),
+                    KeyDef("°"),
+                    KeyDef("º"),
+                    KeyDef("±"),
+                    KeyDef("∓"),
+                    KeyDef("≠"),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.0f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("≤"),
+                    KeyDef("≥"),
+                    KeyDef("∫"),
+                    KeyDef("Σ"),
+                    KeyDef("≈"),
+                    KeyDef("∓"),
+                    KeyDef("½"),
+                    KeyDef("∞"),
+                    KeyDef("‰"),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.0f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.5f),
+                    KeyDef(",", widthWeight = 1.0f, moreKeys = listOf("ACTION_SETTINGS", "ACTION_ONE_HANDED")),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 3.0f),
+                    KeyDef("ZW\nNJ", commitText = "\u200C", widthWeight = 1.0f, moreKeys = listOf("ZWJ")),
+                    KeyDef("।", widthWeight = 1.0f, moreKeys = listOf(".", "…")),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
+                )
+            )
+        )
+    )
+
+    val BengaliBornoEasy: KeyboardLayoutDef = KeyboardLayoutDef(
+        id = "bn_easy",
+        name = "বর্ণ ইজি",
+        displayName = "বর্ণ ইজি",
+        language = "bn",
+        symbolsLayout = BengaliBornoEasySymbols,
+        moreSymbolsLayout = BengaliBornoEasySymbolsMore,
+        numberRow = NumberRowBn,
+        rows = listOf(
+            BengaliBornoEasyVowelRow,
+            KeyRow(
+                listOf(
+                    KeyDef("ক"), KeyDef("খ"), KeyDef("গ"), KeyDef("ঘ"), KeyDef("ঙ"),
+                    KeyDef("চ"), KeyDef("ছ"), KeyDef("জ"), KeyDef("ঝ"), KeyDef("ঞ")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("ট"), KeyDef("ঠ"), KeyDef("ড"), KeyDef("ঢ"), KeyDef("ণ"),
+                    KeyDef("ত"), KeyDef("থ"), KeyDef("দ"), KeyDef("ধ"), KeyDef("ন")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("প"), KeyDef("ফ"), KeyDef("ব"), KeyDef("ভ"), KeyDef("ম"),
+                    KeyDef("য"), KeyDef("র"), KeyDef("ল"), KeyDef("শ"), KeyDef("ষ")
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("স", moreKeys = listOf("ACTION_SELECT_ALL")),
+                    KeyDef("হ", moreKeys = listOf("ACTION_CUT")),
+                    KeyDef("ড়", moreKeys = listOf("ACTION_COPY")),
+                    KeyDef("ঢ়", moreKeys = listOf("ACTION_PASTE")),
+                    KeyDef("য়"),
+                    KeyDef("ৎ"),
+                    KeyDef("ং"),
+                    KeyDef("ঃ"),
+                    KeyDef("ঁ"),
+                    KeyDef("্", moreKeys = listOf("্য", "্র", "়")),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.25f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("?১২৩", type = KeyType.SYMBOLS, widthWeight = 1.5f, slidingInput = true),
+                    KeyDef(",", widthWeight = 1.0f, moreKeys = listOf("ACTION_SETTINGS", "ACTION_ONE_HANDED")),
+                    KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 3.0f),
+                    KeyDef("ZW\nNJ", commitText = "\u200C", widthWeight = 1.0f, moreKeys = listOf("ZWJ")),
+                    KeyDef("।", widthWeight = 1.0f, moreKeysColumns = 9, moreKeys = listOf(".", ",", "?", "!", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "%", "&")),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
+                )
+            )
+        )
+    )
+
+    fun isBornoEasy(id: String): Boolean = id == "bn_easy" || id == "borno_easy" || id.startsWith("bn_easy") || id.startsWith("borno_easy")
+
     val Symbols = KeyboardLayoutDef(
         id = "symbols_1",
         name = "Symbols",
@@ -497,11 +848,12 @@ object PredefinedLayouts {
     }
 
     val allPredefined: List<KeyboardLayoutDef> by lazy {
-        listOf(EnglishQwerty, BengaliBorno, BengaliAvro, BengaliNational, BengaliProbhat)
+        listOf(EnglishQwerty, BengaliBorno, BengaliAvro, BengaliNational, BengaliProbhat, BengaliBornoEasy)
     }
 
     fun fromId(id: String): KeyboardLayoutDef {
         return when (id) {
+            "bn_easy", "borno_easy" -> BengaliBornoEasy
             "bn_borno" -> BengaliBorno
             "bn_avro" -> BengaliAvro
             "bn_probhat" -> BengaliProbhat
@@ -517,6 +869,7 @@ object PredefinedLayouts {
     fun displayName(id: String): String {
         customLayoutResolver?.invoke(id)?.let { return it }
         return when (id) {
+            "bn_easy", "borno_easy" -> "বর্ণ ইজি"
             "bn_borno" -> "বর্ণ ফোনেটিক"
             "bn_avro" -> "অভ্র"
             "bn_probhat" -> "প্রভাত"
@@ -527,56 +880,4 @@ object PredefinedLayouts {
         }
     }
 
-    val NumberRowAr: KeyRow = KeyRow(
-        listOf(
-            KeyDef("١", shiftedLabel = "!", moreKeys = listOf("1", "١")),
-            KeyDef("٢", shiftedLabel = "@", moreKeys = listOf("2", "٢")),
-            KeyDef("٣", shiftedLabel = "#", moreKeys = listOf("3", "٣")),
-            KeyDef("٤", shiftedLabel = "$", moreKeys = listOf("4", "٤")),
-            KeyDef("٥", shiftedLabel = "٪", moreKeys = listOf("5", "٥", "%")),
-            KeyDef("٦", shiftedLabel = "^", moreKeys = listOf("6", "٦")),
-            KeyDef("٧", shiftedLabel = "&", moreKeys = listOf("7", "٧")),
-            KeyDef("٨", shiftedLabel = "*", moreKeys = listOf("8", "٨")),
-            KeyDef("٩", shiftedLabel = ")", moreKeys = listOf("9", "٩")),
-            KeyDef("٠", shiftedLabel = "(", moreKeys = listOf("0", "٠"))
-        )
-    )
-
-    val NumberRowBn: KeyRow = KeyRow(
-        listOf(
-            KeyDef("১", shiftedLabel = "!", moreKeys = listOf("1", "১")),
-            KeyDef("২", shiftedLabel = "@", moreKeys = listOf("2", "২")),
-            KeyDef("৩", shiftedLabel = "#", moreKeys = listOf("3", "৩")),
-            KeyDef("৪", shiftedLabel = "৳", moreKeys = listOf("4", "৪", "$", "₹")),
-            KeyDef("৫", shiftedLabel = "%", moreKeys = listOf("5", "৫")),
-            KeyDef("৬", shiftedLabel = "^", moreKeys = listOf("6", "৬")),
-            KeyDef("৭", shiftedLabel = "&", moreKeys = listOf("7", "৭")),
-            KeyDef("৮", shiftedLabel = "*", moreKeys = listOf("8", "৮")),
-            KeyDef("৯", shiftedLabel = "(", moreKeys = listOf("9", "৯")),
-            KeyDef("০", shiftedLabel = ")", moreKeys = listOf("0", "০"))
-        )
-    )
-
-    val NumberRowEn: KeyRow = KeyRow(
-        listOf(
-            KeyDef("1", shiftedLabel = "!", moreKeys = listOf("1", "¹", "½", "১")),
-            KeyDef("2", shiftedLabel = "@", moreKeys = listOf("2", "²", "⅔", "২")),
-            KeyDef("3", shiftedLabel = "#", moreKeys = listOf("3", "³", "¾", "৩")),
-            KeyDef("4", shiftedLabel = "$", moreKeys = listOf("4", "⁴", "৪")),
-            KeyDef("5", shiftedLabel = "%", moreKeys = listOf("5", "⁵", "৫")),
-            KeyDef("6", shiftedLabel = "^", moreKeys = listOf("6", "⁶", "৬")),
-            KeyDef("7", shiftedLabel = "&", moreKeys = listOf("7", "⁷", "৭")),
-            KeyDef("8", shiftedLabel = "*", moreKeys = listOf("8", "⁸", "৮")),
-            KeyDef("9", shiftedLabel = "(", moreKeys = listOf("9", "⁹", "৯")),
-            KeyDef("0", shiftedLabel = ")", moreKeys = listOf("0", "⁰", "০", "∅"))
-        )
-    )
-
-    fun createNumberRow(language: String): KeyRow {
-        return when (language) {
-            "bn" -> NumberRowBn
-            "ar" -> NumberRowAr
-            else -> NumberRowEn
-        }
-    }
 }

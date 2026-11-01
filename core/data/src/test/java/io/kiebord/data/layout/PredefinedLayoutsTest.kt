@@ -16,6 +16,89 @@ class PredefinedLayoutsTest {
         assertEquals("অভ্র", PredefinedLayouts.displayName("bn_avro"))
         assertEquals("প্রভাত", PredefinedLayouts.displayName("bn_probhat"))
         assertEquals("Arabic", PredefinedLayouts.displayName("ar_arabic"))
+        assertEquals("বর্ণ ইজি", PredefinedLayouts.displayName("bn_easy"))
+        assertEquals("বর্ণ ইজি", PredefinedLayouts.displayName("borno_easy"))
+    }
+
+    @Test
+    fun testBengaliBornoEasyLayoutResolution() {
+        val layout = PredefinedLayouts.fromId("bn_easy")
+        assertEquals("bn_easy", layout.id)
+        assertEquals("বর্ণ ইজি", layout.name)
+        assertEquals(6, layout.rows.size)
+
+        // Row 0: Vowels (11 keys)
+        val r0 = layout.rows[0].keys
+        assertEquals(11, r0.size)
+        assertEquals("অ", r0[0].label)
+        assertEquals("আ", r0[1].label)
+        assertEquals("া", r0[1].flickUp)
+        assertTrue(r0[1].moreKeys.isEmpty())
+        assertEquals("ঔ", r0[10].label)
+        assertEquals("ৌ", r0[10].flickUp)
+
+        // Rows 1-3: Consonants (10 keys each)
+        assertEquals(10, layout.rows[1].keys.size)
+        assertEquals("ক", layout.rows[1].keys[0].label)
+        assertEquals("ঞ", layout.rows[1].keys[9].label)
+
+        assertEquals(10, layout.rows[2].keys.size)
+        assertEquals("ট", layout.rows[2].keys[0].label)
+        assertEquals("ন", layout.rows[2].keys[9].label)
+
+        assertEquals(10, layout.rows[3].keys.size)
+        assertEquals("প", layout.rows[3].keys[0].label)
+        assertEquals("ষ", layout.rows[3].keys[9].label)
+
+        // Row 4: স..্ + Delete (11 keys)
+        val r4 = layout.rows[4].keys
+        assertEquals(11, r4.size)
+        assertEquals("স", r4[0].label)
+        assertEquals("্", r4[9].label)
+        assertEquals(listOf("্য", "্র", "়"), r4[9].moreKeys)
+        assertEquals(KeyType.DELETE, r4[10].type)
+
+        // Row 5: Function & spacebar row (7 keys including ZWNJ)
+        val r5 = layout.rows[5].keys
+        assertEquals(7, r5.size)
+        assertEquals(KeyType.SYMBOLS, r5[0].type)
+        assertEquals(KeyType.SPACE, r5[3].type)
+        assertEquals(3.0f, r5[3].widthWeight, 0.01f)
+        assertEquals("‌", r5[4].commitText)
+        assertEquals(listOf("ZWJ"), r5[4].moreKeys)
+        assertEquals(1.0f, r5[4].widthWeight, 0.01f)
+        assertEquals("।", r5[5].label)
+        assertEquals(KeyType.ACTION, r5[6].type)
+
+        // Test dynamic first row: Vowel Mode
+        val vowelRow = PredefinedLayouts.getBornoEasyFirstRow(isKarMode = false)
+        assertEquals(11, vowelRow.keys.size)
+        assertEquals("অ", vowelRow.keys[0].label)
+        assertEquals("আ", vowelRow.keys[1].label)
+
+        // Test dynamic first row: Kar Mode with consonant "ক"
+        val karRowKo = PredefinedLayouts.getBornoEasyFirstRow(isKarMode = true, cluster = "ক")
+        assertEquals(11, karRowKo.keys.size)
+        assertEquals("ক", karRowKo.keys[0].label)
+        assertEquals("", karRowKo.keys[0].commitText) // confirms inherent vowel, no kar appended
+        assertEquals("কা", karRowKo.keys[1].label)
+        assertEquals("া", karRowKo.keys[1].commitText)
+        assertEquals("কি", karRowKo.keys[2].label)
+        assertEquals("ি", karRowKo.keys[2].commitText)
+        assertEquals("কৌ", karRowKo.keys[10].label)
+        assertEquals("ৌ", karRowKo.keys[10].commitText)
+
+        // Test dynamic first row: Kar Mode with conjunct "ক্ত"
+        val karRowKto = PredefinedLayouts.getBornoEasyFirstRow(isKarMode = true, cluster = "ক্ত")
+        assertEquals(11, karRowKto.keys.size)
+        assertEquals("ক্ত", karRowKto.keys[0].label)
+        assertEquals("", karRowKto.keys[0].commitText)
+        assertEquals("ক্তা", karRowKto.keys[1].label)
+        assertEquals("া", karRowKto.keys[1].commitText)
+        assertEquals("ক্তি", karRowKto.keys[2].label)
+        assertEquals("ি", karRowKto.keys[2].commitText)
+        assertEquals("ক্তৌ", karRowKto.keys[10].label)
+        assertEquals("ৌ", karRowKto.keys[10].commitText)
     }
 
     @Test
@@ -623,28 +706,32 @@ class PredefinedLayoutsTest {
         }
 
         for (layout in PredefinedLayouts.allPredefined) {
+            val is6Row = layout.rows.size >= 6
+            val expectedWithNum = if (is6Row) 7 else 5
+            val expectedNoNum = if (is6Row) 6 else 4
+
             val sym = layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
             val moreSym = layout.effectiveMoreSymbolsLayout() ?: PredefinedLayouts.SymbolsMore
 
-            // 1. With number row enabled: ABC, ?123, and =< MUST all have 5 rows
+            // 1. With number row enabled: ABC, ?123, and =< must match
             val rowsAlphaWithNum = buildRows(layout, layout, showNumberRow = true)
             val rowsSymWithNum = buildRows(sym, layout, showNumberRow = true)
             val rowsMoreWithNum = buildRows(moreSym, layout, showNumberRow = true)
 
-            assertEquals("${layout.id} ABC row count with number row must be 5", 5, rowsAlphaWithNum.size)
-            assertEquals("${layout.id} Symbols (?123) row count with number row must be 5", 5, rowsSymWithNum.size)
-            assertEquals("${layout.id} More Symbols (=<) row count with number row must be 5", 5, rowsMoreWithNum.size)
+            assertEquals("${layout.id} ABC row count with number row must be $expectedWithNum", expectedWithNum, rowsAlphaWithNum.size)
+            assertEquals("${layout.id} Symbols (?123) row count with number row must be $expectedWithNum", expectedWithNum, rowsSymWithNum.size)
+            assertEquals("${layout.id} More Symbols (=<) row count with number row must be $expectedWithNum", expectedWithNum, rowsMoreWithNum.size)
             assertEquals("${layout.id} row counts must match across ABC and ?123", rowsAlphaWithNum.size, rowsSymWithNum.size)
             assertEquals("${layout.id} row counts must match across ABC and =<", rowsAlphaWithNum.size, rowsMoreWithNum.size)
 
-            // 2. With number row disabled: ABC, ?123, and =< MUST all have 4 rows
+            // 2. With number row disabled: ABC, ?123, and =< must match
             val rowsAlphaNoNum = buildRows(layout, layout, showNumberRow = false)
             val rowsSymNoNum = buildRows(sym, layout, showNumberRow = false)
             val rowsMoreNoNum = buildRows(moreSym, layout, showNumberRow = false)
 
-            assertEquals("${layout.id} ABC row count without number row must be 4", 4, rowsAlphaNoNum.size)
-            assertEquals("${layout.id} Symbols (?123) row count without number row must be 4", 4, rowsSymNoNum.size)
-            assertEquals("${layout.id} More Symbols (=<) row count without number row must be 4", 4, rowsMoreNoNum.size)
+            assertEquals("${layout.id} ABC row count without number row must be $expectedNoNum", expectedNoNum, rowsAlphaNoNum.size)
+            assertEquals("${layout.id} Symbols (?123) row count without number row must be $expectedNoNum", expectedNoNum, rowsSymNoNum.size)
+            assertEquals("${layout.id} More Symbols (=<) row count without number row must be $expectedNoNum", expectedNoNum, rowsMoreNoNum.size)
             assertEquals("${layout.id} row counts must match across ABC and ?123", rowsAlphaNoNum.size, rowsSymNoNum.size)
             assertEquals("${layout.id} row counts must match across ABC and =<", rowsAlphaNoNum.size, rowsMoreNoNum.size)
         }

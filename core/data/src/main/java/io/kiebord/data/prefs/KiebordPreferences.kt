@@ -1,4 +1,4 @@
-package io.kiebord.data.prefs
+﻿package io.kiebord.data.prefs
 
 /**
  * Immutable snapshot of all user-configurable settings and preferences for Kiebord.
@@ -98,6 +98,7 @@ data class KiebordPreferences(
         const val LAYOUT_BN_AVRO = "bn_avro"
         const val LAYOUT_BN_PROBHAT = "bn_probhat"
         const val LAYOUT_BN_NATIONAL = "bn_national"
+        const val LAYOUT_BN_EASY = "bn_easy"
         const val LAYOUT_AR_ARABIC = "ar_arabic"
     }
 }

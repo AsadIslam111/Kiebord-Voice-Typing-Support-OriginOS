@@ -138,6 +138,8 @@ fun KeyboardRootView(
     layout: KeyboardLayoutDef,
     primaryAlphaLayout: KeyboardLayoutDef = layout,
     shiftState: ShiftState,
+    isBornoEasyKarMode: Boolean = false,
+    bornoEasyTypedCluster: String = "",
     onKeyTap: (KeyDef) -> Unit,
     onKeyLongPress: (KeyDef) -> Unit,
     onTextAction: (TextAction, Boolean) -> Boolean = { _, _ -> false },
@@ -457,13 +459,27 @@ fun KeyboardRootView(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val screenHeightDp = configuration.screenHeightDp.dp
 
-    // Baseline row height: in portrait 61dp without number row, 54dp with number row
-    val basePortraitRowHeight = if (showNumberRow) 54.dp else 61.dp
+    // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
+    val displayLayout = if (isSlidingSymbolMode) (layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols) else layout
+
+    val isBornoEasyLayout = PredefinedLayouts.isBornoEasy(displayLayout.id) || PredefinedLayouts.isBornoEasy(primaryAlphaLayout.id)
+
+    // Baseline row height: in portrait 61dp without number row, 54dp with number row (scaled for 6-row layouts like Borno Easy)
+    val basePortraitRowHeight = when {
+        isBornoEasyLayout -> if (showNumberRow) 45.dp else 50.dp
+        showNumberRow -> 54.dp
+        else -> 61.dp
+    }
 
     // In landscape, by default the keyboard height is 60% of landscape height
-    val totalLandscapeRows = if (showNumberRow) 5f else 4f
-    val baseLandscapeRowHeight = remember(screenHeightDp, totalLandscapeRows) {
-        ((screenHeightDp * 0.60f - 38.dp - 4.dp).coerceAtLeast(110.dp) / totalLandscapeRows)
+    val totalLandscapeRows = when {
+        isBornoEasyLayout -> if (showNumberRow) 7f else 6f
+        showNumberRow -> 5f
+        else -> 4f
+    }
+    val landscapeScale = if (isBornoEasyLayout) 0.65f else 0.60f
+    val baseLandscapeRowHeight = remember(screenHeightDp, totalLandscapeRows, isBornoEasyLayout) {
+        ((screenHeightDp * landscapeScale - 38.dp - 4.dp).coerceAtLeast(110.dp) / totalLandscapeRows)
     }
 
     val activeBaseRowHeight = if (isLandscape) baseLandscapeRowHeight else basePortraitRowHeight
@@ -548,15 +564,13 @@ fun KeyboardRootView(
         }
     }
 
-    // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
-    val displayLayout = if (isSlidingSymbolMode) (layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols) else layout
 
     val effectiveShiftState = if (isSlidingShiftMode) ShiftState.ONE_SHOT else shiftState
     val isShiftActive = effectiveShiftState != ShiftState.UNSHIFTED
     val isSymbolLayout = displayLayout.isSymbolsLayout()
     val baseAlphaLayout = if (isSymbolLayout) (if (isSlidingSymbolMode) layout else primaryAlphaLayout) else displayLayout
 
-    val keyboardRows: List<KeyRow> = remember(displayLayout, baseAlphaLayout, showNumberRow, extraRowOverrides, isShiftActive) {
+    val keyboardRows: List<KeyRow> = remember(displayLayout, baseAlphaLayout, showNumberRow, extraRowOverrides, isShiftActive, isBornoEasyKarMode, bornoEasyTypedCluster) {
         val numberRow: List<KeyRow> = if (showNumberRow) {
             val baseRow = if (isShiftActive && displayLayout.shiftedNumberRow != null) {
                 displayLayout.shiftedNumberRow!!
@@ -582,6 +596,9 @@ fun KeyboardRootView(
         }
         val coreRowsToRender: List<KeyRow> = if (isSymbolLayout) {
             displayLayout.resolveCoreRowsForSymbols(showNumberRow)
+        } else if (PredefinedLayouts.isBornoEasy(displayLayout.id)) {
+            val firstRow = PredefinedLayouts.getBornoEasyFirstRow(isBornoEasyKarMode, bornoEasyTypedCluster)
+            listOf(firstRow) + displayLayout.rows.drop(1)
         } else {
             displayLayout.rows
         }

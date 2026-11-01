@@ -130,6 +130,60 @@ class KiebordService : InputMethodService() {
     private var selectionCursor: Int? = null
     private var inputSessionId by mutableIntStateOf(0)
     private var lastDeletedBatchState by mutableStateOf<String?>(null)
+    private var isBornoEasyKarMode by mutableStateOf(false)
+    private var bornoEasyTypedCluster by mutableStateOf("")
+
+    data class TrailingClusterInfo(
+        val cluster: String,
+        val endsWithConsonant: Boolean,
+        val endsWithHasanta: Boolean
+    )
+
+    private fun isBengaliConsonantChar(c: Char): Boolean {
+        return (c in '\u0995'..'\u09B9') || (c in '\u09DC'..'\u09DF') || c == '\u09CE'
+    }
+
+    private fun extractTrailingBengaliCluster(text: String): TrailingClusterInfo {
+        if (text.isEmpty()) return TrailingClusterInfo("", endsWithConsonant = false, endsWithHasanta = false)
+
+        val lastChar = text.last()
+        if (isBengaliConsonantChar(lastChar)) {
+            var i = text.length - 1
+            while (i >= 2) {
+                val prevHasantaIdx = if (i >= 2 && text[i - 1] == '\u09BC') i - 2 else i - 1
+                if (prevHasantaIdx >= 1 && text[prevHasantaIdx] == '\u09CD') {
+                    val prevConsonantIdx = if (prevHasantaIdx >= 2 && text[prevHasantaIdx - 1] == '\u09BC') prevHasantaIdx - 2 else prevHasantaIdx - 1
+                    if (isBengaliConsonantChar(text[prevConsonantIdx])) {
+                        i = prevConsonantIdx
+                    } else {
+                        break
+                    }
+                } else {
+                    break
+                }
+            }
+            val cluster = text.substring(i)
+            return TrailingClusterInfo(cluster, endsWithConsonant = true, endsWithHasanta = false)
+        }
+
+        if (lastChar == '\u09CD') {
+            return TrailingClusterInfo("", endsWithConsonant = false, endsWithHasanta = true)
+        }
+
+        return TrailingClusterInfo("", endsWithConsonant = false, endsWithHasanta = false)
+    }
+
+    private fun updateBornoEasyStateFromText(text: String) {
+        if (!PredefinedLayouts.isBornoEasy(activeLayout.id)) return
+        val info = extractTrailingBengaliCluster(text)
+        if (info.endsWithConsonant) {
+            isBornoEasyKarMode = true
+            bornoEasyTypedCluster = info.cluster
+        } else {
+            isBornoEasyKarMode = false
+            bornoEasyTypedCluster = ""
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -258,6 +312,8 @@ class KiebordService : InputMethodService() {
                     actionKeyVisual = currentActionVisual,
                     primaryAlphaLayout = primaryAlphaLayout,
                     shiftState = shiftState,
+                    isBornoEasyKarMode = isBornoEasyKarMode,
+                    bornoEasyTypedCluster = bornoEasyTypedCluster,
                     inputSessionId = inputSessionId,
                     navBarBottomInset = navBarBottomDp,
                     vibrationEnabled = preferencesState.vibrateOnKeypress,
@@ -403,6 +459,10 @@ class KiebordService : InputMethodService() {
         super.onStartInputView(info, restarting)
         currentEditorInfoState = info
         clipboardManager.syncFromSystemClipboard(this)
+        if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
+            val before = currentInputConnection?.getTextBeforeCursor(10, 0)?.toString() ?: ""
+            updateBornoEasyStateFromText(before)
+        }
         window?.window?.decorView?.let { decorView ->
             lifecycleOwner.attachToView(decorView)
             ViewCompat.getRootWindowInsets(decorView)?.let { insets ->
@@ -450,6 +510,10 @@ class KiebordService : InputMethodService() {
         candidatesEnd: Int
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        if (PredefinedLayouts.isBornoEasy(activeLayout.id) && composingBuffer.isEmpty()) {
+            val before = currentInputConnection?.getTextBeforeCursor(10, 0)?.toString() ?: ""
+            updateBornoEasyStateFromText(before)
+        }
         val translitMgr = getTransliterationManager()
         val isComposing = translitMgr.isComposing || composingBuffer.isNotEmpty()
 
@@ -553,6 +617,8 @@ class KiebordService : InputMethodService() {
 
     fun switchToLayout(layoutId: String) {
         finishComposing()
+        isBornoEasyKarMode = false
+        bornoEasyTypedCluster = ""
         primaryAlphaLayout = layoutRepo.getLayout(layoutId)
         activeLayout = if (!isSymbolsMode) {
             primaryAlphaLayout
@@ -759,6 +825,28 @@ class KiebordService : InputMethodService() {
                             commitCharacterWithPunctuationHandling(ic, text)
                         }
                     }
+                    // Bengali Borno Easy layout
+                    activeLayout.id == "bn_easy" -> {
+                        if (isBornoEasyKarMode && key.commitText == "") {
+                            // Key 0 in Kar mode tapped -> inherent vowel confirmed, no kar added
+                            isBornoEasyKarMode = false
+                            bornoEasyTypedCluster = ""
+                        } else if (isBengaliChar(text) || text == "\u200C" || text == "\u200D") {
+                            composingBuffer.append(text)
+                            ic.setComposingText(composingBuffer.toString(), 1)
+                            updateBornoEasyStateFromText(composingBuffer.toString())
+                        } else {
+                            val word = composingBuffer.toString().trim()
+                            if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                                val prevWord = getPrecedingWord(excludeComposing = true)
+                                userDictionaryRepo.recordWord(word, prevWord)
+                            }
+                            finishComposing()
+                            commitCharacterWithPunctuationHandling(ic, text)
+                            isBornoEasyKarMode = false
+                            bornoEasyTypedCluster = ""
+                        }
+                    }
                     // Bengali National (BSTI) layout
                     activeLayout.id == "bn_national" -> {
                         if (isBengaliChar(text)) {
@@ -866,15 +954,26 @@ class KiebordService : InputMethodService() {
                     } else {
                         ic.setComposingText(composingBuffer.toString(), 1)
                     }
+                    if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
+                        updateBornoEasyStateFromText(composingBuffer.toString())
+                    }
                     updateSuggestions()
                     return
                 }
 
                 ic.deleteSurroundingText(1, 0)
+                if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
+                    val before = ic.getTextBeforeCursor(10, 0)?.toString() ?: ""
+                    updateBornoEasyStateFromText(before)
+                }
                 updateSuggestions()
             }
             KeyType.ACTION -> {
                 finishComposing()
+                if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
+                    isBornoEasyKarMode = false
+                    bornoEasyTypedCluster = ""
+                }
                 val visual = ActionKeyResolver.resolve(currentInputEditorInfo, shiftState)
                 if (visual.isAction) {
                     val actionIdToPerform = if (currentInputEditorInfo?.actionId != 0 && currentInputEditorInfo?.actionId != null) {
@@ -895,6 +994,10 @@ class KiebordService : InputMethodService() {
                 updateSuggestions()
             }
             KeyType.SPACE -> {
+                if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
+                    isBornoEasyKarMode = false
+                    bornoEasyTypedCluster = ""
+                }
                 val translitMgr = getTransliterationManager()
                 if (translitMgr.isComposing) {
                     val committed = translitMgr.currentTransliteration
@@ -1905,6 +2008,10 @@ class KiebordService : InputMethodService() {
 
     private fun handleCandidateSelect(candidate: SuggestionCandidate) {
         performKeyFeedback()
+        if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
+            isBornoEasyKarMode = false
+            bornoEasyTypedCluster = ""
+        }
         val ic = currentInputConnection ?: return
         val candidateText = candidate.text.trim()
         val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
@@ -2195,7 +2302,7 @@ class KiebordService : InputMethodService() {
         }
 
         when (activeLayout.id) {
-            "bn_probhat", "bn_national" -> {
+            "bn_probhat", "bn_national", "bn_easy" -> {
                 val prefix = BengaliBstiEngine.cleanPending(composingBuffer.toString())
                 if (prefix.isNotEmpty()) {
                     val learned = if (preferencesState.learnedWordsEnabled) {
