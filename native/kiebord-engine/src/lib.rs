@@ -337,6 +337,29 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_getDictionaryMet
 }
 
 #[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_isWord(
+    mut env: JNIEnv,
+    _class: JClass,
+    word: JString,
+    lang: JString,
+) -> jboolean {
+    let word_str: String = match env.get_string(&word) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    let lang_str: String = match env.get_string(&lang) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+
+    if dictionary::is_word(&word_str, &lang_str) {
+        1
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_ping(
     _env: JNIEnv,
     _class: JClass,

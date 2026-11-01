@@ -48,6 +48,9 @@ object NativeEngine {
     external fun getSuggestions(prefix: String, lang: String, maxResults: Int): String
 
     @JvmStatic
+    external fun isWord(word: String, lang: String): Boolean
+
+    @JvmStatic
     external fun getTransliterationAlternatives(layoutId: String, rawInput: String): String
 
     @JvmStatic
@@ -100,8 +103,9 @@ object NativeEngine {
         }
     }
 
-    private val initializedLangs = mutableSetOf<String>()
+    private val initializedLangs = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
+    @Synchronized
     fun ensureInitialized(context: android.content.Context, lang: String) {
         if (!isLoaded) return
         val baseLang = if (lang.startsWith("bn")) "bn" else "en"
@@ -186,6 +190,15 @@ object NativeEngine {
             )
         } catch (_: Throwable) {
             null
+        }
+    }
+
+    fun isDictionaryWord(word: String, lang: String): Boolean {
+        if (!isLoaded || word.isBlank()) return false
+        return try {
+            isWord(word, lang)
+        } catch (_: Throwable) {
+            false
         }
     }
 

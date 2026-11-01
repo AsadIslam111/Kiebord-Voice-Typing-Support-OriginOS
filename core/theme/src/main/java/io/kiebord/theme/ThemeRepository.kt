@@ -57,10 +57,15 @@ class ThemeRepository private constructor(private val context: Context) {
     private val bundledThemes = ConcurrentHashMap<String, CustomThemeDef>()
     private val customThemes = ConcurrentHashMap<String, CustomThemeDef>()
     private val richThemes = ConcurrentHashMap<String, KeyboardThemeSpec>()
+    private val schemeCache = ConcurrentHashMap<String, KeyboardColorScheme>()
 
     init {
         loadBundledThemes()
         loadCustomThemes()
+    }
+
+    private fun canonicalId(id: String): String {
+        return if (id.isNotEmpty() && id.all { it.isDigit() }) "borno_$id" else id
     }
 
     private fun loadBundledThemes() {
@@ -72,14 +77,9 @@ class ThemeRepository private constructor(private val context: Context) {
                 for (colorTheme in group.colors) {
                     val customDef = colorTheme.toCustomThemeDef()
                     val richSpec = colorTheme.toKeyboardThemeSpec()
-                    bundledThemes[customDef.id] = customDef
-                    richThemes[customDef.id] = richSpec
-                    if (colorTheme.id != null) {
-                        bundledThemes["borno_${colorTheme.id}"] = customDef
-                        bundledThemes["${colorTheme.id}"] = customDef
-                        richThemes["borno_${colorTheme.id}"] = richSpec
-                        richThemes["${colorTheme.id}"] = richSpec
-                    }
+                    val key = canonicalId(customDef.id)
+                    bundledThemes[key] = customDef
+                    richThemes[key] = richSpec
                 }
             }
         } catch (_: Exception) {}
@@ -104,49 +104,57 @@ class ThemeRepository private constructor(private val context: Context) {
     }
 
     fun getColorScheme(id: String): KeyboardColorScheme {
-        originalThemes[id]?.let { return it.scheme }
-        richThemes[id]?.let { return it.toKeyboardColorScheme() }
-        bundledThemes[id]?.let { return it.toKeyboardColorScheme() }
-        customThemes[id]?.let { return it.toKeyboardColorScheme() }
+        val cid = canonicalId(id)
+        originalThemes[cid]?.let { return it.scheme }
+        schemeCache[cid]?.let { return it }
+        val resolved = richThemes[cid]?.toKeyboardColorScheme()
+            ?: bundledThemes[cid]?.toKeyboardColorScheme()
+            ?: customThemes[cid]?.toKeyboardColorScheme()
+        if (resolved != null) {
+            schemeCache[cid] = resolved
+            return resolved
+        }
         return KeyboardColorScheme.DefaultDark
     }
 
     fun getRichTheme(id: String): KeyboardThemeSpec? {
-        richThemes[id]?.let { return it }
-        bundledThemes[id]?.let { return it.toKeyboardThemeSpec() }
-        customThemes[id]?.let { return it.toKeyboardThemeSpec() }
+        val cid = canonicalId(id)
+        richThemes[cid]?.let { return it }
+        bundledThemes[cid]?.let { return it.toKeyboardThemeSpec() }
+        customThemes[cid]?.let { return it.toKeyboardThemeSpec() }
         return null
     }
 
     fun getThemeOption(id: String): ThemeOptionItem {
-        originalThemes[id]?.let { return it }
-        richThemes[id]?.let { spec ->
+        val cid = canonicalId(id)
+        originalThemes[cid]?.let { return it }
+        richThemes[cid]?.let { spec ->
             return ThemeOptionItem(
                 id = spec.id,
                 name = spec.name,
                 description = "Rich theme (${spec.background.gradient?.type?.name?.lowercase() ?: if (spec.background.image != null) "image" else "solid"})",
-                scheme = spec.toKeyboardColorScheme(),
+                scheme = getColorScheme(cid),
                 isCustom = customThemes.containsKey(spec.id) || !spec.id.startsWith("borno_"),
                 category = if (customThemes.containsKey(spec.id)) ThemeCategory.CUSTOM else categorizeBornoTheme(spec.id)
             )
         }
-        customThemes[id]?.let { def ->
+        customThemes[cid]?.let { def ->
             return ThemeOptionItem(
                 id = def.id,
                 name = def.name,
                 description = "Imported custom theme",
-                scheme = def.toKeyboardColorScheme(),
+                scheme = getColorScheme(cid),
                 isCustom = true,
                 category = ThemeCategory.CUSTOM
             )
         }
-        bundledThemes[id]?.let { def ->
+        bundledThemes[cid]?.let { def ->
             val cat = categorizeBornoTheme(def.id)
             return ThemeOptionItem(
                 id = def.id,
                 name = def.name,
                 description = "Borno color theme",
-                scheme = def.toKeyboardColorScheme(),
+                scheme = getColorScheme(cid),
                 isCustom = false,
                 category = cat
             )
@@ -292,6 +300,7 @@ class ThemeRepository private constructor(private val context: Context) {
                 }
                 customThemes[def.id] = def
                 val scheme = richSpec?.toKeyboardColorScheme() ?: def.toKeyboardColorScheme()
+                schemeCache[def.id] = scheme
                 importedItems.add(
                     ThemeOptionItem(
                         id = def.id,
@@ -333,6 +342,7 @@ class ThemeRepository private constructor(private val context: Context) {
             keyPressedForeground = spec.characterKey.pressedForeground ?: (spec.characterKey.foreground ?: "#E3E2E6")
         )
         customThemes[spec.id] = def
+        schemeCache[spec.id] = scheme
         return ThemeOptionItem(
             id = spec.id,
             name = spec.name,
@@ -348,6 +358,7 @@ class ThemeRepository private constructor(private val context: Context) {
         val deleted = file.delete()
         customThemes.remove(id)
         richThemes.remove(id)
+        schemeCache.remove(id)
         return deleted || !file.exists()
     }
 

@@ -230,7 +230,7 @@ fun KeyboardRootView(
     var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var rootWidthPx by remember { mutableFloatStateOf(0f) }
 
-    val cellCoordinatesMap = remember { mutableMapOf<Pair<Int, Int>, LayoutCoordinates>() }
+    val cellCoordinatesMap = remember { android.util.SparseArray<LayoutCoordinates>(64) }
 
     var moreKeysState by remember { mutableStateOf<MoreKeysPopupState?>(null) }
     var selectedMoreKeyIndex by remember { mutableIntStateOf(0) }
@@ -631,7 +631,7 @@ fun KeyboardRootView(
             val row = keyboardRows[r]
             for (c in row.keys.indices) {
                 val k = row.keys[c]
-                val coords = cellCoordinatesMap[Pair(r, c)]
+                val coords = cellCoordinatesMap.get((r shl 16) or (c and 0xFFFF))
                 if (k.type == KeyType.CHARACTER && coords != null && coords.isAttached) {
                     val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
                     val width = coords.size.width.toFloat()
@@ -1231,9 +1231,9 @@ fun KeyboardRootView(
                         val isVoiceActive = voiceInputState is VoiceInputState.Listening
                         val micIconSize = (22 * scaleFactor).coerceAtLeast(17f).dp
 
-                        val infiniteTransition = rememberInfiniteTransition(label = "VoicePulse")
-                        val activeAlpha by if (isVoiceActive) {
-                            infiniteTransition.animateFloat(
+                        val activeAlpha = if (isVoiceActive) {
+                            val infiniteTransition = rememberInfiniteTransition(label = "VoicePulse")
+                            val pulseAlpha by infiniteTransition.animateFloat(
                                 initialValue = 0.55f,
                                 targetValue = 1.0f,
                                 animationSpec = infiniteRepeatable(
@@ -1242,8 +1242,9 @@ fun KeyboardRootView(
                                 ),
                                 label = "VoicePulseAlpha"
                             )
+                            pulseAlpha
                         } else {
-                            rememberUpdatedState(1.0f)
+                            1.0f
                         }
 
                         val micBgColor = when {
@@ -1320,7 +1321,7 @@ fun KeyboardRootView(
                                         for (r in keyboardRows.indices) {
                                             val row = keyboardRows[r]
                                             for (c in row.keys.indices) {
-                                                val coords = cellCoordinatesMap[Pair(r, c)]
+                                                val coords = cellCoordinatesMap.get((r shl 16) or (c and 0xFFFF))
                                                 if (coords != null && coords.isAttached) {
                                                     val keyTopLeft = rCoords.localPositionOf(coords, Offset.Zero)
                                                     val keyWidth = coords.size.width.toFloat()
@@ -1692,7 +1693,7 @@ fun KeyboardRootView(
                                     performHaptic(HapticFeedbackType.TextHandleMove)
                                 },
                                 onKeyPositioned = { _, coords ->
-                                    cellCoordinatesMap[Pair(rowIndex, keyIndex)] = coords
+                                    cellCoordinatesMap.put((rowIndex shl 16) or (keyIndex and 0xFFFF), coords)
                                 },
                                 onSpacebarTrackpad = { direction ->
                                     if (cursorTrackpadEnabled) {
@@ -1762,7 +1763,7 @@ fun KeyboardRootView(
                                     for (r in keyboardRows.indices) {
                                         val row = keyboardRows[r]
                                         for (c in row.keys.indices) {
-                                            val coords = cellCoordinatesMap[Pair(r, c)]
+                                            val coords = cellCoordinatesMap.get((r shl 16) or (c and 0xFFFF))
                                             if (coords != null && coords.isAttached) {
                                                 val topLeft = rCoords.localPositionOf(coords, Offset.Zero)
                                                 val rect = Rect(
@@ -2170,7 +2171,7 @@ fun KeyboardRootView(
                     val row = keyboardRows[r]
                     for (c in row.keys.indices) {
                         if (row.keys[c].type == KeyType.SPACE) {
-                            return@run cellCoordinatesMap[Pair(r, c)]
+                            return@run cellCoordinatesMap.get((r shl 16) or (c and 0xFFFF))
                         }
                     }
                 }
@@ -2512,10 +2513,11 @@ fun GestureTrailOverlay(
 
     val headWidthPx = baseHeadWidthPx * (0.35f + 0.65f * fadeAlpha)
     val tailWidthPx = baseTailWidthPx * (0.35f + 0.65f * fadeAlpha)
+    val visiblePoints = remember { ArrayList<Offset>(64) }
 
     androidx.compose.foundation.Canvas(modifier = modifier) {
         // Collect visible trailing points backwards from current fingertip up to maxTrailDistance
-        val visiblePoints = mutableListOf<Offset>()
+        visiblePoints.clear()
         visiblePoints.add(trail.last())
         var accumulatedDist = 0f
 
@@ -2543,18 +2545,18 @@ fun GestureTrailOverlay(
 
         if (visiblePoints.size < 2) {
             visiblePoints.clear()
-            visiblePoints.addAll(trail.takeLast(2))
+            visiblePoints.add(trail.last())
+            visiblePoints.add(trail[trail.size - 2])
         }
 
-        // visiblePoints was collected [head -> tail]. Reverse to draw [tail -> head]
-        val points = visiblePoints.asReversed()
-        val n = points.size
+        // visiblePoints was collected [head -> tail]. Index from n - 1 downTo 1 to draw [tail -> head]
+        val n = visiblePoints.size
 
         // Draw single-colored ribbon tapering quadratically from tail to head
-        for (i in 0 until n - 1) {
-            val p0 = points[i]
-            val p1 = points[i + 1]
-            val progress = (i + 1).toFloat() / (n - 1).toFloat()
+        for (step in 0 until n - 1) {
+            val p0 = visiblePoints[n - 1 - step]
+            val p1 = visiblePoints[n - 2 - step]
+            val progress = (step + 1).toFloat() / (n - 1).toFloat()
             // Quadratic easing gives that slender comet tail and rounded fingertip
             val widthFactor = progress * progress
             val strokeWidth = tailWidthPx + widthFactor * (headWidthPx - tailWidthPx)
@@ -2570,7 +2572,7 @@ fun GestureTrailOverlay(
         }
 
         // Smooth rounded fingertip at the head
-        val headPoint = points.last()
+        val headPoint = visiblePoints[0]
         drawCircle(
             color = accentColor.copy(alpha = 0.85f * fadeAlpha),
             radius = headWidthPx / 2f,

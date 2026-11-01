@@ -309,6 +309,24 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
     }
 }
 
+/// Checks whether `word` exists as an exact terminal word in the specified dictionary.
+pub fn is_word(word: &str, lang_or_layout: &str) -> bool {
+    let trimmed = word.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    let is_bn = lang_or_layout.starts_with("bn");
+    let dict_opt = if is_bn {
+        get_bn_binary_dict()
+    } else {
+        get_en_binary_dict()
+    };
+    match dict_opt {
+        Some(dict) => dict.contains_word(trimmed),
+        None => false,
+    }
+}
+
 /// Main entry point for next-word prediction based on previous committed word.
 /// Returns a pipe-delimited string of predicted words, e.g. "are|is|do"
 pub fn predict_next_words(prev_word: &str, lang_or_layout: &str, max_results: usize) -> String {

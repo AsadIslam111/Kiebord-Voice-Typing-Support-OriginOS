@@ -60,17 +60,17 @@ data class KeyboardColorScheme(
             }
 
             val baseBgColor = if (showKeyBorders) {
-                if (bgHex != null) ThemeColorUtils.parseHexColor(bgHex, defaultBg) else defaultBg
+                if (bgHex != null) cachedParseHex(bgHex, defaultBg) else defaultBg
             } else {
                 when {
-                    key.type == KeyType.ACTION -> if (bgHex != null) ThemeColorUtils.parseHexColor(bgHex, accentColor) else accentColor
+                    key.type == KeyType.ACTION -> if (bgHex != null) cachedParseHex(bgHex, accentColor) else accentColor
                     key.type == KeyType.SPACE -> {
                         val spaceHex = spec.spaceKey?.background ?: style.background
-                        if (spaceHex != null) ThemeColorUtils.parseHexColor(spaceHex, keyBackground) else keyBackground
+                        if (spaceHex != null) cachedParseHex(spaceHex, keyBackground) else keyBackground
                     }
                     key.type == KeyType.SYMBOLS -> {
                         val symHex = style.background
-                        if (symHex != null) ThemeColorUtils.parseHexColor(symHex, actionKeyBackground) else actionKeyBackground
+                        if (symHex != null) cachedParseHex(symHex, actionKeyBackground) else actionKeyBackground
                     }
                     else -> flatKeyBg
                 }
@@ -78,7 +78,7 @@ data class KeyboardColorScheme(
 
             val activeBgColor = if (isPressed) {
                 when {
-                    style.pressedBackground != null -> ThemeColorUtils.parseHexColor(style.pressedBackground)
+                    style.pressedBackground != null -> cachedParseHex(style.pressedBackground)
                     key.type == KeyType.ACTION -> accentColor.copy(alpha = 0.8f)
                     keyPressedBackground != Color.Unspecified -> keyPressedBackground
                     else -> accentColor.copy(alpha = 0.28f)
@@ -88,7 +88,7 @@ data class KeyboardColorScheme(
             }
 
             val fgColor = when {
-                fgHex != null -> ThemeColorUtils.parseHexColor(fgHex)
+                fgHex != null -> cachedParseHex(fgHex)
                 key.type == KeyType.ACTION -> actionKeyForeground
                 isPressed && keyPressedForeground != Color.Unspecified -> keyPressedForeground
                 else -> keyForeground
@@ -96,7 +96,7 @@ data class KeyboardColorScheme(
 
             val stroke = style.stroke
             val strokeColor = if (showKeyBorders && stroke != null && stroke.widthDp > 0f) {
-                ThemeColorUtils.parseHexColor(stroke.color, keyBorder).copy(alpha = stroke.alpha)
+                cachedParseHex(stroke.color, keyBorder).copy(alpha = stroke.alpha)
             } else {
                 Color.Transparent
             }
@@ -110,7 +110,7 @@ data class KeyboardColorScheme(
             val hasKeyTile = showKeyBorders || isPillColoredKey
             val shadow = style.shadow
             val shadowColor = if (showKeyShadows && hasKeyTile && shadow != null && shadow.elevationDp > 0f) {
-                ThemeColorUtils.parseHexColor(shadow.color, keyShadow)
+                cachedParseHex(shadow.color, keyShadow)
             } else {
                 Color.Transparent
             }
@@ -212,6 +212,24 @@ data class KeyboardColorScheme(
     }
 
     companion object {
+        private val hexColorCache = java.util.concurrent.ConcurrentHashMap<String, Color>(128)
+
+        private fun cachedParseHex(hex: String): Color {
+            hexColorCache[hex]?.let { return it }
+            val parsed = ThemeColorUtils.parseHexColor(hex)
+            hexColorCache[hex] = parsed
+            return parsed
+        }
+
+        private fun cachedParseHex(hex: String, fallback: Color): Color {
+            hexColorCache[hex]?.let { return it }
+            val parsed = ThemeColorUtils.parseHexColor(hex, fallback)
+            if (parsed != fallback) {
+                hexColorCache[hex] = parsed
+            }
+            return parsed
+        }
+
         val DefaultDark = KeyboardColorScheme(
             containerBackground = Color(0xFF222222),
             keyBackground = Color(0xFF424242),

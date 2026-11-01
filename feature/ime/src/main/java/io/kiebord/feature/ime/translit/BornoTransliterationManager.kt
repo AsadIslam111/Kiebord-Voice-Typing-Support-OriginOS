@@ -26,6 +26,8 @@ open class GenericTransliterationManager(
     private val inputConnectionProvider: () -> InputConnection?
 ) : TransliterationManager {
     protected val buffer = StringBuilder()
+    private var cachedTransliteration: String = ""
+    private var isTransliterationDirty: Boolean = false
 
     override val isComposing: Boolean
         get() = buffer.isNotEmpty()
@@ -38,6 +40,8 @@ open class GenericTransliterationManager(
         val ic = inputConnectionProvider() ?: return false
         buffer.append(char)
         val transliterated = NativeEngine.transliterate(layoutId, buffer.toString())
+        cachedTransliteration = transliterated
+        isTransliterationDirty = false
         ic.setComposingText(transliterated, 1)
         return true
     }
@@ -52,6 +56,8 @@ open class GenericTransliterationManager(
             buffer.delete(buffer.length - charCount, buffer.length)
         }
         if (buffer.isEmpty()) {
+            cachedTransliteration = ""
+            isTransliterationDirty = false
             ic.setComposingText("", 1)
             ic.finishComposingText()
         } else {
@@ -60,6 +66,8 @@ open class GenericTransliterationManager(
             } else {
                 buffer.toString()
             }
+            cachedTransliteration = transliterated
+            isTransliterationDirty = false
             ic.setComposingText(transliterated, 1)
         }
         return true
@@ -69,16 +77,25 @@ open class GenericTransliterationManager(
         get() = buffer.toString()
 
     override val currentTransliteration: String
-        get() = if (buffer.isNotEmpty() && NativeEngine.isAvailable()) {
-            NativeEngine.transliterate(layoutId, buffer.toString())
-        } else {
-            buffer.toString()
+        get() {
+            if (buffer.isEmpty()) return ""
+            if (isTransliterationDirty) {
+                cachedTransliteration = if (NativeEngine.isAvailable()) {
+                    NativeEngine.transliterate(layoutId, buffer.toString())
+                } else {
+                    buffer.toString()
+                }
+                isTransliterationDirty = false
+            }
+            return cachedTransliteration
         }
 
     override fun commitCustom(text: String) {
         val ic = inputConnectionProvider()
         ic?.commitText(text, 1)
         buffer.clear()
+        cachedTransliteration = ""
+        isTransliterationDirty = false
     }
 
     override fun finishComposing() {
@@ -86,10 +103,14 @@ open class GenericTransliterationManager(
         val ic = inputConnectionProvider()
         ic?.finishComposingText()
         buffer.clear()
+        cachedTransliteration = ""
+        isTransliterationDirty = false
     }
 
     override fun reset() {
         buffer.clear()
+        cachedTransliteration = ""
+        isTransliterationDirty = false
     }
 }
 
@@ -101,9 +122,14 @@ class BornoTransliterationManager(
 ) : GenericTransliterationManager("bn_borno", inputConnectionProvider)
 
 object TransliterationManagerFactory {
+    private val phoneticLayoutCache = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
     fun isTransliterationLayout(layoutId: String): Boolean {
+        phoneticLayoutCache[layoutId]?.let { return it }
         return if (NativeEngine.isAvailable()) {
-            NativeEngine.isPhoneticLayout(layoutId)
+            val res = NativeEngine.isPhoneticLayout(layoutId)
+            phoneticLayoutCache[layoutId] = res
+            res
         } else {
             layoutId == "bn_borno" || layoutId == "bn_avro"
         }

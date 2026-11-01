@@ -105,7 +105,7 @@ impl BornoPhonetic {
         let token_count = tokens.len();
 
         while i < token_count {
-            let token = &tokens[i];
+            let token = tokens[i];
 
             if token == " " {
                 output.push(' ');
@@ -176,28 +176,28 @@ impl BornoPhonetic {
                 }
             }
 
-            if let Some(val) = symbol_map.get(token.as_str()) {
+            if let Some(val) = symbol_map.get(token) {
                 output.push_str(val);
                 last_type = PrevTokenType::Symbol;
                 i += 1;
                 continue;
             }
 
-            if let Some(val) = digits_map.get(token.as_str()) {
+            if let Some(val) = digits_map.get(token) {
                 output.push_str(val);
                 last_type = PrevTokenType::Other;
                 i += 1;
                 continue;
             }
 
-            if let Some(val) = punctuations_map.get(token.as_str()) {
+            if let Some(val) = punctuations_map.get(token) {
                 output.push_str(val);
                 last_type = PrevTokenType::Other;
                 i += 1;
                 continue;
             }
 
-            if let Some(val) = reph_map.get(token.as_str()) {
+            if let Some(val) = reph_map.get(token) {
                 if last_type == PrevTokenType::Consonant {
                     output.push_str(HOSHONTO);
                     output.push_str("রর");
@@ -205,8 +205,8 @@ impl BornoPhonetic {
                 } else {
                     let mut cond_reph = false;
                     if i + 1 < token_count {
-                        let next = &tokens[i + 1];
-                        let next_is_vowel = initial_map.contains_key(next.as_str());
+                        let next = tokens[i + 1];
+                        let next_is_vowel = initial_map.contains_key(next);
                         if !next_is_vowel && next != "r" && next != "R" {
                             cond_reph = true;
                         }
@@ -223,7 +223,7 @@ impl BornoPhonetic {
                 continue;
             }
 
-            if let Some(val) = diacritics_map.get(token.as_str()) {
+            if let Some(val) = diacritics_map.get(token) {
                 output.push_str(val);
                 if token == ",," || token == ",." || token == ",.." || token == "hs" {
                     last_type = PrevTokenType::Consonant;
@@ -234,22 +234,22 @@ impl BornoPhonetic {
                 continue;
             }
 
-            if let Some(val) = conjuncts_map.get(token.as_str()) {
+            if let Some(val) = conjuncts_map.get(token) {
                 output.push_str(val);
                 last_type = PrevTokenType::Consonant;
                 i += 1;
                 continue;
             }
 
-            if let Some(val) = phola_map.get(token.as_str()) {
+            if let Some(val) = phola_map.get(token) {
                 if last_type == PrevTokenType::Consonant {
                     if token == "y" || token == "z" || token == "Z" {
                         let prev_is_r = i > 0 && tokens[i - 1] == "r";
                         if prev_is_r {
                             let mut prev2_is_special = false;
                             if i >= 2 {
-                                let prev2 = &tokens[i - 2];
-                                if (consonants_map.contains_key(prev2.as_str()) || conjuncts_map.contains_key(prev2.as_str()))
+                                let prev2 = tokens[i - 2];
+                                if (consonants_map.contains_key(prev2) || conjuncts_map.contains_key(prev2))
                                     && prev2 != "r" && prev2 != "y" && prev2 != "w" && prev2 != "x"
                                 {
                                     prev2_is_special = true;
@@ -268,8 +268,7 @@ impl BornoPhonetic {
                             output.push_str(val);
                         }
                     } else if token == "r" {
-                        let ra_phola = format!("{}{}", HOSHONTO, val);
-                        if output.ends_with(&ra_phola) {
+                        if output.ends_with("\u{09CD}র") {
                             output.push_str("র");
                         } else {
                             output.push_str(HOSHONTO);
@@ -290,24 +289,24 @@ impl BornoPhonetic {
                 continue;
             }
 
-            if let Some(val) = consonants_map.get(token.as_str()) {
+            if let Some(val) = consonants_map.get(token) {
                 output.push_str(val);
                 last_type = PrevTokenType::Consonant;
                 i += 1;
                 continue;
             }
 
-            if let Some(val) = initial_map.get(token.as_str()) {
+            if let Some(val) = initial_map.get(token) {
                 if last_type == PrevTokenType::Consonant {
                     if token == "o" {
                         // Inherent 'o' elision: empty string
-                    } else if let Some(sign) = vowel_signs_map.get(token.as_str()) {
+                    } else if let Some(sign) = vowel_signs_map.get(token) {
                         output.push_str(sign);
                     }
                 } else if last_type == PrevTokenType::Vowel {
                     if token == "o" {
                         output.push_str("ও");
-                    } else if let Some(after) = after_vowel_map.get(token.as_str()) {
+                    } else if let Some(after) = after_vowel_map.get(token) {
                         output.push_str(after);
                     }
                 } else {
@@ -323,7 +322,7 @@ impl BornoPhonetic {
             i += 1;
         }
 
-        Self::remove_consecutive_kar_signs(&output)
+        Self::remove_consecutive_kar_signs(output)
     }
 
     fn case_handle(input: &str) -> String {
@@ -345,12 +344,12 @@ impl BornoPhonetic {
         result
     }
 
-    pub fn tokenize(text: &str) -> Vec<String> {
+    pub fn tokenize(text: &str) -> Vec<&str> {
         Self::tokenize_mode(text, false)
     }
 
-    pub fn tokenize_mode(text: &str, is_avro: bool) -> Vec<String> {
-        let mut tokens = Vec::new();
+    pub fn tokenize_mode(text: &str, is_avro: bool) -> Vec<&str> {
+        let mut tokens = Vec::with_capacity(text.len());
         if text.is_empty() {
             return tokens;
         }
@@ -374,7 +373,7 @@ impl BornoPhonetic {
                                 if next_two == "ri" {
                                     if let Some(shorter) = segment.get(0..l - 1) {
                                         if keys_set.contains(shorter) {
-                                            tokens.push(shorter.to_string());
+                                            tokens.push(shorter);
                                             i += l - 1;
                                             matched = true;
                                             break;
@@ -390,7 +389,7 @@ impl BornoPhonetic {
                                 if next_one == "H" {
                                     if let Some(shorter) = segment.get(0..l - 1) {
                                         if keys_set.contains(shorter) {
-                                            tokens.push(shorter.to_string());
+                                            tokens.push(shorter);
                                             i += l - 1;
                                             matched = true;
                                             break;
@@ -400,7 +399,7 @@ impl BornoPhonetic {
                             }
                         }
 
-                        tokens.push(segment.to_string());
+                        tokens.push(segment);
                         i += l;
                         matched = true;
                         break;
@@ -410,8 +409,9 @@ impl BornoPhonetic {
 
             if !matched {
                 if let Some(ch) = text[i..].chars().next() {
-                    tokens.push(ch.to_string());
-                    i += ch.len_utf8();
+                    let ch_len = ch.len_utf8();
+                    tokens.push(&text[i..i + ch_len]);
+                    i += ch_len;
                 } else {
                     i += 1;
                 }
@@ -421,12 +421,22 @@ impl BornoPhonetic {
         tokens
     }
 
-    fn remove_consecutive_kar_signs(s: &str) -> String {
-        let mut chars: Vec<char> = s.chars().collect();
-        if chars.len() < 2 {
-            return s.to_string();
+    fn remove_consecutive_kar_signs(s: String) -> String {
+        let mut prev_kar = false;
+        let mut has_consecutive = false;
+        for c in s.chars() {
+            let is_kar = Self::is_kar_sign(c);
+            if prev_kar && is_kar {
+                has_consecutive = true;
+                break;
+            }
+            prev_kar = is_kar;
+        }
+        if !has_consecutive {
+            return s;
         }
 
+        let mut chars: Vec<char> = s.chars().collect();
         for i in 1..chars.len() {
             if Self::is_kar_sign(chars[i - 1]) && Self::is_kar_sign(chars[i]) {
                 chars[i] = Self::get_corresponding_vowel(chars[i]);

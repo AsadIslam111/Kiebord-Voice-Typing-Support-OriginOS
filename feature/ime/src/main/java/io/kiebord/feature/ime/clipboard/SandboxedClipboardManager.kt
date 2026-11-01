@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -27,13 +28,18 @@ class SandboxedClipboardManager(context: Context) {
 
     private val otpPattern = Regex("^\\b\\d{4,8}\\b$")
     private val storageFile by lazy { File(appContext.filesDir, "kiebord_clipboard_v1.json") }
+    private val ioScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
 
     private var lastSyncedText: String? = null
     private var lastSyncedTimestamp: Long = 0L
 
     init {
-        loadClipsFromDisk()
-        syncFromSystemClipboard()
+        ioScope.launch {
+            loadClipsFromDisk()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                syncFromSystemClipboard()
+            }
+        }
     }
 
     fun syncFromSystemClipboard(callingContext: Context? = null, forceNotify: Boolean = false) {
@@ -206,23 +212,26 @@ class SandboxedClipboardManager(context: Context) {
     }
 
     private fun saveClipsToDisk() {
-        try {
-            val jsonArray = JSONArray()
-            for (entry in clips) {
-                val obj = JSONObject().apply {
-                    put("id", entry.id)
-                    put("text", entry.text)
-                    put("timestamp", entry.timestamp)
-                    put("isPinned", entry.isPinned)
-                    put("isOtp", entry.isOtp)
+        val snapshot = clips.toList()
+        ioScope.launch {
+            try {
+                val jsonArray = JSONArray()
+                for (entry in snapshot) {
+                    val obj = JSONObject().apply {
+                        put("id", entry.id)
+                        put("text", entry.text)
+                        put("timestamp", entry.timestamp)
+                        put("isPinned", entry.isPinned)
+                        put("isOtp", entry.isOtp)
+                    }
+                    jsonArray.put(obj)
                 }
-                jsonArray.put(obj)
-            }
-            storageFile.writeText(jsonArray.toString())
-        } catch (_: Exception) {}
+                storageFile.writeText(jsonArray.toString())
+            } catch (_: Exception) {}
+        }
     }
 
-    private fun loadClipsFromDisk() {
+    private suspend fun loadClipsFromDisk() {
         try {
             if (!storageFile.exists()) return
             val jsonStr = storageFile.readText()
@@ -248,8 +257,15 @@ class SandboxedClipboardManager(context: Context) {
                     )
                 }
             }
-            clips.clear()
-            clips.addAll(loaded)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                val currentIds = clips.map { it.id }.toSet()
+                val currentTexts = clips.map { it.text }.toSet()
+                for (item in loaded) {
+                    if (item.id !in currentIds && item.text !in currentTexts) {
+                        clips.add(item)
+                    }
+                }
+            }
         } catch (_: Exception) {}
     }
 

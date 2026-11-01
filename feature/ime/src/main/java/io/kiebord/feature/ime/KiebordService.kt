@@ -208,8 +208,6 @@ class KiebordService : InputMethodService() {
         }
         lifecycleOwner.onCreate()
         EmojiFontManager.initEmojiCompat(this)
-        NativeEngine.ensureInitialized(this, "en")
-        NativeEngine.ensureInitialized(this, "bn")
 
         val cachedLayoutId = try {
             getSharedPreferences("kiebord_runtime", Context.MODE_PRIVATE)
@@ -218,6 +216,16 @@ class KiebordService : InputMethodService() {
         if (cachedLayoutId != null) {
             primaryAlphaLayout = layoutRepo.getLayout(cachedLayoutId)
             activeLayout = primaryAlphaLayout
+        }
+
+        val initialLang = if (activeLayout.id.startsWith("bn")) "bn" else "en"
+        val secondaryLang = if (initialLang == "bn") "en" else "bn"
+        serviceScope.launch(Dispatchers.IO) {
+            NativeEngine.ensureInitialized(this@KiebordService, initialLang)
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                updateSuggestions()
+            }
+            NativeEngine.ensureInitialized(this@KiebordService, secondaryLang)
         }
 
         serviceScope.launch {
@@ -305,6 +313,9 @@ class KiebordService : InputMethodService() {
 
             val currentActionVisual = remember(currentEditorInfoState, shiftState) {
                 ActionKeyResolver.resolve(currentEditorInfoState, shiftState)
+            }
+            val availableLayoutIds = remember {
+                layoutRepo.getAvailableLayouts().map { it.id }.toSet()
             }
 
             KiebordTheme(colorScheme = colorScheme) {
@@ -411,7 +422,7 @@ class KiebordService : InputMethodService() {
                     onDeleteSwipeEnd = ::handleDeleteSwipeEnd,
                     onDeleteSwipeCancel = ::handleDeleteSwipeCancel,
                     enabledLayoutIds = preferencesState.enabledLayoutIds.toList().filter { id ->
-                        id in layoutRepo.getAvailableLayouts().map { it.id } || id == KiebordPreferences.LAYOUT_AR_ARABIC
+                        id in availableLayoutIds || id == KiebordPreferences.LAYOUT_AR_ARABIC
                     }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) },
                     onSwitchToLayout = ::switchToLayout,
                     onOpenLanguagesSettings = ::openLanguagesSettings,
@@ -617,16 +628,12 @@ class KiebordService : InputMethodService() {
         super.onTrimMemory(level)
         userDictionaryRepo.trimMemory(level)
         clipboardManager?.purgeOldClips()
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
-            System.gc()
-        }
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
         userDictionaryRepo.trimMemory(ComponentCallbacks2.TRIM_MEMORY_COMPLETE)
         clipboardManager?.purgeOldClips()
-        System.gc()
     }
 
     fun switchToLayout(layoutId: String) {
@@ -720,24 +727,39 @@ class KiebordService : InputMethodService() {
         }
     }
 
+    private val audioManager: android.media.AudioManager? by lazy(LazyThreadSafetyMode.NONE) {
+        getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+    }
+
+    private val vibratorService: Vibrator? by lazy(LazyThreadSafetyMode.NONE) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+    }
+
+    private val clickVibrationEffect: VibrationEffect? by lazy(LazyThreadSafetyMode.NONE) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+        } else null
+    }
+
+    private var cachedOneShotStrength: Int = -1
+    private var cachedOneShotEffect: VibrationEffect? = null
+
     private fun performKeyFeedback() {
         if (preferencesState.soundOnKeypress) {
             try {
-                val am = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
-                am?.playSoundEffect(android.media.AudioManager.FX_KEYPRESS_STANDARD)
+                audioManager?.playSoundEffect(android.media.AudioManager.FX_KEYPRESS_STANDARD)
             } catch (_: Exception) {}
         }
         if (!preferencesState.vibrateOnKeypress) return
         try {
             if (preferencesState.vibrationType == KiebordPreferences.VIBRATION_TYPE_HAPTIC) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
-                    } else {
-                        @Suppress("DEPRECATION")
-                        getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                    }
-                    vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+                    clickVibrationEffect?.let { vibratorService?.vibrate(it) }
                 } else {
                     window?.window?.decorView?.performHapticFeedback(
                         HapticFeedbackConstants.KEYBOARD_TAP,
@@ -746,19 +768,22 @@ class KiebordService : InputMethodService() {
                 }
             } else {
                 // Vibration mode: duration and amplitude scaled by vibrationStrength
-                val durationMs = (10L + (preferencesState.vibrationStrength * 30L / 100L)).coerceIn(5L, 60L)
-                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
-                } else {
-                    @Suppress("DEPRECATION")
-                    getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                }
+                val strength = preferencesState.vibrationStrength
+                val durationMs = (10L + (strength * 30L / 100L)).coerceIn(5L, 60L)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val amplitude = (preferencesState.vibrationStrength * 255 / 100).coerceIn(1, 255)
-                    vibrator?.vibrate(VibrationEffect.createOneShot(durationMs, amplitude))
+                    val effect = if (cachedOneShotStrength == strength && cachedOneShotEffect != null) {
+                        cachedOneShotEffect!!
+                    } else {
+                        val amplitude = (strength * 255 / 100).coerceIn(1, 255)
+                        VibrationEffect.createOneShot(durationMs, amplitude).also {
+                            cachedOneShotStrength = strength
+                            cachedOneShotEffect = it
+                        }
+                    }
+                    vibratorService?.vibrate(effect)
                 } else {
                     @Suppress("DEPRECATION")
-                    vibrator?.vibrate(durationMs)
+                    vibratorService?.vibrate(durationMs)
                 }
             }
         } catch (_: Exception) {
@@ -1993,6 +2018,45 @@ class KiebordService : InputMethodService() {
         return moved
     }
 
+    private fun isPrecedingWordDelimiter(c: Char): Boolean {
+        return c.isWhitespace() || when (c) {
+            ',', '.', ';', ':', '!', '?', '"', '\'', '(', ')', '[', ']', '{', '}' -> true
+            else -> false
+        }
+    }
+
+    private fun lastToken(s: String): String {
+        var end = s.length
+        while (end > 0 && isPrecedingWordDelimiter(s[end - 1])) {
+            end--
+        }
+        if (end == 0) return ""
+        var start = end
+        while (start > 0 && !isPrecedingWordDelimiter(s[start - 1])) {
+            start--
+        }
+        return s.substring(start, end)
+    }
+
+    private fun secondToLastToken(s: String): String {
+        var end = s.length
+        while (end > 0 && isPrecedingWordDelimiter(s[end - 1])) {
+            end--
+        }
+        while (end > 0 && !isPrecedingWordDelimiter(s[end - 1])) {
+            end--
+        }
+        while (end > 0 && isPrecedingWordDelimiter(s[end - 1])) {
+            end--
+        }
+        if (end == 0) return ""
+        var start = end
+        while (start > 0 && !isPrecedingWordDelimiter(s[start - 1])) {
+            start--
+        }
+        return s.substring(start, end)
+    }
+
     private fun getPrecedingWord(excludeComposing: Boolean = false): String {
         val ic = currentInputConnection ?: return ""
         val text = ic.getTextBeforeCursor(100, 0)?.toString() ?: return ""
@@ -2014,17 +2078,13 @@ class KiebordService : InputMethodService() {
                 composing.isNotEmpty() && text.trimEnd().endsWith(composing) -> text.trimEnd().dropLast(composing.length)
                 raw.isNotEmpty() && text.endsWith(raw) -> text.dropLast(raw.length)
                 raw.isNotEmpty() && text.trimEnd().endsWith(raw) -> text.trimEnd().dropLast(raw.length)
-                else -> {
-                    val tokens = text.trimEnd().split(Regex("[\\s,.;:!?\"'()\\[\\]{}]+")).filter { it.isNotEmpty() }
-                    return if (tokens.size >= 2) tokens[tokens.size - 2] else ""
-                }
+                else -> return secondToLastToken(text)
             }
         } else {
             text
         }
 
-        val tokens = textToProcess.trimEnd().split(Regex("[\\s,.;:!?\"'()\\[\\]{}]+")).filter { it.isNotEmpty() }
-        return tokens.lastOrNull() ?: ""
+        return lastToken(textToProcess)
     }
 
     private fun handleCandidateSelect(candidate: SuggestionCandidate) {
@@ -2279,7 +2339,7 @@ class KiebordService : InputMethodService() {
                 for (alt in phoneticAlts) {
                     if (list.size < 12 && list.none { it.text == alt }) {
                         val isLearned = userDictionaryRepo.isLearned(alt)
-                        val isDictWord = isLearned || NativeEngine.querySuggestions(alt, "bn_exact", 1).contains(alt)
+                        val isDictWord = isLearned || NativeEngine.isDictionaryWord(alt, "bn")
                         if (isDictWord) {
                             list.add(SuggestionCandidate(text = alt, isPrimary = false))
                         }

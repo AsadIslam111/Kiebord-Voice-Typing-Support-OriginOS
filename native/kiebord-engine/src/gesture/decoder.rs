@@ -58,40 +58,34 @@ impl PhoneticIndex {
         }
 
         let mut temp_buckets: Vec<Vec<TempEntry>> = (0..676).map(|_| Vec::new()).collect();
-        let node_count = dict.node_count();
 
-        for node in 1..node_count as u32 {
-            if dict.is_word(node) {
-                if let Some(word) = dict.word_at(node) {
-                    let freq = dict.freq(node);
-                    let mut variants = transliterator.to_phonetic_keys(&word);
-                    variants.sort();
-                    variants.dedup();
-                    for v in variants {
-                        if v.len() >= 2 {
-                            let first = v[0];
-                            let last = *v.last().unwrap();
-                            if let (Some(s_idx), Some(e_idx)) = (char_to_bucket_idx(first), char_to_bucket_idx(last)) {
-                                let bucket_idx = s_idx * 26 + e_idx;
-                                let keys_bytes: Vec<u8> = v.into_iter().map(|c| c.to_ascii_lowercase() as u8).collect();
-                                let is_dup = temp_buckets[bucket_idx].iter().rev().take(4).any(|item| item.node == node && item.keys == keys_bytes);
-                                if !is_dup {
-                                    temp_buckets[bucket_idx].push(TempEntry {
-                                        node,
-                                        freq,
-                                        keys: keys_bytes,
-                                    });
-                                }
-                            }
-                        }
+        dict.for_each_word(|node, freq, word_utf16| {
+            let word = String::from_utf16_lossy(word_utf16);
+            let mut variants = transliterator.to_phonetic_keys(&word);
+            variants.sort();
+            variants.dedup();
+            for v in variants {
+                if v.len() >= 2 {
+                    let first = v[0];
+                    let last = *v.last().unwrap();
+                    if let (Some(s_idx), Some(e_idx)) = (char_to_bucket_idx(first), char_to_bucket_idx(last)) {
+                        let bucket_idx = s_idx * 26 + e_idx;
+                        let keys_bytes: Vec<u8> = v.into_iter().map(|c| c.to_ascii_lowercase() as u8).collect();
+                        temp_buckets[bucket_idx].push(TempEntry {
+                            node,
+                            freq,
+                            keys: keys_bytes,
+                        });
                     }
                 }
             }
-        }
+        });
 
-        // Sort bucket entries by frequency descending so common words are prioritized
+        // Deduplicate per bucket and sort by frequency descending (tie-broken by node ascending)
         for bucket in &mut temp_buckets {
-            bucket.sort_by(|a, b| b.freq.cmp(&a.freq));
+            bucket.sort_by(|a, b| a.node.cmp(&b.node).then_with(|| a.keys.cmp(&b.keys)));
+            bucket.dedup_by(|a, b| a.node == b.node && a.keys == b.keys);
+            bucket.sort_by(|a, b| b.freq.cmp(&a.freq).then_with(|| a.node.cmp(&b.node)));
         }
 
         let total_entries: usize = temp_buckets.iter().map(|b| b.len()).sum();
@@ -162,7 +156,11 @@ pub fn get_or_build_phonetic_index(
     transliterator: &dyn PhoneticTransliterator,
 ) -> Arc<PhoneticIndex> {
     let cache_lock = PHONETIC_CACHE.get_or_init(|| RwLock::new(HashMap::new()));
-    let id = transliterator.id();
+    // Share a single PhoneticIndex across Bengali phonetic layouts using identical key mappings
+    let id = match transliterator.id() {
+        "bn_borno" | "bn_avro" => "bn_phonetic",
+        other => other,
+    };
 
     {
         let r = cache_lock.read();
@@ -186,11 +184,26 @@ pub struct GestureDecoder;
 impl GestureDecoder {
     /// Resamples an arbitrary length touch trajectory polyline into exactly `target_count` equidistant points
     pub fn resample_polyline(points: &[GesturePoint], target_count: usize) -> Vec<GesturePoint> {
+        let mut resampled = Vec::with_capacity(target_count.max(1));
+        Self::resample_polyline_into(points, target_count, &mut resampled);
+        resampled
+    }
+
+    /// Resamples `points` into `resampled` buffer in-place to avoid per-candidate heap allocations.
+    #[inline]
+    fn resample_polyline_into(
+        points: &[GesturePoint],
+        target_count: usize,
+        resampled: &mut Vec<GesturePoint>,
+    ) {
+        resampled.clear();
         if points.is_empty() {
-            return Vec::new();
+            return;
         }
         if points.len() == 1 || target_count <= 1 {
-            return vec![points[0].clone(); target_count.max(1)];
+            let count = target_count.max(1);
+            resampled.resize(count, points[0].clone());
+            return;
         }
 
         let mut total_length = 0.0f32;
@@ -201,11 +214,11 @@ impl GestureDecoder {
         }
 
         if total_length == 0.0 {
-            return vec![points[0].clone(); target_count];
+            resampled.resize(target_count, points[0].clone());
+            return;
         }
 
         let interval = total_length / (target_count - 1) as f32;
-        let mut resampled = Vec::with_capacity(target_count);
         resampled.push(points[0].clone());
 
         let mut accumulated = 0.0f32;
@@ -235,11 +248,11 @@ impl GestureDecoder {
             }
         }
 
-        while resampled.len() < target_count {
-            resampled.push(points.last().unwrap().clone());
+        if let Some(last) = points.last() {
+            while resampled.len() < target_count {
+                resampled.push(last.clone());
+            }
         }
-
-        resampled
     }
 
     /// Decodes a touch trajectory against keyboard key centroids and binary dictionary.
@@ -273,8 +286,22 @@ impl GestureDecoder {
         let end_pt = &user_path[sample_count - 1];
 
         let mut key_map: HashMap<char, (f32, f32)> = HashMap::with_capacity(keys.len());
+        let mut valid_keys: HashSet<char> = HashSet::with_capacity(keys.len());
         for k in keys {
-            key_map.insert(k.char_code.to_ascii_lowercase(), (k.x, k.y));
+            let lower = k.char_code.to_ascii_lowercase();
+            key_map.insert(lower, (k.x, k.y));
+            let mut min_d = f32::MAX;
+            for u_pt in &user_path {
+                let dx = u_pt.x - k.x;
+                let dy = u_pt.y - k.y;
+                let d = (dx * dx + dy * dy).sqrt();
+                if d < min_d {
+                    min_d = d;
+                }
+            }
+            if min_d / kw <= 1.85 {
+                valid_keys.insert(lower);
+            }
         }
 
         let start_radius = 2.4 * kw;
@@ -288,6 +315,7 @@ impl GestureDecoder {
                 dx * dx + dy * dy <= start_radius * start_radius
             })
             .map(|k| k.char_code.to_ascii_lowercase())
+            .filter(|c| valid_keys.contains(c))
             .collect();
 
         let end_keys: HashSet<char> = keys
@@ -298,6 +326,7 @@ impl GestureDecoder {
                 dx * dx + dy * dy <= end_radius * end_radius
             })
             .map(|k| k.char_code.to_ascii_lowercase())
+            .filter(|c| valid_keys.contains(c))
             .collect();
 
         if start_keys.is_empty() || end_keys.is_empty() {
@@ -305,25 +334,36 @@ impl GestureDecoder {
         }
 
         let mut candidates: Vec<GestureCandidate> = Vec::new();
+        let mut word_buffer: Vec<u16> = Vec::with_capacity(28);
+        let mut ideal_pts_buf: Vec<GesturePoint> = Vec::with_capacity(28);
+        let mut resampled_buf: Vec<GesturePoint> = Vec::with_capacity(sample_count);
 
         for &start_ch in &start_keys {
-            let mut start_targets = vec![start_ch as u16];
-            if start_ch.is_ascii_lowercase() {
-                start_targets.push(start_ch.to_ascii_uppercase() as u16);
+            let mut start_targets = [start_ch as u16, 0];
+            let target_len = if start_ch.is_ascii_lowercase() {
+                start_targets[1] = start_ch.to_ascii_uppercase() as u16;
+                2
             } else if start_ch.is_ascii_uppercase() {
-                start_targets.push(start_ch.to_ascii_lowercase() as u16);
-            }
-            for &st in &start_targets {
+                start_targets[1] = start_ch.to_ascii_lowercase() as u16;
+                2
+            } else {
+                1
+            };
+            for &st in &start_targets[..target_len] {
                 if let Some(start_node) = dict.child(0, st) {
-                    let mut word_buffer = vec![st];
+                    word_buffer.clear();
+                    word_buffer.push(st);
                     Self::collect_words(
                         dict,
                         start_node,
                         &mut word_buffer,
                         &end_keys,
+                        &valid_keys,
                         &key_map,
                         &user_path,
                         kw,
+                        &mut ideal_pts_buf,
+                        &mut resampled_buf,
                         &mut candidates,
                     );
                 }
@@ -663,6 +703,59 @@ impl GestureDecoder {
         Some(score)
     }
 
+    #[inline]
+    fn evaluate_ideal_points_with_buf(
+        ideal_pts: &[GesturePoint],
+        user_path: &[GesturePoint],
+        kw: f32,
+        freq: u8,
+        max_key_miss: f32,
+        total_key_miss: f32,
+        resampled_buf: &mut Vec<GesturePoint>,
+    ) -> Option<f32> {
+        let d_start = {
+            let dx = user_path[0].x - ideal_pts[0].x;
+            let dy = user_path[0].y - ideal_pts[0].y;
+            (dx * dx + dy * dy).sqrt() / kw
+        };
+        let d_end = {
+            let dx = user_path.last().unwrap().x - ideal_pts.last().unwrap().x;
+            let dy = user_path.last().unwrap().y - ideal_pts.last().unwrap().y;
+            (dx * dx + dy * dy).sqrt() / kw
+        };
+
+        if d_start > 2.4 || d_end > 2.4 {
+            return None;
+        }
+
+        if max_key_miss > 1.85 {
+            return None;
+        }
+
+        let avg_key_miss = total_key_miss / ideal_pts.len() as f32;
+
+        Self::resample_polyline_into(ideal_pts, user_path.len(), resampled_buf);
+        let dtw_dist = Self::dtw_distance(user_path, resampled_buf, 6) / kw;
+
+        let miss_penalty = if max_key_miss > 1.2 {
+            (max_key_miss - 1.2) * 2.0
+        } else {
+            0.0
+        };
+
+        let total_cost = dtw_dist + 0.5 * d_start + 0.5 * d_end + 0.4 * avg_key_miss + miss_penalty;
+
+        if total_cost > 3.2 {
+            return None;
+        }
+
+        let shape_score = (-total_cost * 1.5).exp();
+        let freq_score = (1.0 + freq as f32).ln() / (256.0f32).ln();
+        let score = 100.0 * shape_score + 15.0 * freq_score;
+
+        Some(score)
+    }
+
     /// Evaluates shape match and scoring of a candidate word path against the user's touch trajectory.
     /// Uses windowed Dynamic Time Warping (DTW), key-visit proximity verification, and log-scaled frequency.
     pub fn evaluate_candidate(
@@ -729,15 +822,76 @@ impl GestureDecoder {
         Self::evaluate_ideal_points(&ideal_pts, user_path, kw, freq)
     }
 
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    fn evaluate_candidate_bytes_fast(
+        ideal_bytes: &[u8],
+        key_positions: &[(f32, f32); 26],
+        key_present: &[bool; 26],
+        key_norm_miss: &[f32; 26],
+        user_path: &[GesturePoint],
+        kw: f32,
+        freq: u8,
+        ideal_pts_buf: &mut Vec<GesturePoint>,
+        resampled_buf: &mut Vec<GesturePoint>,
+    ) -> Option<f32> {
+        if ideal_bytes.len() < 2 || user_path.len() < 2 {
+            return None;
+        }
+
+        ideal_pts_buf.clear();
+        let mut max_key_miss = 0.0f32;
+        let mut total_key_miss = 0.0f32;
+
+        for &b in ideal_bytes {
+            let ch = b.to_ascii_lowercase();
+            if ch.is_ascii_lowercase() {
+                let idx = (ch - b'a') as usize;
+                if key_present[idx] {
+                    let norm_d = key_norm_miss[idx];
+                    if norm_d > max_key_miss {
+                        max_key_miss = norm_d;
+                    }
+                    total_key_miss += norm_d;
+                    let pos = key_positions[idx];
+                    ideal_pts_buf.push(GesturePoint {
+                        x: pos.0,
+                        y: pos.1,
+                        timestamp_ms: 0,
+                    });
+                    continue;
+                }
+            }
+            return None;
+        }
+
+        if max_key_miss > 1.85 {
+            return None;
+        }
+
+        Self::evaluate_ideal_points_with_buf(
+            ideal_pts_buf,
+            user_path,
+            kw,
+            freq,
+            max_key_miss,
+            total_key_miss,
+            resampled_buf,
+        )
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn collect_words(
         dict: &BinaryDict,
         node: u32,
         buffer: &mut Vec<u16>,
         end_keys: &HashSet<char>,
+        valid_keys: &HashSet<char>,
         key_map: &HashMap<char, (f32, f32)>,
         user_path: &[GesturePoint],
         kw: f32,
+        ideal_pts_buf: &mut Vec<GesturePoint>,
+        resampled_buf: &mut Vec<GesturePoint>,
         results: &mut Vec<GestureCandidate>,
     ) {
         if buffer.len() > 24 {
@@ -750,14 +904,55 @@ impl GestureDecoder {
                 if end_keys.contains(&last_ch.to_ascii_lowercase()) {
                     let freq = dict.freq(node);
                     if freq >= 1 {
-                        let chars: Vec<char> = buffer.iter().filter_map(|&u| char::from_u32(u as u32)).collect();
-                        if chars.len() == buffer.len() {
-                            if let Some(score) = Self::evaluate_candidate(
-                                &chars,
-                                key_map,
+                        ideal_pts_buf.clear();
+                        let mut all_valid = true;
+                        let mut max_key_miss = 0.0f32;
+                        let mut total_key_miss = 0.0f32;
+
+                        for &u in buffer.iter() {
+                            if let Some(ch) = char::from_u32(u as u32) {
+                                if ch == '\'' || ch == '\u{2019}' {
+                                    continue;
+                                }
+                                if let Some(&pos) = key_map.get(&ch.to_ascii_lowercase()) {
+                                    let mut min_d = f32::MAX;
+                                    for u_pt in user_path {
+                                        let dx = u_pt.x - pos.0;
+                                        let dy = u_pt.y - pos.1;
+                                        let d = (dx * dx + dy * dy).sqrt();
+                                        if d < min_d {
+                                            min_d = d;
+                                        }
+                                    }
+                                    let norm_d = min_d / kw;
+                                    if norm_d > max_key_miss {
+                                        max_key_miss = norm_d;
+                                    }
+                                    total_key_miss += norm_d;
+                                    ideal_pts_buf.push(GesturePoint {
+                                        x: pos.0,
+                                        y: pos.1,
+                                        timestamp_ms: 0,
+                                    });
+                                } else {
+                                    all_valid = false;
+                                    break;
+                                }
+                            } else {
+                                all_valid = false;
+                                break;
+                            }
+                        }
+
+                        if all_valid && !ideal_pts_buf.is_empty() {
+                            if let Some(score) = Self::evaluate_ideal_points_with_buf(
+                                ideal_pts_buf,
                                 user_path,
                                 kw,
                                 freq,
+                                max_key_miss,
+                                total_key_miss,
+                                resampled_buf,
                             ) {
                                 let word_str = String::from_utf16_lossy(buffer);
                                 results.push(GestureCandidate {
@@ -774,17 +969,27 @@ impl GestureDecoder {
         let start = dict.child_start(node as usize);
         let count = dict.child_count(node as usize);
         for e in start..start + count {
-            let child_node = (e + 1) as u32;
             let label = dict.edge_label(e);
+            let ch = match char::from_u32(label as u32) {
+                Some(c) => c,
+                None => continue,
+            };
+            if ch != '\'' && ch != '\u{2019}' && !valid_keys.contains(&ch.to_ascii_lowercase()) {
+                continue;
+            }
+            let child_node = (e + 1) as u32;
             buffer.push(label);
             Self::collect_words(
                 dict,
                 child_node,
                 buffer,
                 end_keys,
+                valid_keys,
                 key_map,
                 user_path,
                 kw,
+                ideal_pts_buf,
+                resampled_buf,
                 results,
             );
             buffer.pop();
@@ -827,6 +1032,7 @@ impl GestureDecoder {
         let mut key_map: HashMap<char, (f32, f32)> = HashMap::with_capacity(keys.len());
         let mut key_positions = [(0.0f32, 0.0f32); 26];
         let mut key_present = [false; 26];
+        let mut key_norm_miss = [f32::MAX; 26];
         for k in keys {
             let lower = k.char_code.to_ascii_lowercase();
             key_map.insert(lower, (k.x, k.y));
@@ -834,6 +1040,16 @@ impl GestureDecoder {
                 let idx = (lower as u8 - b'a') as usize;
                 key_positions[idx] = (k.x, k.y);
                 key_present[idx] = true;
+                let mut min_d = f32::MAX;
+                for u_pt in &user_path {
+                    let dx = u_pt.x - k.x;
+                    let dy = u_pt.y - k.y;
+                    let d = (dx * dx + dy * dy).sqrt();
+                    if d < min_d {
+                        min_d = d;
+                    }
+                }
+                key_norm_miss[idx] = min_d / kw;
             }
         }
 
@@ -867,19 +1083,24 @@ impl GestureDecoder {
         let index = get_or_build_phonetic_index(dict, transliterator);
 
         let mut node_scores: HashMap<u32, f32> = HashMap::new();
+        let mut ideal_pts_buf: Vec<GesturePoint> = Vec::with_capacity(28);
+        let mut resampled_buf: Vec<GesturePoint> = Vec::with_capacity(sample_count);
 
         for &s in &start_keys {
             for &e in &end_keys {
                 let entries = index.get_bucket(s, e);
                 for entry in entries {
                     let keys_bytes = index.get_keys(entry);
-                    if let Some(score) = Self::evaluate_candidate_bytes(
+                    if let Some(score) = Self::evaluate_candidate_bytes_fast(
                         keys_bytes,
                         &key_positions,
                         &key_present,
+                        &key_norm_miss,
                         &user_path,
                         kw,
                         entry.freq,
+                        &mut ideal_pts_buf,
+                        &mut resampled_buf,
                     ) {
                         let slot = node_scores.entry(entry.node).or_insert(f32::MIN);
                         if score > *slot {
