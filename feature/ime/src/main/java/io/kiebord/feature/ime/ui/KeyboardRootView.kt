@@ -477,25 +477,30 @@ fun KeyboardRootView(
     // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
     val displayLayout = if (isSlidingSymbolMode) (layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols) else layout
 
-    val isBornoEasyLayout = PredefinedLayouts.isBornoEasy(displayLayout.id) || PredefinedLayouts.isBornoEasy(primaryAlphaLayout.id)
+    val isDisplayBornoEasy = PredefinedLayouts.isBornoEasy(displayLayout.id)
+    val isPrimaryBornoEasy = PredefinedLayouts.isBornoEasy(primaryAlphaLayout.id)
+    val isBornoEasyLayout = isDisplayBornoEasy || isPrimaryBornoEasy
+    val isNumberLayout = PredefinedLayouts.isNumberLayout(displayLayout.id)
 
-    // Baseline row height: in portrait 61dp without number row, 54dp with number row (scaled for 6-row layouts like Borno Easy)
+    // Baseline row heights for portrait
+    val baseStandardPortraitRowHeight = if (showNumberRow) 54.dp else 61.dp
+    val baseBornoEasyPortraitRowHeight = if (showNumberRow) 43.dp else 48.dp
     val basePortraitRowHeight = when {
-        isBornoEasyLayout -> if (showNumberRow) 45.dp else 50.dp
+        isDisplayBornoEasy -> baseBornoEasyPortraitRowHeight
         showNumberRow -> 54.dp
         else -> 61.dp
     }
 
-    // In landscape, by default the keyboard height is 60% of landscape height
-    val totalLandscapeRows = when {
-        isBornoEasyLayout -> if (showNumberRow) 7f else 6f
-        showNumberRow -> 5f
-        else -> 4f
+    // Baseline row heights for landscape
+    val baseLandscapeBottomRowHeight = remember(screenHeightDp, showNumberRow) {
+        val totalStandardLandscapeRows = if (showNumberRow) 5f else 4f
+        ((screenHeightDp * 0.60f - 38.dp - 4.dp).coerceAtLeast(110.dp) / totalStandardLandscapeRows)
     }
-    val landscapeScale = if (isBornoEasyLayout) 0.65f else 0.60f
-    val baseLandscapeRowHeight = remember(screenHeightDp, totalLandscapeRows, isBornoEasyLayout) {
-        ((screenHeightDp * landscapeScale - 38.dp - 4.dp).coerceAtLeast(110.dp) / totalLandscapeRows)
+    val baseLandscapeBornoEasyRowHeight = remember(screenHeightDp, showNumberRow) {
+        val totalBornoEasyLandscapeRows = if (showNumberRow) 7f else 6f
+        ((screenHeightDp * 0.62f - 38.dp - 4.dp).coerceAtLeast(110.dp) / totalBornoEasyLandscapeRows)
     }
+    val baseLandscapeRowHeight = if (isDisplayBornoEasy) baseLandscapeBornoEasyRowHeight else baseLandscapeBottomRowHeight
 
     val activeBaseRowHeight = if (isLandscape) baseLandscapeRowHeight else basePortraitRowHeight
     val activeHeightScale = if (isLandscape) heightScaleLandscape else heightScalePortrait
@@ -507,6 +512,33 @@ fun KeyboardRootView(
     var keyRowHeight by remember(isLandscape, activeTargetRowHeight) { mutableStateOf(activeTargetRowHeight) }
     val scaleFactor = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.4f, 1.6f)
     val toolbarHeight = if (isLandscape) (38 * scaleFactor).coerceIn(32f, 44f).dp else (48 * scaleFactor).dp
+
+    val liveScale = if (isResizerOpen) scaleFactor else activeHeightScale
+    // Unified bottom row height across ALL layouts
+    val bottomRowHeight = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * liveScale
+    val standardRowHeight = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * liveScale
+    val bornoEasyRowHeight = (if (isLandscape) baseLandscapeBornoEasyRowHeight else baseBornoEasyPortraitRowHeight) * liveScale
+
+    // Target keyboard height to match primary layout height
+    val targetKeyboardHeight = remember(
+        isPrimaryBornoEasy,
+        showNumberRow,
+        standardRowHeight,
+        bornoEasyRowHeight,
+        bottomRowHeight,
+        scaleFactor
+    ) {
+        val topNumberHeight = if (showNumberRow) (50 * scaleFactor).dp else 0.dp
+        if (isPrimaryBornoEasy) {
+            topNumberHeight + (bornoEasyRowHeight * 5) + bottomRowHeight
+        } else {
+            topNumberHeight + (standardRowHeight * 3) + bottomRowHeight
+        }
+    }
+
+    val numberUpperRowHeight = remember(targetKeyboardHeight, bottomRowHeight) {
+        ((targetKeyboardHeight - bottomRowHeight) / 3).coerceAtLeast(40.dp)
+    }
 
     var chinPadding by remember(isLandscape, activeChinPadding) {
         mutableStateOf(activeChinPadding)
@@ -586,7 +618,7 @@ fun KeyboardRootView(
     val baseAlphaLayout = if (isSymbolLayout) (if (isSlidingSymbolMode) layout else primaryAlphaLayout) else displayLayout
 
     val keyboardRows: List<KeyRow> = remember(displayLayout, baseAlphaLayout, showNumberRow, extraRowOverrides, isShiftActive, isBornoEasyKarMode, bornoEasyTypedCluster) {
-        val numberRow: List<KeyRow> = if (showNumberRow) {
+        val numberRow: List<KeyRow> = if (showNumberRow && !isNumberLayout) {
             val baseRow = if (isShiftActive && displayLayout.shiftedNumberRow != null) {
                 displayLayout.shiftedNumberRow!!
             } else {
@@ -693,14 +725,34 @@ fun KeyboardRootView(
     }
 
     val isKeysInteractive = isInteractive && !isResizerOpen
-    val hasTopNumberRow = showNumberRow
-    val keyboardContentHeight = remember(keyboardRows, keyRowHeight, scaleFactor, hasTopNumberRow) {
-        var total = 0.dp
-        keyboardRows.forEachIndexed { index, _ ->
-            val isTopNumber = hasTopNumberRow && index == 0
-            total += if (isTopNumber) (50 * scaleFactor).dp else keyRowHeight
+    val hasTopNumberRow = showNumberRow && !isNumberLayout
+    val keyboardContentHeight = remember(
+        isNumberLayout,
+        targetKeyboardHeight,
+        keyboardRows,
+        bottomRowHeight,
+        bornoEasyRowHeight,
+        standardRowHeight,
+        scaleFactor,
+        hasTopNumberRow,
+        isDisplayBornoEasy
+    ) {
+        if (isNumberLayout) {
+            targetKeyboardHeight
+        } else {
+            var total = 0.dp
+            keyboardRows.forEachIndexed { index, _ ->
+                val isBottom = index == keyboardRows.lastIndex
+                val isTopNumber = hasTopNumberRow && index == 0
+                total += when {
+                    isBottom -> bottomRowHeight
+                    isTopNumber -> (50 * scaleFactor).dp
+                    isDisplayBornoEasy -> bornoEasyRowHeight
+                    else -> standardRowHeight
+                }
+            }
+            total
         }
-        total
     }
 
     val handleToolbarAction: (ToolbarAction) -> Unit = { action ->
@@ -1570,7 +1622,8 @@ fun KeyboardRootView(
                     if (displayLayout.id == "num_extended" && keyboardRows.size >= 4) {
                         NumberPadExtendedLayout(
                             keyboardRows = keyboardRows,
-                            keyRowHeight = keyRowHeight,
+                            numberUpperRowHeight = numberUpperRowHeight,
+                            bottomRowHeight = bottomRowHeight,
                             scaleFactor = scaleFactor,
                             areKeysInteractive = areKeysInteractive,
                             colorScheme = colorScheme,
@@ -1592,10 +1645,12 @@ fun KeyboardRootView(
                         keyboardRows.forEachIndexed { rowIndex, row ->
                         val isBottomRow = rowIndex == keyboardRows.lastIndex
                         val isTopNumberRow = hasTopNumberRow && rowIndex == 0
-                        val currentRowHeight = if (isTopNumberRow) {
-                            (50 * scaleFactor).dp
-                        } else {
-                            keyRowHeight
+                        val currentRowHeight = when {
+                            isBottomRow -> bottomRowHeight
+                            isTopNumberRow -> (50 * scaleFactor).dp
+                            isNumberLayout -> numberUpperRowHeight
+                            isDisplayBornoEasy -> bornoEasyRowHeight
+                            else -> standardRowHeight
                         }
                         Row(
                             modifier = Modifier
@@ -1646,6 +1701,7 @@ fun KeyboardRootView(
                                 showKeyShadows = showKeyShadows,
                                 showSecondaryKeys = showSecondaryKeys && !isTopNumberRow,
                                 showKeyPopups = showKeyPopups,
+                                compactGaps = isDisplayBornoEasy && !isBottomRow,
                                 isInteractive = areKeysInteractive,
                                 rowHeight = currentRowHeight,
                                 scaleFactor = scaleFactor,
@@ -2186,7 +2242,7 @@ fun KeyboardRootView(
                 rootCoordinates = rootCoordinates,
                 scaleFactor = scaleFactor,
                 totalBottomPadding = totalBottomPadding,
-                keyRowHeight = keyRowHeight,
+                keyRowHeight = bottomRowHeight,
                 keyboardLeftPx = keyboardLeftPx,
                 keyboardRightPx = keyboardRightPx,
                 modifier = Modifier.zIndex(90f)
@@ -2773,7 +2829,8 @@ private fun VoiceTypingCenterBar(
 @Composable
 private fun NumberPadExtendedLayout(
     keyboardRows: List<KeyRow>,
-    keyRowHeight: Dp,
+    numberUpperRowHeight: Dp,
+    bottomRowHeight: Dp,
     scaleFactor: Float,
     areKeysInteractive: Boolean,
     colorScheme: KeyboardColorScheme,
@@ -2793,7 +2850,7 @@ private fun NumberPadExtendedLayout(
 ) {
     val extendedOperators = remember { listOf("+", "-", "*", "/", "(", ")", "#") }
     val opScrollState = rememberScrollState()
-    val topRowsHeight = keyRowHeight * 3
+    val topRowsHeight = numberUpperRowHeight * 3
     val scrollbarColor = colorScheme.accentColor.takeIf { it != Color.Unspecified } ?: colorScheme.keyForeground
 
     val fontScaleFactor = scaleFactor.coerceAtMost(1.0f)
@@ -2969,7 +3026,7 @@ private fun NumberPadExtendedLayout(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(keyRowHeight)
+                        .height(numberUpperRowHeight)
                 ) {
                     row.keys.drop(1).forEachIndexed { keyIndex, key ->
                         key("cell_${rIdx}_${keyIndex + 1}") {
@@ -2986,8 +3043,9 @@ private fun NumberPadExtendedLayout(
                                 showKeyShadows = showKeyShadows,
                                 showSecondaryKeys = showSecondaryKeys,
                                 showKeyPopups = showKeyPopups,
+                                compactGaps = false,
                                 isInteractive = areKeysInteractive,
-                                rowHeight = keyRowHeight,
+                                rowHeight = numberUpperRowHeight,
                                 scaleFactor = scaleFactor,
                                 gestureTypingEnabled = false,
                                 longPressDelayMs = longPressDelayMs,
@@ -3014,7 +3072,7 @@ private fun NumberPadExtendedLayout(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(keyRowHeight)
+            .height(bottomRowHeight)
     ) {
         bottomRow.keys.forEachIndexed { keyIndex, key ->
             val effectiveKey = if (key.type == KeyType.SPACE && key.label.isBlank()) {
@@ -3036,8 +3094,9 @@ private fun NumberPadExtendedLayout(
                     showKeyShadows = showKeyShadows,
                     showSecondaryKeys = showSecondaryKeys,
                     showKeyPopups = showKeyPopups,
+                    compactGaps = false,
                     isInteractive = areKeysInteractive,
-                    rowHeight = keyRowHeight,
+                    rowHeight = bottomRowHeight,
                     scaleFactor = scaleFactor,
                     gestureTypingEnabled = false,
                     longPressDelayMs = longPressDelayMs,

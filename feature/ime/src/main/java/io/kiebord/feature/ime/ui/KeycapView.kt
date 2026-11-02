@@ -95,6 +95,7 @@ fun KeycapView(
     showKeyShadows: Boolean = true,
     showSecondaryKeys: Boolean = true,
     showKeyPopups: Boolean = true,
+    compactGaps: Boolean = false,
     rowHeight: Dp = 61.dp,
     scaleFactor: Float = (rowHeight.value / (if (rowHeight.value >= 58f) 61f else 54f)).coerceIn(0.4f, 1.6f),
     onKeyPress: (KeyDef) -> Unit = {},
@@ -164,8 +165,16 @@ fun KeycapView(
 
     // In flat theme (!showKeyBorders), reduce height of Space bar, Sym key, and Enter key
     val isReducedHeightKey = !showKeyBorders && isPillColoredKey
-    val horizontalPadding = (2.8f * fontScaleFactor).coerceIn(1.2f, 3.2f).dp
-    val verticalPadding = if (isReducedHeightKey) (8.5f * scaleFactor).coerceAtLeast(2.8f).dp else (4.2f * scaleFactor).coerceIn(1.5f, 6.0f).dp
+    val horizontalPadding = if (compactGaps) {
+        (1.5f * fontScaleFactor).coerceIn(0.8f, 2.0f).dp
+    } else {
+        (2.8f * fontScaleFactor).coerceIn(1.2f, 3.2f).dp
+    }
+    val verticalPadding = if (compactGaps) {
+        if (isReducedHeightKey) (5.5f * scaleFactor).coerceAtLeast(2.0f).dp else (2.2f * scaleFactor).coerceIn(1.0f, 3.2f).dp
+    } else {
+        if (isReducedHeightKey) (8.5f * scaleFactor).coerceAtLeast(2.8f).dp else (4.2f * scaleFactor).coerceIn(1.5f, 6.0f).dp
+    }
 
     // Capture latest parameters in updated states to allow pointerInput without gesture cancellation
     val currentKey = rememberUpdatedState(key)
