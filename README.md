@@ -27,7 +27,7 @@ Kiebord comes with the essential features you need for everyday typing, without 
 
 | Language | Layouts |
 |---|---|
-| Bangla | Borno Phonetic, Avro Phonetic, National (BSTI), Probhat |
+| Bangla | Borno Phonetic, Avro Phonetic, Borno Easy, National (BSTI), Probhat |
 | English | QWERTY |
 | Arabic | Arabic (with dedicated Harakat / diacritics row) |
 
@@ -39,7 +39,7 @@ Kiebord comes with the essential features you need for everyday typing, without 
 * **Spacebar & Backspace Gestures**: Slide across the spacebar to navigate the cursor; slide left from the backspace key to quickly erase words.
 * **Clipboard Manager**: History of copied text with pin/unpin support.
 * **Text Editing Panel**: Dedicated directional arrows, text selection handles, copy, cut, paste, undo, and redo.
-* **Emoji Picker**: Built-in emoji panel with search and category tabs.
+* **Emoji Picker**: Built-in emoji panel with search (WIP) and category tabs.
 * **Voice Typing**: Direct speech-to-text input via the system voice recognizer.
 * **One-Handed Mode & Resizing**: Toggleable left/right one-handed modes and adjustable keyboard height.
 * **Haptic Feedback**: Keypress vibration support.
@@ -61,7 +61,6 @@ kiebord/
 │   └── ime/              # InputMethodService implementation, Compose canvas, and JNI bindings
 ├── native/
 │   └── kiebord-engine/   # Rust native library (spatial model, trie dictionaries, BornoTSF)
-├── scripts/              # Python tooling for dictionary cleaning and optimization
 └── docs/                 # Layout and theme development specifications
 ```
 
@@ -99,7 +98,12 @@ Build the release Android App Bundle (for Google Play):
 ./gradlew bundleRelease
 ```
 
-Precompiled native shared libraries (`libborno_engine.so`) and binary dictionary assets (`.dict`) are tracked in the repository. Standard Android builds run directly without requiring local Cargo or dictionary compilation steps.
+Binary dictionary assets (`.dict`) are tracked in the repository. To compile the native Rust engine (`kiebord-engine`) into `libborno_engine.so`:
+
+```bash
+cd native/kiebord-engine
+cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ../../feature/ime/src/main/jniLibs build --release
+```
 
 ---
 
