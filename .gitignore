@@ -17,3 +17,4 @@ native/kiebord-engine/target/
 .kotlin/
 assets-src/
 *.dict
+*.so
