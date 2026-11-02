@@ -924,6 +924,16 @@ fun KeyboardRootView(
                 modifier = Modifier.matchParentSize()
             )
         }
+        val isSolidOverlayActive = isToolsDrawerOpen || (isSuggestionsExpanded && suggestions.isNotEmpty())
+        if (isSolidOverlayActive) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = if (isToolsDrawerOpen) 0.dp else toolbarHeight)
+                    .matchParentSize()
+                    .background(colorScheme.containerBackground.copy(alpha = 1f))
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1004,7 +1014,10 @@ fun KeyboardRootView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(toolbarHeight)
-                        .background(colorScheme.effectiveToolbarBackground)
+                        .background(
+                            if (isToolsDrawerOpen) colorScheme.containerBackground.copy(alpha = 1f)
+                            else colorScheme.effectiveToolbarBackground
+                        )
                         .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

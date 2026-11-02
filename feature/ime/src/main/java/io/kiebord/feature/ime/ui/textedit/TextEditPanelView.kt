@@ -53,11 +53,14 @@ fun TextEditPanelView(
     val actionKeyBg = colorScheme.actionKeyBackground
     val buttonFg = colorScheme.keyForeground
 
+    val hasBackdrop = colorScheme.themeSpec?.background?.image != null || colorScheme.themeSpec?.background?.gradient != null
+    val panelBg = if (hasBackdrop) Color.Transparent else colorScheme.containerBackground
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .background(colorScheme.containerBackground)
+            .background(panelBg)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {

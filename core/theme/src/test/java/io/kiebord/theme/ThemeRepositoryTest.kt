@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -435,6 +436,558 @@ class ThemeRepositoryTest {
             val darkGlobeFlat = KeyboardColorScheme.DefaultDark.resolveKeycapVisual(key = globeKey, showKeyBorders = false)
             assertEquals(KeyboardColorScheme.DefaultDark.containerBackground, darkGlobeFlat.backgroundColor)
         }
+    }
+
+    @Test
+    fun testBornoExportedThemeDirectJson() {
+        val bornothemeJson = """
+            {
+              "schemaVersion": 1,
+              "builder": "100",
+              "name": "Borno Sunset Orange",
+              "backgroundType": 4,
+              "backgroundPath": "",
+              "backgroundColor": "#1A1A1A",
+              "backgroundOpacity": 255,
+              "keyColor": "#2D2D2D",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#222222",
+              "labelFunctionalKeyColor": "#E0E0E0",
+              "enterColor": "#FF5722",
+              "enterIconColor": "#FFFFFF",
+              "selectedKeyColor": "#FF5722",
+              "spaceColor": "#2D2D2D",
+              "keyStrokeColor": "#3A3A3A",
+              "keyStrokeSize": 1,
+              "keyRadius": 12.0,
+              "isFlat": false,
+              "isModern": true
+            }
+        """.trimIndent()
+
+        val theme = json.decodeFromString<BornoExportedTheme>(bornothemeJson)
+        assertEquals("Borno Sunset Orange", theme.name)
+        assertEquals(4, theme.backgroundType)
+        assertEquals("#FF5722", theme.enterColor)
+        assertEquals("#FFFFFF", theme.enterIconColor)
+
+        val spec = with(ThemeColorUtils) { theme.toKeyboardThemeSpec() }
+        assertEquals("Borno Sunset Orange", spec.name)
+        assertTrue(spec.isDark)
+        assertEquals("#2D2D2D", spec.characterKey.background)
+        assertEquals("#FFFFFF", spec.characterKey.foreground)
+        assertEquals(12.0f, spec.characterKey.cornerRadiusDp)
+        assertEquals("#FF5722", spec.actionKey.background)
+        assertEquals("#FFFFFF", spec.actionKey.foreground)
+        assertEquals("#3A3A3A", spec.characterKey.stroke?.color)
+        assertEquals(1.0f, spec.characterKey.stroke?.widthDp ?: 0f, 0.01f)
+    }
+
+    @Test
+    fun testBornoExportedThemeBase64String() {
+        val rawJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Base64 Borno Theme",
+              "backgroundType": 1,
+              "backgroundColor": "#000000",
+              "backgroundOpacity": 255,
+              "keyColor": "#1C1C1E",
+              "labelKeyColor": "#F2F2F7",
+              "functionalKeyColor": "#2C2C2E",
+              "labelFunctionalKeyColor": "#AEAEB2",
+              "enterColor": "#0A84FF"
+            }
+        """.trimIndent()
+
+        val base64 = java.util.Base64.getEncoder().encodeToString(rawJson.toByteArray(Charsets.UTF_8))
+        val decoded = ThemeColorUtils.decodeBase64ToStringSafe(base64)
+        assertNotNull(decoded)
+        assertTrue(decoded!!.contains("Base64 Borno Theme"))
+
+        val theme = json.decodeFromString<BornoExportedTheme>(decoded)
+        assertEquals("Base64 Borno Theme", theme.name)
+        assertEquals("#0A84FF", theme.enterColor)
+    }
+
+    @Test
+    fun testBornoExportedThemeWithImageBackground() {
+        val imageThemeJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Scenic Mountain",
+              "backgroundType": 3,
+              "backgroundPath": "/data/user/0/io.kiebord/files/custom_themes/mountain.jpg",
+              "backgroundOpacity": 204,
+              "backgroundColor": "#121212",
+              "keyColor": "#80202020",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#80151515",
+              "labelFunctionalKeyColor": "#E0E0E0",
+              "enterColor": "#4CAF50"
+            }
+        """.trimIndent()
+
+        val theme = json.decodeFromString<BornoExportedTheme>(imageThemeJson)
+        val spec = with(ThemeColorUtils) { theme.toKeyboardThemeSpec() }
+        assertNotNull(spec.background.image)
+        assertEquals("/data/user/0/io.kiebord/files/custom_themes/mountain.jpg", spec.background.image?.imagePath)
+        assertEquals(204 / 255f, spec.background.image?.alpha ?: 0f, 0.01f)
+        assertNotNull(spec.background.image?.dimOverlayColor)
+    }
+
+    @Test
+    fun testBornoExportedThemeWithGradientBackground() {
+        val gradientThemeJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Sunset Gradient",
+              "backgroundType": 2,
+              "gradStart": "#FF8A00",
+              "gradEnd": "#E52E71",
+              "gradAngle": 45.0,
+              "gradType": "linear",
+              "backgroundColor": "#000000",
+              "keyColor": "#30FFFFFF",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#20FFFFFF",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#E52E71"
+            }
+        """.trimIndent()
+
+        val theme = json.decodeFromString<BornoExportedTheme>(gradientThemeJson)
+        val spec = with(ThemeColorUtils) { theme.toKeyboardThemeSpec() }
+        assertNotNull(spec.background.gradient)
+        assertEquals(GradientType.LINEAR, spec.background.gradient?.type)
+        assertEquals(listOf("#FF8A00", "#E52E71"), spec.background.gradient?.colors)
+        assertEquals(45.0f, spec.background.gradient?.angle ?: 0f, 0.01f)
+    }
+
+    @Test
+    fun testBornoExportedThemeMissingHoverStateFixed() {
+        // Theme with missing pressedKeyColor (null)
+        val missingHoverJson = """
+            {
+              "schemaVersion": 1,
+              "name": "No Hover State Theme",
+              "backgroundType": 1,
+              "backgroundColor": "#000000",
+              "keyColor": "#1E1E1E",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#2C2C2C",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF"
+            }
+        """.trimIndent()
+
+        val theme = json.decodeFromString<BornoExportedTheme>(missingHoverJson)
+        val spec = with(ThemeColorUtils) { theme.toKeyboardThemeSpec() }
+
+        // Character key must have a distinct hover/pressed state generated
+        assertNotNull(spec.characterKey.pressedBackground)
+        val pressedColor = ThemeColorUtils.parseHexColor(spec.characterKey.pressedBackground!!)
+        val baseColor = ThemeColorUtils.parseHexColor(spec.characterKey.background!!)
+        assertTrue("Pressed color must be distinct from base key color", pressedColor != baseColor)
+        // Since key is dark, hover state should be lighter
+        assertTrue("Dark key hover state should be lightened", pressedColor.red > baseColor.red)
+
+        // Action key (Enter) should also have a distinct hover/pressed state
+        assertNotNull(spec.actionKey.pressedBackground)
+        val enterPressed = ThemeColorUtils.parseHexColor(spec.actionKey.pressedBackground!!)
+        val enterBase = ThemeColorUtils.parseHexColor(spec.actionKey.background!!)
+        assertTrue("Enter pressed color must be distinct from enter background", enterPressed != enterBase)
+    }
+
+    @Test
+    fun testBornoExportedThemePreservesAuthoredLabelColors() {
+        // Theme with authored white labels on dark keys: must preserve white labels without turning them black
+        val themeJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Faithful Contrast Theme",
+              "backgroundType": 1,
+              "backgroundColor": "#121212",
+              "keyColor": "#151515",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#202020",
+              "labelFunctionalKeyColor": "#E0E0E0",
+              "enterColor": "#242424",
+              "enterIconColor": "#FFFFFF"
+            }
+        """.trimIndent()
+
+        val theme = json.decodeFromString<BornoExportedTheme>(themeJson)
+        val spec = with(ThemeColorUtils) { theme.toKeyboardThemeSpec() }
+
+        assertEquals("#FFFFFF", spec.characterKey.foreground)
+        assertEquals("#E0E0E0", spec.functionalKey.foreground)
+        assertEquals("#FFFFFF", spec.actionKey.foreground)
+    }
+
+    @Test
+    fun testBornoExportedThemeStrokeOpacityFixed() {
+        // Theme with keyStrokeSize > 0 but stroke color opacity was 0 (#00000000)
+        val zeroOpacityStrokeJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Zero Opacity Stroke",
+              "backgroundType": 1,
+              "backgroundColor": "#121212",
+              "keyColor": "#222222",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#333333",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF",
+              "keyStrokeSize": 1,
+              "keyStrokeColor": "#00000000"
+            }
+        """.trimIndent()
+
+        val theme1 = json.decodeFromString<BornoExportedTheme>(zeroOpacityStrokeJson)
+        val spec1 = with(ThemeColorUtils) { theme1.toKeyboardThemeSpec() }
+        assertNotNull(spec1.characterKey.stroke)
+        assertTrue("Stroke alpha must be restored to visible level", spec1.characterKey.stroke!!.alpha >= 0.15f)
+
+        // Theme with 100% opaque stroke on dark keys (#FFFFFFFF)
+        val harshOpaqueStrokeJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Harsh Opaque Stroke",
+              "backgroundType": 1,
+              "backgroundColor": "#121212",
+              "keyColor": "#222222",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#333333",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF",
+              "keyStrokeSize": 1,
+              "keyStrokeColor": "#FFFFFFFF"
+            }
+        """.trimIndent()
+
+        val theme2 = json.decodeFromString<BornoExportedTheme>(harshOpaqueStrokeJson)
+        val spec2 = with(ThemeColorUtils) { theme2.toKeyboardThemeSpec() }
+        assertNotNull(spec2.characterKey.stroke)
+        assertTrue("Opaque stroke alpha must be softened to modern translucent keycap border", spec2.characterKey.stroke!!.alpha <= 0.35f)
+    }
+
+    @Test
+    fun testBornoExportedThemeRetainsKeyShadow() {
+        // 1. Theme with default keyShadowColor (#00000000) and keyShadowSize (0) but isFlat = false
+        val defaultShadowJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Default Shadow Borno Theme",
+              "backgroundType": 1,
+              "backgroundColor": "#121212",
+              "keyColor": "#1E1E1E",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#2C2C2C",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF",
+              "keyShadowColor": "#00000000",
+              "keyShadowSize": 0,
+              "isFlat": false
+            }
+        """.trimIndent()
+
+        val theme1 = json.decodeFromString<BornoExportedTheme>(defaultShadowJson)
+        val spec1 = with(ThemeColorUtils) { theme1.toKeyboardThemeSpec() }
+        assertNotNull("Character key must retain shadow for non-flat custom theme", spec1.characterKey.shadow)
+        assertNotNull("Action key must retain shadow for non-flat custom theme", spec1.actionKey.shadow)
+        assertEquals("#4D000000", spec1.characterKey.shadow?.color)
+
+        val def1 = with(ThemeColorUtils) { theme1.toCustomThemeDef() }
+        assertEquals("#4D000000", def1.keyShadow)
+        val scheme1 = with(ThemeColorUtils) { def1.toKeyboardColorScheme() }
+        assertTrue("Scheme keyShadow must have visible alpha", scheme1.keyShadow.alpha > 0.1f)
+
+        // 2. Theme with explicit custom shadow
+        val explicitShadowJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Explicit Shadow Theme",
+              "backgroundType": 1,
+              "backgroundColor": "#121212",
+              "keyColor": "#1E1E1E",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#2C2C2C",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF",
+              "keyShadowColor": "#33000000",
+              "keyShadowSize": 2,
+              "isFlat": false
+            }
+        """.trimIndent()
+
+        val theme2 = json.decodeFromString<BornoExportedTheme>(explicitShadowJson)
+        val spec2 = with(ThemeColorUtils) { theme2.toKeyboardThemeSpec() }
+        assertNotNull(spec2.characterKey.shadow)
+        assertEquals("#33000000", spec2.characterKey.shadow?.color)
+        assertEquals(2.0f, spec2.characterKey.shadow?.elevationDp ?: 0f, 0.01f)
+
+        // 3. Explicitly flat theme must have no shadow
+        val flatJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Flat Theme",
+              "backgroundType": 1,
+              "backgroundColor": "#121212",
+              "keyColor": "#1E1E1E",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#2C2C2C",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF",
+              "isFlat": true
+            }
+        """.trimIndent()
+
+        val theme3 = json.decodeFromString<BornoExportedTheme>(flatJson)
+        val spec3 = with(ThemeColorUtils) { theme3.toKeyboardThemeSpec() }
+        assertNull("Flat theme must have null shadow", spec3.characterKey.shadow)
+    }
+
+    @Test
+    fun testCustomThemeDefRetainsKeyShadow() {
+        val customDef = CustomThemeDef(
+            id = "custom_test",
+            name = "Custom Def Test",
+            isDark = true,
+            containerBackground = "#121212",
+            keyBackground = "#1E1E1E",
+            keyForeground = "#FFFFFF",
+            keyShadow = "#00000000",
+            actionKeyBackground = "#2C2C2C",
+            actionKeyForeground = "#FFFFFF",
+            shiftActiveColor = "#007AFF",
+            accentColor = "#007AFF"
+        )
+
+        val spec = with(ThemeColorUtils) { customDef.toKeyboardThemeSpec() }
+        assertNotNull("Spec character key must retain shadow for tiled keys", spec.characterKey.shadow)
+        assertNotNull("Spec action key must retain shadow for tiled keys", spec.actionKey.shadow)
+
+        val scheme = with(ThemeColorUtils) { customDef.toKeyboardColorScheme() }
+        assertTrue("Scheme keyShadow must have visible alpha", scheme.keyShadow.alpha > 0.1f)
+    }
+
+    @Test
+    fun testBornoExportedThemeToolbarTransparentOnImageAndGradientBackdrop() {
+        val imageThemeJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Image Toolbar Test",
+              "backgroundType": 3,
+              "backgroundPath": "/test/path/img.jpg",
+              "backgroundColor": "#121212",
+              "keyColor": "#1E1E1E",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#2C2C2C",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF",
+              "stripColor": "#00000000",
+              "stripIcoColor": "#E0E0E0"
+            }
+        """.trimIndent()
+
+        val imageTheme = json.decodeFromString<BornoExportedTheme>(imageThemeJson)
+        val spec = with(ThemeColorUtils) { imageTheme.toKeyboardThemeSpec() }
+        val scheme = spec.toKeyboardColorScheme()
+        assertEquals(0f, scheme.effectiveToolbarBackground.alpha, 0.01f)
+        assertEquals(ThemeColorUtils.parseHexColor("#E0E0E0"), scheme.effectiveToolbarForeground)
+
+        val gradientThemeJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Gradient Toolbar Test",
+              "backgroundType": 2,
+              "gradStart": "#101028",
+              "gradEnd": "#202050",
+              "backgroundColor": "#101028",
+              "keyColor": "#1E1E1E",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#2C2C2C",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF"
+            }
+        """.trimIndent()
+
+        val gradTheme = json.decodeFromString<BornoExportedTheme>(gradientThemeJson)
+        val gradSpec = with(ThemeColorUtils) { gradTheme.toKeyboardThemeSpec() }
+        val gradScheme = gradSpec.toKeyboardColorScheme()
+        assertEquals(0f, gradScheme.effectiveToolbarBackground.alpha, 0.01f)
+    }
+
+    @Test
+    fun testBornoExportedThemeMoreKeysFullOpacityOnImageBackdrop() {
+        val semiTransparentPopupThemeJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Image MoreKeys Opacity Test",
+              "backgroundType": 3,
+              "backgroundPath": "/storage/emulated/0/Download/custom_bg.png",
+              "backgroundColor": "#121212",
+              "keyColor": "#801E1E1E",
+              "popupColor": "#80000000",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#2C2C2C",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF"
+            }
+        """.trimIndent()
+
+        val theme = json.decodeFromString<BornoExportedTheme>(semiTransparentPopupThemeJson)
+        val spec = with(ThemeColorUtils) { theme.toKeyboardThemeSpec() }
+        val scheme = spec.toKeyboardColorScheme()
+
+        // Opacity should be 1.0f (full opacity) on image theme to prevent overlap with background
+        assertEquals(1.0f, scheme.moreKeysBackground.alpha, 0.001f)
+        assertEquals(1.0f, scheme.effectiveMoreKeysBackground.alpha, 0.001f)
+        assertEquals("#FF000000", spec.moreKeysBackground)
+
+        val customDef = with(ThemeColorUtils) { theme.toCustomThemeDef() }
+        assertEquals("#FF000000", customDef.moreKeysBackground)
+
+        // When popupColor is fully transparent (e.g. #00000000), it should fallback to full opacity
+        val transparentPopupThemeJson = """
+            {
+              "schemaVersion": 1,
+              "name": "Image Transparent MoreKeys Test",
+              "backgroundType": 3,
+              "backgroundPath": "/storage/emulated/0/Download/custom_bg.png",
+              "backgroundColor": "#121212",
+              "keyColor": "#00000000",
+              "popupColor": "#00000000",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#2C2C2C",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#007AFF"
+            }
+        """.trimIndent()
+
+        val transTheme = json.decodeFromString<BornoExportedTheme>(transparentPopupThemeJson)
+        val transSpec = with(ThemeColorUtils) { transTheme.toKeyboardThemeSpec() }
+        val transScheme = transSpec.toKeyboardColorScheme()
+        assertEquals(1.0f, transScheme.moreKeysBackground.alpha, 0.001f)
+        assertEquals(1.0f, transScheme.effectiveMoreKeysBackground.alpha, 0.001f)
+    }
+
+    @Test
+    fun testBornoThemeV1VsV2Identification() {
+        // V1 Format (.bornotheme schemaVersion = 1)
+        val v1Json = """
+            {
+              "schemaVersion": 1,
+              "name": "Legacy Borno Theme",
+              "backgroundType": 1,
+              "backgroundColor": "#121212",
+              "keyColor": "#1E1E1E",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#2C2C2C",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#FF5722"
+            }
+        """.trimIndent()
+
+        val v1Theme: BornoThemeV1 = json.decodeFromString(v1Json)
+        assertEquals(1, v1Theme.schemaVersion)
+        assertEquals("Legacy Borno Theme", v1Theme.name)
+        val v1Spec = with(ThemeColorUtils) { v1Theme.toKeyboardThemeSpec() }
+        assertEquals("#FF5722", v1Spec.accentColor)
+
+        // V2 Format (.bornotheme schemaVersion = 2 retaining native features)
+        val v2Json = """
+            {
+              "schemaVersion": 2,
+              "id": "custom_cyber_v2",
+              "name": "Cyberpunk 2077 v2",
+              "isDark": true,
+              "background": {
+                "gradient": {
+                  "type": "mesh",
+                  "meshPoints": [
+                    { "x": 0.0, "y": 0.0, "color": "#FF0F0C29" },
+                    { "x": 1.0, "y": 1.0, "color": "#FF24243E" }
+                  ]
+                }
+              },
+              "characterKey": {
+                "background": "#1A1B2F",
+                "foreground": "#E0E7FF",
+                "stroke": {
+                  "color": "#00FFF5",
+                  "widthDp": 0.75,
+                  "alpha": 0.5
+                },
+                "shadow": {
+                  "color": "#4D000000",
+                  "elevationDp": 2.0
+                },
+                "cornerRadiusDp": 10.0
+              },
+              "functionalKey": {
+                "background": "#141527",
+                "foreground": "#00FFF5"
+              },
+              "actionKey": {
+                "background": "#FF007F",
+                "foreground": "#FFFFFF",
+                "isPill": true
+              },
+              "accentColor": "#FF007F",
+              "perKeyOverrides": {
+                "space": {
+                  "background": "#202040",
+                  "cornerRadiusDp": 20.0
+                }
+              }
+            }
+        """.trimIndent()
+
+        val v2Theme: BornoThemeV2 = json.decodeFromString(v2Json)
+        assertEquals(2, v2Theme.schemaVersion)
+        assertEquals("Cyberpunk 2077 v2", v2Theme.name)
+        assertEquals(GradientType.MESH, v2Theme.background.gradient?.type)
+        assertEquals(2, v2Theme.background.gradient?.meshPoints?.size)
+        assertEquals(0.75f, v2Theme.characterKey.stroke?.widthDp ?: 0f, 0.01f)
+        assertEquals(2.0f, v2Theme.characterKey.shadow?.elevationDp ?: 0f, 0.01f)
+        assertTrue(v2Theme.perKeyOverrides.containsKey("space"))
+        assertEquals(20.0f, v2Theme.perKeyOverrides["space"]?.cornerRadiusDp ?: 0f, 0.01f)
+
+        // Verify conversion to CustomThemeDef retains fallback representation
+        val v2Def = v2Theme.toCustomThemeDef()
+        assertEquals("Cyberpunk 2077 v2", v2Def.name)
+        assertEquals("#FF007F", v2Def.accentColor)
+    }
+
+    @Test
+    fun testBornoThemeV2ExportAndEncoding() {
+        val spec = KeyboardThemeSpec(
+            schemaVersion = 2,
+            id = "custom_test_v2",
+            name = "Test Export Theme",
+            isDark = true,
+            background = ThemeBackgroundSpec(solidColor = "#1B1B1F"),
+            characterKey = KeycapStyleSpec(
+                background = "#2C2C30",
+                foreground = "#FFFFFF"
+            ),
+            accentColor = "#2196F3"
+        )
+
+        val exportedJson = json.encodeToString(KeyboardThemeSpec.serializer(), spec)
+        assertTrue(exportedJson.contains("\"schemaVersion\": 2") || exportedJson.contains("\"schemaVersion\":2"))
+        assertTrue(exportedJson.contains("Test Export Theme"))
+
+        // Test base64 encoding & decoding roundtrip
+        val encodedB64 = ThemeColorUtils.encodeBase64Safe(exportedJson)
+        val decodedJson = ThemeColorUtils.decodeBase64ToStringSafe(encodedB64)
+        assertNotNull(decodedJson)
+        val parsedBack = json.decodeFromString<KeyboardThemeSpec>(decodedJson!!)
+        assertEquals(2, parsedBack.schemaVersion)
+        assertEquals("Test Export Theme", parsedBack.name)
+        assertEquals("#2196F3", parsedBack.accentColor)
     }
 }
 

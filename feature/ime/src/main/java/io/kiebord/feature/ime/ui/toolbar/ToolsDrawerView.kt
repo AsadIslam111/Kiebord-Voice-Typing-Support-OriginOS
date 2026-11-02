@@ -138,11 +138,13 @@ fun ToolsDrawerView(
 
     val scrollState = rememberScrollState()
 
+    val drawerBg = colorScheme.containerBackground.copy(alpha = 1f)
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .background(colorScheme.containerBackground)
+            .background(drawerBg)
             .verticalScroll(scrollState)
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .onGloballyPositioned { coords ->
@@ -331,6 +333,11 @@ private fun ToolGridItem(
     onCoordinatesPositioned: ((LayoutCoordinates) -> Unit)? = null
 ) {
     val colorScheme = KiebordTheme.colorScheme
+    val optionLabelColor = if (isHovered || isActive) {
+        colorScheme.accentColor
+    } else {
+        ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.containerBackground)
+    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -373,7 +380,7 @@ private fun ToolGridItem(
             val iconTint = if (isDragging || isHovered || isActive) {
                 colorScheme.accentColor
             } else {
-                ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.keyBackground)
+                colorScheme.keyForeground
             }
             if (isHovered) {
                 Icon(
@@ -404,11 +411,7 @@ private fun ToolGridItem(
         // Label below the tile
         Text(
             text = if (isHovered) "Swap" else tool.label,
-            color = if (isHovered || isActive) {
-                colorScheme.accentColor
-            } else {
-                ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.containerBackground)
-            },
+            color = optionLabelColor,
             fontSize = 12.sp,
             fontWeight = if (isHovered || isActive) FontWeight.SemiBold else FontWeight.Normal,
             textAlign = TextAlign.Center,

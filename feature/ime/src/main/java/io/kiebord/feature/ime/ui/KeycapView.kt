@@ -61,6 +61,7 @@ import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.ShiftState
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.effectiveMoreKeysBackground
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -713,7 +714,7 @@ fun KeycapView(
             }
 
             val isLight = colorScheme == KeyboardColorScheme.DefaultLight
-            val popupBg = colorScheme.moreKeysBackground
+            val popupBg = colorScheme.effectiveMoreKeysBackground
             val popupFg = io.kiebord.theme.ThemeColorUtils.ensureContrast(
                 foreground = colorScheme.keyForeground,
                 background = popupBg,

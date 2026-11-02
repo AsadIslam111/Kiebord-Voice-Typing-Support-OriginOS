@@ -1,11 +1,18 @@
 package io.kiebord.theme
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import io.kiebord.theme.ThemeColorUtils.toCustomThemeDef
 import io.kiebord.theme.ThemeColorUtils.toKeyboardColorScheme
 import io.kiebord.theme.ThemeColorUtils.toKeyboardThemeSpec
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.ConcurrentHashMap
 
 enum class ThemeCategory(val title: String) {
@@ -32,6 +39,7 @@ class ThemeRepository private constructor(private val context: Context) {
         ignoreUnknownKeys = true
         isLenient = true
         encodeDefaults = true
+        coerceInputValues = true
     }
 
     private val customThemesDir: File
@@ -88,7 +96,7 @@ class ThemeRepository private constructor(private val context: Context) {
     private fun loadCustomThemes() {
         try {
             val files = customThemesDir.listFiles { _, name ->
-                name.endsWith(".json") || name.endsWith(".kbtheme")
+                name.endsWith(".json") || name.endsWith(".kbtheme") || name.endsWith(".bornotheme")
             } ?: emptyArray()
             for (file in files) {
                 try {
@@ -129,13 +137,20 @@ class ThemeRepository private constructor(private val context: Context) {
         val cid = canonicalId(id)
         originalThemes[cid]?.let { return it }
         richThemes[cid]?.let { spec ->
+            val isCustomTheme = customThemes.containsKey(spec.id) || !spec.id.startsWith("borno_")
+            val versionTag = if (spec.schemaVersion == 2) "v2" else "v1"
+            val desc = if (isCustomTheme) {
+                "Custom Borno theme ($versionTag)"
+            } else {
+                "Rich theme (${spec.background.gradient?.type?.name?.lowercase() ?: if (spec.background.image != null) "image" else "solid"})"
+            }
             return ThemeOptionItem(
                 id = spec.id,
                 name = spec.name,
-                description = "Rich theme (${spec.background.gradient?.type?.name?.lowercase() ?: if (spec.background.image != null) "image" else "solid"})",
+                description = desc,
                 scheme = getColorScheme(cid),
-                isCustom = customThemes.containsKey(spec.id) || !spec.id.startsWith("borno_"),
-                category = if (customThemes.containsKey(spec.id)) ThemeCategory.CUSTOM else categorizeBornoTheme(spec.id)
+                isCustom = isCustomTheme,
+                category = if (isCustomTheme) ThemeCategory.CUSTOM else categorizeBornoTheme(spec.id)
             )
         }
         customThemes[cid]?.let { def ->
@@ -227,36 +242,153 @@ class ThemeRepository private constructor(private val context: Context) {
         return ThemeCategory.BORNO_COLORS
     }
 
+    private fun saveBackgroundImage(ctx: Context?, base64: String): String? {
+        if (ctx == null) return null
+        return try {
+            val bytes = ThemeColorUtils.decodeBase64Safe(base64)
+            if (bytes.isEmpty()) return null
+            val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+            val reqDim = 1280
+            var inSample = 1
+            if (opts.outHeight > reqDim || opts.outWidth > reqDim) {
+                val halfH = opts.outHeight / 2
+                val halfW = opts.outWidth / 2
+                while ((halfH / inSample) >= reqDim && (halfW / inSample) >= reqDim) {
+                    inSample *= 2
+                }
+            }
+            val decodeOpts = BitmapFactory.Options().apply { inSampleSize = inSample }
+            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOpts) ?: return null
+            val imagesDir = File(ctx.filesDir, "custom_themes").apply { if (!exists()) mkdirs() }
+            val destFile = File(imagesDir, "theme_bg_${System.currentTimeMillis()}.jpg")
+            FileOutputStream(destFile).use { fos ->
+                bmp.compress(Bitmap.CompressFormat.JPEG, 85, fos)
+                fos.flush()
+            }
+            bmp.recycle()
+            destFile.absolutePath
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     fun parseThemeFile(jsonContent: String): Result<List<CustomThemeDef>> {
         return runCatching {
-            val trimmed = jsonContent.trim()
-
-            if (trimmed.contains("\"characterKey\"") || trimmed.contains("\"perKeyOverrides\"") || (trimmed.contains("\"background\"") && trimmed.contains("\"actionKey\""))) {
-                val spec = json.decodeFromString<KeyboardThemeSpec>(trimmed)
-                richThemes[spec.id] = spec
-                val def = CustomThemeDef(
-                    id = spec.id,
-                    name = spec.name,
-                    isDark = spec.isDark,
-                    containerBackground = spec.background.solidColor ?: spec.background.gradient?.colors?.firstOrNull() ?: "#1B1B1F",
-                    keyBackground = spec.characterKey.background ?: "#2C2C30",
-                    keyForeground = spec.characterKey.foreground ?: "#E3E2E6",
-                    keyBorder = spec.characterKey.stroke?.color ?: "#00000000",
-                    keyShadow = spec.characterKey.shadow?.color ?: "#00000000",
-                    actionKeyBackground = spec.functionalKey.background ?: "#242428",
-                    actionKeyForeground = spec.actionKey.foreground ?: "#04294E",
-                    shiftActiveColor = spec.shiftActiveColor,
-                    accentColor = spec.accentColor,
-                    moreKeysBackground = spec.moreKeysBackground,
-                    guidelineColor = spec.guidelineColor,
-                    suggestionBackground = spec.suggestionBackground?.solidColor ?: (spec.background.solidColor ?: "#1B1B1F"),
-                    suggestionForeground = spec.suggestionForeground,
-                    keyPressedBackground = spec.characterKey.pressedBackground ?: (spec.functionalKey.background ?: "#242428"),
-                    keyPressedForeground = spec.characterKey.pressedForeground ?: (spec.characterKey.foreground ?: "#E3E2E6")
-                )
-                return@runCatching listOf(def)
+            var trimmed = jsonContent.trim().removePrefix("\uFEFF").trim()
+            if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+                val decoded = ThemeColorUtils.decodeBase64ToStringSafe(trimmed)
+                if (decoded != null && (decoded.trim().startsWith("{") || decoded.trim().startsWith("["))) {
+                    trimmed = decoded.trim().removePrefix("\uFEFF").trim()
+                }
             }
 
+            val jsonElement = try {
+                json.parseToJsonElement(trimmed)
+            } catch (_: Exception) {
+                null
+            }
+
+            if (jsonElement is JsonObject) {
+                val schemaVersion = jsonElement["schemaVersion"]?.let {
+                    runCatching { it.jsonPrimitive.intOrNull }.getOrNull()
+                }
+
+                val hasV2Keys = jsonElement.containsKey("characterKey") ||
+                    jsonElement.containsKey("perKeyOverrides") ||
+                    (jsonElement.containsKey("background") && jsonElement["background"] is JsonObject)
+
+                val hasV1Keys = jsonElement.containsKey("backgroundType") ||
+                    jsonElement.containsKey("keyColor") ||
+                    jsonElement.containsKey("backgroundColor") ||
+                    jsonElement.containsKey("builder") ||
+                    jsonElement.containsKey("enterColor")
+
+                // If schemaVersion is explicitly 2 or contains V2 specific structure:
+                if (schemaVersion == 2 || (schemaVersion == null && hasV2Keys && !hasV1Keys)) {
+                    try {
+                        var spec = json.decodeFromJsonElement<KeyboardThemeSpec>(jsonElement)
+                        if (!spec.backgroundImageBase64.isNullOrBlank()) {
+                            val savedImagePath = saveBackgroundImage(context, spec.backgroundImageBase64)
+                            if (savedImagePath != null) {
+                                val currentImg = spec.background.image
+                                val updatedImg = currentImg?.copy(imagePath = savedImagePath)
+                                    ?: ImageBackgroundSpec(imagePath = savedImagePath)
+                                spec = spec.copy(
+                                    background = spec.background.copy(image = updatedImg)
+                                )
+                            }
+                        }
+                        richThemes[spec.id] = spec
+                        return@runCatching listOf(spec.toCustomThemeDef())
+                    } catch (_: Exception) {}
+                }
+
+                // If schemaVersion is 1 or contains V1 keys:
+                if (schemaVersion == 1 || hasV1Keys) {
+                    try {
+                        val exported = json.decodeFromJsonElement<BornoExportedTheme>(jsonElement)
+                        val imagePath = if (!exported.backgroundImageBase64.isNullOrBlank()) {
+                            saveBackgroundImage(context, exported.backgroundImageBase64)
+                        } else exported.backgroundPath
+                        val def = exported.toCustomThemeDef(resolvedImagePath = imagePath)
+                        val richSpec = exported.toKeyboardThemeSpec(customId = def.id, resolvedImagePath = imagePath)
+                        richThemes[def.id] = richSpec
+                        return@runCatching listOf(def)
+                    } catch (_: Exception) {}
+                }
+
+                // Try V2 again if V1 didn't match or failed
+                try {
+                    var spec = json.decodeFromJsonElement<KeyboardThemeSpec>(jsonElement)
+                    if (!spec.backgroundImageBase64.isNullOrBlank()) {
+                        val savedImagePath = saveBackgroundImage(context, spec.backgroundImageBase64)
+                        if (savedImagePath != null) {
+                            val currentImg = spec.background.image
+                            val updatedImg = currentImg?.copy(imagePath = savedImagePath)
+                                ?: ImageBackgroundSpec(imagePath = savedImagePath)
+                            spec = spec.copy(
+                                background = spec.background.copy(image = updatedImg)
+                            )
+                        }
+                    }
+                    richThemes[spec.id] = spec
+                    return@runCatching listOf(spec.toCustomThemeDef())
+                } catch (_: Exception) {}
+
+                // Try BornoExportedTheme again as fallback
+                try {
+                    val exported = json.decodeFromJsonElement<BornoExportedTheme>(jsonElement)
+                    val imagePath = if (!exported.backgroundImageBase64.isNullOrBlank()) {
+                        saveBackgroundImage(context, exported.backgroundImageBase64)
+                    } else exported.backgroundPath
+                    val def = exported.toCustomThemeDef(resolvedImagePath = imagePath)
+                    val richSpec = exported.toKeyboardThemeSpec(customId = def.id, resolvedImagePath = imagePath)
+                    richThemes[def.id] = richSpec
+                    return@runCatching listOf(def)
+                } catch (_: Exception) {}
+
+                // Try Standalone Borno color theme object
+                if (jsonElement.containsKey("backgroundColor") && jsonElement.containsKey("keyColor")) {
+                    try {
+                        val color = json.decodeFromJsonElement<BornoColorTheme>(jsonElement)
+                        val def = color.toCustomThemeDef("custom_${System.currentTimeMillis()}_${color.id ?: color.name.hashCode()}")
+                        val richSpec = color.toKeyboardThemeSpec(def.id)
+                        richThemes[def.id] = richSpec
+                        return@runCatching listOf(def)
+                    } catch (_: Exception) {}
+                }
+
+                // Try flat CustomThemeDef
+                try {
+                    val customDef = json.decodeFromJsonElement<CustomThemeDef>(jsonElement)
+                    val richSpec = customDef.toKeyboardThemeSpec()
+                    richThemes[customDef.id] = richSpec
+                    return@runCatching listOf(customDef)
+                } catch (_: Exception) {}
+            }
+
+            // Multi-theme bundle (borno_themes.json)
             if (trimmed.contains("\"themes\"") && trimmed.contains("\"colors\"")) {
                 val bundle = json.decodeFromString<BornoThemeFile>(trimmed)
                 val list = mutableListOf<CustomThemeDef>()
@@ -271,18 +403,7 @@ class ThemeRepository private constructor(private val context: Context) {
                 if (list.isNotEmpty()) return@runCatching list
             }
 
-            if (trimmed.contains("\"backgroundColor\"") && trimmed.contains("\"keyColor\"")) {
-                val color = json.decodeFromString<BornoColorTheme>(trimmed)
-                val def = color.toCustomThemeDef("custom_${System.currentTimeMillis()}_${color.id ?: color.name.hashCode()}")
-                val richSpec = color.toKeyboardThemeSpec(def.id)
-                richThemes[def.id] = richSpec
-                return@runCatching listOf(def)
-            }
-
-            val customDef = json.decodeFromString<CustomThemeDef>(trimmed)
-            val richSpec = customDef.toKeyboardThemeSpec()
-            richThemes[customDef.id] = richSpec
-            listOf(customDef)
+            throw IllegalArgumentException("Unsupported or corrupted theme file format")
         }
     }
 
@@ -292,9 +413,10 @@ class ThemeRepository private constructor(private val context: Context) {
             val importedItems = mutableListOf<ThemeOptionItem>()
             for (def in list) {
                 val richSpec = richThemes[def.id]
-                val file = File(customThemesDir, "${def.id}.json")
+                val versionTag = if (richSpec?.schemaVersion == 2) "v2" else "v1"
+                val file = File(customThemesDir, "${def.id}.bornotheme")
                 if (richSpec != null) {
-                    file.writeText(json.encodeToString(KeyboardThemeSpec.serializer(), richSpec), Charsets.UTF_8)
+                    file.writeText(json.encodeToString(KeyboardThemeSpec.serializer(), richSpec.copy(schemaVersion = 2)), Charsets.UTF_8)
                 } else {
                     file.writeText(json.encodeToString(CustomThemeDef.serializer(), def), Charsets.UTF_8)
                 }
@@ -305,7 +427,7 @@ class ThemeRepository private constructor(private val context: Context) {
                     ThemeOptionItem(
                         id = def.id,
                         name = def.name,
-                        description = "Imported custom theme",
+                        description = "Custom Borno theme ($versionTag)",
                         scheme = scheme,
                         isCustom = true,
                         category = ThemeCategory.CUSTOM
@@ -317,49 +439,83 @@ class ThemeRepository private constructor(private val context: Context) {
     }
 
     fun importRichTheme(spec: KeyboardThemeSpec): ThemeOptionItem {
-        richThemes[spec.id] = spec
-        val file = File(customThemesDir, "${spec.id}.json")
-        file.writeText(json.encodeToString(KeyboardThemeSpec.serializer(), spec), Charsets.UTF_8)
-        val scheme = spec.toKeyboardColorScheme()
-        val def = CustomThemeDef(
-            id = spec.id,
-            name = spec.name,
-            isDark = spec.isDark,
-            containerBackground = spec.background.solidColor ?: spec.background.gradient?.colors?.firstOrNull() ?: "#1B1B1F",
-            keyBackground = spec.characterKey.background ?: "#2C2C30",
-            keyForeground = spec.characterKey.foreground ?: "#E3E2E6",
-            keyBorder = spec.characterKey.stroke?.color ?: "#00000000",
-            keyShadow = spec.characterKey.shadow?.color ?: "#00000000",
-            actionKeyBackground = spec.functionalKey.background ?: "#242428",
-            actionKeyForeground = spec.actionKey.foreground ?: "#04294E",
-            shiftActiveColor = spec.shiftActiveColor,
-            accentColor = spec.accentColor,
-            moreKeysBackground = spec.moreKeysBackground,
-            guidelineColor = spec.guidelineColor,
-            suggestionBackground = spec.suggestionBackground?.solidColor ?: (spec.background.solidColor ?: "#1B1B1F"),
-            suggestionForeground = spec.suggestionForeground,
-            keyPressedBackground = spec.characterKey.pressedBackground ?: (spec.functionalKey.background ?: "#242428"),
-            keyPressedForeground = spec.characterKey.pressedForeground ?: (spec.characterKey.foreground ?: "#E3E2E6")
-        )
-        customThemes[spec.id] = def
-        schemeCache[spec.id] = scheme
+        val versionedSpec = spec.copy(schemaVersion = 2)
+        richThemes[versionedSpec.id] = versionedSpec
+        val file = File(customThemesDir, "${versionedSpec.id}.bornotheme")
+        file.writeText(json.encodeToString(KeyboardThemeSpec.serializer(), versionedSpec), Charsets.UTF_8)
+        val scheme = versionedSpec.toKeyboardColorScheme()
+        val def = versionedSpec.toCustomThemeDef()
+        customThemes[versionedSpec.id] = def
+        schemeCache[versionedSpec.id] = scheme
         return ThemeOptionItem(
-            id = spec.id,
-            name = spec.name,
-            description = "Imported rich theme",
+            id = versionedSpec.id,
+            name = versionedSpec.name,
+            description = "Custom Borno theme (v2)",
             scheme = scheme,
             isCustom = true,
             category = ThemeCategory.CUSTOM
         )
     }
 
+    /**
+     * Exports a theme by ID as a modern .bornotheme (Version 2) string.
+     * If the theme has a local background image, it is automatically embedded
+     * as Base64 for 100% portable single-file distribution.
+     */
+    fun exportTheme(id: String, asBase64: Boolean = false): Result<String> {
+        return runCatching {
+            val cid = canonicalId(id)
+            val richSpec = richThemes[cid]
+                ?: customThemes[cid]?.toKeyboardThemeSpec()
+                ?: bundledThemes[cid]?.toKeyboardThemeSpec()
+                ?: throw IllegalArgumentException("Theme not found: $id")
+
+            var exportSpec = richSpec.copy(schemaVersion = 2)
+            val imagePath = richSpec.background.image?.imagePath
+            if (!imagePath.isNullOrBlank() && richSpec.backgroundImageBase64.isNullOrBlank()) {
+                val file = File(imagePath)
+                if (file.exists() && file.canRead()) {
+                    val bytes = file.readBytes()
+                    val b64 = ThemeColorUtils.encodeBase64Safe(bytes)
+                    exportSpec = exportSpec.copy(backgroundImageBase64 = b64)
+                }
+            }
+
+            val jsonStr = json.encodeToString(KeyboardThemeSpec.serializer(), exportSpec)
+            if (asBase64) {
+                ThemeColorUtils.encodeBase64Safe(jsonStr)
+            } else {
+                jsonStr
+            }
+        }
+    }
+
     fun deleteCustomTheme(id: String): Boolean {
-        val file = File(customThemesDir, "$id.json")
-        val deleted = file.delete()
+        val files = listOf(
+            File(customThemesDir, "$id.bornotheme"),
+            File(customThemesDir, "$id.kbtheme"),
+            File(customThemesDir, "$id.json")
+        )
+        val spec = richThemes[id]
+        val imgPath = spec?.background?.image?.imagePath
+        if (!imgPath.isNullOrBlank()) {
+            try {
+                val imgFile = File(imgPath)
+                if (imgFile.exists() && imgFile.absolutePath.contains(context.filesDir.absolutePath)) {
+                    imgFile.delete()
+                }
+            } catch (_: Exception) {}
+        }
+        var anyDeleted = false
+        for (f in files) {
+            if (f.exists()) {
+                if (f.delete()) anyDeleted = true
+            }
+        }
         customThemes.remove(id)
         richThemes.remove(id)
         schemeCache.remove(id)
-        return deleted || !file.exists()
+        return anyDeleted || files.none { it.exists() }
     }
 
     companion object {

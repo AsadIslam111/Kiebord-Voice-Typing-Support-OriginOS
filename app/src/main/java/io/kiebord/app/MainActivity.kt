@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
     private var isImeEnabledState by mutableStateOf(false)
     private var isImeSelectedState by mutableStateOf(false)
     private var requestedNavigationTarget by mutableStateOf<String?>(null)
+    private var pendingThemeImportUri by mutableStateOf<android.net.Uri?>(null)
     private lateinit var preferencesRepo: KiebordPreferencesRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,8 +91,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             LayoutRepository.getInstance(applicationContext).preload()
         }
-        requestedNavigationTarget = intent?.getStringExtra("navigate_to")
-            ?: if (intent?.action == "io.kiebord.action.THEMES") "themes" else null
+        handleIncomingIntent(intent)
         preferencesRepo = KiebordPreferencesRepository.getInstance(this)
         updateImeStatus()
 
@@ -161,6 +161,8 @@ class MainActivity : ComponentActivity() {
                             isImeSelected = isImeSelectedState,
                             navigationTarget = requestedNavigationTarget,
                             onNavigationTargetConsumed = { requestedNavigationTarget = null },
+                            pendingThemeImportUri = pendingThemeImportUri,
+                            onClearPendingThemeImportUri = { pendingThemeImportUri = null },
                             onOpenSettings = {
                                 startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
                             },
@@ -178,9 +180,28 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+        var importUri: android.net.Uri? = null
+        if (Intent.ACTION_VIEW == intent.action) {
+            importUri = intent.data
+        } else if (Intent.ACTION_SEND == intent.action && intent.hasExtra(Intent.EXTRA_STREAM)) {
+            @Suppress("DEPRECATION")
+            importUri = intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        }
+        if (importUri != null) {
+            pendingThemeImportUri = importUri
+            requestedNavigationTarget = "themes"
+            return
+        }
         val target = intent.getStringExtra("navigate_to")
             ?: if (intent.action == "io.kiebord.action.THEMES") "themes" else null
-        requestedNavigationTarget = target
+        if (target != null) {
+            requestedNavigationTarget = target
+        }
     }
 
     override fun onResume() {
@@ -206,6 +227,8 @@ fun KiebordSettingsApp(
     isImeSelected: Boolean,
     navigationTarget: String? = null,
     onNavigationTargetConsumed: () -> Unit = {},
+    pendingThemeImportUri: android.net.Uri? = null,
+    onClearPendingThemeImportUri: () -> Unit = {},
     onOpenSettings: () -> Unit,
     onSwitchIme: () -> Unit
 ) {
@@ -224,7 +247,7 @@ fun KiebordSettingsApp(
             ?: if ((context as? android.app.Activity)?.intent?.action == "io.kiebord.action.THEMES") "themes" else null
         if (target == "layouts") {
             SettingsScreen.KeyboardLayouts
-        } else if (target == "themes" || target == "appearance") {
+        } else if (target == "themes" || target == "appearance" || pendingThemeImportUri != null) {
             SettingsScreen.AppearanceThemes
         } else if (target == "clipboard") {
             SettingsScreen.Clipboard
@@ -378,6 +401,8 @@ fun KiebordSettingsApp(
                             onUpdateShowKeyShadows = { enabled ->
                                 scope.launch { preferencesRepo.updateShowKeyShadows(enabled) }
                             },
+                            pendingImportUri = pendingThemeImportUri,
+                            onClearPendingImportUri = onClearPendingThemeImportUri,
                             onBack = navigateBack
                         )
                     }

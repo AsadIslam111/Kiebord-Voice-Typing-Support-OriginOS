@@ -275,14 +275,15 @@ fun ReorderableToolbar(
                                     isHoveredByDrawerItem -> colorScheme.accentColor.copy(alpha = 0.35f)
                                     isDraggingThisItem -> colorScheme.keyBackground
                                     isActive -> colorScheme.accentColor.copy(alpha = 0.20f)
-                                    isCustomizeMode -> colorScheme.keyBackground
+                                    isCustomizeMode -> colorScheme.keyBackground.copy(alpha = if (colorScheme.keyBackground.alpha < 0.4f) 0.65f else colorScheme.keyBackground.alpha)
                                     else -> Color.Transparent
                                 }
                             )
                             .border(
-                                width = if (isDraggingThisItem || isHoveredByDrawerItem || isActive) (1.5f * scaleFactor).coerceAtLeast(1f).dp else 0.dp,
+                                width = if (isDraggingThisItem || isHoveredByDrawerItem || isActive || isCustomizeMode) (1.5f * scaleFactor).coerceAtLeast(1f).dp else 0.dp,
                                 color = when {
                                     isHoveredByDrawerItem || isDraggingThisItem || isActive -> colorScheme.accentColor
+                                    isCustomizeMode -> colorScheme.keyForeground.copy(alpha = 0.22f)
                                     else -> Color.Transparent
                                 },
                                 shape = tileShape
@@ -368,7 +369,8 @@ fun ReorderableToolbar(
                         val iconModifier = Modifier.size(iconSizeDp.dp)
                         val iconTint = when {
                             isDraggingThisItem || isActive || isHoveredByDrawerItem -> colorScheme.accentColor
-                            else -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.88f)
+                            isCustomizeMode -> colorScheme.keyForeground
+                            else -> colorScheme.effectiveToolbarForeground
                         }
                         if (isHoveredByDrawerItem) {
                             Icon(

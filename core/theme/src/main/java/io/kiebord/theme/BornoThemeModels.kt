@@ -3,6 +3,61 @@ package io.kiebord.theme
 import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.Serializable
 
+/**
+ * Version 1 of the `.bornotheme` format (`schemaVersion = 1`),
+ * representing the legacy Borno Keyboard single-object exported theme.
+ */
+@Serializable
+data class BornoExportedTheme(
+    val schemaVersion: Int = 1,
+    val builder: String? = null,
+    val name: String? = null,
+    val themeName: String? = null,
+    val backgroundType: Int = 4,
+    val backgroundPath: String? = null,
+    val backgroundColor: String = "#FF121212",
+    val backgroundOpacity: Int = 255,
+    val gradStart: String? = null,
+    val gradEnd: String? = null,
+    val gradAngle: Float = 90.0f,
+    val gradType: String = "linear",
+    val keyColor: String = "#FF1E1E1E",
+    val labelKeyColor: String = "#FFFFFFFF",
+    val functionalKeyColor: String = "#FF2C2C2C",
+    val labelFunctionalKeyColor: String = "#FFFFFFFF",
+    val labelSymKeyColor: String? = null,
+    val pressedKeyColor: String? = null,
+    val selectedKeyColor: String? = null,
+    val stripColor: String = "#00000000",
+    val stripTextColor: String? = null,
+    val stripIcoColor: String? = null,
+    val stripIconColor: String? = null,
+    val keyStrokeColor: String = "#00000000",
+    val keyStrokeSize: Int = 0,
+    val keyShadowColor: String = "#00000000",
+    val keyShadowSize: Int = 0,
+    val keyRadius: Float = 9.0f,
+    val keyCornerSize: Float? = null,
+    val enterColor: String = "#FF2196F3",
+    val enterIconColor: String? = null,
+    val enterColorIcon: String? = null,
+    val enterRadius: Float? = null,
+    val symColor: String? = null,
+    val symRadius: Float? = null,
+    val spaceColor: String? = null,
+    val popupColor: String? = null,
+    val popupCorner: Int = 10,
+    val rgbEffect: Int = 0,
+    val isFlat: Boolean = false,
+    val isModern: Boolean = true,
+    val backgroundImageBase64: String? = null
+)
+
+/**
+ * Type alias unifying BornoExportedTheme under the Borno theme versioning hierarchy as Version 1.
+ */
+typealias BornoThemeV1 = BornoExportedTheme
+
 @Serializable
 data class BornoThemeFile(
     val themes: List<BornoThemeGroup> = emptyList()
@@ -151,7 +206,7 @@ object ThemeColorUtils {
         return if (contrastWithLight >= contrastWithDark) fallbackLight else fallbackDark
     }
 
-    private fun isTransparent(hex: String): Boolean {
+    fun isTransparent(hex: String): Boolean {
         val clean = hex.trim()
         if (clean.isEmpty()) return true
         return try {
@@ -177,11 +232,19 @@ object ThemeColorUtils {
         }
 
         val stripBg = when {
-            isTransparent(stripColor) && backgroundType == 2 -> "#00000000"
+            isTransparent(stripColor) && (backgroundType == 2 || backgroundType == 3) -> "#00000000"
             isTransparent(stripColor) -> backgroundColor
             else -> stripColor
         }
         val stripFg = if (stripIcoColor.isNotBlank() && !isTransparent(stripIcoColor)) stripIcoColor else labelKeyColor
+
+        val shadow = resolveKeyShadow(
+            rawShadowColor = keyShadowColor,
+            shadowSize = keyShadowSize,
+            isFlat = isFlat,
+            isDark = dark
+        )
+        val resolvedKeyShadow = shadow?.color ?: "#00000000"
 
         return CustomThemeDef(
             id = assignedId,
@@ -191,12 +254,16 @@ object ThemeColorUtils {
             keyBackground = keyColor,
             keyForeground = labelKeyColor,
             keyBorder = border,
-            keyShadow = if (keyShadowSize > 0) keyShadowColor else "#00000000",
+            keyShadow = resolvedKeyShadow,
             actionKeyBackground = functionalKeyColor,
             actionKeyForeground = labelFunctionalKeyColor,
             shiftActiveColor = if (selectedKeyColor.isNotBlank()) selectedKeyColor else enterColor,
             accentColor = enterColor,
-            moreKeysBackground = if (popupColor.isNotBlank()) popupColor else keyColor,
+            moreKeysBackground = if (backgroundType == 3) {
+                ensureFullOpacityHex(if (popupColor.isNotBlank()) popupColor else keyColor, if (dark) "#FF242428" else "#FFFFFFFF")
+            } else {
+                if (popupColor.isNotBlank()) popupColor else keyColor
+            },
             guidelineColor = if (guidelineColor.isNotBlank()) guidelineColor else enterColor,
             suggestionBackground = stripBg,
             suggestionForeground = stripFg,
@@ -207,7 +274,15 @@ object ThemeColorUtils {
 
     fun CustomThemeDef.toKeyboardThemeSpec(): KeyboardThemeSpec {
         val isFlatBorder = keyBorder.isBlank() || keyBorder == "#00000000"
-        val isFlatShadow = keyShadow.isBlank() || keyShadow == "#00000000"
+        val hasExplicitShadow = keyShadow.isNotBlank() && keyShadow != "#00000000" && !isTransparent(keyShadow)
+        val hasKeyTile = !isTransparent(keyBackground)
+        val shadowSpec = if (hasExplicitShadow) {
+            ShadowSpec(color = keyShadow, elevationDp = 1.5f)
+        } else if (hasKeyTile) {
+            ShadowSpec(color = if (isDark) "#4D000000" else "#33000000", elevationDp = 1.5f)
+        } else {
+            null
+        }
         return KeyboardThemeSpec(
             id = id,
             name = name,
@@ -217,7 +292,7 @@ object ThemeColorUtils {
                 background = keyBackground,
                 foreground = keyForeground,
                 stroke = if (!isFlatBorder) StrokeSpec(color = keyBorder, widthDp = 0.5f) else null,
-                shadow = if (!isFlatShadow) ShadowSpec(color = keyShadow, elevationDp = 1.5f) else null,
+                shadow = shadowSpec,
                 pressedBackground = if (keyPressedBackground.isNotBlank()) keyPressedBackground else null,
                 pressedForeground = if (keyPressedForeground.isNotBlank()) keyPressedForeground else null
             ),
@@ -225,11 +300,12 @@ object ThemeColorUtils {
                 background = actionKeyBackground,
                 foreground = actionKeyForeground,
                 stroke = if (!isFlatBorder) StrokeSpec(color = keyBorder, widthDp = 0.5f) else null,
-                shadow = if (!isFlatShadow) ShadowSpec(color = keyShadow, elevationDp = 1.5f) else null
+                shadow = shadowSpec
             ),
             actionKey = KeycapStyleSpec(
                 background = accentColor,
                 foreground = actionKeyForeground,
+                shadow = shadowSpec,
                 isPill = true
             ),
             accentColor = accentColor,
@@ -275,14 +351,17 @@ object ThemeColorUtils {
             StrokeSpec(color = keyStrokeColor, widthDp = keyStrokeSize.toFloat().coerceAtLeast(0.5f))
         } else null
 
-        val shadow = if (!isFlat && keyShadowSize > 0 && keyShadowColor.isNotBlank() && keyShadowColor != "#00000000") {
-            ShadowSpec(color = keyShadowColor, elevationDp = keyShadowSize.toFloat().coerceAtLeast(1.0f))
-        } else null
+        val shadow = resolveKeyShadow(
+            rawShadowColor = keyShadowColor,
+            shadowSize = keyShadowSize,
+            isFlat = isFlat,
+            isDark = dark
+        )
 
         val cornerRadius = if (keyRadius > 0f && keyRadius != 8f && keyRadius != 9f) keyRadius else null
 
         val stripBg = when {
-            isTransparent(stripColor) && backgroundType == 2 -> "#00000000"
+            isTransparent(stripColor) && (backgroundType == 2 || backgroundType == 3) -> "#00000000"
             isTransparent(stripColor) -> backgroundColor
             else -> stripColor
         }
@@ -316,6 +395,7 @@ object ThemeColorUtils {
             actionKey = KeycapStyleSpec(
                 background = enterColor,
                 foreground = enterColorIcon.ifBlank { "#ffffffff" },
+                shadow = shadow,
                 isPill = true
             ),
             spaceKey = if (spaceColor.isNotBlank() && spaceColor != keyColor) {
@@ -333,30 +413,448 @@ object ThemeColorUtils {
             shiftActiveColor = if (selectedKeyColor.isNotBlank()) selectedKeyColor else enterColor,
             suggestionBackground = ThemeBackgroundSpec(solidColor = stripBg),
             suggestionForeground = stripFg,
-            moreKeysBackground = if (popupColor.isNotBlank()) popupColor else keyColor,
+            moreKeysBackground = if (backgroundType == 3) {
+                ensureFullOpacityHex(if (popupColor.isNotBlank()) popupColor else keyColor, if (dark) "#FF242428" else "#FFFFFFFF")
+            } else {
+                if (popupColor.isNotBlank()) popupColor else keyColor
+            },
             guidelineColor = if (guidelineColor.isNotBlank()) guidelineColor else enterColor
         )
     }
 
+    fun colorToHex(color: Color): String {
+        val a = (color.alpha * 255f).toInt().coerceIn(0, 255)
+        val r = (color.red * 255f).toInt().coerceIn(0, 255)
+        val g = (color.green * 255f).toInt().coerceIn(0, 255)
+        val b = (color.blue * 255f).toInt().coerceIn(0, 255)
+        return String.format("#%02X%02X%02X%02X", a, r, g, b)
+    }
+
+    fun calculateHoverState(baseColor: Color): Color {
+        return if (isColorDark(baseColor)) {
+            Color(
+                red = (baseColor.red * 0.78f + 0.22f).coerceIn(0f, 1f),
+                green = (baseColor.green * 0.78f + 0.22f).coerceIn(0f, 1f),
+                blue = (baseColor.blue * 0.78f + 0.22f).coerceIn(0f, 1f),
+                alpha = if (baseColor.alpha < 0.2f) 0.35f else baseColor.alpha
+            )
+        } else {
+            Color(
+                red = (baseColor.red * 0.82f).coerceIn(0f, 1f),
+                green = (baseColor.green * 0.82f).coerceIn(0f, 1f),
+                blue = (baseColor.blue * 0.82f).coerceIn(0f, 1f),
+                alpha = if (baseColor.alpha < 0.2f) 0.35f else baseColor.alpha
+            )
+        }
+    }
+
+    fun ensureFullOpacity(color: Color, fallbackIfTransparent: Color): Color {
+        return if (color == Color.Unspecified || color.alpha < 0.05f) {
+            fallbackIfTransparent
+        } else {
+            color.copy(alpha = 1.0f)
+        }
+    }
+
+    fun ensureFullOpacityHex(hex: String?, fallbackIfTransparent: String): String {
+        if (hex.isNullOrBlank() || isTransparent(hex)) {
+            return fallbackIfTransparent
+        }
+        val clean = hex.trim().removePrefix("#")
+        return when (clean.length) {
+            8 -> "#FF" + clean.substring(2)
+            6 -> "#$clean"
+            else -> {
+                val parsed = parseHexColor(hex, Color.Unspecified)
+                if (parsed == Color.Unspecified || parsed.alpha < 0.05f) {
+                    fallbackIfTransparent
+                } else {
+                    colorToHex(parsed.copy(alpha = 1.0f))
+                }
+            }
+        }
+    }
+
+    fun resolveHoverColor(
+        candidateHex: String?,
+        baseColor: Color
+    ): String {
+        if (candidateHex.isNullOrBlank() || isTransparent(candidateHex)) {
+            return colorToHex(calculateHoverState(baseColor))
+        }
+        val candidateColor = parseHexColor(candidateHex, Color.Unspecified)
+        if (candidateColor == Color.Unspecified || candidateColor.alpha < 0.05f) {
+            return colorToHex(calculateHoverState(baseColor))
+        }
+        return candidateHex
+    }
+
+    fun fixKeyStrokeColorAndOpacity(
+        rawStrokeColor: String?,
+        keyStrokeSize: Int,
+        keyBackground: Color
+    ): Pair<String, Float>? {
+        if (keyStrokeSize <= 0) return null
+        val parsedStroke = if (!rawStrokeColor.isNullOrBlank()) parseHexColor(rawStrokeColor, Color.Unspecified) else Color.Unspecified
+
+        if (parsedStroke == Color.Unspecified || parsedStroke.alpha < 0.05f || rawStrokeColor == "#00000000") {
+            return if (isColorDark(keyBackground)) {
+                Pair("#FFFFFF", 0.22f)
+            } else {
+                Pair("#000000", 0.14f)
+            }
+        }
+
+        if (parsedStroke.alpha > 0.9f) {
+            val isStrokeWhiteOrLight = !isColorDark(parsedStroke)
+            val isBgDark = isColorDark(keyBackground)
+            val softenedAlpha = when {
+                isBgDark && isStrokeWhiteOrLight -> 0.28f
+                !isBgDark && !isStrokeWhiteOrLight -> 0.16f
+                else -> 0.40f
+            }
+            return Pair(rawStrokeColor ?: colorToHex(parsedStroke.copy(alpha = 1.0f)), softenedAlpha)
+        }
+
+        return Pair(rawStrokeColor ?: colorToHex(parsedStroke.copy(alpha = 1.0f)), parsedStroke.alpha)
+    }
+
+    fun resolveKeyShadow(
+        rawShadowColor: String?,
+        shadowSize: Int,
+        isFlat: Boolean,
+        isDark: Boolean
+    ): ShadowSpec? {
+        if (isFlat) return null
+
+        val hasValidColor = !rawShadowColor.isNullOrBlank() &&
+            rawShadowColor != "#00000000" &&
+            !isTransparent(rawShadowColor)
+
+        val elevation = if (shadowSize > 0) shadowSize.toFloat().coerceAtLeast(1.0f) else 1.5f
+
+        val finalColor = when {
+            hasValidColor -> {
+                val parsed = parseHexColor(rawShadowColor!!, Color.Unspecified)
+                if (parsed != Color.Unspecified && parsed.alpha < 0.05f) {
+                    if (isDark) "#4D000000" else "#33000000"
+                } else if (parsed != Color.Unspecified && parsed.alpha > 0.8f) {
+                    colorToHex(parsed.copy(alpha = 0.28f))
+                } else {
+                    rawShadowColor
+                }
+            }
+            else -> {
+                if (isDark) "#4D000000" else "#33000000"
+            }
+        }
+
+        return ShadowSpec(color = finalColor, elevationDp = elevation)
+    }
+
+    fun BornoExportedTheme.toKeyboardThemeSpec(customId: String? = null, resolvedImagePath: String? = null): KeyboardThemeSpec {
+        val themeTitle = (name ?: themeName ?: "Imported Theme").trim().ifEmpty { "Imported Theme" }
+        val assignedId = customId ?: "custom_${System.currentTimeMillis()}_${themeTitle.lowercase().replace("[^a-z0-9]".toRegex(), "_")}"
+        val bgColor = parseHexColor(backgroundColor, Color.Black)
+        val dark = isColorDark(bgColor)
+
+        val imagePathFinal = resolvedImagePath ?: backgroundPath?.takeIf { it.isNotBlank() }
+        val effectiveBgType = when {
+            !imagePathFinal.isNullOrBlank() -> 3
+            backgroundType == 2 || (!gradStart.isNullOrBlank() && !gradEnd.isNullOrBlank() && gradStart != gradEnd && !isTransparent(gradEnd)) -> 2
+            else -> backgroundType
+        }
+
+        val bgSpec = when {
+            effectiveBgType == 3 && !imagePathFinal.isNullOrBlank() -> {
+                val alphaFloat = (backgroundOpacity.coerceIn(0, 255) / 255f)
+                val dimOverlay = if (backgroundOpacity in 1..254) {
+                    val darkAlpha = (255 - backgroundOpacity).coerceIn(0, 255)
+                    String.format("#%02X000000", darkAlpha)
+                } else null
+                ThemeBackgroundSpec(
+                    solidColor = backgroundColor,
+                    image = ImageBackgroundSpec(
+                        imagePath = imagePathFinal,
+                        alpha = alphaFloat,
+                        dimOverlayColor = dimOverlay
+                    )
+                )
+            }
+            effectiveBgType == 2 && !gradStart.isNullOrBlank() && !gradEnd.isNullOrBlank() -> {
+                val isRadial = gradType.equals("radial", ignoreCase = true)
+                ThemeBackgroundSpec(
+                    gradient = GradientSpec(
+                        type = if (isRadial) GradientType.RADIAL else GradientType.LINEAR,
+                        colors = listOf(gradStart, gradEnd),
+                        angle = gradAngle,
+                        centerX = 0.5f,
+                        centerY = 0.5f,
+                        radius = 0.85f
+                    )
+                )
+            }
+            else -> {
+                ThemeBackgroundSpec(solidColor = backgroundColor)
+            }
+        }
+
+        val parsedKeyBg = parseHexColor(keyColor, Color(0xFF1E1E1E))
+        val parsedFuncBg = parseHexColor(functionalKeyColor, Color(0xFF2C2C2C))
+        val parsedEnterBg = parseHexColor(enterColor, Color(0xFF2196F3))
+
+        val resolvedEnterIcon = enterIconColor ?: enterColorIcon ?: "#FFFFFFFF"
+
+        // Missing hover / pressed state check & fix
+        val resolvedCharPressedBg = resolveHoverColor(pressedKeyColor, parsedKeyBg)
+        val resolvedFuncPressedBg = resolveHoverColor(pressedKeyColor, parsedFuncBg)
+        val resolvedEnterPressedBg = resolveHoverColor(null, parsedEnterBg)
+
+        // Key stroke opacity check & fix
+        val strokeInfo = fixKeyStrokeColorAndOpacity(keyStrokeColor, keyStrokeSize, parsedKeyBg)
+        val stroke = if (strokeInfo != null) {
+            StrokeSpec(
+                color = strokeInfo.first,
+                widthDp = keyStrokeSize.toFloat().coerceAtLeast(0.5f),
+                alpha = strokeInfo.second
+            )
+        } else null
+
+        val shadow = resolveKeyShadow(
+            rawShadowColor = keyShadowColor,
+            shadowSize = keyShadowSize,
+            isFlat = isFlat,
+            isDark = dark
+        )
+
+        val resolvedRadius = keyCornerSize ?: keyRadius
+        val cornerRadius = if (resolvedRadius > 0f && resolvedRadius != 8f && resolvedRadius != 9f) resolvedRadius else null
+        val enterCornerRadius = enterRadius?.takeIf { it > 0f && it != 8f && it != 9f } ?: cornerRadius
+
+        val stripBg = when {
+            isTransparent(stripColor) && (effectiveBgType == 2 || effectiveBgType == 3) -> "#00000000"
+            isTransparent(stripColor) -> backgroundColor
+            else -> stripColor
+        }
+        val effStripIco = stripIconColor ?: stripIcoColor
+        val stripFg = if (!effStripIco.isNullOrBlank() && !isTransparent(effStripIco)) effStripIco else (stripTextColor ?: labelKeyColor)
+
+        return KeyboardThemeSpec(
+            id = assignedId,
+            name = themeTitle,
+            isDark = dark,
+            background = bgSpec,
+            characterKey = KeycapStyleSpec(
+                background = keyColor,
+                foreground = labelKeyColor,
+                stroke = stroke,
+                shadow = shadow,
+                cornerRadiusDp = cornerRadius,
+                pressedBackground = resolvedCharPressedBg,
+                pressedForeground = labelKeyColor.ifBlank { null }
+            ),
+            functionalKey = KeycapStyleSpec(
+                background = functionalKeyColor,
+                foreground = labelFunctionalKeyColor,
+                stroke = stroke,
+                shadow = shadow,
+                cornerRadiusDp = cornerRadius,
+                pressedBackground = resolvedFuncPressedBg,
+                pressedForeground = labelFunctionalKeyColor.ifBlank { null }
+            ),
+            actionKey = KeycapStyleSpec(
+                background = enterColor,
+                foreground = resolvedEnterIcon,
+                stroke = stroke,
+                shadow = shadow,
+                cornerRadiusDp = enterCornerRadius,
+                pressedBackground = resolvedEnterPressedBg,
+                pressedForeground = resolvedEnterIcon,
+                isPill = true
+            ),
+            spaceKey = if (!spaceColor.isNullOrBlank() && spaceColor != keyColor) {
+                val parsedSpaceBg = parseHexColor(spaceColor, parsedKeyBg)
+                KeycapStyleSpec(
+                    background = spaceColor,
+                    foreground = labelKeyColor,
+                    stroke = stroke,
+                    shadow = shadow,
+                    cornerRadiusDp = cornerRadius,
+                    pressedBackground = resolveHoverColor(null, parsedSpaceBg),
+                    pressedForeground = labelKeyColor.ifBlank { null }
+                )
+            } else null,
+            accentColor = enterColor,
+            shiftActiveColor = if (!selectedKeyColor.isNullOrBlank()) selectedKeyColor else enterColor,
+            suggestionBackground = ThemeBackgroundSpec(solidColor = stripBg),
+            suggestionForeground = stripFg,
+            moreKeysBackground = if (effectiveBgType == 3) {
+                ensureFullOpacityHex(if (!popupColor.isNullOrBlank()) popupColor else keyColor, if (dark) "#FF242428" else "#FFFFFFFF")
+            } else {
+                if (!popupColor.isNullOrBlank()) popupColor else keyColor
+            },
+            guidelineColor = enterColor
+        )
+    }
+
+    fun BornoExportedTheme.toCustomThemeDef(customId: String? = null, resolvedImagePath: String? = null): CustomThemeDef {
+        val themeTitle = (name ?: themeName ?: "Imported Theme").trim().ifEmpty { "Imported Theme" }
+        val assignedId = customId ?: "custom_${System.currentTimeMillis()}_${themeTitle.lowercase().replace("[^a-z0-9]".toRegex(), "_")}"
+        val bgColor = parseHexColor(backgroundColor, Color.Black)
+        val dark = isColorDark(bgColor)
+
+        val imagePathFinal = resolvedImagePath ?: backgroundPath?.takeIf { it.isNotBlank() }
+        val effectiveBgType = when {
+            !imagePathFinal.isNullOrBlank() -> 3
+            backgroundType == 2 || (!gradStart.isNullOrBlank() && !gradEnd.isNullOrBlank() && gradStart != gradEnd && !isTransparent(gradEnd)) -> 2
+            else -> backgroundType
+        }
+
+        val parsedKeyBg = parseHexColor(keyColor, Color(0xFF1E1E1E))
+        val resolvedEnterIcon = enterIconColor ?: enterColorIcon ?: "#FFFFFFFF"
+
+        val effStripBg = when {
+            isTransparent(stripColor) && (effectiveBgType == 2 || effectiveBgType == 3) -> "#00000000"
+            isTransparent(stripColor) -> backgroundColor
+            else -> stripColor
+        }
+        val effStripIco = stripIconColor ?: stripIcoColor
+        val stripFg = if (!effStripIco.isNullOrBlank() && !isTransparent(effStripIco)) effStripIco else (stripTextColor ?: labelKeyColor)
+
+        val resolvedPressedBg = resolveHoverColor(pressedKeyColor, parsedKeyBg)
+        val strokeInfo = fixKeyStrokeColorAndOpacity(keyStrokeColor, keyStrokeSize, parsedKeyBg)
+        val resolvedBorder = if (strokeInfo != null) strokeInfo.first else "#00000000"
+
+        val resolvedShadow = resolveKeyShadow(
+            rawShadowColor = keyShadowColor,
+            shadowSize = keyShadowSize,
+            isFlat = isFlat,
+            isDark = dark
+        )
+        val resolvedKeyShadowColor = resolvedShadow?.color ?: if (!isFlat) (if (dark) "#4D000000" else "#33000000") else "#00000000"
+
+        return CustomThemeDef(
+            id = assignedId,
+            name = themeTitle,
+            isDark = dark,
+            containerBackground = if (backgroundType == 2 && !gradStart.isNullOrBlank()) gradStart else backgroundColor,
+            keyBackground = keyColor,
+            keyForeground = labelKeyColor,
+            keyBorder = resolvedBorder,
+            keyShadow = resolvedKeyShadowColor,
+            actionKeyBackground = enterColor,
+            actionKeyForeground = resolvedEnterIcon,
+            shiftActiveColor = if (!selectedKeyColor.isNullOrBlank()) selectedKeyColor else enterColor,
+            accentColor = enterColor,
+            moreKeysBackground = if (effectiveBgType == 3) {
+                ensureFullOpacityHex(if (!popupColor.isNullOrBlank()) popupColor else keyColor, if (dark) "#FF242428" else "#FFFFFFFF")
+            } else {
+                if (!popupColor.isNullOrBlank()) popupColor else keyColor
+            },
+            guidelineColor = enterColor,
+            suggestionBackground = effStripBg,
+            suggestionForeground = stripFg,
+            keyPressedBackground = resolvedPressedBg,
+            keyPressedForeground = labelKeyColor
+        )
+    }
+
+    fun decodeBase64Safe(input: String): ByteArray {
+        val raw = input.trim().removePrefix("\uFEFF").replace("\n", "").replace("\r", "").replace("\"", "").trim()
+        val clean = when (raw.length % 4) {
+            2 -> "$raw=="
+            3 -> "$raw="
+            else -> raw
+        }
+        return try {
+            java.util.Base64.getDecoder().decode(clean)
+        } catch (_: Throwable) {
+            try {
+                java.util.Base64.getUrlDecoder().decode(clean)
+            } catch (_: Throwable) {
+                try {
+                    android.util.Base64.decode(clean, android.util.Base64.DEFAULT)
+                } catch (_: Throwable) {
+                    try {
+                        android.util.Base64.decode(clean, android.util.Base64.URL_SAFE)
+                    } catch (_: Throwable) {
+                        try {
+                            android.util.Base64.decode(raw, android.util.Base64.NO_PADDING)
+                        } catch (_: Throwable) {
+                            ByteArray(0)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun decodeBase64ToStringSafe(input: String): String? {
+        val bytes = decodeBase64Safe(input)
+        if (bytes.isEmpty()) return null
+        return try {
+            String(bytes, Charsets.UTF_8)
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    fun encodeBase64Safe(bytes: ByteArray): String {
+        return try {
+            java.util.Base64.getEncoder().encodeToString(bytes)
+        } catch (_: Throwable) {
+            try {
+                android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            } catch (_: Throwable) {
+                ""
+            }
+        }
+    }
+
+    fun encodeBase64Safe(text: String): String {
+        return encodeBase64Safe(text.toByteArray(Charsets.UTF_8))
+    }
+
     fun CustomThemeDef.toKeyboardColorScheme(): KeyboardColorScheme {
         val darkDefault = if (isDark) KeyboardColorScheme.DefaultDark else KeyboardColorScheme.DefaultLight
+        val defaultShadow = if (isDark) darkDefault.keyShadow else Color(0x33000000)
+        val hasExplicitShadow = keyShadow.isNotBlank() && keyShadow != "#00000000" && !isTransparent(keyShadow)
+        val hasKeyTile = !isTransparent(keyBackground)
+        val resolvedKeyShadow = if (hasExplicitShadow) {
+            parseHexColor(keyShadow, defaultShadow)
+        } else if (hasKeyTile) {
+            defaultShadow
+        } else {
+            Color(0x00000000)
+        }
+
+        val spec = toKeyboardThemeSpec()
+        val hasImageBackdrop = spec.background.image != null
+        val rawMoreKeys = parseHexColor(moreKeysBackground, darkDefault.moreKeysBackground)
+        val resolvedMoreKeys = if (hasImageBackdrop) {
+            val fallback = if (isDark) Color(0xFF242428) else Color(0xFFFFFFFF)
+            ensureFullOpacity(rawMoreKeys, fallback)
+        } else {
+            rawMoreKeys
+        }
+
         return KeyboardColorScheme(
             containerBackground = parseHexColor(containerBackground, darkDefault.containerBackground),
             keyBackground = parseHexColor(keyBackground, darkDefault.keyBackground),
             keyForeground = parseHexColor(keyForeground, darkDefault.keyForeground),
             keyBorder = parseHexColor(keyBorder, darkDefault.keyBorder),
-            keyShadow = parseHexColor(keyShadow, darkDefault.keyShadow),
+            keyShadow = resolvedKeyShadow,
             actionKeyBackground = parseHexColor(actionKeyBackground, darkDefault.actionKeyBackground),
             actionKeyForeground = parseHexColor(actionKeyForeground, darkDefault.actionKeyForeground),
             shiftActiveColor = parseHexColor(shiftActiveColor, darkDefault.shiftActiveColor),
             accentColor = parseHexColor(accentColor, darkDefault.accentColor),
-            moreKeysBackground = parseHexColor(moreKeysBackground, darkDefault.moreKeysBackground),
+            moreKeysBackground = resolvedMoreKeys,
             guidelineColor = parseHexColor(guidelineColor, darkDefault.guidelineColor),
             suggestionBackground = parseHexColor(suggestionBackground, darkDefault.suggestionBackground),
             suggestionForeground = parseHexColor(suggestionForeground, darkDefault.suggestionForeground),
             keyPressedBackground = parseHexColor(keyPressedBackground, darkDefault.keyPressedBackground),
             keyPressedForeground = parseHexColor(keyPressedForeground, darkDefault.keyPressedForeground),
-            themeSpec = toKeyboardThemeSpec()
+            themeSpec = spec
         )
     }
 }

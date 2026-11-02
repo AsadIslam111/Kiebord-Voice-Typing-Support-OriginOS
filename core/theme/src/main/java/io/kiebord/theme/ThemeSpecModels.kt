@@ -284,9 +284,13 @@ data class ThemeIconsSpec(
 /**
  * Master keyboard theme definition supporting gradients, image backgrounds,
  * custom strokes, shadows, 9-patch skins, custom icons, and per-key overrides.
+ *
+ * This represents Version 2 of the unified `.bornotheme` format (`schemaVersion = 2`),
+ * retaining all rich native Kiebord styling capabilities.
  */
 @Serializable
 data class KeyboardThemeSpec(
+    val schemaVersion: Int = 2,
     val id: String,
     val name: String,
     val author: String = "Kiebord",
@@ -304,7 +308,8 @@ data class KeyboardThemeSpec(
     val moreKeysBackground: String = "#38383F",
     val guidelineColor: String = accentColor,
     val icons: ThemeIconsSpec = ThemeIconsSpec(),
-    val perKeyOverrides: Map<String, KeycapStyleSpec> = emptyMap()
+    val perKeyOverrides: Map<String, KeycapStyleSpec> = emptyMap(),
+    val backgroundImageBase64: String? = null
 ) {
     /**
      * Resolves the styling for an individual key by checking:
@@ -481,3 +486,51 @@ fun ThemeImageBackgroundView(
         }
     }
 }
+
+/**
+ * Type alias unifying KeyboardThemeSpec under the Borno theme versioning hierarchy as Version 2.
+ */
+typealias BornoThemeV2 = KeyboardThemeSpec
+
+/**
+ * Maps a rich native KeyboardThemeSpec (BornoThemeV2) to a fallback CustomThemeDef.
+ */
+fun KeyboardThemeSpec.toCustomThemeDef(): CustomThemeDef {
+    val charBg = characterKey.background ?: if (isDark) "#2C2C30" else "#FFFFFF"
+    val charFg = characterKey.foreground ?: if (isDark) "#E3E2E6" else "#000000"
+    val funcBg = functionalKey.background ?: if (isDark) "#242428" else "#DBDFE6"
+    val funcFg = functionalKey.foreground ?: if (isDark) "#04294E" else "#000000"
+    val actBg = actionKey.background ?: accentColor
+    val actFg = actionKey.foreground ?: if (isDark) "#04294E" else "#FFFFFF"
+
+    val hasImageBackdrop = background.image != null
+    val effectiveMoreKeys = if (hasImageBackdrop) {
+        ThemeColorUtils.ensureFullOpacityHex(moreKeysBackground, if (isDark) "#FF242428" else "#FFFFFFFF")
+    } else {
+        moreKeysBackground
+    }
+
+    val defaultShadow = if (!ThemeColorUtils.isTransparent(charBg)) (if (isDark) "#4D000000" else "#33000000") else "#00000000"
+
+    return CustomThemeDef(
+        id = id,
+        name = name,
+        isDark = isDark,
+        containerBackground = background.solidColor ?: background.gradient?.colors?.firstOrNull() ?: if (isDark) "#1B1B1F" else "#F1F3F4",
+        keyBackground = charBg,
+        keyForeground = charFg,
+        keyBorder = characterKey.stroke?.color ?: "#00000000",
+        keyShadow = characterKey.shadow?.color ?: defaultShadow,
+        actionKeyBackground = funcBg,
+        actionKeyForeground = actFg,
+        shiftActiveColor = shiftActiveColor,
+        accentColor = accentColor,
+        moreKeysBackground = effectiveMoreKeys,
+        guidelineColor = guidelineColor,
+        suggestionBackground = suggestionBackground?.solidColor ?: (background.solidColor ?: if (isDark) "#1B1B1F" else "#F1F3F4"),
+        suggestionForeground = suggestionForeground,
+        keyPressedBackground = characterKey.pressedBackground ?: funcBg,
+        keyPressedForeground = characterKey.pressedForeground ?: charFg
+    )
+}
+

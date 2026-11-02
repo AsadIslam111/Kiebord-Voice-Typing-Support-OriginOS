@@ -88,11 +88,14 @@ fun ClipboardPanelView(
     val pinnedClips = clips.filter { it.isPinned }
     val recentClips = clips.filter { !it.isPinned }
 
+    val hasBackdrop = colorScheme.themeSpec?.background?.image != null || colorScheme.themeSpec?.background?.gradient != null
+    val panelBg = if (hasBackdrop) Color.Transparent else colorScheme.containerBackground
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .background(colorScheme.containerBackground)
+            .background(panelBg)
     ) {
         Column(
             modifier = Modifier

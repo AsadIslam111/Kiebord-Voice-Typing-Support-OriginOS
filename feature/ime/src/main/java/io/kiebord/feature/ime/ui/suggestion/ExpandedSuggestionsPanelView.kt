@@ -65,11 +65,13 @@ fun ExpandedSuggestionsPanelView(
     val scrollStepPx = with(density) { 54.dp.toPx() }
     val dividerColor = colorScheme.keyForeground.copy(alpha = 0.12f)
 
+    val panelBg = colorScheme.containerBackground.copy(alpha = 1f)
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .background(colorScheme.containerBackground)
+            .background(panelBg)
             .clickable(
                 interactionSource = panelInteractionSource,
                 indication = null

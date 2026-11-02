@@ -96,7 +96,8 @@ data class KeyboardColorScheme(
 
             val stroke = style.stroke
             val strokeColor = if (showKeyBorders && stroke != null && stroke.widthDp > 0f) {
-                cachedParseHex(stroke.color, keyBorder).copy(alpha = stroke.alpha)
+                val parsed = cachedParseHex(stroke.color, keyBorder)
+                parsed.copy(alpha = (parsed.alpha * stroke.alpha).coerceIn(0f, 1f))
             } else {
                 Color.Transparent
             }
@@ -109,14 +110,27 @@ data class KeyboardColorScheme(
 
             val hasKeyTile = showKeyBorders || isPillColoredKey
             val shadow = style.shadow
-            val shadowColor = if (showKeyShadows && hasKeyTile && shadow != null && shadow.elevationDp > 0f) {
-                cachedParseHex(shadow.color, keyShadow)
+            val shadowColor = if (showKeyShadows && hasKeyTile) {
+                if (shadow != null && shadow.elevationDp > 0f) {
+                    val parsed = cachedParseHex(shadow.color, keyShadow)
+                    if (parsed.alpha > 0.8f) parsed.copy(alpha = 0.28f) else parsed
+                } else if (keyShadow.alpha > 0.01f) {
+                    if (keyShadow.alpha > 0.8f) keyShadow.copy(alpha = 0.28f) else keyShadow
+                } else {
+                    Color.Transparent
+                }
             } else {
                 Color.Transparent
             }
 
-            val shadowElevation = if (showKeyShadows && hasKeyTile && shadow != null && shadow.elevationDp > 0f) {
-                shadow.elevationDp.dp
+            val shadowElevation = if (showKeyShadows && hasKeyTile) {
+                if (shadow != null && shadow.elevationDp > 0f) {
+                    shadow.elevationDp.dp
+                } else if (keyShadow.alpha > 0.01f) {
+                    (1.5f * scaleFactor).dp
+                } else {
+                    0.dp
+                }
             } else {
                 0.dp
             }
@@ -317,22 +331,54 @@ data class KeyboardColorScheme(
 }
 
 val KeyboardColorScheme.effectiveToolbarBackground: Color
-    get() = when {
-        suggestionBackground != Color.Unspecified && suggestionBackground.alpha > 0.05f -> suggestionBackground
-        themeSpec?.background?.gradient != null || themeSpec?.background?.image != null -> Color.Transparent
-        else -> containerBackground
+    get() {
+        val hasBackdrop = themeSpec?.background?.gradient != null || themeSpec?.background?.image != null
+        if (hasBackdrop) {
+            val sugSpec = themeSpec?.suggestionBackground
+            val isExplicitlySolid = sugSpec?.solidColor != null &&
+                !ThemeColorUtils.isTransparent(sugSpec.solidColor) &&
+                sugSpec.solidColor != themeSpec.background.solidColor
+            if (isExplicitlySolid && suggestionBackground != Color.Unspecified && suggestionBackground.alpha > 0.05f) {
+                return suggestionBackground
+            }
+            return Color.Transparent
+        }
+        return if (suggestionBackground != Color.Unspecified && suggestionBackground.alpha > 0.05f) {
+            suggestionBackground
+        } else {
+            containerBackground
+        }
     }
 
 val KeyboardColorScheme.effectiveToolbarForeground: Color
     get() {
-        val rawBg = effectiveToolbarBackground
-        val targetBg = if (rawBg.alpha < 0.05f) containerBackground else rawBg
-        val initialFg = if (suggestionForeground != Color.Unspecified && suggestionForeground.alpha > 0.25f) {
+        val hasBackdrop = themeSpec?.background?.gradient != null || themeSpec?.background?.image != null
+        val fgCandidate = if (suggestionForeground != Color.Unspecified && suggestionForeground.alpha > 0.05f) {
             suggestionForeground
         } else {
             keyForeground
         }
-        return ThemeColorUtils.ensureContrast(initialFg, targetBg)
+        if (hasBackdrop) {
+            return fgCandidate
+        }
+        val targetBg = effectiveToolbarBackground
+        return if (targetBg.alpha > 0.05f) {
+            ThemeColorUtils.ensureContrast(fgCandidate, targetBg)
+        } else {
+            fgCandidate
+        }
+    }
+
+val KeyboardColorScheme.effectiveMoreKeysBackground: Color
+    get() {
+        val hasImageBackdrop = themeSpec?.background?.image != null
+        return if (hasImageBackdrop) {
+            val isDarkTheme = themeSpec?.isDark ?: ThemeColorUtils.isColorDark(containerBackground)
+            val fallback = if (isDarkTheme) Color(0xFF242428) else Color(0xFFFFFFFF)
+            ThemeColorUtils.ensureFullOpacity(moreKeysBackground, fallback)
+        } else {
+            moreKeysBackground
+        }
     }
 
 

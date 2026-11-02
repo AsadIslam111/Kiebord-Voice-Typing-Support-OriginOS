@@ -1,5 +1,7 @@
 package io.kiebord.app.ui.settings
 
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,6 +35,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,12 +45,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +65,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,6 +80,11 @@ import io.kiebord.theme.ThemeColorUtils
 import io.kiebord.theme.ThemeOptionItem
 import io.kiebord.theme.ThemeRepository
 
+private data class PendingImportData(
+    val option: ThemeOptionItem,
+    val rawJson: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceThemesScreen(
@@ -76,6 +93,8 @@ fun AppearanceThemesScreen(
     onUpdateHeightScale: (Float) -> Unit = {},
     onUpdateShowKeyBorders: (Boolean) -> Unit,
     onUpdateShowKeyShadows: (Boolean) -> Unit = {},
+    pendingImportUri: Uri? = null,
+    onClearPendingImportUri: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -85,39 +104,69 @@ fun AppearanceThemesScreen(
 
     val scrollState = rememberScrollState()
     var previewThemeOption by remember { mutableStateOf<ThemeOptionItem?>(null) }
+    var pendingImportTheme by remember { mutableStateOf<PendingImportData?>(null) }
+    var showCreatePopup by remember { mutableStateOf(false) }
     val colors = LocalSettingsColors.current
+    val scope = rememberCoroutineScope()
+
+    fun processThemeUri(uri: Uri, onCompleted: (() -> Unit)? = null) {
+        scope.launch {
+            try {
+                val jsonContent = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        stream.bufferedReader(Charsets.UTF_8).readText()
+                    }
+                }
+                if (jsonContent != null) {
+                    val parseResult = themeRepo.parseThemeFile(jsonContent)
+                    parseResult.onSuccess { parsedList ->
+                        if (parsedList.isNotEmpty()) {
+                            val firstDef = parsedList.first()
+                            val richSpec = themeRepo.getRichTheme(firstDef.id)
+                            val scheme = themeRepo.getColorScheme(firstDef.id)
+                            val previewItem = ThemeOptionItem(
+                                id = firstDef.id,
+                                name = firstDef.name,
+                                description = "Custom Borno theme (${if (richSpec?.schemaVersion == 2) "v2" else "v1"})",
+                                scheme = scheme,
+                                isCustom = true,
+                                category = ThemeCategory.CUSTOM
+                            )
+                            previewThemeOption = null
+                            pendingImportTheme = PendingImportData(option = previewItem, rawJson = jsonContent)
+                        } else {
+                            Toast.makeText(context, "No themes found in file", Toast.LENGTH_SHORT).show()
+                        }
+                    }.onFailure { err ->
+                        Toast.makeText(context, "Invalid theme file: ${err.message ?: "Parse error"}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error reading file: ${e.message}", Toast.LENGTH_LONG).show()
+            } finally {
+                onCompleted?.invoke()
+            }
+        }
+    }
+
+    LaunchedEffect(pendingImportUri) {
+        val uri = pendingImportUri ?: return@LaunchedEffect
+        processThemeUri(uri) {
+            onClearPendingImportUri()
+        }
+    }
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            try {
-                val jsonContent = context.contentResolver.openInputStream(uri)?.use { stream ->
-                    stream.bufferedReader(Charsets.UTF_8).readText()
-                }
-                if (jsonContent != null) {
-                    val result = themeRepo.importTheme(jsonContent)
-                    result.onSuccess { importedList ->
-                        reloadTrigger++
-                        if (importedList.isNotEmpty()) {
-                            onUpdateTheme(importedList.first().id)
-                            Toast.makeText(context, "Imported ${importedList.size} theme(s)", Toast.LENGTH_SHORT).show()
-                        }
-                    }.onFailure { err ->
-                        Toast.makeText(context, "Import failed: ${err.message ?: "Invalid JSON"}", Toast.LENGTH_LONG).show()
-                    }
-                }
-            } catch (e: Exception) {
-                Toast.makeText(context, "Error reading file: ${e.message}", Toast.LENGTH_LONG).show()
-            }
+            processThemeUri(uri)
         }
     }
 
-    val categories = listOf(
-        ThemeCategory.ORIGINALS,
+    val otherCategories = listOf(
         ThemeCategory.BORNO_GRADIENT,
-        ThemeCategory.BORNO_COLORS,
-        ThemeCategory.CUSTOM
+        ThemeCategory.BORNO_COLORS
     )
 
     Column(
@@ -126,31 +175,99 @@ fun AppearanceThemesScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
+        // 1. Originals Section
+        val originalThemes = allThemes.filter { it.category == ThemeCategory.ORIGINALS }
+        if (originalThemes.isNotEmpty()) {
+            Text(
+                text = "Originals",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary,
+                modifier = Modifier.padding(start = 18.dp, top = 22.dp, bottom = 14.dp)
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                originalThemes.chunked(3).forEach { rowThemes ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        rowThemes.forEach { themeOption ->
+                            val isSelected = preferences.theme == themeOption.id
+                            AbstractThemeCard(
+                                themeOption = themeOption,
+                                isSelected = isSelected,
+                                showKeyBorders = preferences.showKeyBorders,
+                                showKeyShadows = preferences.showKeyShadows,
+                                modifier = Modifier.weight(1f),
+                                onSelect = { previewThemeOption = themeOption }
+                            )
+                        }
+                        repeat(3 - rowThemes.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Custom Themes Section (Right Below Originals!)
+        val customThemes = allThemes.filter { it.category == ThemeCategory.CUSTOM }
         Text(
-            text = "Create",
+            text = "Custom Themes",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = colors.textPrimary,
             modifier = Modifier.padding(start = 18.dp, top = 22.dp, bottom = 14.dp)
         )
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            BlankThemePlusCard(
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    Toast.makeText(context, "Not yet implemented", Toast.LENGTH_SHORT).show()
+            val totalItems = 1 + customThemes.size
+            val numRows = (totalItems + 2) / 3
+            for (rowIndex in 0 until numRows) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    for (colIndex in 0 until 3) {
+                        val itemIndex = rowIndex * 3 + colIndex
+                        if (itemIndex == 0) {
+                            BlankThemePlusCard(
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    showCreatePopup = true
+                                }
+                            )
+                        } else if (itemIndex - 1 < customThemes.size) {
+                            val themeOption = customThemes[itemIndex - 1]
+                            val isSelected = preferences.theme == themeOption.id
+                            AbstractThemeCard(
+                                themeOption = themeOption,
+                                isSelected = isSelected,
+                                showKeyBorders = preferences.showKeyBorders,
+                                showKeyShadows = preferences.showKeyShadows,
+                                modifier = Modifier.weight(1f),
+                                onSelect = { previewThemeOption = themeOption }
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
-            )
-            repeat(2) {
-                Spacer(modifier = Modifier.weight(1f))
             }
         }
 
-        for (category in categories) {
+        // 3. Other Categories: Gradients, Colors
+        for (category in otherCategories) {
             val categoryThemes = allThemes.filter { it.category == category }
             if (categoryThemes.isNotEmpty()) {
                 Text(
@@ -178,6 +295,7 @@ fun AppearanceThemesScreen(
                                     themeOption = themeOption,
                                     isSelected = isSelected,
                                     showKeyBorders = preferences.showKeyBorders,
+                                    showKeyShadows = preferences.showKeyShadows,
                                     modifier = Modifier.weight(1f),
                                     onSelect = { previewThemeOption = themeOption }
                                 )
@@ -192,52 +310,232 @@ fun AppearanceThemesScreen(
         }
     }
 
-    if (previewThemeOption != null) {
-        val currentPreview = previewThemeOption
-        if (currentPreview != null) {
-            var previewShowKeyBorders by remember(currentPreview.id, preferences.showKeyBorders) {
-                mutableStateOf(preferences.showKeyBorders)
-            }
-            var previewShowKeyShadows by remember(currentPreview.id, preferences.showKeyShadows) {
-                mutableStateOf(preferences.showKeyShadows)
-            }
-            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-            ModalBottomSheet(
-                onDismissRequest = { previewThemeOption = null },
-                sheetState = sheetState,
-                containerColor = colors.cardBackground,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-            ) {
-                ThemePreviewBottomSheetContent(
-                    themeOption = currentPreview,
-                    preferences = preferences,
-                    showKeyBorders = previewShowKeyBorders,
-                    showKeyShadows = previewShowKeyShadows,
-                    onToggleKeyBorders = { previewShowKeyBorders = it },
-                    onToggleKeyShadows = { previewShowKeyShadows = it },
-                    onApplyTheme = {
-                        onUpdateTheme(currentPreview.id)
-                        onUpdateShowKeyBorders(previewShowKeyBorders)
-                        onUpdateShowKeyShadows(previewShowKeyShadows)
-                        previewThemeOption = null
-                    },
-                    onDeleteTheme = if (currentPreview.isCustom) {
-                        {
-                            val targetId = currentPreview.id
-                            val targetName = currentPreview.name
-                            themeRepo.deleteCustomTheme(targetId)
-                            if (preferences.theme == targetId) {
-                                onUpdateTheme(KiebordPreferences.THEME_DEFAULT_DARK)
-                            }
-                            reloadTrigger++
-                            previewThemeOption = null
-                            Toast.makeText(context, "Deleted $targetName", Toast.LENGTH_SHORT).show()
-                        }
-                    } else null
-                )
-            }
+    previewThemeOption?.let { currentPreview ->
+        var previewShowKeyBorders by remember(currentPreview.id, preferences.showKeyBorders) {
+            mutableStateOf(preferences.showKeyBorders)
         }
+        var previewShowKeyShadows by remember(currentPreview.id, preferences.showKeyShadows) {
+            mutableStateOf(preferences.showKeyShadows)
+        }
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+        ModalBottomSheet(
+            onDismissRequest = { previewThemeOption = null },
+            sheetState = sheetState,
+            containerColor = colors.cardBackground,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            ThemePreviewBottomSheetContent(
+                themeOption = currentPreview,
+                preferences = preferences,
+                showKeyBorders = previewShowKeyBorders,
+                showKeyShadows = previewShowKeyShadows,
+                onToggleKeyBorders = { previewShowKeyBorders = it },
+                onToggleKeyShadows = { previewShowKeyShadows = it },
+                onApplyTheme = {
+                    onUpdateTheme(currentPreview.id)
+                    onUpdateShowKeyBorders(previewShowKeyBorders)
+                    onUpdateShowKeyShadows(previewShowKeyShadows)
+                    previewThemeOption = null
+                },
+                onDeleteTheme = if (currentPreview.isCustom) {
+                    {
+                        val targetId = currentPreview.id
+                        val targetName = currentPreview.name
+                        themeRepo.deleteCustomTheme(targetId)
+                        if (preferences.theme == targetId) {
+                            onUpdateTheme(KiebordPreferences.THEME_DEFAULT_DARK)
+                        }
+                        reloadTrigger++
+                        previewThemeOption = null
+                        Toast.makeText(context, "Deleted $targetName", Toast.LENGTH_SHORT).show()
+                    }
+                } else null
+            )
+        }
+    }
+
+    pendingImportTheme?.let { currentPending ->
+        var importShowKeyBorders by remember(currentPending.option.id, preferences.showKeyBorders) {
+            mutableStateOf(preferences.showKeyBorders)
+        }
+        var importShowKeyShadows by remember(currentPending.option.id, preferences.showKeyShadows) {
+            mutableStateOf(preferences.showKeyShadows)
+        }
+        val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+        ModalBottomSheet(
+            onDismissRequest = { pendingImportTheme = null },
+            sheetState = importSheetState,
+            containerColor = colors.cardBackground,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            ThemePreviewBottomSheetContent(
+                themeOption = currentPending.option,
+                preferences = preferences,
+                showKeyBorders = importShowKeyBorders,
+                showKeyShadows = importShowKeyShadows,
+                onToggleKeyBorders = { importShowKeyBorders = it },
+                onToggleKeyShadows = { importShowKeyShadows = it },
+                onApplyTheme = {},
+                isImportMode = true,
+                onCancelImport = { pendingImportTheme = null },
+                onConfirmImport = {
+                    val res = themeRepo.importTheme(currentPending.rawJson)
+                    res.onSuccess { importedList ->
+                        reloadTrigger++
+                        if (importedList.isNotEmpty()) {
+                            val first = importedList.first()
+                            onUpdateTheme(first.id)
+                            onUpdateShowKeyBorders(importShowKeyBorders)
+                            onUpdateShowKeyShadows(importShowKeyShadows)
+                            Toast.makeText(context, "Imported ${first.name}", Toast.LENGTH_SHORT).show()
+                        }
+                    }.onFailure { err ->
+                        Toast.makeText(context, "Import failed: ${err.message ?: "Invalid theme file"}", Toast.LENGTH_LONG).show()
+                    }
+                    pendingImportTheme = null
+                }
+            )
+        }
+    }
+
+    if (showCreatePopup) {
+        AlertDialog(
+            onDismissRequest = { showCreatePopup = false },
+            containerColor = colors.cardBackground,
+            title = {
+                Text(
+                    text = "New Theme",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Choose an option to add a keyboard theme:",
+                        fontSize = 14.sp,
+                        color = colors.textSecondary
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Button 1: Import (.bornotheme) - Squared Button
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (colors.isDark) Color(0xFF22242A) else Color(0xFFF1F3F9))
+                                .border(1.5.dp, colors.accent.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                                .clickable {
+                                    showCreatePopup = false
+                                    importLauncher.launch(arrayOf("*/*"))
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.accent.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.FileDownload,
+                                        contentDescription = "Import",
+                                        tint = colors.accent,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Import",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = ".bornotheme",
+                                    fontSize = 11.sp,
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        // Button 2: Create Theme - Squared Button
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (colors.isDark) Color(0xFF22242A) else Color(0xFFF1F3F9))
+                                .border(1.5.dp, colors.cardBorder, RoundedCornerShape(16.dp))
+                                .clickable {
+                                    showCreatePopup = false
+                                    Toast.makeText(context, "Not yet implemented", Toast.LENGTH_SHORT).show()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape)
+                                        .background(if (colors.isDark) Color(0xFF2C2C32) else Color(0xFFE2E2EC)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Palette,
+                                        contentDescription = "Create",
+                                        tint = colors.textPrimary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Create",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = "Theme Studio",
+                                    fontSize = 11.sp,
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showCreatePopup = false }) {
+                    Text("Cancel", color = colors.textSecondary)
+                }
+            }
+        )
     }
 }
 
@@ -281,6 +579,7 @@ private fun AbstractThemeCard(
     themeOption: ThemeOptionItem,
     isSelected: Boolean,
     showKeyBorders: Boolean = true,
+    showKeyShadows: Boolean = true,
     modifier: Modifier = Modifier,
     onSelect: () -> Unit
 ) {
@@ -324,6 +623,14 @@ private fun AbstractThemeCard(
             )
             .clickable(onClick = onSelect)
     ) {
+        val imageSpec = scheme.themeSpec?.background?.image
+        if (imageSpec != null) {
+            io.kiebord.theme.ThemeImageBackgroundView(
+                spec = imageSpec,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
         val cardWidth = maxWidth
         val cardHeight = maxHeight
 
@@ -336,29 +643,14 @@ private fun AbstractThemeCard(
         val keyBorderColor = scheme.keyBorder
         val hasStroke = showKeyBorders && keyBorderColor != Color.Transparent && keyBorderColor.alpha > 0.05f
 
+        val keyShadowColor = scheme.keyShadow
+        val hasShadow = showKeyShadows && keyShadowColor != Color.Transparent && keyShadowColor.alpha > 0.05f
+
         val spaceHex = scheme.themeSpec?.spaceKey?.background ?: scheme.themeSpec?.characterKey?.background
         val spaceColor = if (spaceHex != null) ThemeColorUtils.parseHexColor(spaceHex, scheme.keyBackground) else scheme.keyBackground
 
         val enterHex = scheme.themeSpec?.actionKey?.background
         val enterColor = if (enterHex != null) ThemeColorUtils.parseHexColor(enterHex, scheme.accentColor) else scheme.accentColor
-
-        if (themeOption.isCustom && !isSelected) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(colors.accent.copy(alpha = 0.25f))
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = "CUSTOM",
-                    fontSize = 7.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.accent
-                )
-            }
-        }
 
         Row(
             modifier = Modifier
@@ -374,6 +666,19 @@ private fun AbstractThemeCard(
                     .weight(0.58f)
                     .fillMaxHeight()
                     .then(
+                        if (hasShadow) {
+                            Modifier.shadow(
+                                elevation = 1.dp,
+                                shape = keyShape,
+                                clip = false,
+                                ambientColor = keyShadowColor,
+                                spotColor = keyShadowColor
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .then(
                         if (hasStroke) {
                             Modifier.border(0.75.dp, keyBorderColor, keyShape)
                         } else {
@@ -388,6 +693,19 @@ private fun AbstractThemeCard(
                 modifier = Modifier
                     .weight(0.14f)
                     .fillMaxHeight()
+                    .then(
+                        if (hasShadow) {
+                            Modifier.shadow(
+                                elevation = 1.dp,
+                                shape = keyShape,
+                                clip = false,
+                                ambientColor = keyShadowColor,
+                                spotColor = keyShadowColor
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
                     .then(
                         if (hasStroke) {
                             Modifier.border(0.75.dp, keyBorderColor, keyShape)
@@ -430,7 +748,10 @@ private fun ThemePreviewBottomSheetContent(
     onToggleKeyBorders: (Boolean) -> Unit,
     onToggleKeyShadows: (Boolean) -> Unit,
     onApplyTheme: () -> Unit,
-    onDeleteTheme: (() -> Unit)? = null
+    onDeleteTheme: (() -> Unit)? = null,
+    isImportMode: Boolean = false,
+    onCancelImport: (() -> Unit)? = null,
+    onConfirmImport: (() -> Unit)? = null
 ) {
     val colors = LocalSettingsColors.current
 
@@ -448,7 +769,7 @@ private fun ThemePreviewBottomSheetContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = themeOption.name,
+            text = if (isImportMode) "Import: ${themeOption.name}" else themeOption.name,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = colors.textPrimary,
@@ -530,49 +851,105 @@ private fun ThemePreviewBottomSheetContent(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = onApplyTheme,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accent
-                )
-            ) {
-                Text(
-                    text = "Apply Theme",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (colors.isDark) Color(0xFF0F141C) else Color.White
-                )
-            }
-
-            if (onDeleteTheme != null) {
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedButton(
-                    onClick = onDeleteTheme,
+            if (isImportMode) {
+                Button(
+                    onClick = { onConfirmImport?.invoke() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, Color(0xFFE53935))
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = "Delete",
-                        tint = Color(0xFFE53935),
-                        modifier = Modifier.size(18.dp)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                ) {
                     Text(
-                        text = "Delete Custom Theme",
+                        text = "Import Theme",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (colors.isDark) Color(0xFF0F141C) else Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = { onCancelImport?.invoke() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (colors.isDark) Color(0xFF2C2C32) else Color(0xFFE0E2EC),
+                        contentColor = colors.textPrimary
+                    )
+                ) {
+                    Text(
+                        text = "Cancel",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFFE53935)
+                        color = colors.textPrimary
                     )
+                }
+            } else {
+                Button(
+                    onClick = onApplyTheme,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent
+                    )
+                ) {
+                    Text(
+                        text = "Apply Theme",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (colors.isDark) Color(0xFF0F141C) else Color.White
+                    )
+                }
+
+                if (onDeleteTheme != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = onDeleteTheme,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE53935),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Delete Custom Theme",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+private fun getFileName(context: android.content.Context, uri: Uri): String? {
+    if (uri.scheme == "content") {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex != -1 && cursor.moveToFirst()) {
+                return cursor.getString(nameIndex)
+            }
+        }
+    }
+    return uri.lastPathSegment
 }

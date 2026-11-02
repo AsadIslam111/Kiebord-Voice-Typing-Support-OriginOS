@@ -1,6 +1,6 @@
 # Kiebord Keyboard Theme Development & Import Guide
 
-This guide describes how to create, customize, and import keyboard themes for Kiebord, including full compatibility with Borno Keyboard (`.kbtheme` and `.json`) color theme files.
+This guide describes how to create, customize, and import keyboard themes for Kiebord using the unified `.bornotheme` format.
 
 ---
 
@@ -8,37 +8,117 @@ This guide describes how to create, customize, and import keyboard themes for Ki
 
 Kiebord supports:
 - Built-in original themes (Default Dark, AMOLED Black, Tokyo Night, Nord Frost, Default Light).
-- Bundled Borno color themes (Classics, AMOLED, Aesthetic, Pastels, and Accent colors).
-- Dynamic custom themes loaded from storage via `.kbtheme` or `.json` files.
+- Bundled Borno color presets (Classics, AMOLED, Aesthetic, Pastels, and Accent colors).
+- Dynamic custom themes loaded from storage via `.bornotheme` files.
 
-Themes are parsed using compile-time serializers and managed via `ThemeRepository` with in-memory caching for instantaneous switching without frame drops.
+No `.json` or `.kntheme` extensions are required: **`.bornotheme`** serves as the single unified theme format for Kiebord, cleanly versioned by `schemaVersion`:
+- **`.bornotheme` Version 1 (`schemaVersion: 1`)**: Borno's legacy format for backward compatibility.
+- **`.bornotheme` Version 2 (`schemaVersion: 2`)**: Kiebord's transformed modern native format retaining all advanced engine capabilities.
 
 ---
 
 ## 2. Supported Formats
 
-Kiebord accepts three theme file formats:
-
-### Format A: Standalone Borno Color Theme (`.kbtheme` or `.json`)
+### Format A: Borno Theme Version 1 (`.bornotheme` with `schemaVersion = 1`)
+The legacy Borno Keyboard theme format supporting solid colors, 2-stop linear gradients, and portable Base64-encoded wallpaper backgrounds. Files can be raw JSON or Base64-encoded UTF-8 strings.
 ```json
 {
-  "id": 1012,
-  "name": "Cosmic Nebula",
-  "backgroundColor": "#101028",
-  "keyColor": "#202040",
-  "labelKeyColor": "#E0B0FF",
-  "functionalKeyColor": "#202040",
-  "labelFunctionalKeyColor": "#E0B0FF",
-  "enterColor": "#800080",
-  "enterColorIcon": "#FFFFFF",
-  "selectedKeyColor": "#9400D3",
-  "keyStrokeColor": "#4b0082",
-  "keyStrokeSize": 2,
-  "isFlat": true
+  "schemaVersion": 1,
+  "builder": "100",
+  "name": "Borno Sunset Orange",
+  "backgroundType": 4,
+  "backgroundColor": "#1A1A1A",
+  "backgroundOpacity": 255,
+  "keyColor": "#2D2D2D",
+  "labelKeyColor": "#FFFFFF",
+  "functionalKeyColor": "#222222",
+  "labelFunctionalKeyColor": "#E0E0E0",
+  "enterColor": "#FF5722",
+  "enterIconColor": "#FFFFFF",
+  "selectedKeyColor": "#FF5722",
+  "stripColor": "#00000000",
+  "keyStrokeColor": "#3A3A3A",
+  "keyStrokeSize": 1,
+  "keyRadius": 12.0,
+  "isFlat": false,
+  "isModern": true,
+  "backgroundImageBase64": "<optional_base64_jpeg_data>"
 }
 ```
 
-### Format B: Borno Multi-Theme Bundle Export (`.kbtheme` or `.json`)
+> **Note on Image Backgrounds**: When `backgroundImageBase64` is included, Kiebord automatically decodes the image, downscales it to optimal dimensions (max 1280px), stores it in internal app storage, and manages its lifecycle.
+
+### Format B: Borno Theme Version 2 (`.bornotheme` with `schemaVersion = 2`)
+The transformed native Kiebord theme format retaining all modern design and rendering capabilities:
+- Multi-stop Linear, Radial, Sweep (angular), and 2D Mesh gradients.
+- Image backgrounds with blur radius, dimming overlay, and scale types (`crop`, `fit`, `fill`, `tile`).
+- Granular per-key overrides (`perKeyOverrides`) by coordinate, label, or key type.
+- Fractional stroke widths (`widthDp`), 2D elevation shadows (`offsetX`, `offsetY`, `radiusDp`), pill shapes, and custom corner radii.
+- Custom vector icons for modifier/action keys (`icons`).
+- Independent component-level theming for Suggestion strip, Tools drawer, and MoreKeys popups.
+- Embedded `backgroundImageBase64` for 100% portable single-file distribution.
+
+```json
+{
+  "schemaVersion": 2,
+  "id": "custom_cyber_neon",
+  "name": "Cyber Neon v2",
+  "isDark": true,
+  "background": {
+    "gradient": {
+      "type": "linear",
+      "colors": ["#0F0C29", "#302B63", "#24243E"],
+      "stops": [0.0, 0.5, 1.0],
+      "angle": 135.0
+    }
+  },
+  "characterKey": {
+    "background": "#1A1B2F",
+    "foreground": "#E0E7FF",
+    "stroke": {
+      "color": "#3B82F6",
+      "widthDp": 0.5,
+      "alpha": 0.35
+    },
+    "shadow": {
+      "color": "#4D000000",
+      "elevationDp": 1.5
+    },
+    "cornerRadiusDp": 8.0,
+    "pressedBackground": "#28294E"
+  },
+  "functionalKey": {
+    "background": "#141527",
+    "foreground": "#93C5FD",
+    "shadow": {
+      "color": "#4D000000",
+      "elevationDp": 1.5
+    }
+  },
+  "actionKey": {
+    "background": "#3B82F6",
+    "foreground": "#FFFFFF",
+    "isPill": true,
+    "pressedBackground": "#2563EB"
+  },
+  "accentColor": "#3B82F6",
+  "shiftActiveColor": "#60A5FA",
+  "suggestionBackground": {
+    "solidColor": "#0F0C29"
+  },
+  "suggestionForeground": "#E0E7FF",
+  "moreKeysBackground": "#1A1B2F",
+  "guidelineColor": "#3B82F6",
+  "perKeyOverrides": {
+    "space": {
+      "background": "#1A1B2F",
+      "cornerRadiusDp": 16.0
+    }
+  }
+}
+```
+
+### Format C: Bundled Presets (`borno_themes.json` asset)
 ```json
 {
   "themes": [
@@ -53,44 +133,10 @@ Kiebord accepts three theme file formats:
           "functionalKeyColor": "#ffdfe1e3",
           "labelFunctionalKeyColor": "#B3000000",
           "enterColor": "#ff67c3b8"
-        },
-        {
-          "id": 1011,
-          "name": "AMOLED Purity",
-          "backgroundColor": "#000000",
-          "keyColor": "#282828",
-          "labelKeyColor": "#FFFFFF",
-          "functionalKeyColor": "#181818",
-          "labelFunctionalKeyColor": "#EEEEEE",
-          "enterColor": "#FDFE03"
         }
       ]
     }
   ]
-}
-```
-
-### Format C: Native Kiebord Flat Theme Definition (`.json`)
-```json
-{
-  "id": "custom_neon_cyber",
-  "name": "Neon Cyber",
-  "isDark": true,
-  "containerBackground": "#0F0F1A",
-  "keyBackground": "#1A1A2E",
-  "keyForeground": "#E0E0FF",
-  "keyBorder": "#2A2A4E",
-  "keyShadow": "#00000000",
-  "actionKeyBackground": "#16213E",
-  "actionKeyForeground": "#00FFF5",
-  "shiftActiveColor": "#00FFF5",
-  "accentColor": "#00FFF5",
-  "moreKeysBackground": "#1A1A2E",
-  "guidelineColor": "#00FFF5",
-  "suggestionBackground": "#0F0F1A",
-  "suggestionForeground": "#E0E0FF",
-  "keyPressedBackground": "#16213E",
-  "keyPressedForeground": "#00FFF5"
 }
 ```
 
@@ -132,7 +178,7 @@ Kiebord's internal parser safely normalizes these formats without relying on pla
 
 1. Open Kiebord Settings.
 2. Navigate to **Theme & Appearance**.
-3. Scroll to the bottom and select **Import Custom Theme (.kbtheme / .json)**.
-4. Select your file from the system document picker.
-5. If the file contains a bundle, all themes within it are imported simultaneously.
-6. The new theme will appear under **Custom Imported Themes** with an instant preview and delete option.
+3. Tap the **+** card under Custom Themes and select **Import (.bornotheme)**.
+4. Select your `.bornotheme` file from the system document picker (or tap it in any file manager / messaging app).
+5. An interactive **Pre-Import Preview** bottom sheet will open with a live preview of the keyboard.
+6. Tap **Import** to confirm and apply, or **Cancel** to discard.
