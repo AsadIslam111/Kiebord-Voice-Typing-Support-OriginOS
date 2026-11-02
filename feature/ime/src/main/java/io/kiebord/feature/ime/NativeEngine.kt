@@ -223,7 +223,7 @@ object NativeEngine {
     }
 
     fun queryTransliterationAlternatives(layoutId: String, rawInput: String): List<String> {
-        if (rawInput.isBlank()) return emptyList()
+        if (rawInput.isBlank() || layoutId != "bn_borno") return emptyList()
         if (isLoaded) {
             try {
                 val raw = getTransliterationAlternatives(layoutId, rawInput)
@@ -257,6 +257,8 @@ object NativeEngine {
                     'z' -> charArrayOf('j')
                     'n' -> charArrayOf('N')
                     'N' -> charArrayOf('n')
+                    'o' -> charArrayOf('O')
+                    'O' -> charArrayOf('o')
                     'd' -> charArrayOf('D')
                     'D' -> charArrayOf('d')
                     's' -> charArrayOf('S')
@@ -273,6 +275,30 @@ object NativeEngine {
                     val alt = chars.clone()
                     alt[i] = f
                     val altStr = String(alt)
+                    val translit = transliterate(layoutId, altStr)
+                    if (translit.isNotEmpty() && !results.contains(translit)) {
+                        results.add(translit)
+                    }
+                }
+            }
+
+            val digraphSwaps = listOf(
+                "ou" to "OU",
+                "Ou" to "OU",
+                "oU" to "OU",
+                "OU" to "ou",
+                "oi" to "OI",
+                "Oi" to "OI",
+                "oI" to "OI",
+                "OI" to "oi",
+                "ri" to "rri",
+                "rri" to "ri",
+                "o" to "O",
+                "O" to "o"
+            )
+            for ((from, to) in digraphSwaps) {
+                if (rawInput.contains(from)) {
+                    val altStr = rawInput.replace(from, to)
                     val translit = transliterate(layoutId, altStr)
                     if (translit.isNotEmpty() && !results.contains(translit)) {
                         results.add(translit)

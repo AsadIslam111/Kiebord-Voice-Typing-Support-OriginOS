@@ -161,7 +161,7 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
             for i in 0..input_chars.len() {
                 if input_chars[i] == '\u{09B0}' && i + 1 < input_chars.len() {
                     let next = input_chars[i + 1];
-                    if ('\u{0995}'..='\u{09B9}').contains(&next) {
+                    if crate::translit::borno_phonetic::BornoPhonetic::is_bengali_consonant(next) {
                         let mut reph_chars = input_chars.clone();
                         reph_chars.insert(i + 1, '\u{09CD}'); // র + ্ = র্ (Reph)
                         let reph_word: String = reph_chars.into_iter().collect();
@@ -195,6 +195,176 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
             }
         }
 
+        let mut kar_normalized_stems: Vec<String> = Vec::new();
+        if is_bn {
+            let mut ou_candidates: Vec<String> = Vec::new();
+            let input_chars: Vec<char> = input.chars().collect();
+
+            let mut direct_ou_bases: Vec<String> = Vec::new();
+
+            if input.contains("\u{09CB}\u{0989}") {
+                let norm = input.replace("\u{09CB}\u{0989}", "\u{09CC}");
+                ou_candidates.push(norm.clone());
+                direct_ou_bases.push(norm.clone());
+                kar_normalized_stems.push(norm);
+            }
+
+            for i in 0..input_chars.len() {
+                if crate::translit::borno_phonetic::BornoPhonetic::is_bengali_consonant(input_chars[i])
+                    && i + 1 < input_chars.len()
+                    && (input_chars[i + 1] == '\u{0989}' || input_chars[i + 1] == '\u{098A}')
+                {
+                    let mut cand_chars = input_chars.clone();
+                    cand_chars[i + 1] = '\u{09CC}';
+                    let base_ou: String = cand_chars.into_iter().collect();
+                    ou_candidates.push(base_ou.clone());
+                    direct_ou_bases.push(base_ou.clone());
+                    if !kar_normalized_stems.contains(&base_ou) {
+                        kar_normalized_stems.push(base_ou.clone());
+                    }
+                    if base_ou.contains('\u{099C}') {
+                        ou_candidates.push(base_ou.replace('\u{099C}', "\u{09AF}"));
+                    }
+                    if base_ou.contains('\u{09B0}') {
+                        ou_candidates.push(base_ou.replace('\u{09B0}', "\u{09DC}"));
+                    }
+                    if base_ou.contains('\u{09C1}') {
+                        ou_candidates.push(base_ou.replace('\u{09C1}', "\u{09C2}"));
+                    }
+                }
+            }
+
+            if input.contains('\u{09CC}') {
+                ou_candidates.push(input.replace('\u{09CC}', "\u{0989}"));
+            }
+
+            for init_pat in ["\u{0985}\u{0989}", "\u{0993}\u{0989}", "\u{0985}\u{098A}"] {
+                if input.starts_with(init_pat) {
+                    let rest = &input[init_pat.len()..];
+                    let base_init = format!("\u{0994}{}", rest);
+                    ou_candidates.push(base_init.clone());
+                    direct_ou_bases.push(base_init.clone());
+                    kar_normalized_stems.push(base_init);
+                    if rest.contains('\u{09B6}') {
+                        ou_candidates.push(format!("\u{0994}{}", rest.replace('\u{09B6}', "\u{09B7}")));
+                    }
+                    if rest.contains('\u{09B8}') {
+                        ou_candidates.push(format!("\u{0994}{}", rest.replace('\u{09B8}', "\u{09B7}")));
+                    }
+                }
+            }
+
+            for cand in ou_candidates {
+                if dict.contains_word(&cand) && !words.contains(&cand) {
+                    let insert_pos = if !dict.contains_word(input) { 0 } else if words.len() > 1 { 1 } else { words.len() };
+                    words.insert(insert_pos, cand);
+                    if words.len() > max_results {
+                        words.truncate(max_results);
+                    }
+                }
+            }
+            for base in direct_ou_bases {
+                if !words.contains(&base) {
+                    let insert_pos = if !dict.contains_word(input) && dict.find_node(&base).is_some() {
+                        0
+                    } else if words.len() > 1 {
+                        1
+                    } else {
+                        words.len()
+                    };
+                    words.insert(insert_pos, base);
+                    if words.len() > max_results {
+                        words.truncate(max_results);
+                    }
+                }
+            }
+        }
+
+        if is_bn {
+            let mut oi_candidates: Vec<String> = Vec::new();
+            let mut direct_oi_bases: Vec<String> = Vec::new();
+            let input_chars: Vec<char> = input.chars().collect();
+
+            if input.contains("\u{09CB}\u{0987}") {
+                let norm = input.replace("\u{09CB}\u{0987}", "\u{09C8}");
+                oi_candidates.push(norm.clone());
+                direct_oi_bases.push(norm.clone());
+                kar_normalized_stems.push(norm);
+            }
+
+            for i in 0..input_chars.len() {
+                if crate::translit::borno_phonetic::BornoPhonetic::is_bengali_consonant(input_chars[i])
+                    && i + 1 < input_chars.len()
+                    && (input_chars[i + 1] == '\u{0987}' || input_chars[i + 1] == '\u{0988}')
+                {
+                    let mut cand_chars = input_chars.clone();
+                    cand_chars[i + 1] = '\u{09C8}';
+                    let base_oi: String = cand_chars.into_iter().collect();
+                    oi_candidates.push(base_oi.clone());
+                    direct_oi_bases.push(base_oi.clone());
+                    if !kar_normalized_stems.contains(&base_oi) {
+                        kar_normalized_stems.push(base_oi.clone());
+                    }
+                    for pat in ["\u{09B6}\u{099F}", "\u{09B6}\u{09CD}\u{09A4}", "\u{09B8}\u{09CD}\u{09A4}", "\u{09B8}\u{09CD}\u{099F}"] {
+                        if base_oi.contains(pat) {
+                            oi_candidates.push(base_oi.replace(pat, "\u{09B7}\u{09CD}\u{099F}"));
+                        }
+                    }
+                    if base_oi.contains('\u{09B8}') {
+                        oi_candidates.push(base_oi.replace('\u{09B8}', "\u{09B6}"));
+                    }
+                    if base_oi.contains('\u{09B6}') {
+                        oi_candidates.push(base_oi.replace('\u{09B6}', "\u{09B8}"));
+                    }
+                }
+            }
+
+            if input.contains('\u{09C8}') {
+                oi_candidates.push(input.replace('\u{09C8}', "\u{0987}"));
+            }
+
+            for init_pat in ["\u{0985}\u{0987}", "\u{0993}\u{0987}", "\u{0985}\u{0988}"] {
+                if input.starts_with(init_pat) {
+                    let rest = &input[init_pat.len()..];
+                    let base_init = format!("\u{0990}{}", rest);
+                    oi_candidates.push(base_init.clone());
+                    direct_oi_bases.push(base_init.clone());
+                    kar_normalized_stems.push(base_init);
+                    if rest.contains('\u{09B6}') {
+                        oi_candidates.push(format!("\u{0990}{}", rest.replace('\u{09B6}', "\u{09B8}")));
+                    }
+                    if rest.contains('\u{09B8}') {
+                        oi_candidates.push(format!("\u{0990}{}", rest.replace('\u{09B8}', "\u{09B6}")));
+                    }
+                }
+            }
+
+            for cand in oi_candidates {
+                if dict.contains_word(&cand) && !words.contains(&cand) {
+                    let insert_pos = if !dict.contains_word(input) { 0 } else if words.len() > 1 { 1 } else { words.len() };
+                    words.insert(insert_pos, cand);
+                    if words.len() > max_results {
+                        words.truncate(max_results);
+                    }
+                }
+            }
+            for base in direct_oi_bases {
+                if !words.contains(&base) {
+                    let insert_pos = if !dict.contains_word(input) && dict.find_node(&base).is_some() {
+                        0
+                    } else if words.len() > 1 {
+                        1
+                    } else {
+                        words.len()
+                    };
+                    words.insert(insert_pos, base);
+                    if words.len() > max_results {
+                        words.truncate(max_results);
+                    }
+                }
+            }
+        }
+
         // Bengali o <-> O (ো-কার) substitution: e.g. যাব -> যাবো, যাবনা -> যাবোনা
         if is_bn {
             let input_chars: Vec<char> = input.chars().collect();
@@ -202,7 +372,7 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
 
             // 1. Append ো-কার to ending consonant (e.g. যাব -> যাবো, করব -> করবো)
             if let Some(&last_char) = input_chars.last() {
-                if ('\u{0995}'..='\u{09B9}').contains(&last_char) {
+                if crate::translit::borno_phonetic::BornoPhonetic::is_bengali_consonant(last_char) {
                     let mut cand = input.to_string();
                     cand.push('\u{09CB}'); // ো
                     okar_candidates.push(cand);
@@ -212,15 +382,34 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
             // 2. Insert ো-কার after non-final consonant without vowel sign (e.g. যাবনা -> যাবোনা)
             for i in 0..input_chars.len() {
                 let c = input_chars[i];
-                if ('\u{0995}'..='\u{09B9}').contains(&c) && i + 1 < input_chars.len() {
+                if crate::translit::borno_phonetic::BornoPhonetic::is_bengali_consonant(c) && i + 1 < input_chars.len() {
                     let next = input_chars[i + 1];
                     // If next is consonant, insert ো
-                    if ('\u{0995}'..='\u{09B9}').contains(&next) {
+                    if crate::translit::borno_phonetic::BornoPhonetic::is_bengali_consonant(next) {
                         let mut cand_chars = input_chars.clone();
                         cand_chars.insert(i + 1, '\u{09CB}');
-                        okar_candidates.push(cand_chars.into_iter().collect());
+                        let single_okar: String = cand_chars.into_iter().collect();
+                        if let Some(&last_c) = input_chars.last() {
+                            if crate::translit::borno_phonetic::BornoPhonetic::is_bengali_consonant(last_c) {
+                                let mut double_okar = single_okar.clone();
+                                double_okar.push('\u{09CB}');
+                                okar_candidates.push(double_okar);
+                            }
+                        }
+                        okar_candidates.push(single_okar);
                     }
                 }
+            }
+
+            if input.starts_with('\u{0985}') {
+                let rest = &input['\u{0985}'.len_utf8()..];
+                okar_candidates.push(format!("\u{0993}{}", rest));
+                if rest.contains('\u{09B6}') {
+                    okar_candidates.push(format!("\u{0993}{}", rest.replace('\u{09B6}', "\u{09B7}")));
+                }
+            } else if input.starts_with('\u{0993}') {
+                let rest = &input['\u{0993}'.len_utf8()..];
+                okar_candidates.push(format!("\u{0985}{}", rest));
             }
 
             // 3. Remove ো-কার if present (e.g. যাবো -> যাব)
@@ -246,7 +435,34 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
 
             // র ফলা + ি-কার (্ + র + ি) -> ঋ-কার (ৃ) e.g. ক্রি -> কৃ, ম্রিত -> মৃত
             if input.contains("\u{09CD}\u{09B0}\u{09BF}") {
-                ri_candidates.push(input.replace("\u{09CD}\u{09B0}\u{09BF}", "\u{09C3}"));
+                let base_rri = input.replace("\u{09CD}\u{09B0}\u{09BF}", "\u{09C3}");
+                ri_candidates.push(base_rri.clone());
+                kar_normalized_stems.push(base_rri.clone());
+
+                if base_rri.contains('\u{09B6}') {
+                    ri_candidates.push(base_rri.replace('\u{09B6}', "\u{09B7}"));
+                }
+                if base_rri.contains('\u{09A8}') {
+                    ri_candidates.push(base_rri.replace('\u{09A8}', "\u{09A3}"));
+                }
+                for pat in ["\u{09B6}\u{099F}", "\u{09B6}\u{09CD}\u{09A4}", "\u{09B8}\u{09CD}\u{09A4}", "\u{09B8}\u{09CD}\u{099F}"] {
+                    if base_rri.contains(pat) {
+                        ri_candidates.push(base_rri.replace(pat, "\u{09B7}\u{09CD}\u{099F}"));
+                    }
+                }
+                for pat in ["\u{09B6}\u{09A8}", "\u{09B6}\u{09CD}\u{09A8}", "\u{09B8}\u{09CD}\u{09A8}"] {
+                    if base_rri.contains(pat) {
+                        ri_candidates.push(base_rri.replace(pat, "\u{09B7}\u{09CD}\u{09A3}"));
+                    }
+                }
+                if base_rri.ends_with('\u{09BF}') {
+                    let without_i = &base_rri[..base_rri.len() - '\u{09BF}'.len_utf8()];
+                    ri_candidates.push(format!("{}\u{09C0}", without_i));
+                }
+                if base_rri.starts_with('\u{0986}') {
+                    let rest = &base_rri['\u{0986}'.len_utf8()..];
+                    ri_candidates.push(format!("\u{0985}{}", rest));
+                }
             }
             // ঋ-কার (ৃ) -> র ফলা + ি-কার (্ + র + ি)
             if input.contains('\u{09C3}') {
@@ -256,7 +472,9 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
             // Word-initial রি (র + ি) -> ঋ e.g. রিশি -> ঋষি, রিন -> ঋণ, রিতু -> ঋতু
             if input.starts_with("\u{09B0}\u{09BF}") {
                 let rest = &input["\u{09B0}\u{09BF}".len()..];
-                ri_candidates.push(format!("\u{098B}{}", rest));
+                let base_init = format!("\u{098B}{}", rest);
+                ri_candidates.push(base_init.clone());
+                kar_normalized_stems.push(base_init);
                 // Combined with শ -> ষ (e.g. রিশি -> ঋষি)
                 if rest.contains('\u{09B6}') {
                     ri_candidates.push(format!("\u{098B}{}", rest.replace('\u{09B6}', "\u{09B7}")));
@@ -278,6 +496,21 @@ pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) ->
                     words.insert(insert_pos, cand);
                     if words.len() > max_results {
                         words.truncate(max_results);
+                    }
+                }
+            }
+        }
+
+        if is_bn && !kar_normalized_stems.is_empty() {
+            for stem in kar_normalized_stems {
+                let stem_sugs = dict.suggest(&stem, max_results, prox);
+                for sug in stem_sugs {
+                    if !words.contains(&sug) {
+                        if words.len() < max_results {
+                            words.push(sug);
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
@@ -569,6 +802,30 @@ fn test_iphone_casing() {
         let mrit_sugs = get_suggestions("ম্রিত", "bn_borno", 5);
         let mr_items: Vec<&str> = mrit_sugs.split('|').filter(|s| !s.is_empty()).collect();
         assert!(mr_items.contains(&"মৃত"), "Expected 'মৃত' in suggestions for 'ম্রিত': {:?}", mr_items);
+
+        let nouka_sugs = get_suggestions("নউকা", "bn_borno", 5);
+        let nk_items: Vec<&str> = nouka_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(nk_items.contains(&"নৌকা"), "Expected 'নৌকা' in suggestions for 'নউকা': {:?}", nk_items);
+
+        let boikal_sugs = get_suggestions("বইকাল", "bn_borno", 5);
+        let bk_items: Vec<&str> = boikal_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(bk_items.contains(&"বৈকাল"), "Expected 'বৈকাল' in suggestions for 'বইকাল': {:?}", bk_items);
+
+        let toiri_sugs = get_suggestions("তইরি", "bn_borno", 5);
+        let tr_items: Vec<&str> = toiri_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(tr_items.contains(&"তৈরি"), "Expected 'তৈরি' in suggestions for 'তইরি': {:?}", tr_items);
+
+        let proyojon_sugs = get_suggestions("প্রয়জন", "bn_borno", 5);
+        let pj_items: Vec<&str> = proyojon_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(pj_items.contains(&"প্রয়োজন"), "Expected 'প্রয়োজন' in suggestions for 'প্রয়জন': {:?}", pj_items);
+
+        let brishti_sugs = get_suggestions("ব্রিশটি", "bn_borno", 5);
+        let br_items: Vec<&str> = brishti_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(br_items.contains(&"বৃষ্টি"), "Expected 'বৃষ্টি' in suggestions for 'ব্রিশটি': {:?}", br_items);
+
+        let prithibi_sugs = get_suggestions("প্রিথিবি", "bn_borno", 5);
+        let pr_items: Vec<&str> = prithibi_sugs.split('|').filter(|s| !s.is_empty()).collect();
+        assert!(pr_items.contains(&"পৃথিবী"), "Expected 'পৃথিবী' in suggestions for 'প্রিথিবি': {:?}", pr_items);
     }
 
     #[test]

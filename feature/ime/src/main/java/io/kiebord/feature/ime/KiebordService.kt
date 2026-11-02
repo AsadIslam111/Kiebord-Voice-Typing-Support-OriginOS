@@ -2301,7 +2301,7 @@ class KiebordService : InputMethodService() {
                     list.add(SuggestionCandidate(text = primaryWord, isPrimary = true, rawInput = raw))
                 }
 
-                val phoneticAlts = if (raw.isNotBlank()) {
+                val phoneticAlts = if (raw.isNotBlank() && activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO) {
                     NativeEngine.queryTransliterationAlternatives(activeLayout.id, raw)
                         .filter { it.isNotEmpty() && it != primaryWord && !containsLatinText(it) }
                 } else emptyList()
@@ -2336,10 +2336,14 @@ class KiebordService : InputMethodService() {
                 }
 
                 // 4. Phonetic transliteration alternatives for raw Latin input
-                for (alt in phoneticAlts) {
+                val hasComplexKarLower = raw.contains("ou", ignoreCase = true) ||
+                        raw.contains("oi", ignoreCase = true) ||
+                        (raw.contains("ri") && !raw.contains("rri"))
+                for ((idx, alt) in phoneticAlts.withIndex()) {
                     if (list.size < 12 && list.none { it.text == alt }) {
                         val isLearned = userDictionaryRepo.isLearned(alt)
-                        val isDictWord = isLearned || NativeEngine.isDictionaryWord(alt, "bn")
+                        val isDirectComplexKarAlt = hasComplexKarLower && idx == 0
+                        val isDictWord = isLearned || isDirectComplexKarAlt || NativeEngine.isDictionaryWord(alt, "bn")
                         if (isDictWord) {
                             list.add(SuggestionCandidate(text = alt, isPrimary = false))
                         }

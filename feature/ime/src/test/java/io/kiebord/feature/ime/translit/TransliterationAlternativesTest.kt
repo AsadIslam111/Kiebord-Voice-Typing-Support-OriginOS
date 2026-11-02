@@ -32,6 +32,18 @@ class TransliterationAlternativesTest {
         val jaboAlts = NativeEngine.queryTransliterationAlternatives("bn_borno", "jabo")
         assertNotNull(jaboAlts)
         assertTrue("Expected candidates for jabo, got $jaboAlts", jaboAlts.isNotEmpty())
+
+        val noukaAlts = NativeEngine.queryTransliterationAlternatives("bn_borno", "nouka")
+        assertNotNull(noukaAlts)
+        assertTrue("Expected candidates for nouka, got $noukaAlts", noukaAlts.isNotEmpty())
+
+        val boikalAlts = NativeEngine.queryTransliterationAlternatives("bn_borno", "boikal")
+        assertNotNull(boikalAlts)
+        assertTrue("Expected candidates for boikal, got $boikalAlts", boikalAlts.isNotEmpty())
+
+        val krishiAlts = NativeEngine.queryTransliterationAlternatives("bn_borno", "krishi")
+        assertNotNull(krishiAlts)
+        assertTrue("Expected candidates for krishi, got $krishiAlts", krishiAlts.isNotEmpty())
     }
 
     @Test

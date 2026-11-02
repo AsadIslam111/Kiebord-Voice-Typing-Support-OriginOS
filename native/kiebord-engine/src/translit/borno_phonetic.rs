@@ -1047,6 +1047,27 @@ impl BornoPhonetic {
         let chars: Vec<char> = input.chars().collect();
         let len = chars.len();
 
+        let mut push_alt = |alt_input: &str| {
+            let translit = Self::convert_mode(alt_input, is_avro);
+            if !translit.is_empty() && !results.contains(&translit) {
+                results.push(translit);
+            }
+        };
+
+        for pat in ["ou", "Ou", "oU"] {
+            if input.contains(pat) {
+                push_alt(&input.replace(pat, "OU"));
+            }
+        }
+        for pat in ["oi", "Oi", "oI"] {
+            if input.contains(pat) {
+                push_alt(&input.replace(pat, "OI"));
+            }
+        }
+        if input.contains("ri") && !input.contains("rri") {
+            push_alt(&input.replace("ri", "rri"));
+        }
+
         for i in 0..len {
             let c = chars[i];
             let flipped: &[char] = match c {
@@ -1077,10 +1098,7 @@ impl BornoPhonetic {
                 let mut alt = chars.clone();
                 alt[i] = f;
                 let alt_str: String = alt.into_iter().collect();
-                let translit = Self::convert_mode(&alt_str, is_avro);
-                if !translit.is_empty() && !results.contains(&translit) {
-                    results.push(translit);
-                }
+                push_alt(&alt_str);
             }
         }
 
@@ -1097,83 +1115,192 @@ impl BornoPhonetic {
                     let mut alt = chars.clone();
                     alt.insert(i + 1, 'r');
                     let alt_str: String = alt.into_iter().collect();
-                    let translit = Self::convert_mode(&alt_str, is_avro);
-                    if !translit.is_empty() && !results.contains(&translit) {
-                        results.push(translit);
-                    }
+                    push_alt(&alt_str);
                 }
             }
         }
 
-        // ri <-> rri substitution (case-sensitive) for র-ফলা and ঋ-কার
-        // e.g. kri -> krri (কৃ), rishi -> rrishi (ঋষি), rin -> rrin (ঋণ), mrit -> mrrit (মৃত)
-        if input.contains("ri") {
-            let alt_rri = input.replace("ri", "rri");
-            let translit = Self::convert_mode(&alt_rri, is_avro);
-            if !translit.is_empty() && !results.contains(&translit) {
-                results.push(translit);
-            }
-            // Combined with n <-> N (e.g. rin -> rriN -> ঋণ)
-            if alt_rri.contains('n') {
-                let alt_rri_n = alt_rri.replace('n', "N");
-                let translit_n = Self::convert_mode(&alt_rri_n, is_avro);
-                if !translit_n.is_empty() && !results.contains(&translit_n) {
-                    results.push(translit_n);
+        for pat in ["ou", "Ou", "oU"] {
+            if input.contains(pat) {
+                let alt_ou = input.replace(pat, "OU");
+                push_alt(&alt_ou);
+                if alt_ou.contains('j') {
+                    push_alt(&alt_ou.replace('j', "z"));
                 }
-            }
-            // Combined with sh <-> Sh (e.g. rishi -> rriShi -> ঋষি)
-            if alt_rri.contains("sh") {
-                let alt_rri_sh = alt_rri.replace("sh", "Sh");
-                let translit_sh = Self::convert_mode(&alt_rri_sh, is_avro);
-                if !translit_sh.is_empty() && !results.contains(&translit_sh) {
-                    results.push(translit_sh);
+                if alt_ou.contains('r') {
+                    push_alt(&alt_ou.replace('r', "R"));
                 }
-            }
-            // Combined with s <-> Sh (e.g. sristi -> srriSTi -> সৃষ্টি)
-            if alt_rri.contains("st") {
-                let alt_rri_st = alt_rri.replace("st", "ST");
-                let translit_st = Self::convert_mode(&alt_rri_st, is_avro);
-                if !translit_st.is_empty() && !results.contains(&translit_st) {
-                    results.push(translit_st);
+                if alt_ou.contains("sh") {
+                    push_alt(&alt_ou.replace("sh", "Sh"));
+                    push_alt(&alt_ou.replace("sh", "s"));
+                }
+                if alt_ou.contains('s') {
+                    push_alt(&alt_ou.replace('s', "Sh"));
+                    push_alt(&alt_ou.replace('s', "sh"));
+                }
+                if alt_ou.contains('u') {
+                    push_alt(&alt_ou.replace('u', "U"));
+                }
+                if alt_ou.contains('o') {
+                    push_alt(&alt_ou.replace('o', "O"));
+                }
+                if alt_ou.contains('n') {
+                    push_alt(&alt_ou.replace('n', "N"));
+                }
+                if alt_ou.contains('t') {
+                    push_alt(&alt_ou.replace('t', "T"));
+                }
+                if alt_ou.contains('d') {
+                    push_alt(&alt_ou.replace('d', "D"));
                 }
             }
         }
-        if input.contains("rri") {
-            let alt_ri = input.replace("rri", "ri");
-            let translit = Self::convert_mode(&alt_ri, is_avro);
-            if !translit.is_empty() && !results.contains(&translit) {
-                results.push(translit);
+        if input.contains("OU") {
+            push_alt(&input.replace("OU", "ou"));
+        }
+
+        for pat in ["oi", "Oi", "oI"] {
+            if input.contains(pat) {
+                let alt_oi = input.replace(pat, "OI");
+                push_alt(&alt_oi);
+                if alt_oi.contains("sht") {
+                    push_alt(&alt_oi.replace("sht", "ShT"));
+                }
+                if alt_oi.contains("st") {
+                    push_alt(&alt_oi.replace("st", "ShT"));
+                    push_alt(&alt_oi.replace("st", "ST"));
+                }
+                if alt_oi.contains("sh") {
+                    push_alt(&alt_oi.replace("sh", "s"));
+                    push_alt(&alt_oi.replace("sh", "Sh"));
+                }
+                if alt_oi.contains('s') {
+                    push_alt(&alt_oi.replace('s', "sh"));
+                    push_alt(&alt_oi.replace('s', "Sh"));
+                }
+                if alt_oi.contains('j') {
+                    push_alt(&alt_oi.replace('j', "z"));
+                }
+                if alt_oi.contains('n') {
+                    push_alt(&alt_oi.replace('n', "N"));
+                }
+                if alt_oi.contains('t') {
+                    push_alt(&alt_oi.replace('t', "T"));
+                }
+                if alt_oi.contains('d') {
+                    push_alt(&alt_oi.replace('d', "D"));
+                }
+                if alt_oi.contains('i') {
+                    push_alt(&alt_oi.replace('i', "I"));
+                }
+                if alt_oi.contains('o') {
+                    push_alt(&alt_oi.replace('o', "O"));
+                }
             }
+        }
+        if input.contains("OI") {
+            push_alt(&input.replace("OI", "oi"));
+        }
+
+        // ri <-> rri substitution (case-sensitive) for র-ফলা and ঋ-কার
+        // e.g. kri -> krri (কৃ), rishi -> rrishi (ঋষি), rin -> rrin (ঋণ), mrit -> mrrit (মৃত)
+        if input.contains("ri") && !input.contains("rri") {
+            let alt_rri = input.replace("ri", "rri");
+            push_alt(&alt_rri);
+            if alt_rri.contains("sht") {
+                push_alt(&alt_rri.replace("sht", "ShT"));
+            }
+            if alt_rri.contains("st") {
+                push_alt(&alt_rri.replace("st", "ShT"));
+                push_alt(&alt_rri.replace("st", "ST"));
+            }
+            if alt_rri.contains("shn") {
+                push_alt(&alt_rri.replace("shn", "ShN"));
+            }
+            if alt_rri.contains("sn") {
+                push_alt(&alt_rri.replace("sn", "ShN"));
+            }
+            // Combined with n <-> N (e.g. rin -> rriN -> ঋণ)
+            if alt_rri.contains('n') {
+                push_alt(&alt_rri.replace('n', "N"));
+            }
+            // Combined with sh <-> Sh (e.g. rishi -> rriShi -> ঋষি)
+            if alt_rri.contains("sh") {
+                push_alt(&alt_rri.replace("sh", "Sh"));
+            }
+            if alt_rri.contains('s') {
+                push_alt(&alt_rri.replace('s', "Sh"));
+            }
+            if alt_rri.ends_with('i') && alt_rri.len() > 3 {
+                let mut s = alt_rri[..alt_rri.len() - 1].to_string();
+                s.push('I');
+                push_alt(&s);
+            }
+            if alt_rri.starts_with('a') {
+                let mut s = String::from("o");
+                s.push_str(&alt_rri[1..]);
+                push_alt(&s);
+            }
+        }
+        if input.contains("rri") {
+            push_alt(&input.replace("rri", "ri"));
         }
 
         // o <-> O variations (both middle of word e.g. jabona -> যাবোনা, and ending e.g. jabo -> যাবো)
         // Also combine with j <-> z (e.g. jabona -> zabOna -> যাবোনা, jabo -> zabO -> যাবো)
         if input.contains('o') {
             let alt_o = input.replace('o', "O");
-            let translit = Self::convert_mode(&alt_o, is_avro);
-            if !translit.is_empty() && !results.contains(&translit) {
-                results.push(translit);
-            }
+            push_alt(&alt_o);
             if alt_o.contains('j') {
-                let alt_zo = alt_o.replace('j', "z");
-                let translit_zo = Self::convert_mode(&alt_zo, is_avro);
-                if !translit_zo.is_empty() && !results.contains(&translit_zo) {
-                    results.push(translit_zo);
+                push_alt(&alt_o.replace('j', "z"));
+            }
+            if alt_o.contains('t') {
+                push_alt(&alt_o.replace('t', "T"));
+            }
+            if alt_o.contains('r') {
+                push_alt(&alt_o.replace('r', "R"));
+            }
+            if alt_o.contains("sh") {
+                push_alt(&alt_o.replace("sh", "Sh"));
+                push_alt(&alt_o.replace("sh", "s"));
+            }
+            if alt_o.contains('s') {
+                push_alt(&alt_o.replace('s', "Sh"));
+                push_alt(&alt_o.replace('s', "sh"));
+            }
+            if alt_o.contains('n') {
+                push_alt(&alt_o.replace('n', "N"));
+            }
+            for i in 0..len {
+                if chars[i] == 'o' {
+                    let mut single_o_chars = chars.clone();
+                    single_o_chars[i] = 'O';
+                    let single_o: String = single_o_chars.into_iter().collect();
+                    if single_o.contains('j') {
+                        push_alt(&single_o.replace('j', "z"));
+                    }
+                    if single_o.contains('t') {
+                        push_alt(&single_o.replace('t', "T"));
+                    }
+                    if single_o.contains('r') {
+                        push_alt(&single_o.replace('r', "R"));
+                    }
+                    if single_o.contains("sh") {
+                        push_alt(&single_o.replace("sh", "Sh"));
+                        push_alt(&single_o.replace("sh", "s"));
+                    }
+                    if single_o.contains('s') {
+                        push_alt(&single_o.replace('s', "Sh"));
+                        push_alt(&single_o.replace('s', "sh"));
+                    }
                 }
             }
         }
         if input.contains('O') {
             let alt_small_o = input.replace('O', "o");
-            let translit = Self::convert_mode(&alt_small_o, is_avro);
-            if !translit.is_empty() && !results.contains(&translit) {
-                results.push(translit);
-            }
+            push_alt(&alt_small_o);
             if alt_small_o.contains('j') {
-                let alt_zo = alt_small_o.replace('j', "z");
-                let translit_zo = Self::convert_mode(&alt_zo, is_avro);
-                if !translit_zo.is_empty() && !results.contains(&translit_zo) {
-                    results.push(translit_zo);
-                }
+                push_alt(&alt_small_o.replace('j', "z"));
             }
         }
 
@@ -1370,6 +1497,33 @@ mod tests {
         // krri should suggest "ক্রি" (র ফলা and ি-kar)
         let krri_sugs = BornoPhonetic::suggest_transliterations("krri");
         assert!(krri_sugs.contains(&"ক্রি".to_string()), "Expected 'ক্রি' in suggestions for 'krri': {:?}", krri_sugs);
+
+        let nouka_sugs = BornoPhonetic::suggest_transliterations("nouka");
+        assert!(nouka_sugs.contains(&"নৌকা".to_string()), "Expected 'নৌকা' in suggestions for 'nouka': {:?}", nouka_sugs);
+
+        let boikal_sugs = BornoPhonetic::suggest_transliterations("boikal");
+        assert!(boikal_sugs.contains(&"বৈকাল".to_string()), "Expected 'বৈকাল' in suggestions for 'boikal': {:?}", boikal_sugs);
+
+        let toiri_sugs = BornoPhonetic::suggest_transliterations("toiri");
+        assert!(toiri_sugs.contains(&"তৈরি".to_string()), "Expected 'তৈরি' in suggestions for 'toiri': {:?}", toiri_sugs);
+
+        let oushodh_sugs = BornoPhonetic::suggest_transliterations("oushodh");
+        assert!(oushodh_sugs.contains(&"ঔষধ".to_string()), "Expected 'ঔষধ' in suggestions for 'oushodh': {:?}", oushodh_sugs);
+
+        let joubon_sugs = BornoPhonetic::suggest_transliterations("joubon");
+        assert!(joubon_sugs.contains(&"যৌবন".to_string()), "Expected 'যৌবন' in suggestions for 'joubon': {:?}", joubon_sugs);
+
+        let dour_sugs = BornoPhonetic::suggest_transliterations("dour");
+        assert!(dour_sugs.contains(&"দৌড়".to_string()), "Expected 'দৌড়' in suggestions for 'dour': {:?}", dour_sugs);
+
+        let brishti_sugs = BornoPhonetic::suggest_transliterations("brishti");
+        assert!(brishti_sugs.contains(&"বৃষ্টি".to_string()), "Expected 'বৃষ্টি' in suggestions for 'brishti': {:?}", brishti_sugs);
+
+        let prithibi_sugs = BornoPhonetic::suggest_transliterations("prithibi");
+        assert!(prithibi_sugs.contains(&"পৃথিবী".to_string()), "Expected 'পৃথিবী' in suggestions for 'prithibi': {:?}", prithibi_sugs);
+
+        let proyojon_sugs = BornoPhonetic::suggest_transliterations("proyojon");
+        assert!(proyojon_sugs.contains(&"প্রয়োজন".to_string()), "Expected 'প্রয়োজন' in suggestions for 'proyojon': {:?}", proyojon_sugs);
 
         // Direct Bengali diacritics / characters within transliteration input: ৎ, ঁ, ঃ
         assert_eq!(BornoPhonetic::convert("caঁd"), "চাঁদ");
