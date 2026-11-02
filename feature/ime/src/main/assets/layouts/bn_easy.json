@@ -235,15 +235,7 @@
           "label": " ",
           "type": "SPACE",
           "icon": "space",
-          "widthWeight": 3.0
-        },
-        {
-          "label": "ZW\nNJ",
-          "commitText": "‌",
-          "widthWeight": 1.0,
-          "moreKeys": [
-            "ZWJ"
-          ]
+          "widthWeight": 4.0
         },
         {
           "label": "।",

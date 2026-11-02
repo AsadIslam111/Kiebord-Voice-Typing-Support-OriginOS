@@ -123,10 +123,12 @@ class BornoEasyConjunctTest {
         val row = PredefinedLayouts.getBornoEasyFirstRow(isKarMode = true, cluster = "ক")
         assertEquals(11, row.keys.size)
 
-        // Key 0: cluster preview with inherent vowel confirmation
+        // Key 0: ZWNJ key in kar mode (no flickUp key hint)
         val k0 = row.keys[0]
-        assertEquals("ক", k0.label)
-        assertEquals("", k0.commitText)
+        assertEquals("ZW\nNJ", k0.label)
+        assertEquals("\u200C", k0.commitText)
+        org.junit.Assert.assertNull(k0.flickUp)
+        org.junit.Assert.assertTrue(k0.moreKeys.isEmpty())
 
         // Keys 1-10: syllables with kars appended
         assertEquals("কা", row.keys[1].label)
@@ -165,9 +167,9 @@ class BornoEasyConjunctTest {
         val row = PredefinedLayouts.getBornoEasyFirstRow(isKarMode = true, cluster = "ক্ত")
         assertEquals(11, row.keys.size)
 
-        // Key 0 shows conjunct
-        assertEquals("ক্ত", row.keys[0].label)
-        assertEquals("", row.keys[0].commitText)
+        // Key 0 shows ZWNJ
+        assertEquals("ZW\nNJ", row.keys[0].label)
+        assertEquals("\u200C", row.keys[0].commitText)
 
         // Keys 1-10 show conjunct with kars appended
         assertEquals("ক্তা", row.keys[1].label)

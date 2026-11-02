@@ -63,17 +63,14 @@ class PredefinedLayoutsTest {
         assertEquals(listOf("্য", "্র", "়"), r4[9].moreKeys)
         assertEquals(KeyType.DELETE, r4[10].type)
 
-        // Row 5: Function & spacebar row (7 keys including ZWNJ)
+        // Row 5: Function & spacebar row (6 keys without ZWNJ)
         val r5 = layout.rows[5].keys
-        assertEquals(7, r5.size)
+        assertEquals(6, r5.size)
         assertEquals(KeyType.SYMBOLS, r5[0].type)
         assertEquals(KeyType.SPACE, r5[3].type)
-        assertEquals(3.0f, r5[3].widthWeight, 0.01f)
-        assertEquals("‌", r5[4].commitText)
-        assertEquals(listOf("ZWJ"), r5[4].moreKeys)
-        assertEquals(1.0f, r5[4].widthWeight, 0.01f)
-        assertEquals("।", r5[5].label)
-        assertEquals(KeyType.ACTION, r5[6].type)
+        assertEquals(4.0f, r5[3].widthWeight, 0.01f)
+        assertEquals("।", r5[4].label)
+        assertEquals(KeyType.ACTION, r5[5].type)
 
         // Test dynamic first row: Vowel Mode
         val vowelRow = PredefinedLayouts.getBornoEasyFirstRow(isKarMode = false)
@@ -84,8 +81,8 @@ class PredefinedLayoutsTest {
         // Test dynamic first row: Kar Mode with consonant "ক"
         val karRowKo = PredefinedLayouts.getBornoEasyFirstRow(isKarMode = true, cluster = "ক")
         assertEquals(11, karRowKo.keys.size)
-        assertEquals("ক", karRowKo.keys[0].label)
-        assertEquals("", karRowKo.keys[0].commitText) // confirms inherent vowel, no kar appended
+        assertEquals("ZW\nNJ", karRowKo.keys[0].label)
+        assertEquals("\u200C", karRowKo.keys[0].commitText)
         assertEquals("কা", karRowKo.keys[1].label)
         assertEquals("া", karRowKo.keys[1].commitText)
         assertEquals("কি", karRowKo.keys[2].label)
@@ -96,8 +93,8 @@ class PredefinedLayoutsTest {
         // Test dynamic first row: Kar Mode with conjunct "ক্ত"
         val karRowKto = PredefinedLayouts.getBornoEasyFirstRow(isKarMode = true, cluster = "ক্ত")
         assertEquals(11, karRowKto.keys.size)
-        assertEquals("ক্ত", karRowKto.keys[0].label)
-        assertEquals("", karRowKto.keys[0].commitText)
+        assertEquals("ZW\nNJ", karRowKto.keys[0].label)
+        assertEquals("\u200C", karRowKto.keys[0].commitText)
         assertEquals("ক্তা", karRowKto.keys[1].label)
         assertEquals("া", karRowKto.keys[1].commitText)
         assertEquals("ক্তি", karRowKto.keys[2].label)

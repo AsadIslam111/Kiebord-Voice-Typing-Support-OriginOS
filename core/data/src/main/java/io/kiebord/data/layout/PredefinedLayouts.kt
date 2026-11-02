@@ -394,9 +394,8 @@ object PredefinedLayouts {
         return KeyRow(
             listOf(
                 KeyDef(
-                    label = c.ifEmpty { "অ" },
-                    commitText = "",
-                    flickUp = "অ"
+                    label = "ZW\nNJ",
+                    commitText = "\u200C"
                 ),
                 KeyDef(
                     label = if (c.isNotEmpty()) "$c\u09BE" else "\u09BE",
@@ -521,8 +520,7 @@ object PredefinedLayouts {
                     KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.5f),
                     KeyDef(",", widthWeight = 1.0f, moreKeys = listOf("ACTION_SETTINGS", "ACTION_ONE_HANDED")),
                     KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 3.0f),
-                    KeyDef("ZW\nNJ", commitText = "\u200C", widthWeight = 1.0f, moreKeys = listOf("ZWJ")),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
                     KeyDef("।", widthWeight = 1.0f, moreKeys = listOf(".", "…")),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
@@ -599,8 +597,7 @@ object PredefinedLayouts {
                     KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.5f),
                     KeyDef(",", widthWeight = 1.0f, moreKeys = listOf("ACTION_SETTINGS", "ACTION_ONE_HANDED")),
                     KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 3.0f),
-                    KeyDef("ZW\nNJ", commitText = "\u200C", widthWeight = 1.0f, moreKeys = listOf("ZWJ")),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
                     KeyDef("।", widthWeight = 1.0f, moreKeys = listOf(".", "…")),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
@@ -656,8 +653,7 @@ object PredefinedLayouts {
                     KeyDef("?১২৩", type = KeyType.SYMBOLS, widthWeight = 1.5f, slidingInput = true),
                     KeyDef(",", widthWeight = 1.0f, moreKeys = listOf("ACTION_SETTINGS", "ACTION_ONE_HANDED")),
                     KeyDef(type = KeyType.SWITCH_LANGUAGE, icon = "globe", widthWeight = 1.0f),
-                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 3.0f),
-                    KeyDef("ZW\nNJ", commitText = "\u200C", widthWeight = 1.0f, moreKeys = listOf("ZWJ")),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 4.0f),
                     KeyDef("।", widthWeight = 1.0f, moreKeysColumns = 9, moreKeys = listOf(".", ",", "?", "!", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "%", "&")),
                     KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
                 )
