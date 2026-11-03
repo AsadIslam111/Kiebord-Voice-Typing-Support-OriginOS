@@ -8,7 +8,6 @@ This guide describes how to create, test, and package custom keyboard layouts fo
 
 Kiebord supports dynamic and bundled keyboard layouts defined in JSON. Layouts can be:
 - Bundled with the application under `assets/layouts/<layout_id>.json`.
-- Installed dynamically by users via the in-app file importer (`.json`) into internal storage.
 
 Layouts are parsed with compile-time serializers and cached in memory to ensure zero latency during typing and language switching.
 
@@ -241,15 +240,3 @@ When Kiebord loads this layout:
 4. On symbol pages (`?123` and `=\<`):
    - For each enabled extra row in the alphabet layout, if the symbol page defines a corresponding extra row (matching `id`), that row is used. If not found, the alphabet extra row is moved to the symbol page so row counts and heights match.
    - If the top number row is enabled, the symbol page uses its own defined `numberRow` or automatically places the alphabet layout's number row at the top.
-
----
-
-## 8. Installing Custom Layouts on a Device
-
-1. Save your custom JSON file onto your phone (via USB, Downloads, or cloud storage).
-2. Open the **Kiebord** app.
-3. Navigate to **Settings > Languages & Layouts**.
-4. Scroll to the bottom and tap **Import Custom Layout (.json)**.
-5. Select your `.json` file from the system file picker.
-6. Kiebord validates the structure and enables the layout immediately.
-7. Tap the layout preview to customize any optional extra rows.

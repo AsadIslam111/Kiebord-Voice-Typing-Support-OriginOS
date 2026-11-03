@@ -11,7 +11,7 @@ Kiebord supports:
 - Bundled Borno color presets (Classics, AMOLED, Aesthetic, Pastels, and Accent colors).
 - Dynamic custom themes loaded from storage via `.bornotheme` files.
 
-No `.json` or `.kntheme` extensions are required: **`.bornotheme`** serves as the single unified theme format for Kiebord, cleanly versioned by `schemaVersion`:
+The **`.bornotheme`** format is versioned by `schemaVersion`:
 - **`.bornotheme` Version 1 (`schemaVersion: 1`)**: Borno's legacy format for backward compatibility.
 - **`.bornotheme` Version 2 (`schemaVersion: 2`)**: Kiebord's transformed modern native format retaining all advanced engine capabilities.
 
