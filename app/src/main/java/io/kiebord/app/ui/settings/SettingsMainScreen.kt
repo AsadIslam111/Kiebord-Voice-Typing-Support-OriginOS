@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SettingsBackupRestore
 import androidx.compose.material.icons.outlined.Spellcheck
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Tune
@@ -235,8 +236,15 @@ fun SettingsMainScreen(
             SettingsNavigationItem(
                 title = "Voice Typing",
                 icon = Icons.Outlined.Mic,
-                position = GroupPosition.BOTTOM,
+                position = GroupPosition.MIDDLE,
                 onClick = { onNavigate(SettingsScreen.VoiceTyping) }
+            )
+
+            SettingsNavigationItem(
+                title = "Backup & Restore",
+                icon = Icons.Outlined.SettingsBackupRestore,
+                position = GroupPosition.BOTTOM,
+                onClick = { onNavigate(SettingsScreen.BackupRestore) }
             )
         }
 

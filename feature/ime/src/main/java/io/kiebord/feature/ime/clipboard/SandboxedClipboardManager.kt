@@ -34,8 +34,8 @@ class SandboxedClipboardManager(context: Context) {
     private var lastSyncedTimestamp: Long = 0L
 
     init {
+        loadClipsFromDiskSync()
         ioScope.launch {
-            loadClipsFromDisk()
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 syncFromSystemClipboard()
             }
@@ -190,6 +190,114 @@ class SandboxedClipboardManager(context: Context) {
         saveClipsToDisk()
     }
 
+    suspend fun importParsedClips(
+        items: List<BornoImportItem>,
+        replaceExisting: Boolean
+    ): BornoImportResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+        if (replaceExisting) {
+            clips.clear()
+            quickPasteClip = null
+            var pinnedCount = 0
+            val deduplicated = mutableListOf<ClipboardEntry>()
+            val seenTexts = mutableSetOf<String>()
+
+            for (item in items) {
+                val trimmed = item.text.trim()
+                if (trimmed.isEmpty()) continue
+                if (seenTexts.add(trimmed)) {
+                    if (item.isPinned) pinnedCount++
+                    deduplicated.add(
+                        ClipboardEntry(
+                            text = trimmed,
+                            timestamp = if (item.timestamp > 0) item.timestamp else System.currentTimeMillis(),
+                            isPinned = item.isPinned,
+                            isOtp = false
+                        )
+                    )
+                } else if (item.isPinned) {
+                    val idx = deduplicated.indexOfFirst { it.text == trimmed }
+                    if (idx >= 0 && !deduplicated[idx].isPinned) {
+                        deduplicated[idx] = deduplicated[idx].copy(isPinned = true)
+                        pinnedCount++
+                    }
+                }
+            }
+            clips.addAll(deduplicated)
+            saveClipsToDiskAwait()
+            BornoImportResult(
+                totalFound = items.size,
+                importedCount = deduplicated.size,
+                updatedPinnedCount = 0,
+                skippedDuplicates = items.size - deduplicated.size
+            )
+        } else {
+            var importedCount = 0
+            var updatedPinnedCount = 0
+            var skippedDuplicates = 0
+            val toAdd = mutableListOf<ClipboardEntry>()
+
+            for (item in items) {
+                val trimmed = item.text.trim()
+                if (trimmed.isEmpty()) continue
+
+                val existingIndex = clips.indexOfFirst { it.text == trimmed }
+                if (existingIndex >= 0) {
+                    val existing = clips[existingIndex]
+                    if (item.isPinned && !existing.isPinned) {
+                        clips[existingIndex] = existing.copy(isPinned = true)
+                        updatedPinnedCount++
+                    } else {
+                        skippedDuplicates++
+                    }
+                } else {
+                    toAdd.add(
+                        ClipboardEntry(
+                            text = trimmed,
+                            timestamp = if (item.timestamp > 0) item.timestamp else System.currentTimeMillis(),
+                            isPinned = item.isPinned,
+                            isOtp = false
+                        )
+                    )
+                    importedCount++
+                }
+            }
+            clips.addAll(0, toAdd)
+            saveClipsToDiskAwait()
+            BornoImportResult(
+                totalFound = items.size,
+                importedCount = importedCount,
+                updatedPinnedCount = updatedPinnedCount,
+                skippedDuplicates = skippedDuplicates
+            )
+        }
+    }
+
+    suspend fun importBornoClipboardBackup(
+        inputStream: java.io.InputStream,
+        replaceExisting: Boolean = false
+    ): Result<BornoImportResult> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        runCatching {
+            val items = BornoClipboardBackupHelper.parseBornoBackup(inputStream)
+            if (items.isEmpty()) {
+                throw IllegalArgumentException("No valid clipboard items found in backup file.")
+            }
+            importParsedClips(items, replaceExisting)
+        }
+    }
+
+    suspend fun exportClipboardBackup(
+        outputStream: java.io.OutputStream
+    ): Result<Int> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        runCatching {
+            val snapshot = clips.toList()
+            val success = BornoClipboardBackupHelper.writeBornoBackup(snapshot, outputStream)
+            if (!success) {
+                throw java.io.IOException("Failed to write clipboard backup to output stream.")
+            }
+            snapshot.size
+        }
+    }
+
     fun purgeOldClips() {
         val pinned = clips.filter { it.isPinned }
         val recentUnpinned = clips.filter { !it.isPinned }.take(5)
@@ -211,27 +319,47 @@ class SandboxedClipboardManager(context: Context) {
         return otpPattern.matches(text) || (text.length in 4..8 && text.all { it.isDigit() })
     }
 
+    private fun writeClipsToFileDirect(snapshot: List<ClipboardEntry>) {
+        try {
+            val jsonArray = JSONArray()
+            for (entry in snapshot) {
+                val obj = JSONObject().apply {
+                    put("id", entry.id)
+                    put("text", entry.text)
+                    put("timestamp", entry.timestamp)
+                    put("isPinned", entry.isPinned)
+                    put("isOtp", entry.isOtp)
+                }
+                jsonArray.put(obj)
+            }
+            val parent = storageFile.parentFile
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs()
+            }
+            val tempFile = File(appContext.filesDir, "kiebord_clipboard_v1.tmp")
+            tempFile.writeText(jsonArray.toString())
+            if (tempFile.exists()) {
+                if (storageFile.exists()) {
+                    storageFile.delete()
+                }
+                tempFile.renameTo(storageFile)
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun saveClipsToDisk() {
         val snapshot = clips.toList()
         ioScope.launch {
-            try {
-                val jsonArray = JSONArray()
-                for (entry in snapshot) {
-                    val obj = JSONObject().apply {
-                        put("id", entry.id)
-                        put("text", entry.text)
-                        put("timestamp", entry.timestamp)
-                        put("isPinned", entry.isPinned)
-                        put("isOtp", entry.isOtp)
-                    }
-                    jsonArray.put(obj)
-                }
-                storageFile.writeText(jsonArray.toString())
-            } catch (_: Exception) {}
+            writeClipsToFileDirect(snapshot)
         }
     }
 
-    private suspend fun loadClipsFromDisk() {
+    suspend fun saveClipsToDiskAwait() = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val snapshot = clips.toList()
+        writeClipsToFileDirect(snapshot)
+    }
+
+    private fun loadClipsFromDiskSync() {
         try {
             if (!storageFile.exists()) return
             val jsonStr = storageFile.readText()
@@ -257,15 +385,8 @@ class SandboxedClipboardManager(context: Context) {
                     )
                 }
             }
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                val currentIds = clips.map { it.id }.toSet()
-                val currentTexts = clips.map { it.text }.toSet()
-                for (item in loaded) {
-                    if (item.id !in currentIds && item.text !in currentTexts) {
-                        clips.add(item)
-                    }
-                }
-            }
+            clips.clear()
+            clips.addAll(loaded)
         } catch (_: Exception) {}
     }
 

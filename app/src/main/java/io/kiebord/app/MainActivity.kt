@@ -55,6 +55,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import io.kiebord.app.ui.settings.AboutScreen
 import io.kiebord.app.ui.settings.AppearanceThemesScreen
+import io.kiebord.app.ui.settings.BackupRestoreScreen
 import io.kiebord.app.ui.settings.ClipboardSettingsScreen
 import io.kiebord.app.ui.settings.CorrectionsSuggestionsScreen
 import io.kiebord.app.ui.settings.DarkSettingsColors
@@ -572,6 +573,13 @@ fun KiebordSettingsApp(
                             onUpdateVoiceTypingProvider = { provider ->
                                 scope.launch { preferencesRepo.updateVoiceTypingProvider(provider) }
                             }
+                        )
+                    }
+
+                    is SettingsScreen.BackupRestore -> {
+                        BackupRestoreScreen(
+                            clipboardManager = SandboxedClipboardManager.getInstance(context),
+                            onBack = navigateBack
                         )
                     }
 

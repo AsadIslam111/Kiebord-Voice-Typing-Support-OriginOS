@@ -627,13 +627,11 @@ class KiebordService : InputMethodService() {
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         userDictionaryRepo.trimMemory(level)
-        clipboardManager?.purgeOldClips()
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
         userDictionaryRepo.trimMemory(ComponentCallbacks2.TRIM_MEMORY_COMPLETE)
-        clipboardManager?.purgeOldClips()
     }
 
     fun switchToLayout(layoutId: String) {
