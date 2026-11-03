@@ -6,6 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,7 +62,8 @@ private data class OpenSourceLib(
     val name: String,
     val author: String,
     val license: String,
-    val description: String
+    val description: String,
+    val url: String = ""
 )
 
 private fun openUrl(context: Context, url: String) {
@@ -123,11 +125,19 @@ private fun AboutCircularButton(
 @Composable
 private fun OpenSourceLicenseItem(lib: OpenSourceLib) {
     val colors = LocalSettingsColors.current
+    val context = LocalContext.current
+    val isClickable = lib.url.isNotBlank()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
             .background(colors.inputBackground)
+            .then(
+                if (isClickable) {
+                    Modifier.clickable { openUrl(context, lib.url) }
+                } else Modifier
+            )
             .padding(12.dp)
     ) {
         Row(
@@ -215,6 +225,20 @@ fun AboutScreen(
                 author = "Various Contributors",
                 license = "MIT / Apache 2.0",
                 description = "High-performance memory mapping, synchronization primitives, and JNI bridge for the spatial typing core."
+            ),
+            OpenSourceLib(
+                name = "AOSP LatinIME",
+                author = "Google LLC / The Android Open Source Project",
+                license = "Apache 2.0",
+                description = "Reference keyboard service architecture, key event dispatching, and gesture typing pipeline from the Android Open Source Project.",
+                url = "https://android.googlesource.com/platform/packages/inputmethods/LatinIME/"
+            ),
+            OpenSourceLib(
+                name = "Khipro (m17n Touchscreen Rules)",
+                author = "Khipro Team (rank_coder)",
+                license = "MIT",
+                description = "Touchscreen-optimized m17n input method rules for Bangla typing (https://github.com/KhiproTeam/khipro-mim-touchscreen).",
+                url = "https://github.com/KhiproTeam/khipro-mim-touchscreen"
             ),
             OpenSourceLib(
                 name = "BornoTSF & Bangla Layout Standards",

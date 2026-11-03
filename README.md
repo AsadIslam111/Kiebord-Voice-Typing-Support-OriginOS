@@ -38,8 +38,8 @@ Kiebord comes with the essential features you need for everyday typing, without 
 
 | Language | Layouts |
 |---|---|
-| Bangla | Borno Phonetic, Avro Phonetic, Borno Easy, National (BSTI), Probhat |
-| English | QWERTY |
+| Bangla | Borno Phonetic, Avro Phonetic, Borno Easy, National (BSTI), Probhat, Khipro |
+| English | QWERTY, Borno Math |
 | Arabic | Arabic (with dedicated Harakat / diacritics row) |
 
 *Custom layouts can also be added by placing JSON layout files in `assets/layouts/`.*
@@ -129,6 +129,14 @@ If you find Kiebord helpful, you can support its ongoing maintenance and develop
 
 * **Organization**: [Codepotro](https://codepotro.com)
 * **Lead Maintainer**: [Jayed Ahsan Saad](https://jayed.me) ([@JayedAhsan](https://github.com/JayedAhsan))
+
+---
+
+## Acknowledgements & Open Source Credits
+
+Kiebord gratefully builds upon and acknowledges open-source projects and standards, including:
+* **[Khipro MIM Touchscreen](https://github.com/KhiproTeam/khipro-mim-touchscreen)** (MIT) – Touchscreen-optimized compositional input method rules for Bengali.
+* **[AOSP LatinIME](https://android.googlesource.com/platform/packages/inputmethods/LatinIME/)** (Apache 2.0) – Foundational Android keyboard architecture and gesture input pipeline.
 
 ---
 
