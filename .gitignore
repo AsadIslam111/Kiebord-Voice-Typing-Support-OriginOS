@@ -24,4 +24,5 @@ assets-src/*
 !assets-src/layouts/
 assets-src/layouts/*.md
 *.dict
+!feature/ime/src/main/assets/dictionaries/*.dict
 *.so
