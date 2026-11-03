@@ -1,6 +1,6 @@
 # Kiebord (Borno Community Edition)
 
-[![CI Build](https://img.shields.io/github/actions/workflow/status/JayedAhsan/Kiebord/build-apk.yml?branch=main&label=CI%20Build)](https://github.com/JayedAhsan/Kiebord/actions)
+[![CI Build](https://github.com/JayedAhsan/Kiebord/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/JayedAhsan/Kiebord/actions/workflows/publish.yml)
 [![Latest Release](https://img.shields.io/github/v/release/JayedAhsan/Kiebord?include_prereleases&label=Latest%20Release)](https://github.com/JayedAhsan/Kiebord/releases)
 [![Android](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2024%2B)-blue)](https://developer.android.com)
 [![Rust](https://img.shields.io/badge/Engine-Rust%20NDK-orange)](https://www.rust-lang.org)
