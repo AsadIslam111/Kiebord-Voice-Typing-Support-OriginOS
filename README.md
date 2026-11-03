@@ -38,8 +38,8 @@ Kiebord comes with the essential features you need for everyday typing, without 
 
 | Language | Layouts |
 |---|---|
-| Bangla | Borno Phonetic, Avro Phonetic, Borno Easy, National (BSTI), Probhat |
-| English | QWERTY |
+| Bangla | Borno Phonetic, Avro Phonetic, Borno Easy, National (BSTI), Probhat, Khipro |
+| English | QWERTY, Borno Math |
 | Arabic | Arabic (with dedicated Harakat / diacritics row) |
 
 *Custom layouts can also be added by placing JSON layout files in `assets/layouts/`.*
