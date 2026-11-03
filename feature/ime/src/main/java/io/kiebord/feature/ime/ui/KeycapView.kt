@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import io.kiebord.feature.ime.R
@@ -527,11 +529,30 @@ fun KeycapView(
         }
 
         // Custom icon override lookup from theme
-        val customIconName = colorScheme.getCustomIconName(key.type, shiftState)
+        val customIconName = colorScheme.getCustomIcon(key, shiftState)
         val customIconResId = remember(customIconName) {
             if (!customIconName.isNullOrBlank()) {
                 context.resources.getIdentifier(customIconName, "drawable", context.packageName)
             } else 0
+        }
+        val customIconFile = remember(customIconName, customIconResId) {
+            if (!customIconName.isNullOrBlank() && customIconResId == 0) {
+                try {
+                    val f = java.io.File(customIconName)
+                    if (f.exists() && f.isFile && f.canRead()) f else null
+                } catch (_: Throwable) {
+                    null
+                }
+            } else null
+        }
+        val customFileBitmap = remember(customIconFile) {
+            customIconFile?.let { file ->
+                try {
+                    BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
+                } catch (_: Throwable) {
+                    null
+                }
+            }
         }
 
         // Key content: Custom Icon / Vector Material Icons vs Typography label
@@ -539,6 +560,13 @@ fun KeycapView(
         if (customIconResId != 0) {
             Icon(
                 painter = painterResource(customIconResId),
+                contentDescription = key.label,
+                tint = foregroundColor,
+                modifier = Modifier.size(actionIconSize)
+            )
+        } else if (customFileBitmap != null) {
+            Icon(
+                bitmap = customFileBitmap,
                 contentDescription = key.label,
                 tint = foregroundColor,
                 modifier = Modifier.size(actionIconSize)

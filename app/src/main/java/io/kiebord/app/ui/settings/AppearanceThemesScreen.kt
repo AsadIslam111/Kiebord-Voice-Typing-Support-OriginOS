@@ -82,7 +82,8 @@ import io.kiebord.theme.ThemeRepository
 
 private data class PendingImportData(
     val option: ThemeOptionItem,
-    val rawJson: String
+    val rawJson: String? = null,
+    val stagingDir: java.io.File? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,16 +113,18 @@ fun AppearanceThemesScreen(
     fun processThemeUri(uri: Uri, onCompleted: (() -> Unit)? = null) {
         scope.launch {
             try {
-                val jsonContent = withContext(Dispatchers.IO) {
+                val bytes = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { stream ->
-                        stream.bufferedReader(Charsets.UTF_8).readText()
+                        stream.readBytes()
                     }
                 }
-                if (jsonContent != null) {
-                    val parseResult = themeRepo.parseThemeFile(jsonContent)
-                    parseResult.onSuccess { parsedList ->
-                        if (parsedList.isNotEmpty()) {
-                            val firstDef = parsedList.first()
+                if (bytes != null && bytes.isNotEmpty()) {
+                    val parseResult = withContext(Dispatchers.IO) {
+                        themeRepo.parseThemeBytes(bytes)
+                    }
+                    parseResult.onSuccess { bundle ->
+                        if (bundle.definitions.isNotEmpty()) {
+                            val firstDef = bundle.definitions.first()
                             val richSpec = themeRepo.getRichTheme(firstDef.id)
                             val scheme = themeRepo.getColorScheme(firstDef.id)
                             val previewItem = ThemeOptionItem(
@@ -133,7 +136,12 @@ fun AppearanceThemesScreen(
                                 category = ThemeCategory.CUSTOM
                             )
                             previewThemeOption = null
-                            pendingImportTheme = PendingImportData(option = previewItem, rawJson = jsonContent)
+                            val rawJson = if (bundle.stagingDir == null) bytes.toString(Charsets.UTF_8) else null
+                            pendingImportTheme = PendingImportData(
+                                option = previewItem,
+                                rawJson = rawJson,
+                                stagingDir = bundle.stagingDir
+                            )
                         } else {
                             Toast.makeText(context, "No themes found in file", Toast.LENGTH_SHORT).show()
                         }
@@ -365,7 +373,10 @@ fun AppearanceThemesScreen(
         val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
         ModalBottomSheet(
-            onDismissRequest = { pendingImportTheme = null },
+            onDismissRequest = {
+                currentPending.stagingDir?.let { try { it.deleteRecursively() } catch (_: Exception) {} }
+                pendingImportTheme = null
+            },
             sheetState = importSheetState,
             containerColor = colors.cardBackground,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
@@ -379,20 +390,36 @@ fun AppearanceThemesScreen(
                 onToggleKeyShadows = { importShowKeyShadows = it },
                 onApplyTheme = {},
                 isImportMode = true,
-                onCancelImport = { pendingImportTheme = null },
+                onCancelImport = {
+                    currentPending.stagingDir?.let { try { it.deleteRecursively() } catch (_: Exception) {} }
+                    pendingImportTheme = null
+                },
                 onConfirmImport = {
-                    val res = themeRepo.importTheme(currentPending.rawJson)
-                    res.onSuccess { importedList ->
-                        reloadTrigger++
-                        if (importedList.isNotEmpty()) {
-                            val first = importedList.first()
-                            onUpdateTheme(first.id)
+                    if (currentPending.stagingDir != null) {
+                        val res = themeRepo.importStagedTheme(currentPending.option.id, currentPending.stagingDir)
+                        res.onSuccess { importedItem ->
+                            reloadTrigger++
+                            onUpdateTheme(importedItem.id)
                             onUpdateShowKeyBorders(importShowKeyBorders)
                             onUpdateShowKeyShadows(importShowKeyShadows)
-                            Toast.makeText(context, "Imported ${first.name}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Imported ${importedItem.name}", Toast.LENGTH_SHORT).show()
+                        }.onFailure { err ->
+                            Toast.makeText(context, "Import failed: ${err.message ?: "Invalid theme package"}", Toast.LENGTH_LONG).show()
                         }
-                    }.onFailure { err ->
-                        Toast.makeText(context, "Import failed: ${err.message ?: "Invalid theme file"}", Toast.LENGTH_LONG).show()
+                    } else if (!currentPending.rawJson.isNullOrBlank()) {
+                        val res = themeRepo.importTheme(currentPending.rawJson)
+                        res.onSuccess { importedList ->
+                            reloadTrigger++
+                            if (importedList.isNotEmpty()) {
+                                val first = importedList.first()
+                                onUpdateTheme(first.id)
+                                onUpdateShowKeyBorders(importShowKeyBorders)
+                                onUpdateShowKeyShadows(importShowKeyShadows)
+                                Toast.makeText(context, "Imported ${first.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        }.onFailure { err ->
+                            Toast.makeText(context, "Import failed: ${err.message ?: "Invalid theme file"}", Toast.LENGTH_LONG).show()
+                        }
                     }
                     pendingImportTheme = null
                 }

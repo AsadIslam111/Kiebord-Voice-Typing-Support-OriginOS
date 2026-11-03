@@ -311,6 +311,7 @@ data class KeyboardThemeSpec(
     val guidelineColor: String = accentColor,
     val flatKeyLabelColor: String? = null,
     val activeOptionHighlightColor: String? = null,
+    val fontPath: String? = null,
     val icons: ThemeIconsSpec = ThemeIconsSpec(),
     val perKeyOverrides: Map<String, KeycapStyleSpec> = emptyMap(),
     val backgroundImageBase64: String? = null
@@ -395,6 +396,7 @@ data class KeyboardThemeSpec(
             keyPressedForeground = characterKey.pressedForeground?.let { ThemeColorUtils.parseHexColor(it) } ?: Color.Unspecified,
             flatKeyForeground = flatKeyLabelColor?.let { ThemeColorUtils.parseHexColor(it) } ?: Color.Unspecified,
             activeOptionHighlightColor = activeOptionHighlightColor?.let { ThemeColorUtils.parseHexColor(it) } ?: Color.Unspecified,
+            fontPath = fontPath,
             themeSpec = this
         )
     }

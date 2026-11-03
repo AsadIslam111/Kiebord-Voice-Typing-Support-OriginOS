@@ -33,6 +33,11 @@ data class ThemeOptionItem(
     val category: ThemeCategory = ThemeCategory.BORNO_COLORS
 )
 
+data class ParsedThemeBundle(
+    val definitions: List<CustomThemeDef>,
+    val stagingDir: File? = null
+)
+
 class ThemeRepository private constructor(private val context: Context) {
 
     private val json = Json {
@@ -95,15 +100,32 @@ class ThemeRepository private constructor(private val context: Context) {
 
     private fun loadCustomThemes() {
         try {
-            val files = customThemesDir.listFiles { _, name ->
-                name.endsWith(".json") || name.endsWith(".kbtheme") || name.endsWith(".bornotheme")
-            } ?: emptyArray()
-            for (file in files) {
+            val items = customThemesDir.listFiles() ?: emptyArray()
+            for (item in items) {
                 try {
-                    val content = file.readText(Charsets.UTF_8)
-                    parseThemeFile(content).onSuccess { list ->
-                        list.forEach { def ->
-                            customThemes[def.id] = def
+                    if (item.isDirectory) {
+                        val spec = ThemeZipUtils.discoverAndNormalizeThemePackage(item, json)
+                        val def = spec.toCustomThemeDef()
+                        customThemes[def.id] = def
+                        richThemes[def.id] = spec
+                    } else if (item.isFile) {
+                        if (item.name.endsWith(".json") || item.name.endsWith(".kbtheme") || item.name.endsWith(".bornotheme")) {
+                            val bytes = item.readBytes()
+                            if (ThemeZipUtils.isZipBytes(bytes)) {
+                                val targetDir = File(customThemesDir, item.nameWithoutExtension)
+                                ThemeZipUtils.extractZipSafe(bytes, targetDir)
+                                val spec = ThemeZipUtils.discoverAndNormalizeThemePackage(targetDir, json)
+                                val def = spec.toCustomThemeDef()
+                                customThemes[def.id] = def
+                                richThemes[def.id] = spec
+                            } else {
+                                val content = bytes.toString(Charsets.UTF_8)
+                                parseThemeFile(content).onSuccess { list ->
+                                    list.forEach { def ->
+                                        customThemes[def.id] = def
+                                    }
+                                }
+                            }
                         }
                     }
                 } catch (_: Exception) {}
@@ -490,7 +512,89 @@ class ThemeRepository private constructor(private val context: Context) {
         }
     }
 
+    fun parseThemeBytes(bytes: ByteArray): Result<ParsedThemeBundle> {
+        if (ThemeZipUtils.isZipBytes(bytes)) {
+            return runCatching {
+                val stagingDir = File(context.cacheDir, "theme_staging_${System.currentTimeMillis()}").apply {
+                    if (exists()) deleteRecursively()
+                    mkdirs()
+                }
+                ThemeZipUtils.extractZipSafe(bytes, stagingDir)
+                val spec = ThemeZipUtils.discoverAndNormalizeThemePackage(stagingDir, json)
+                richThemes[spec.id] = spec
+                val def = spec.toCustomThemeDef()
+                ParsedThemeBundle(definitions = listOf(def), stagingDir = stagingDir)
+            }
+        }
+        val text = bytes.toString(Charsets.UTF_8)
+        return parseThemeFile(text).map { ParsedThemeBundle(definitions = it, stagingDir = null) }
+    }
+
+    fun importStagedTheme(themeId: String, stagingDir: File): Result<ThemeOptionItem> {
+        return runCatching {
+            val destDir = File(customThemesDir, themeId)
+            if (destDir.exists()) destDir.deleteRecursively()
+            destDir.mkdirs()
+            stagingDir.copyRecursively(destDir, overwrite = true)
+            try { stagingDir.deleteRecursively() } catch (_: Exception) {}
+
+            val spec = ThemeZipUtils.discoverAndNormalizeThemePackage(destDir, json)
+            val versionedSpec = spec.copy(schemaVersion = 2)
+            richThemes[versionedSpec.id] = versionedSpec
+            val def = versionedSpec.toCustomThemeDef()
+            customThemes[versionedSpec.id] = def
+            val scheme = versionedSpec.toKeyboardColorScheme()
+            schemeCache[versionedSpec.id] = scheme
+
+            val themeJsonFile = File(destDir, "theme.json")
+            themeJsonFile.writeText(json.encodeToString(KeyboardThemeSpec.serializer(), versionedSpec), Charsets.UTF_8)
+
+            ThemeOptionItem(
+                id = versionedSpec.id,
+                name = versionedSpec.name,
+                description = "Custom Borno theme (v2)",
+                scheme = scheme,
+                isCustom = true,
+                category = ThemeCategory.CUSTOM
+            )
+        }
+    }
+
+    fun importThemeBytes(bytes: ByteArray): Result<List<ThemeOptionItem>> {
+        if (ThemeZipUtils.isZipBytes(bytes)) {
+            return runCatching {
+                val tempDir = File(context.cacheDir, "theme_temp_${System.currentTimeMillis()}").apply {
+                    if (exists()) deleteRecursively()
+                    mkdirs()
+                }
+                ThemeZipUtils.extractZipSafe(bytes, tempDir)
+                val parsedSpec = ThemeZipUtils.discoverAndNormalizeThemePackage(tempDir, json)
+                val item = importStagedTheme(parsedSpec.id, tempDir).getOrThrow()
+                listOf(item)
+            }
+        }
+        val text = bytes.toString(Charsets.UTF_8)
+        return importTheme(text)
+    }
+
+    fun exportThemeZip(id: String, outputFile: File): Result<File> {
+        return runCatching {
+            val cid = canonicalId(id)
+            val richSpec = richThemes[cid]
+                ?: customThemes[cid]?.toKeyboardThemeSpec()
+                ?: bundledThemes[cid]?.toKeyboardThemeSpec()
+                ?: throw IllegalArgumentException("Theme not found: $id")
+            ThemeZipUtils.packageThemeZip(richSpec, outputFile, json)
+        }
+    }
+
     fun deleteCustomTheme(id: String): Boolean {
+        var anyDeleted = false
+        val themeDir = File(customThemesDir, id)
+        if (themeDir.exists()) {
+            if (themeDir.deleteRecursively()) anyDeleted = true
+        }
+
         val files = listOf(
             File(customThemesDir, "$id.bornotheme"),
             File(customThemesDir, "$id.kbtheme"),
@@ -506,7 +610,6 @@ class ThemeRepository private constructor(private val context: Context) {
                 }
             } catch (_: Exception) {}
         }
-        var anyDeleted = false
         for (f in files) {
             if (f.exists()) {
                 if (f.delete()) anyDeleted = true

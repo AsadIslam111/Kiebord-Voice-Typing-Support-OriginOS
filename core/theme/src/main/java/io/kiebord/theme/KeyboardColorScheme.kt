@@ -28,10 +28,25 @@ data class KeyboardColorScheme(
     val keyPressedForeground: Color = Color.Unspecified,
     val flatKeyForeground: Color = Color.Unspecified,
     val activeOptionHighlightColor: Color = Color.Unspecified,
+    val fontPath: String? = null,
     val themeSpec: KeyboardThemeSpec? = null
 ) {
     val effectiveActiveOptionHighlight: Color
         get() = if (activeOptionHighlightColor != Color.Unspecified) activeOptionHighlightColor else accentColor
+
+    val effectiveFontFamily: androidx.compose.ui.text.font.FontFamily?
+        get() {
+            val path = fontPath ?: themeSpec?.fontPath ?: return null
+            return try {
+                val file = java.io.File(path)
+                if (file.exists() && file.isFile && file.canRead()) {
+                    val typeface = android.graphics.Typeface.createFromFile(file)
+                    if (typeface != null) androidx.compose.ui.text.font.FontFamily(typeface) else null
+                } else null
+            } catch (_: Throwable) {
+                null
+            }
+        }
     fun resolveKeycapVisual(
         rowIndex: Int = 0,
         keyIndex: Int = 0,
@@ -233,8 +248,21 @@ data class KeyboardColorScheme(
             KeyType.DELETE -> icons.backspace
             KeyType.ACTION -> icons.action
             KeyType.SWITCH_LANGUAGE -> icons.language
+            KeyType.MORE_KEYS -> icons.moreKeys
             else -> null
         }
+    }
+
+    fun getCustomIcon(key: KeyDef, shiftState: ShiftState = ShiftState.UNSHIFTED): String? {
+        val icons = themeSpec?.icons ?: return null
+        val label = key.label.lowercase().trim()
+        when (label) {
+            "emoji", "\uD83D\uDE00" -> if (!icons.emoji.isNullOrBlank()) return icons.emoji
+            "settings" -> if (!icons.settings.isNullOrBlank()) return icons.settings
+            "voice", "mic" -> if (!icons.voice.isNullOrBlank()) return icons.voice
+            "search" -> if (!icons.search.isNullOrBlank()) return icons.search
+        }
+        return getCustomIconName(key.type, shiftState)
     }
 
     companion object {

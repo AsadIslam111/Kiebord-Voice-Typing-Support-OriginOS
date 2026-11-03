@@ -48,13 +48,14 @@ The legacy Borno Keyboard theme format supporting solid colors, 2-stop linear gr
 
 > **Note on Image Backgrounds**: When `backgroundImageBase64` is included, Kiebord automatically decodes the image, downscales it to optimal dimensions (max 1280px), stores it in internal app storage, and manages its lifecycle.
 
-### Format B: Borno Theme Version 2 (`.bornotheme` with `schemaVersion = 2`)
+### Format B: Borno Theme Version 2 (`.bornotheme` Single-File JSON)
 The transformed native Kiebord theme format retaining all modern design and rendering capabilities:
 - Multi-stop Linear, Radial, Sweep (angular), and 2D Mesh gradients.
 - Image backgrounds with blur radius, dimming overlay, and scale types (`crop`, `fit`, `fill`, `tile`).
 - Granular per-key overrides (`perKeyOverrides`) by coordinate, label, or key type.
 - Fractional stroke widths (`widthDp`), 2D elevation shadows (`offsetX`, `offsetY`, `radiusDp`), pill shapes, and custom corner radii.
 - Custom vector icons for modifier/action keys (`icons`).
+- Custom typography font file link (`fontPath`).
 - Independent component-level theming for Suggestion strip, Tools drawer, and MoreKeys popups.
 - Embedded `backgroundImageBase64` for 100% portable single-file distribution.
 
@@ -105,6 +106,12 @@ The transformed native Kiebord theme format retaining all modern design and rend
   "shiftActiveColor": "#60A5FA",
   "flatKeyLabelColor": "#E0E7FF",
   "activeOptionHighlightColor": "#00E5FF",
+  "fontPath": "font.ttf",
+  "icons": {
+    "shift": "icons/shift.png",
+    "backspace": "icons/backspace.png",
+    "action": "icons/action.png"
+  },
   "suggestionBackground": {
     "solidColor": "#0F0C29"
   },
@@ -120,7 +127,34 @@ The transformed native Kiebord theme format retaining all modern design and rend
 }
 ```
 
-### Format C: Bundled Presets (`borno_themes.json` asset)
+### Format C: Full Asset Bundle (`.bornotheme` ZIP Package)
+For themes that include heavy binary assets (wallpapers, custom fonts, and custom key icons), `.bornotheme` files can be standard ZIP packages containing raw companion files alongside `theme.json`:
+
+```
+my_theme.bornotheme (ZIP Archive)
+├── theme.json                     # Theme specification (KeyboardThemeSpec v2)
+├── background.jpg                 # Background wallpaper image (auto-discovered)
+├── font.ttf                       # Custom typography font (auto-discovered)
+└── icons/                         # Custom functional key icons (auto-discovered)
+    ├── shift.png
+    ├── shift_active.png
+    ├── caps_lock.png
+    ├── backspace.png
+    ├── action.png
+    ├── language.png
+    ├── emoji.png
+    └── settings.png
+```
+
+**Auto-Discovery & Path Normalization**:
+- Kiebord automatically checks for ZIP magic bytes (`PK\u0003\u0004`) upon opening.
+- Unpacks safely into `custom_themes/<theme_id>/` with strict ZipSlip directory traversal security.
+- Automatically connects `background.*` to the keyboard wallpaper.
+- Automatically connects `font.ttf` / `font.otf` to the keyboard font family.
+- Automatically connects `icons/*` to functional keys (Shift, Backspace, Action, Language, etc.).
+- Normalizes any relative paths in `theme.json` to local absolute paths on the device.
+
+### Format D: Bundled Presets (`borno_themes.json` asset)
 ```json
 {
   "themes": [
@@ -175,6 +209,8 @@ Kiebord's internal parser safely normalizes these formats without relying on pla
 | `activeOptionHighlightColor` | `activeOptionHighlightColor` | Highlight glow/border/icon tint for active toggleable toolbar options |
 | `stripColor` | `suggestionBackground` | Suggestion bar background |
 | `stripIcoColor` | `suggestionForeground` | Suggestion bar icons and candidate text color |
+| `fontPath` | `fontPath` | Path to custom TTF/OTF typography font file |
+| `icons` | `icons` | Custom functional keycap icons (Shift, Delete, Action, Language, etc.) |
 
 ---
 

@@ -61,13 +61,14 @@ object KiebordTheme {
 @Composable
 fun KiebordTheme(
     colorScheme: KeyboardColorScheme = KeyboardColorScheme.DefaultDark,
-    fontFamily: FontFamily = KeyboardFontFamily,
+    fontFamily: FontFamily? = null,
     content: @Composable () -> Unit
 ) {
+    val resolvedFontFamily = fontFamily ?: colorScheme.effectiveFontFamily ?: KeyboardFontFamily
     CompositionLocalProvider(
         LocalKeyboardColorScheme provides colorScheme,
-        LocalKeyboardFontFamily provides fontFamily,
-        LocalTextStyle provides TextStyle(fontFamily = fontFamily),
+        LocalKeyboardFontFamily provides resolvedFontFamily,
+        LocalTextStyle provides TextStyle(fontFamily = resolvedFontFamily),
         content = content
     )
 }
