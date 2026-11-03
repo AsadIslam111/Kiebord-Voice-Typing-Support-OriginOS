@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "io.kiebord.core.theme"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24

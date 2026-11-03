@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "io.kiebord.feature.ime"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = "26.2.11394342"
 
     defaultConfig {

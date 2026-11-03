@@ -20,7 +20,7 @@ plugins {
  */
 android {
     namespace = "io.kiebord.feature.themedesigner"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24
@@ -61,4 +61,3 @@ dependencies {
 
     testImplementation(libs.junit)
 }
-

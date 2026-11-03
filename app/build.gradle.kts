@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "io.kiebord.app"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = "26.2.11394342"
 
     defaultConfig {
         applicationId = "com.codepotro.borno.kiebord"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 2
+        targetSdk = 36
+        versionCode = 3
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
