@@ -263,7 +263,6 @@ internal fun ThemeDesignerScreenContent(
 
     var previewBorders by remember { mutableStateOf(previewConfig.showKeyBorders) }
     var previewShadows by remember { mutableStateOf(previewConfig.showKeyShadows) }
-    var previewShift by remember { mutableStateOf(ShiftState.UNSHIFTED) }
     var activeKeyTab by remember { mutableStateOf(DesignerKeyTab.NORMAL) }
     var selectedPerKeyTarget by remember { mutableStateOf(KeyType.SHIFT.name) }
     var activeColorRequest by remember { mutableStateOf<ActiveColorRequest?>(null) }
@@ -331,7 +330,7 @@ internal fun ThemeDesignerScreenContent(
                         ) {
                             KeyboardRootView(
                                 layout = PredefinedLayouts.EnglishQwerty,
-                                shiftState = previewShift,
+                                shiftState = ShiftState.UNSHIFTED,
                                 onKeyTap = { tappedKey ->
                                     val targetKey = ThemeDesignerState.overrideKeyFor(tappedKey)
                                     selectedPerKeyTarget = targetKey
@@ -389,31 +388,24 @@ internal fun ThemeDesignerScreenContent(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Quick Reset All Button
-                    Row(
+                    // Quick Reset All Icon Button
+                    Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
+                            .size(28.dp)
+                            .clip(CircleShape)
                             .background(colors.inputBackground)
-                            .border(1.dp, colors.cardBorder, RoundedCornerShape(10.dp))
+                            .border(1.dp, colors.cardBorder, CircleShape)
                             .clickable {
                                 state = initialState
                                 Toast.makeText(context, "Reset all changes", Toast.LENGTH_SHORT).show()
-                            }
-                            .padding(horizontal = 9.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Refresh,
                             contentDescription = "Quick Reset All",
                             tint = colors.accent,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Reset All",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.accent
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                 }
@@ -439,23 +431,6 @@ internal fun ThemeDesignerScreenContent(
                         colors = colors,
                         modifier = Modifier.weight(1f),
                         onClick = { previewShadows = !previewShadows }
-                    )
-                    PreviewChip(
-                        label = when (previewShift) {
-                            ShiftState.UNSHIFTED -> "Shift: abc"
-                            ShiftState.ONE_SHOT -> "Shift: Abc"
-                            ShiftState.CAPS_LOCK -> "Shift: ABC"
-                        },
-                        active = previewShift != ShiftState.UNSHIFTED,
-                        colors = colors,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            previewShift = when (previewShift) {
-                                ShiftState.UNSHIFTED -> ShiftState.ONE_SHOT
-                                ShiftState.ONE_SHOT -> ShiftState.CAPS_LOCK
-                                ShiftState.CAPS_LOCK -> ShiftState.UNSHIFTED
-                            }
-                        }
                     )
                 }
             }
@@ -491,11 +466,31 @@ internal fun ThemeDesignerScreenContent(
                     shape = itemShape(ItemPos.TOP),
                     colors = CardDefaults.cardColors(containerColor = colors.cardBackground)
                 ) {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
                         OutlinedTextField(
                             value = state.name,
                             onValueChange = { state = state.copy(name = it) },
                             label = { Text("Theme Name") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = colors.accent,
+                                unfocusedBorderColor = colors.inputBorder,
+                                focusedContainerColor = colors.inputBackground,
+                                unfocusedContainerColor = colors.inputBackground,
+                                focusedTextColor = colors.textPrimary,
+                                unfocusedTextColor = colors.textPrimary
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = state.designerName,
+                            onValueChange = { state = state.copy(designerName = it) },
+                            label = { Text("Designer Name") },
+                            placeholder = { Text("Your name or handle") },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = colors.accent,
@@ -517,7 +512,7 @@ internal fun ThemeDesignerScreenContent(
                     checked = state.isDark,
                     pos = ItemPos.BOTTOM,
                     colors = colors,
-                    onCheckedChange = { state = state.copy(isDark = it) }
+                    onCheckedChange = { state = state.switchDarkBase(it) }
                 )
             }
 
@@ -1607,9 +1602,10 @@ internal fun ThemeDesignerScreenContent(
                         }
                         isSaving = false
                         result.onSuccess { savedId ->
+                            val savedFileName = "${state.toSpec().fileBaseName()}.bornotheme"
                             Toast.makeText(
                                 context,
-                                "Saved & applied \"${state.name.ifBlank { "My Theme" }}\"",
+                                "Saved $savedFileName",
                                 Toast.LENGTH_SHORT
                             ).show()
                             onThemeSaved(savedId)

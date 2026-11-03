@@ -163,6 +163,19 @@ class ThemeDesignerStateTest {
     fun `ThemeDesignerRegistry discovers ThemeDesignerFeatureImpl at runtime`() {
         assertTrue(ThemeDesignerRegistry.isAvailable)
         assertNotNull(ThemeDesignerRegistry.feature)
+
+        val named = ThemeDesignerState.defaultDark().copy(
+            name = "Neon Pulse",
+            designerName = "Jayed"
+        )
+        val spec = named.toSpec()
+        assertEquals("Jayed", spec.author)
+        assertEquals("Neon_Pulse_Jayed", spec.fileBaseName())
+        assertEquals("Jayed", ThemeDesignerState.fromSpec(spec).designerName)
+
+        val switchedLight = named.switchDarkBase(false)
+        assertFalse(switchedLight.isDark)
+        assertEquals(ThemeDesignerState.defaultLight().backgroundColor, switchedLight.backgroundColor)
     }
 
     @Test

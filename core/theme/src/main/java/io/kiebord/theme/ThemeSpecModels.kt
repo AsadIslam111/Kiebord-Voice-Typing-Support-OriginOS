@@ -419,6 +419,26 @@ data class KeyboardThemeSpec(
             themeSpec = this
         )
     }
+
+    /**
+     * Produces the canonical `.bornotheme` filename stem (`Theme_name_designer_name`).
+     */
+    fun fileBaseName(): String {
+        val themePart = name
+            .trim()
+            .replace("[^a-zA-Z0-9_\\- ]".toRegex(), "")
+            .trim()
+            .replace("\\s+".toRegex(), "_")
+            .ifEmpty { "My_Theme" }
+        val designerPart = author
+            .trim()
+            .takeIf { it.isNotEmpty() && !it.equals("Kiebord", ignoreCase = true) }
+            ?.replace("[^a-zA-Z0-9_\\- ]".toRegex(), "")
+            ?.trim()
+            ?.replace("\\s+".toRegex(), "_")
+            .orEmpty()
+        return if (designerPart.isNotEmpty()) "${themePart}_${designerPart}" else themePart
+    }
 }
 
 /**

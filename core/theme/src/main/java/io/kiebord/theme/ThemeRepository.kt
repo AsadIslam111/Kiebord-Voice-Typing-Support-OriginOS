@@ -463,7 +463,8 @@ class ThemeRepository private constructor(private val context: Context) {
     fun importRichTheme(spec: KeyboardThemeSpec): ThemeOptionItem {
         val versionedSpec = spec.copy(schemaVersion = 2)
         richThemes[versionedSpec.id] = versionedSpec
-        val file = File(customThemesDir, "${versionedSpec.id}.bornotheme")
+        val fileNameStem = versionedSpec.fileBaseName().ifEmpty { versionedSpec.id }
+        val file = File(customThemesDir, "$fileNameStem.bornotheme")
         file.writeText(json.encodeToString(KeyboardThemeSpec.serializer(), versionedSpec), Charsets.UTF_8)
         val scheme = versionedSpec.toKeyboardColorScheme()
         val def = versionedSpec.toCustomThemeDef()
@@ -604,12 +605,7 @@ class ThemeRepository private constructor(private val context: Context) {
             val shareDir = File(context.cacheDir, "shared_themes").apply {
                 if (!exists()) mkdirs()
             }
-            val safeName = richSpec.name
-                .trim()
-                .replace("[^a-zA-Z0-9_\\- ]".toRegex(), "")
-                .trim()
-                .replace("\\s+".toRegex(), "_")
-                .ifEmpty { cid }
+            val safeName = richSpec.fileBaseName().ifEmpty { cid }
             val outFile = File(shareDir, "$safeName.bornotheme")
             if (outFile.exists()) outFile.delete()
 
@@ -646,12 +642,13 @@ class ThemeRepository private constructor(private val context: Context) {
             if (themeDir.deleteRecursively()) anyDeleted = true
         }
 
-        val files = listOf(
+        val spec = richThemes[id]
+        val files = listOfNotNull(
             File(customThemesDir, "$id.bornotheme"),
+            spec?.fileBaseName()?.takeIf { it.isNotBlank() }?.let { File(customThemesDir, "$it.bornotheme") },
             File(customThemesDir, "$id.kbtheme"),
             File(customThemesDir, "$id.json")
         )
-        val spec = richThemes[id]
         val imgPath = spec?.background?.image?.imagePath
         if (!imgPath.isNullOrBlank()) {
             try {

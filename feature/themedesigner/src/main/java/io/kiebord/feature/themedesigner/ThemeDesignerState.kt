@@ -41,6 +41,7 @@ data class PerKeyColorStyle(
 data class ThemeDesignerState(
     val id: String,
     val name: String = "My Theme",
+    val designerName: String = "",
     val isDark: Boolean = true,
 
     // Surface & background
@@ -104,6 +105,41 @@ data class ThemeDesignerState(
 
     fun baseDefault(): ThemeDesignerState =
         if (isDark) defaultDark(id) else defaultLight(id)
+
+    /**
+     * Switches between Dark and Light base defaults while preserving any properties the user has
+     * already customized away from the previous base defaults.
+     */
+    fun switchDarkBase(newIsDark: Boolean): ThemeDesignerState {
+        if (newIsDark == isDark) return this
+        val oldDef = baseDefault()
+        val newDef = if (newIsDark) defaultDark(id) else defaultLight(id)
+        return copy(
+            isDark = newIsDark,
+            backgroundColor = if (backgroundColor == oldDef.backgroundColor) newDef.backgroundColor else backgroundColor,
+            gradientStart = if (gradientStart == oldDef.gradientStart) newDef.gradientStart else gradientStart,
+            gradientEnd = if (gradientEnd == oldDef.gradientEnd) newDef.gradientEnd else gradientEnd,
+            keyBackground = if (keyBackground == oldDef.keyBackground) newDef.keyBackground else keyBackground,
+            keyForeground = if (keyForeground == oldDef.keyForeground) newDef.keyForeground else keyForeground,
+            flatKeyForeground = if (flatKeyForeground == oldDef.flatKeyForeground) newDef.flatKeyForeground else flatKeyForeground,
+            keyPressedBackground = if (keyPressedBackground == oldDef.keyPressedBackground) newDef.keyPressedBackground else keyPressedBackground,
+            spaceBackground = if (spaceBackground == oldDef.spaceBackground) newDef.spaceBackground else spaceBackground,
+            spaceForeground = if (spaceForeground == oldDef.spaceForeground) newDef.spaceForeground else spaceForeground,
+            spacePressedBackground = if (spacePressedBackground == oldDef.spacePressedBackground) newDef.spacePressedBackground else spacePressedBackground,
+            functionalBackground = if (functionalBackground == oldDef.functionalBackground) newDef.functionalBackground else functionalBackground,
+            functionalForeground = if (functionalForeground == oldDef.functionalForeground) newDef.functionalForeground else functionalForeground,
+            actionBackground = if (actionBackground == oldDef.actionBackground) newDef.actionBackground else actionBackground,
+            actionForeground = if (actionForeground == oldDef.actionForeground) newDef.actionForeground else actionForeground,
+            strokeColor = if (strokeColor == oldDef.strokeColor) newDef.strokeColor else strokeColor,
+            shadowColor = if (shadowColor == oldDef.shadowColor) newDef.shadowColor else shadowColor,
+            accentColor = if (accentColor == oldDef.accentColor) newDef.accentColor else accentColor,
+            shiftActiveColor = if (shiftActiveColor == oldDef.shiftActiveColor) newDef.shiftActiveColor else shiftActiveColor,
+            activeOptionHighlightColor = if (activeOptionHighlightColor == oldDef.activeOptionHighlightColor) newDef.activeOptionHighlightColor else activeOptionHighlightColor,
+            suggestionBackground = if (suggestionBackground == oldDef.suggestionBackground) newDef.suggestionBackground else suggestionBackground,
+            suggestionForeground = if (suggestionForeground == oldDef.suggestionForeground) newDef.suggestionForeground else suggestionForeground,
+            moreKeysBackground = if (moreKeysBackground == oldDef.moreKeysBackground) newDef.moreKeysBackground else moreKeysBackground
+        )
+    }
 
     fun resetSurfaceSection(): ThemeDesignerState {
         val def = baseDefault()
@@ -267,7 +303,7 @@ data class ThemeDesignerState(
             schemaVersion = 2,
             id = id,
             name = name.ifBlank { "My Theme" },
-            author = "Kiebord Theme Studio",
+            author = designerName.trim().ifBlank { "Kiebord" },
             isDark = isDark,
             background = background,
             characterKey = KeycapStyleSpec(
@@ -410,8 +446,15 @@ data class ThemeDesignerState(
                 if (style.isEmpty) null else k to style
             }.toMap()
 
+            val restoredDesigner = spec.author.trim().takeIf {
+                it.isNotEmpty() &&
+                    !it.equals("Kiebord", ignoreCase = true) &&
+                    !it.equals("Kiebord Theme Studio", ignoreCase = true)
+            } ?: ""
+
             return base.copy(
                 name = spec.name,
+                designerName = restoredDesigner,
                 isDark = spec.isDark,
                 backgroundType = bgType,
                 backgroundColor = c(bg.solidColor ?: gradient?.colors?.firstOrNull(), base.backgroundColor),
