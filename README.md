@@ -1,4 +1,7 @@
 # Kiebord (Borno Community Edition)
+<p align="center">
+<img width="128" height="128" alt="Kiebord" src="https://github.com/user-attachments/assets/346d3099-7f42-462a-931c-959a216ebccc" />
+</p>
 
 [![CI Build](https://github.com/JayedAhsan/Kiebord/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/JayedAhsan/Kiebord/actions/workflows/publish.yml)
 [![Latest Release](https://img.shields.io/github/v/release/JayedAhsan/Kiebord?include_prereleases&label=Latest%20Release)](https://github.com/JayedAhsan/Kiebord/releases)
