@@ -61,6 +61,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
         val SUGGESTIONS_ENABLED = booleanPreferencesKey("pref_suggestions_enabled")
         val NEXT_WORD_PREDICTION = booleanPreferencesKey("pref_next_word_prediction")
+        val PHONETIC_AUTO_CORRECT = booleanPreferencesKey("pref_phonetic_auto_correct")
         val BENGALI_SMART_PHONETIC = booleanPreferencesKey("pref_bengali_smart_phonetic")
         val BENGALI_SHOW_RAW_INPUT_CANDIDATE = booleanPreferencesKey("pref_bengali_show_raw_input_candidate")
         val LEARNED_WORDS_ENABLED = booleanPreferencesKey("pref_learned_words_enabled")
@@ -135,6 +136,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
                 suggestionsEnabled = prefs[PreferencesKeys.SUGGESTIONS_ENABLED] ?: true,
                 nextWordPrediction = prefs[PreferencesKeys.NEXT_WORD_PREDICTION] ?: true,
+                phoneticAutoCorrect = prefs[PreferencesKeys.PHONETIC_AUTO_CORRECT] ?: true,
                 bengaliSmartPhonetic = prefs[PreferencesKeys.BENGALI_SMART_PHONETIC] ?: true,
                 bengaliShowRawInputCandidate = prefs[PreferencesKeys.BENGALI_SHOW_RAW_INPUT_CANDIDATE] ?: true,
                 learnedWordsEnabled = prefs[PreferencesKeys.LEARNED_WORDS_ENABLED] ?: true,
@@ -354,6 +356,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateNextWordPrediction(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.NEXT_WORD_PREDICTION] = enabled }
+    }
+
+    suspend fun updatePhoneticAutoCorrect(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.PHONETIC_AUTO_CORRECT] = enabled }
     }
 
     suspend fun updateBengaliSmartPhonetic(enabled: Boolean) {

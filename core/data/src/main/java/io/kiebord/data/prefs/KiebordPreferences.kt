@@ -42,6 +42,7 @@ data class KiebordPreferences(
     // Corrections & Suggestions
     val suggestionsEnabled: Boolean = true,
     val nextWordPrediction: Boolean = true,
+    val phoneticAutoCorrect: Boolean = true,
     val bengaliSmartPhonetic: Boolean = true,
     val bengaliShowRawInputCandidate: Boolean = true,
     val learnedWordsEnabled: Boolean = true,

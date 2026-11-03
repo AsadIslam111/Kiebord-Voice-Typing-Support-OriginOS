@@ -44,6 +44,7 @@ import io.kiebord.feature.ime.gesture.KeyCentroid
 import io.kiebord.feature.ime.lifecycle.KeyboardViewLifecycleOwner
 import io.kiebord.feature.ime.translit.BengaliBstiEngine
 import io.kiebord.feature.ime.translit.BornoTransliterationManager
+import io.kiebord.feature.ime.translit.GenericTransliterationManager
 import io.kiebord.feature.ime.translit.TransliterationManager
 import io.kiebord.feature.ime.ui.emoji.EmojiFontManager
 import androidx.compose.ui.unit.dp
@@ -76,7 +77,7 @@ class KiebordService : InputMethodService() {
 
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
     private var transliterationManager: TransliterationManager =
-        TransliterationManagerFactory.create("bn_borno") { currentInputConnection }
+        TransliterationManagerFactory.create("bn_borno", preferencesState.phoneticAutoCorrect) { currentInputConnection }
     private val composingBuffer = StringBuilder()
     private val gestureDecoder = CrossLanguageGestureDecoder()
     private var lastGestureCommittedWord: String = ""
@@ -107,7 +108,12 @@ class KiebordService : InputMethodService() {
 
     private fun getTransliterationManager(): TransliterationManager {
         if (transliterationManager.layoutId != activeLayout.id) {
-            transliterationManager = TransliterationManagerFactory.create(activeLayout.id) { currentInputConnection }
+            transliterationManager = TransliterationManagerFactory.create(
+                activeLayout.id,
+                preferencesState.phoneticAutoCorrect
+            ) { currentInputConnection }
+        } else {
+            (transliterationManager as? GenericTransliterationManager)?.isAutoCorrectEnabled = preferencesState.phoneticAutoCorrect
         }
         return transliterationManager
     }
@@ -231,6 +237,7 @@ class KiebordService : InputMethodService() {
         serviceScope.launch {
             preferencesRepo.preferencesFlow.collect { prefs ->
                 preferencesState = prefs
+                (transliterationManager as? GenericTransliterationManager)?.isAutoCorrectEnabled = prefs.phoneticAutoCorrect
                 colorScheme = io.kiebord.theme.ThemeRepository.getInstance(this@KiebordService).getColorScheme(prefs.theme)
                 val availableMeta = layoutRepo.getAvailableLayouts().map { it.id }.toSet()
                 val enabledIds = prefs.enabledLayoutIds.toList().filter { id ->
@@ -2299,6 +2306,16 @@ class KiebordService : InputMethodService() {
                 // 2. Primary transliterated word (strictly non-Latin/Bengali)
                 if (primaryWord.isNotEmpty()) {
                     list.add(SuggestionCandidate(text = primaryWord, isPrimary = true, rawInput = raw))
+                }
+
+                // 2b. If phonetic auto-correct modified the word, offer literal uncorrected transliteration as alternative candidate
+                if (preferencesState.phoneticAutoCorrect && (activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO || activeLayout.id == KiebordPreferences.LAYOUT_BN_AVRO)) {
+                    val literalTranslit = if (NativeEngine.isAvailable()) {
+                        NativeEngine.transliterate(activeLayout.id, raw)
+                    } else raw
+                    if (literalTranslit.isNotEmpty() && literalTranslit != primaryWord && !containsLatinText(literalTranslit)) {
+                        list.add(SuggestionCandidate(text = literalTranslit, isPrimary = false, rawInput = raw))
+                    }
                 }
 
                 val phoneticAlts = if (raw.isNotBlank() && activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO) {

@@ -517,6 +517,9 @@ fun KiebordSettingsApp(
                             onUpdateNextWordPrediction = { enabled ->
                                 scope.launch { preferencesRepo.updateNextWordPrediction(enabled) }
                             },
+                            onUpdatePhoneticAutoCorrect = { enabled ->
+                                scope.launch { preferencesRepo.updatePhoneticAutoCorrect(enabled) }
+                            },
                             onUpdateBengaliSmartPhonetic = { enabled ->
                                 scope.launch { preferencesRepo.updateBengaliSmartPhonetic(enabled) }
                             },

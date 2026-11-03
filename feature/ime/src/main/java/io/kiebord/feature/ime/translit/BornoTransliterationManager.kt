@@ -23,7 +23,8 @@ interface TransliterationManager {
  */
 open class GenericTransliterationManager(
     override val layoutId: String,
-    private val inputConnectionProvider: () -> InputConnection?
+    private val inputConnectionProvider: () -> InputConnection?,
+    var isAutoCorrectEnabled: Boolean = true
 ) : TransliterationManager {
     protected val buffer = StringBuilder()
     private var cachedTransliteration: String = ""
@@ -32,6 +33,21 @@ open class GenericTransliterationManager(
     override val isComposing: Boolean
         get() = buffer.isNotEmpty()
 
+    val isAutoCorrected: Boolean
+        get() = isAutoCorrectEnabled && (layoutId == "bn_borno" || layoutId == "bn_avro") &&
+                buffer.isNotEmpty() && PhoneticAutoCorrect.lookup(buffer.toString()) != null
+
+    protected fun resolveTransliteration(raw: String): String {
+        if (raw.isEmpty()) return ""
+        if (!NativeEngine.isAvailable()) return raw
+        val target = if (isAutoCorrectEnabled && (layoutId == "bn_borno" || layoutId == "bn_avro")) {
+            PhoneticAutoCorrect.lookup(raw) ?: raw
+        } else {
+            raw
+        }
+        return NativeEngine.transliterate(layoutId, target)
+    }
+
     override fun handleCharacter(char: String): Boolean {
         if (!NativeEngine.isAvailable()) {
             return false
@@ -39,7 +55,7 @@ open class GenericTransliterationManager(
 
         val ic = inputConnectionProvider() ?: return false
         buffer.append(char)
-        val transliterated = NativeEngine.transliterate(layoutId, buffer.toString())
+        val transliterated = resolveTransliteration(buffer.toString())
         cachedTransliteration = transliterated
         isTransliterationDirty = false
         ic.setComposingText(transliterated, 1)
@@ -61,11 +77,7 @@ open class GenericTransliterationManager(
             ic.setComposingText("", 1)
             ic.finishComposingText()
         } else {
-            val transliterated = if (NativeEngine.isAvailable()) {
-                NativeEngine.transliterate(layoutId, buffer.toString())
-            } else {
-                buffer.toString()
-            }
+            val transliterated = resolveTransliteration(buffer.toString())
             cachedTransliteration = transliterated
             isTransliterationDirty = false
             ic.setComposingText(transliterated, 1)
@@ -80,11 +92,7 @@ open class GenericTransliterationManager(
         get() {
             if (buffer.isEmpty()) return ""
             if (isTransliterationDirty) {
-                cachedTransliteration = if (NativeEngine.isAvailable()) {
-                    NativeEngine.transliterate(layoutId, buffer.toString())
-                } else {
-                    buffer.toString()
-                }
+                cachedTransliteration = resolveTransliteration(buffer.toString())
                 isTransliterationDirty = false
             }
             return cachedTransliteration
@@ -118,8 +126,9 @@ open class GenericTransliterationManager(
  * Borno phonetic transliteration manager.
  */
 class BornoTransliterationManager(
-    inputConnectionProvider: () -> InputConnection?
-) : GenericTransliterationManager("bn_borno", inputConnectionProvider)
+    inputConnectionProvider: () -> InputConnection?,
+    isAutoCorrectEnabled: Boolean = true
+) : GenericTransliterationManager("bn_borno", inputConnectionProvider, isAutoCorrectEnabled)
 
 object TransliterationManagerFactory {
     private val phoneticLayoutCache = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
@@ -135,7 +144,11 @@ object TransliterationManagerFactory {
         }
     }
 
-    fun create(layoutId: String, inputConnectionProvider: () -> InputConnection?): TransliterationManager {
-        return GenericTransliterationManager(layoutId, inputConnectionProvider)
+    fun create(
+        layoutId: String,
+        isAutoCorrectEnabled: Boolean = true,
+        inputConnectionProvider: () -> InputConnection?
+    ): TransliterationManager {
+        return GenericTransliterationManager(layoutId, inputConnectionProvider, isAutoCorrectEnabled)
     }
 }

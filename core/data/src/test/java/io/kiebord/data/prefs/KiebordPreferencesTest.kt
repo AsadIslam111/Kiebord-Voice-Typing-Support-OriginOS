@@ -15,4 +15,13 @@ class KiebordPreferencesTest {
         val scrollablePrefs = prefs.copy(suggestionBarMode = KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE)
         assertEquals(KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE, scrollablePrefs.suggestionBarMode)
     }
+
+    @Test
+    fun testPhoneticAutoCorrectDefault() {
+        val prefs = KiebordPreferences()
+        assertEquals(true, prefs.phoneticAutoCorrect)
+
+        val disabledPrefs = prefs.copy(phoneticAutoCorrect = false)
+        assertEquals(false, disabledPrefs.phoneticAutoCorrect)
+    }
 }

@@ -33,6 +33,7 @@ fun CorrectionsSuggestionsScreen(
     preferences: KiebordPreferences,
     onUpdateSuggestionsEnabled: (Boolean) -> Unit,
     onUpdateNextWordPrediction: (Boolean) -> Unit,
+    onUpdatePhoneticAutoCorrect: (Boolean) -> Unit = {},
     onUpdateBengaliSmartPhonetic: (Boolean) -> Unit,
     onUpdateBengaliShowRawInputCandidate: (Boolean) -> Unit = {},
     onUpdateLearnedWordsEnabled: (Boolean) -> Unit = {},
@@ -115,6 +116,14 @@ fun CorrectionsSuggestionsScreen(
                     checked = preferences.nextWordPrediction,
                     position = GroupPosition.MIDDLE,
                     onCheckedChange = onUpdateNextWordPrediction
+                )
+
+                SettingsToggleItem(
+                    title = "Phonetic Auto Correct",
+                    subtitle = "Automatically correct common phonetic misspellings",
+                    checked = preferences.phoneticAutoCorrect,
+                    position = GroupPosition.MIDDLE,
+                    onCheckedChange = onUpdatePhoneticAutoCorrect
                 )
 
                 SettingsToggleItem(
