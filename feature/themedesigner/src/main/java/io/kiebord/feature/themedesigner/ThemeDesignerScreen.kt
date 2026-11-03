@@ -410,54 +410,10 @@ internal fun ThemeDesignerScreenContent(
                     title = "Dark Theme Base",
                     subtitle = "Informs default contrast & system adaptive behavior",
                     checked = state.isDark,
-                    pos = ItemPos.MIDDLE,
+                    pos = ItemPos.BOTTOM,
                     colors = colors,
                     onCheckedChange = { state = state.copy(isDark = it) }
                 )
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = itemShape(ItemPos.BOTTOM),
-                    colors = CardDefaults.cardColors(containerColor = colors.cardBackground)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Refresh,
-                            contentDescription = null,
-                            tint = colors.textSecondary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = "Starter Preset",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colors.textPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        SegmentPill(
-                            text = "Dark",
-                            selected = state.isDark,
-                            colors = colors,
-                            onClick = {
-                                state = ThemeDesignerState.defaultDark(state.id).copy(name = state.name)
-                            }
-                        )
-                        SegmentPill(
-                            text = "Light",
-                            selected = !state.isDark,
-                            colors = colors,
-                            onClick = {
-                                state = ThemeDesignerState.defaultLight(state.id).copy(name = state.name)
-                            }
-                        )
-                    }
-                }
             }
 
             // --- SECTION: SURFACE & BACKGROUND ---
@@ -497,6 +453,22 @@ internal fun ThemeDesignerScreenContent(
 
                 when (state.backgroundType) {
                     DesignerBackgroundType.SOLID -> {
+                        PresetPaletteStripRow(
+                            title = "Color & Key Presets",
+                            presets = ThemeStudioPresets.SolidPresets,
+                            selectedPresetId = ThemeStudioPresets.SolidPresets.firstOrNull {
+                                state.backgroundType == DesignerBackgroundType.SOLID &&
+                                    state.backgroundColor == it.circle1 &&
+                                    state.keyBackground == it.circle2 &&
+                                    state.actionBackground == it.circle3
+                            }?.id,
+                            pos = ItemPos.MIDDLE,
+                            colors = colors,
+                            onSelectPreset = { preset ->
+                                state = preset.applyTo(state)
+                            }
+                        )
+
                         DesignerColorRow(
                             title = "Background Color",
                             subtitle = "Keyboard container surface",
@@ -522,6 +494,22 @@ internal fun ThemeDesignerScreenContent(
                     }
 
                     DesignerBackgroundType.GRADIENT -> {
+                        PresetPaletteStripRow(
+                            title = "Gradient & Key Presets",
+                            presets = ThemeStudioPresets.GradientPresets,
+                            selectedPresetId = ThemeStudioPresets.GradientPresets.firstOrNull {
+                                state.backgroundType == DesignerBackgroundType.GRADIENT &&
+                                    state.gradientStart == it.circle1 &&
+                                    state.gradientEnd == it.circle2 &&
+                                    state.actionBackground == it.circle3
+                            }?.id,
+                            pos = ItemPos.MIDDLE,
+                            colors = colors,
+                            onSelectPreset = { preset ->
+                                state = preset.applyTo(state)
+                            }
+                        )
+
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = itemShape(ItemPos.MIDDLE),
@@ -1867,5 +1855,103 @@ private fun DesignerSliderRow(
                 )
             )
         }
+    }
+}
+
+@Composable
+private fun PresetPaletteStripRow(
+    title: String,
+    presets: List<ThemeStudioPreset>,
+    selectedPresetId: String?,
+    pos: ItemPos,
+    colors: ThemeDesignerColors,
+    onSelectPreset: (ThemeStudioPreset) -> Unit
+) {
+    val shape = remember(pos) { itemShape(pos) }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = colors.cardBackground)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp)
+        ) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                presets.forEach { preset ->
+                    val isSelected = preset.id == selectedPresetId
+                    PresetThreeCirclesChip(
+                        preset = preset,
+                        selected = isSelected,
+                        colors = colors,
+                        onClick = { onSelectPreset(preset) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PresetThreeCirclesChip(
+    preset: ThemeStudioPreset,
+    selected: Boolean,
+    colors: ThemeDesignerColors,
+    onClick: () -> Unit
+) {
+    val containerBg = if (selected) colors.accent.copy(alpha = 0.16f) else colors.inputBackground
+    val borderColor = if (selected) colors.accent else colors.cardBorder
+    val borderWidth = if (selected) 1.5.dp else 1.dp
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(containerBg)
+            .border(borderWidth, borderColor, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 11.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 3 horizontally stacked overlapping color circles
+        Row(
+            horizontalArrangement = Arrangement.spacedBy((-7).dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            listOf(preset.circle1, preset.circle2, preset.circle3).forEach { swatchColor ->
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(swatchColor)
+                        .border(1.5.dp, colors.cardBackground, CircleShape)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = preset.name,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) colors.accent else colors.textPrimary,
+            maxLines = 1
+        )
     }
 }

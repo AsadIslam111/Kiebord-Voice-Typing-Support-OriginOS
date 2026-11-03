@@ -459,3 +459,609 @@ data class ThemeDesignerState(
         }
     }
 }
+
+/**
+ * Curated color & gradient palette preset with 3 preview swatch circles and full key styling.
+ */
+data class ThemeStudioPreset(
+    val id: String,
+    val name: String,
+    val isGradient: Boolean,
+    val circle1: Color,
+    val circle2: Color,
+    val circle3: Color,
+    val applyTo: (ThemeDesignerState) -> ThemeDesignerState
+)
+
+object ThemeStudioPresets {
+
+    val SolidPresets: List<ThemeStudioPreset> = listOf(
+        ThemeStudioPreset(
+            id = "solid_default_dark",
+            name = "Default Dark",
+            isGradient = false,
+            circle1 = Color(0xFF1B1B1F),
+            circle2 = Color(0xFF2C2C30),
+            circle3 = Color(0xFF4999FD),
+            applyTo = { s ->
+                ThemeDesignerState.defaultDark(s.id).copy(
+                    name = s.name,
+                    perKeyOverrides = s.perKeyOverrides,
+                    fontPath = s.fontPath,
+                    icons = s.icons
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "solid_default_light",
+            name = "Default Light",
+            isGradient = false,
+            circle1 = Color(0xFFF4F6F9),
+            circle2 = Color(0xFFFFFFFF),
+            circle3 = Color(0xFF2563EB),
+            applyTo = { s ->
+                ThemeDesignerState.defaultLight(s.id).copy(
+                    name = s.name,
+                    perKeyOverrides = s.perKeyOverrides,
+                    fontPath = s.fontPath,
+                    icons = s.icons
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "solid_amoled",
+            name = "AMOLED Black",
+            isGradient = false,
+            circle1 = Color(0xFF000000),
+            circle2 = Color(0xFF18181B),
+            circle3 = Color(0xFFA8C7FA),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.SOLID,
+                    backgroundColor = Color(0xFF000000),
+                    keyBackground = Color(0xFF18181B),
+                    keyForeground = Color(0xFFFFFFFF),
+                    flatKeyForeground = Color(0xFFFFFFFF),
+                    keyPressedBackground = Color(0xFF27272A),
+                    functionalBackground = Color(0xFF111113),
+                    functionalForeground = Color(0xFFD4D4D8),
+                    actionBackground = Color(0xFFA8C7FA),
+                    actionForeground = Color(0xFF04294E),
+                    accentColor = Color(0xFFA8C7FA),
+                    shiftActiveColor = Color(0xFFA8C7FA),
+                    activeOptionHighlightColor = Color(0xFF38BDF8),
+                    suggestionBackground = Color(0xFF000000),
+                    suggestionForeground = Color(0xFFFFFFFF),
+                    moreKeysBackground = Color(0xFF232328),
+                    strokeEnabled = true,
+                    strokeColor = Color(0xFF222225),
+                    strokeWidthDp = 0.75f,
+                    shadowEnabled = false
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "solid_tokyo_night",
+            name = "Tokyo Night",
+            isGradient = false,
+            circle1 = Color(0xFF1A1B26),
+            circle2 = Color(0xFF24283B),
+            circle3 = Color(0xFF7AA2F7),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.SOLID,
+                    backgroundColor = Color(0xFF1A1B26),
+                    keyBackground = Color(0xFF24283B),
+                    keyForeground = Color(0xFFC0CAF5),
+                    flatKeyForeground = Color(0xFFC0CAF5),
+                    keyPressedBackground = Color(0xFF333954),
+                    functionalBackground = Color(0xFF1F2335),
+                    functionalForeground = Color(0xFFA9B1D6),
+                    actionBackground = Color(0xFF7AA2F7),
+                    actionForeground = Color(0xFF1A1B26),
+                    accentColor = Color(0xFF7AA2F7),
+                    shiftActiveColor = Color(0xFF7AA2F7),
+                    activeOptionHighlightColor = Color(0xFF7DCFFF),
+                    suggestionBackground = Color(0xFF1A1B26),
+                    suggestionForeground = Color(0xFFC0CAF5),
+                    moreKeysBackground = Color(0xFF2E334B),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x4D000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "solid_nord",
+            name = "Nord Frost",
+            isGradient = false,
+            circle1 = Color(0xFF2E3440),
+            circle2 = Color(0xFF3B4252),
+            circle3 = Color(0xFF88C0D0),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.SOLID,
+                    backgroundColor = Color(0xFF2E3440),
+                    keyBackground = Color(0xFF3B4252),
+                    keyForeground = Color(0xFFECEFF4),
+                    flatKeyForeground = Color(0xFFECEFF4),
+                    keyPressedBackground = Color(0xFF4C566A),
+                    functionalBackground = Color(0xFF353B49),
+                    functionalForeground = Color(0xFFD8DEE9),
+                    actionBackground = Color(0xFF88C0D0),
+                    actionForeground = Color(0xFF2E3440),
+                    accentColor = Color(0xFF88C0D0),
+                    shiftActiveColor = Color(0xFF88C0D0),
+                    activeOptionHighlightColor = Color(0xFF81A1C1),
+                    suggestionBackground = Color(0xFF2E3440),
+                    suggestionForeground = Color(0xFFECEFF4),
+                    moreKeysBackground = Color(0xFF434C5E),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x40000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "solid_catppuccin",
+            name = "Catppuccin",
+            isGradient = false,
+            circle1 = Color(0xFF1E1E2E),
+            circle2 = Color(0xFF313244),
+            circle3 = Color(0xFFCBA6F7),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.SOLID,
+                    backgroundColor = Color(0xFF1E1E2E),
+                    keyBackground = Color(0xFF313244),
+                    keyForeground = Color(0xFFCDD6F4),
+                    flatKeyForeground = Color(0xFFCDD6F4),
+                    keyPressedBackground = Color(0xFF45475A),
+                    functionalBackground = Color(0xFF181825),
+                    functionalForeground = Color(0xFFBAC2DE),
+                    actionBackground = Color(0xFFCBA6F7),
+                    actionForeground = Color(0xFF11111B),
+                    accentColor = Color(0xFFCBA6F7),
+                    shiftActiveColor = Color(0xFFCBA6F7),
+                    activeOptionHighlightColor = Color(0xFFF5C2E7),
+                    suggestionBackground = Color(0xFF1E1E2E),
+                    suggestionForeground = Color(0xFFCDD6F4),
+                    moreKeysBackground = Color(0xFF45475A),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x4D000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "solid_emerald",
+            name = "Emerald Pine",
+            isGradient = false,
+            circle1 = Color(0xFF0F1F1C),
+            circle2 = Color(0xFF1B332E),
+            circle3 = Color(0xFF10B981),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.SOLID,
+                    backgroundColor = Color(0xFF0F1F1C),
+                    keyBackground = Color(0xFF1B332E),
+                    keyForeground = Color(0xFFECFDF5),
+                    flatKeyForeground = Color(0xFFECFDF5),
+                    keyPressedBackground = Color(0xFF264740),
+                    functionalBackground = Color(0xFF142824),
+                    functionalForeground = Color(0xFFA7F3D0),
+                    actionBackground = Color(0xFF10B981),
+                    actionForeground = Color(0xFF062E22),
+                    accentColor = Color(0xFF10B981),
+                    shiftActiveColor = Color(0xFF10B981),
+                    activeOptionHighlightColor = Color(0xFF34D399),
+                    suggestionBackground = Color(0xFF0F1F1C),
+                    suggestionForeground = Color(0xFFECFDF5),
+                    moreKeysBackground = Color(0xFF264740),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x4D000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "solid_rose_pine",
+            name = "Rose Pine",
+            isGradient = false,
+            circle1 = Color(0xFF191724),
+            circle2 = Color(0xFF26233A),
+            circle3 = Color(0xFFEBBCBA),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.SOLID,
+                    backgroundColor = Color(0xFF191724),
+                    keyBackground = Color(0xFF26233A),
+                    keyForeground = Color(0xFFE0DEF4),
+                    flatKeyForeground = Color(0xFFE0DEF4),
+                    keyPressedBackground = Color(0xFF403D52),
+                    functionalBackground = Color(0xFF1F1D2E),
+                    functionalForeground = Color(0xFF908CAA),
+                    actionBackground = Color(0xFFEBBCBA),
+                    actionForeground = Color(0xFF191724),
+                    accentColor = Color(0xFFEBBCBA),
+                    shiftActiveColor = Color(0xFFEBBCBA),
+                    activeOptionHighlightColor = Color(0xFFC4A7E7),
+                    suggestionBackground = Color(0xFF191724),
+                    suggestionForeground = Color(0xFFE0DEF4),
+                    moreKeysBackground = Color(0xFF26233A),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x4D000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "solid_warm_latte",
+            name = "Warm Latte",
+            isGradient = false,
+            circle1 = Color(0xFFF5F2EB),
+            circle2 = Color(0xFFFFFFFF),
+            circle3 = Color(0xFFEA580C),
+            applyTo = { s ->
+                s.copy(
+                    isDark = false,
+                    backgroundType = DesignerBackgroundType.SOLID,
+                    backgroundColor = Color(0xFFF5F2EB),
+                    keyBackground = Color(0xFFFFFFFF),
+                    keyForeground = Color(0xFF292524),
+                    flatKeyForeground = Color(0xFF292524),
+                    keyPressedBackground = Color(0xFFE7E5E4),
+                    functionalBackground = Color(0xFFE7E2D8),
+                    functionalForeground = Color(0xFF44403C),
+                    actionBackground = Color(0xFFEA580C),
+                    actionForeground = Color(0xFFFFFFFF),
+                    accentColor = Color(0xFFEA580C),
+                    shiftActiveColor = Color(0xFFEA580C),
+                    activeOptionHighlightColor = Color(0xFFD97706),
+                    suggestionBackground = Color(0xFFF5F2EB),
+                    suggestionForeground = Color(0xFF292524),
+                    moreKeysBackground = Color(0xFFFFFFFF),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x1F000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "solid_mint_breeze",
+            name = "Mint Breeze",
+            isGradient = false,
+            circle1 = Color(0xFFECFDF5),
+            circle2 = Color(0xFFFFFFFF),
+            circle3 = Color(0xFF059669),
+            applyTo = { s ->
+                s.copy(
+                    isDark = false,
+                    backgroundType = DesignerBackgroundType.SOLID,
+                    backgroundColor = Color(0xFFECFDF5),
+                    keyBackground = Color(0xFFFFFFFF),
+                    keyForeground = Color(0xFF064E3B),
+                    flatKeyForeground = Color(0xFF064E3B),
+                    keyPressedBackground = Color(0xFFD1FAE5),
+                    functionalBackground = Color(0xFFD1FAE5),
+                    functionalForeground = Color(0xFF065F46),
+                    actionBackground = Color(0xFF059669),
+                    actionForeground = Color(0xFFFFFFFF),
+                    accentColor = Color(0xFF059669),
+                    shiftActiveColor = Color(0xFF059669),
+                    activeOptionHighlightColor = Color(0xFF10B981),
+                    suggestionBackground = Color(0xFFECFDF5),
+                    suggestionForeground = Color(0xFF064E3B),
+                    moreKeysBackground = Color(0xFFFFFFFF),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x1A000000)
+                )
+            }
+        )
+    )
+
+    val GradientPresets: List<ThemeStudioPreset> = listOf(
+        ThemeStudioPreset(
+            id = "grad_midnight_aurora",
+            name = "Midnight Aurora",
+            isGradient = true,
+            circle1 = Color(0xFF0F0C29),
+            circle2 = Color(0xFF302B63),
+            circle3 = Color(0xFF00F5D4),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.GRADIENT,
+                    gradientType = DesignerGradientType.LINEAR,
+                    gradientStart = Color(0xFF0F0C29),
+                    gradientEnd = Color(0xFF302B63),
+                    gradientAngle = 135f,
+                    keyBackground = Color(0x29FFFFFF),
+                    keyForeground = Color(0xFFFFFFFF),
+                    flatKeyForeground = Color(0xFFFFFFFF),
+                    keyPressedBackground = Color(0x47FFFFFF),
+                    functionalBackground = Color(0x1FFFFFFF),
+                    functionalForeground = Color(0xFFE2E8F0),
+                    actionBackground = Color(0xFF00F5D4),
+                    actionForeground = Color(0xFF0B132B),
+                    accentColor = Color(0xFF00F5D4),
+                    shiftActiveColor = Color(0xFF00F5D4),
+                    activeOptionHighlightColor = Color(0xFF38BDF8),
+                    suggestionBackground = Color(0x00000000),
+                    suggestionForeground = Color(0xFFFFFFFF),
+                    moreKeysBackground = Color(0xFF24204A),
+                    strokeEnabled = true,
+                    strokeColor = Color(0x38FFFFFF),
+                    strokeWidthDp = 0.75f,
+                    strokeAlpha = 0.7f,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x4D000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "grad_oceanic_cyber",
+            name = "Oceanic Cyber",
+            isGradient = true,
+            circle1 = Color(0xFF0F2027),
+            circle2 = Color(0xFF2C5364),
+            circle3 = Color(0xFF26D0CE),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.GRADIENT,
+                    gradientType = DesignerGradientType.LINEAR,
+                    gradientStart = Color(0xFF0F2027),
+                    gradientEnd = Color(0xFF2C5364),
+                    gradientAngle = 90f,
+                    keyBackground = Color(0x2BFFFFFF),
+                    keyForeground = Color(0xFFF1F5F9),
+                    flatKeyForeground = Color(0xFFF1F5F9),
+                    keyPressedBackground = Color(0x47FFFFFF),
+                    functionalBackground = Color(0x1FFFFFFF),
+                    functionalForeground = Color(0xFFCBD5E1),
+                    actionBackground = Color(0xFF26D0CE),
+                    actionForeground = Color(0xFF082F49),
+                    accentColor = Color(0xFF26D0CE),
+                    shiftActiveColor = Color(0xFF26D0CE),
+                    activeOptionHighlightColor = Color(0xFF38BDF8),
+                    suggestionBackground = Color(0x00000000),
+                    suggestionForeground = Color(0xFFF1F5F9),
+                    moreKeysBackground = Color(0xFF1A3644),
+                    strokeEnabled = true,
+                    strokeColor = Color(0x33FFFFFF),
+                    strokeWidthDp = 0.75f,
+                    strokeAlpha = 0.65f,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x4D000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "grad_sunset_synth",
+            name = "Sunset Synth",
+            isGradient = true,
+            circle1 = Color(0xFF2B1055),
+            circle2 = Color(0xFF7597DE),
+            circle3 = Color(0xFFFF6B6B),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.GRADIENT,
+                    gradientType = DesignerGradientType.LINEAR,
+                    gradientStart = Color(0xFF2B1055),
+                    gradientEnd = Color(0xFF7597DE),
+                    gradientAngle = 120f,
+                    keyBackground = Color(0x2EFFFFFF),
+                    keyForeground = Color(0xFFFFFFFF),
+                    flatKeyForeground = Color(0xFFFFFFFF),
+                    keyPressedBackground = Color(0x4DFFFFFF),
+                    functionalBackground = Color(0x21FFFFFF),
+                    functionalForeground = Color(0xFFF1F5F9),
+                    actionBackground = Color(0xFFFF6B6B),
+                    actionForeground = Color(0xFFFFFFFF),
+                    accentColor = Color(0xFFFF6B6B),
+                    shiftActiveColor = Color(0xFFFF6B6B),
+                    activeOptionHighlightColor = Color(0xFFF472B6),
+                    suggestionBackground = Color(0x00000000),
+                    suggestionForeground = Color(0xFFFFFFFF),
+                    moreKeysBackground = Color(0xFF361D6E),
+                    strokeEnabled = true,
+                    strokeColor = Color(0x38FFFFFF),
+                    strokeWidthDp = 0.75f,
+                    strokeAlpha = 0.7f,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x40000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "grad_crimson_ember",
+            name = "Crimson Ember",
+            isGradient = true,
+            circle1 = Color(0xFF1F0808),
+            circle2 = Color(0xFF5C162E),
+            circle3 = Color(0xFFF43F5E),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.GRADIENT,
+                    gradientType = DesignerGradientType.LINEAR,
+                    gradientStart = Color(0xFF1F0808),
+                    gradientEnd = Color(0xFF5C162E),
+                    gradientAngle = 110f,
+                    keyBackground = Color(0x29FFFFFF),
+                    keyForeground = Color(0xFFFFF1F2),
+                    flatKeyForeground = Color(0xFFFFF1F2),
+                    keyPressedBackground = Color(0x45FFFFFF),
+                    functionalBackground = Color(0x1FFFFFFF),
+                    functionalForeground = Color(0xFFFECDD3),
+                    actionBackground = Color(0xFFF43F5E),
+                    actionForeground = Color(0xFFFFFFFF),
+                    accentColor = Color(0xFFF43F5E),
+                    shiftActiveColor = Color(0xFFF43F5E),
+                    activeOptionHighlightColor = Color(0xFFFB7185),
+                    suggestionBackground = Color(0x00000000),
+                    suggestionForeground = Color(0xFFFFF1F2),
+                    moreKeysBackground = Color(0xFF3F1020),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x4D000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "grad_emerald_nebula",
+            name = "Emerald Nebula",
+            isGradient = true,
+            circle1 = Color(0xFF051923),
+            circle2 = Color(0xFF006466),
+            circle3 = Color(0xFF34D399),
+            applyTo = { s ->
+                s.copy(
+                    isDark = true,
+                    backgroundType = DesignerBackgroundType.GRADIENT,
+                    gradientType = DesignerGradientType.LINEAR,
+                    gradientStart = Color(0xFF051923),
+                    gradientEnd = Color(0xFF006466),
+                    gradientAngle = 135f,
+                    keyBackground = Color(0x29FFFFFF),
+                    keyForeground = Color(0xFFECFDF5),
+                    flatKeyForeground = Color(0xFFECFDF5),
+                    keyPressedBackground = Color(0x45FFFFFF),
+                    functionalBackground = Color(0x1CFFFFFF),
+                    functionalForeground = Color(0xFFA7F3D0),
+                    actionBackground = Color(0xFF34D399),
+                    actionForeground = Color(0xFF042F2E),
+                    accentColor = Color(0xFF34D399),
+                    shiftActiveColor = Color(0xFF34D399),
+                    activeOptionHighlightColor = Color(0xFF2DD4BF),
+                    suggestionBackground = Color(0x00000000),
+                    suggestionForeground = Color(0xFFECFDF5),
+                    moreKeysBackground = Color(0xFF06373A),
+                    strokeEnabled = true,
+                    strokeColor = Color(0x33FFFFFF),
+                    strokeWidthDp = 0.75f,
+                    strokeAlpha = 0.6f,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x4D000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "grad_sky_blossom",
+            name = "Sky Blossom",
+            isGradient = true,
+            circle1 = Color(0xFFE0EAFC),
+            circle2 = Color(0xFFFCE7F3),
+            circle3 = Color(0xFF6366F1),
+            applyTo = { s ->
+                s.copy(
+                    isDark = false,
+                    backgroundType = DesignerBackgroundType.GRADIENT,
+                    gradientType = DesignerGradientType.LINEAR,
+                    gradientStart = Color(0xFFE0EAFC),
+                    gradientEnd = Color(0xFFFCE7F3),
+                    gradientAngle = 120f,
+                    keyBackground = Color(0xD9FFFFFF),
+                    keyForeground = Color(0xFF1E1B4B),
+                    flatKeyForeground = Color(0xFF1E1B4B),
+                    keyPressedBackground = Color(0xFFE0E7FF),
+                    functionalBackground = Color(0xB3FFFFFF),
+                    functionalForeground = Color(0xFF312E81),
+                    actionBackground = Color(0xFF6366F1),
+                    actionForeground = Color(0xFFFFFFFF),
+                    accentColor = Color(0xFF6366F1),
+                    shiftActiveColor = Color(0xFF6366F1),
+                    activeOptionHighlightColor = Color(0xFF8B5CF6),
+                    suggestionBackground = Color(0x00000000),
+                    suggestionForeground = Color(0xFF1E1B4B),
+                    moreKeysBackground = Color(0xFFFFFFFF),
+                    strokeEnabled = true,
+                    strokeColor = Color(0x66FFFFFF),
+                    strokeWidthDp = 0.75f,
+                    strokeAlpha = 0.8f,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x1F000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "grad_peach_sorbet",
+            name = "Peach Sorbet",
+            isGradient = true,
+            circle1 = Color(0xFFFFEDD5),
+            circle2 = Color(0xFFFECDD3),
+            circle3 = Color(0xFFF43F5E),
+            applyTo = { s ->
+                s.copy(
+                    isDark = false,
+                    backgroundType = DesignerBackgroundType.GRADIENT,
+                    gradientType = DesignerGradientType.LINEAR,
+                    gradientStart = Color(0xFFFFEDD5),
+                    gradientEnd = Color(0xFFFECDD3),
+                    gradientAngle = 115f,
+                    keyBackground = Color(0xD9FFFFFF),
+                    keyForeground = Color(0xFF4C0519),
+                    flatKeyForeground = Color(0xFF4C0519),
+                    keyPressedBackground = Color(0xFFFFE4E6),
+                    functionalBackground = Color(0xB3FFFFFF),
+                    functionalForeground = Color(0xFF881337),
+                    actionBackground = Color(0xFFF43F5E),
+                    actionForeground = Color(0xFFFFFFFF),
+                    accentColor = Color(0xFFF43F5E),
+                    shiftActiveColor = Color(0xFFF43F5E),
+                    activeOptionHighlightColor = Color(0xFFEA580C),
+                    suggestionBackground = Color(0x00000000),
+                    suggestionForeground = Color(0xFF4C0519),
+                    moreKeysBackground = Color(0xFFFFFFFF),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x1F000000)
+                )
+            }
+        ),
+        ThemeStudioPreset(
+            id = "grad_glacier_mist",
+            name = "Glacier Mist",
+            isGradient = true,
+            circle1 = Color(0xFFE0F2FE),
+            circle2 = Color(0xFFCCFBF1),
+            circle3 = Color(0xFF0284C7),
+            applyTo = { s ->
+                s.copy(
+                    isDark = false,
+                    backgroundType = DesignerBackgroundType.GRADIENT,
+                    gradientType = DesignerGradientType.LINEAR,
+                    gradientStart = Color(0xFFE0F2FE),
+                    gradientEnd = Color(0xFFCCFBF1),
+                    gradientAngle = 100f,
+                    keyBackground = Color(0xD9FFFFFF),
+                    keyForeground = Color(0xFF0C4A6E),
+                    flatKeyForeground = Color(0xFF0C4A6E),
+                    keyPressedBackground = Color(0xFFBAE6FD),
+                    functionalBackground = Color(0xB3FFFFFF),
+                    functionalForeground = Color(0xFF075985),
+                    actionBackground = Color(0xFF0284C7),
+                    actionForeground = Color(0xFFFFFFFF),
+                    accentColor = Color(0xFF0284C7),
+                    shiftActiveColor = Color(0xFF0284C7),
+                    activeOptionHighlightColor = Color(0xFF0D9488),
+                    suggestionBackground = Color(0x00000000),
+                    suggestionForeground = Color(0xFF0C4A6E),
+                    moreKeysBackground = Color(0xFFFFFFFF),
+                    strokeEnabled = false,
+                    shadowEnabled = true,
+                    shadowColor = Color(0x1A000000)
+                )
+            }
+        )
+    )
+}

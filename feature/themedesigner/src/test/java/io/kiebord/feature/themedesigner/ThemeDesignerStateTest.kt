@@ -164,4 +164,31 @@ class ThemeDesignerStateTest {
         assertTrue(ThemeDesignerRegistry.isAvailable)
         assertNotNull(ThemeDesignerRegistry.feature)
     }
+
+    @Test
+    fun `all SolidPresets and GradientPresets apply and round-trip cleanly`() {
+        val base = ThemeDesignerState.defaultDark()
+        assertTrue(ThemeStudioPresets.SolidPresets.size >= 8)
+        assertTrue(ThemeStudioPresets.GradientPresets.size >= 6)
+
+        ThemeStudioPresets.SolidPresets.forEach { preset ->
+            val applied = preset.applyTo(base)
+            assertEquals(DesignerBackgroundType.SOLID, applied.backgroundType)
+            val spec = applied.toSpec()
+            val restored = ThemeDesignerState.fromSpec(spec)
+            assertEquals(applied.backgroundColor, restored.backgroundColor)
+            assertEquals(applied.keyBackground, restored.keyBackground)
+            assertEquals(applied.actionBackground, restored.actionBackground)
+        }
+
+        ThemeStudioPresets.GradientPresets.forEach { preset ->
+            val applied = preset.applyTo(base)
+            assertEquals(DesignerBackgroundType.GRADIENT, applied.backgroundType)
+            val spec = applied.toSpec()
+            val restored = ThemeDesignerState.fromSpec(spec)
+            assertEquals(applied.gradientStart, restored.gradientStart)
+            assertEquals(applied.gradientEnd, restored.gradientEnd)
+            assertEquals(applied.actionBackground, restored.actionBackground)
+        }
+    }
 }
