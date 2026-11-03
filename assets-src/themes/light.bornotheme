@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 2,
+  "id": "polar_light",
+  "name": "Polar Light",
+  "author": "Kiebord",
+  "version": 1,
+  "isDark": false,
+  "background": {
+    "solidColor": "#F4F6F9"
+  },
+  "characterKey": {
+    "background": "#FFFFFF",
+    "foreground": "#1C1C1E",
+    "stroke": {
+      "color": "#E2E6EC",
+      "widthDp": 0.75,
+      "alpha": 0.8
+    },
+    "shadow": {
+      "color": "#14000000",
+      "elevationDp": 1.5
+    },
+    "cornerRadiusDp": 8.0,
+    "pressedBackground": "#E5E9F0"
+  },
+  "functionalKey": {
+    "background": "#EAECEF",
+    "foreground": "#1C1C1E",
+    "stroke": {
+      "color": "#E2E6EC",
+      "widthDp": 0.75,
+      "alpha": 0.5
+    },
+    "shadow": {
+      "color": "#10000000",
+      "elevationDp": 1.0
+    },
+    "cornerRadiusDp": 8.0,
+    "pressedBackground": "#DCE0E6"
+  },
+  "actionKey": {
+    "background": "#2563EB",
+    "foreground": "#FFFFFF",
+    "isPill": true,
+    "pressedBackground": "#1D4ED8"
+  },
+  "spaceKey": {
+    "background": "#FFFFFF",
+    "foreground": "#1C1C1E",
+    "cornerRadiusDp": 12.0,
+    "stroke": {
+      "color": "#E2E6EC",
+      "widthDp": 0.75,
+      "alpha": 0.8
+    },
+    "shadow": {
+      "color": "#14000000",
+      "elevationDp": 1.5
+    }
+  },
+  "accentColor": "#2563EB",
+  "shiftActiveColor": "#2563EB",
+  "flatKeyLabelColor": "#18191B",
+  "activeOptionHighlightColor": "#0284C7",
+  "suggestionBackground": {
+    "solidColor": "#F4F6F9"
+  },
+  "suggestionForeground": "#1C1C1E",
+  "moreKeysBackground": "#FFFFFF",
+  "guidelineColor": "#2563EB"
+}
+

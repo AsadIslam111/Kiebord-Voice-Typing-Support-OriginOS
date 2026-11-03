@@ -243,7 +243,8 @@ data class KeycapStyleSpec(
     val alpha: Float = 1.0f,
     val skin: KeySkinSpec? = null,
     val pressedBackground: String? = null,
-    val pressedForeground: String? = null
+    val pressedForeground: String? = null,
+    val flatForeground: String? = null
 ) {
     fun merge(override: KeycapStyleSpec?): KeycapStyleSpec {
         if (override == null) return this
@@ -258,7 +259,8 @@ data class KeycapStyleSpec(
             alpha = if (override.alpha != 1.0f) override.alpha else this.alpha,
             skin = override.skin ?: this.skin,
             pressedBackground = override.pressedBackground ?: this.pressedBackground,
-            pressedForeground = override.pressedForeground ?: this.pressedForeground
+            pressedForeground = override.pressedForeground ?: this.pressedForeground,
+            flatForeground = override.flatForeground ?: this.flatForeground
         )
     }
 }
@@ -307,6 +309,8 @@ data class KeyboardThemeSpec(
     val suggestionForeground: String = "#E3E2E6",
     val moreKeysBackground: String = "#38383F",
     val guidelineColor: String = accentColor,
+    val flatKeyLabelColor: String? = null,
+    val activeOptionHighlightColor: String? = null,
     val icons: ThemeIconsSpec = ThemeIconsSpec(),
     val perKeyOverrides: Map<String, KeycapStyleSpec> = emptyMap(),
     val backgroundImageBase64: String? = null
@@ -389,6 +393,8 @@ data class KeyboardThemeSpec(
             suggestionForeground = ThemeColorUtils.parseHexColor(suggestionForeground),
             keyPressedBackground = characterKey.pressedBackground?.let { ThemeColorUtils.parseHexColor(it) } ?: Color.Unspecified,
             keyPressedForeground = characterKey.pressedForeground?.let { ThemeColorUtils.parseHexColor(it) } ?: Color.Unspecified,
+            flatKeyForeground = flatKeyLabelColor?.let { ThemeColorUtils.parseHexColor(it) } ?: Color.Unspecified,
+            activeOptionHighlightColor = activeOptionHighlightColor?.let { ThemeColorUtils.parseHexColor(it) } ?: Color.Unspecified,
             themeSpec = this
         )
     }
@@ -530,7 +536,9 @@ fun KeyboardThemeSpec.toCustomThemeDef(): CustomThemeDef {
         suggestionBackground = suggestionBackground?.solidColor ?: (background.solidColor ?: if (isDark) "#1B1B1F" else "#F1F3F4"),
         suggestionForeground = suggestionForeground,
         keyPressedBackground = characterKey.pressedBackground ?: funcBg,
-        keyPressedForeground = characterKey.pressedForeground ?: charFg
+        keyPressedForeground = characterKey.pressedForeground ?: charFg,
+        flatKeyForeground = flatKeyLabelColor ?: characterKey.flatForeground,
+        activeOptionHighlightColor = activeOptionHighlightColor
     )
 }
 

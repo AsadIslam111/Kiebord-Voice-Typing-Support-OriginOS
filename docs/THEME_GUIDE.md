@@ -103,6 +103,8 @@ The transformed native Kiebord theme format retaining all modern design and rend
   },
   "accentColor": "#3B82F6",
   "shiftActiveColor": "#60A5FA",
+  "flatKeyLabelColor": "#E0E7FF",
+  "activeOptionHighlightColor": "#00E5FF",
   "suggestionBackground": {
     "solidColor": "#0F0C29"
   },
@@ -169,6 +171,8 @@ Kiebord's internal parser safely normalizes these formats without relying on pla
 | `pressedKeyColor` | `keyPressedBackground` | Keycap background when pressed |
 | `keyStrokeColor` | `keyBorder` | Separation stroke color around keycaps |
 | `keyShadowColor` | `keyShadow` | Keycap drop shadow color |
+| `flatKeyLabelColor` | `flatKeyForeground` | Key label color when key borders are disabled |
+| `activeOptionHighlightColor` | `activeOptionHighlightColor` | Highlight glow/border/icon tint for active toggleable toolbar options |
 | `stripColor` | `suggestionBackground` | Suggestion bar background |
 | `stripIcoColor` | `suggestionForeground` | Suggestion bar icons and candidate text color |
 

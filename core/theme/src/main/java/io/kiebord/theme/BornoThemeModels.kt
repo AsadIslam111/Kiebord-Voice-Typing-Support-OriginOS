@@ -50,7 +50,9 @@ data class BornoExportedTheme(
     val rgbEffect: Int = 0,
     val isFlat: Boolean = false,
     val isModern: Boolean = true,
-    val backgroundImageBase64: String? = null
+    val backgroundImageBase64: String? = null,
+    val flatKeyLabelColor: String? = null,
+    val activeOptionHighlightColor: String? = null
 )
 
 /**
@@ -121,7 +123,9 @@ data class CustomThemeDef(
     val suggestionBackground: String = containerBackground,
     val suggestionForeground: String = keyForeground,
     val keyPressedBackground: String = actionKeyBackground,
-    val keyPressedForeground: String = keyForeground
+    val keyPressedForeground: String = keyForeground,
+    val flatKeyForeground: String? = null,
+    val activeOptionHighlightColor: String? = null
 )
 
 object ThemeColorUtils {
@@ -313,7 +317,9 @@ object ThemeColorUtils {
             suggestionBackground = ThemeBackgroundSpec(solidColor = suggestionBackground),
             suggestionForeground = suggestionForeground,
             moreKeysBackground = moreKeysBackground,
-            guidelineColor = guidelineColor
+            guidelineColor = guidelineColor,
+            flatKeyLabelColor = flatKeyForeground,
+            activeOptionHighlightColor = activeOptionHighlightColor
         )
     }
 
@@ -693,7 +699,9 @@ object ThemeColorUtils {
             } else {
                 if (!popupColor.isNullOrBlank()) popupColor else keyColor
             },
-            guidelineColor = enterColor
+            guidelineColor = enterColor,
+            flatKeyLabelColor = flatKeyLabelColor,
+            activeOptionHighlightColor = activeOptionHighlightColor
         )
     }
 
@@ -755,7 +763,9 @@ object ThemeColorUtils {
             suggestionBackground = effStripBg,
             suggestionForeground = stripFg,
             keyPressedBackground = resolvedPressedBg,
-            keyPressedForeground = labelKeyColor
+            keyPressedForeground = labelKeyColor,
+            flatKeyForeground = flatKeyLabelColor,
+            activeOptionHighlightColor = activeOptionHighlightColor
         )
     }
 
@@ -854,6 +864,8 @@ object ThemeColorUtils {
             suggestionForeground = parseHexColor(suggestionForeground, darkDefault.suggestionForeground),
             keyPressedBackground = parseHexColor(keyPressedBackground, darkDefault.keyPressedBackground),
             keyPressedForeground = parseHexColor(keyPressedForeground, darkDefault.keyPressedForeground),
+            flatKeyForeground = flatKeyForeground?.let { parseHexColor(it) } ?: Color.Unspecified,
+            activeOptionHighlightColor = activeOptionHighlightColor?.let { parseHexColor(it) } ?: Color.Unspecified,
             themeSpec = spec
         )
     }

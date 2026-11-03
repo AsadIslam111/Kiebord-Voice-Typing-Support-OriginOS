@@ -26,8 +26,12 @@ data class KeyboardColorScheme(
     val suggestionForeground: Color,
     val keyPressedBackground: Color = Color.Unspecified,
     val keyPressedForeground: Color = Color.Unspecified,
+    val flatKeyForeground: Color = Color.Unspecified,
+    val activeOptionHighlightColor: Color = Color.Unspecified,
     val themeSpec: KeyboardThemeSpec? = null
 ) {
+    val effectiveActiveOptionHighlight: Color
+        get() = if (activeOptionHighlightColor != Color.Unspecified) activeOptionHighlightColor else accentColor
     fun resolveKeycapVisual(
         rowIndex: Int = 0,
         keyIndex: Int = 0,
@@ -88,9 +92,15 @@ data class KeyboardColorScheme(
             }
 
             val fgColor = when {
-                fgHex != null -> cachedParseHex(fgHex)
                 key.type == KeyType.ACTION -> actionKeyForeground
                 isPressed && keyPressedForeground != Color.Unspecified -> keyPressedForeground
+                !showKeyBorders && style.flatForeground != null -> cachedParseHex(style.flatForeground)
+                !showKeyBorders && flatKeyForeground != Color.Unspecified -> flatKeyForeground
+                !showKeyBorders -> {
+                    val baseFg = if (fgHex != null) cachedParseHex(fgHex) else keyForeground
+                    ThemeColorUtils.ensureContrast(baseFg, containerBackground)
+                }
+                fgHex != null -> cachedParseHex(fgHex)
                 else -> keyForeground
             }
 
@@ -185,6 +195,8 @@ data class KeyboardColorScheme(
         val fg = when {
             key.type == KeyType.ACTION -> actionKeyForeground
             isPressed && keyPressedForeground != Color.Unspecified -> keyPressedForeground
+            !showKeyBorders && flatKeyForeground != Color.Unspecified -> flatKeyForeground
+            !showKeyBorders -> ThemeColorUtils.ensureContrast(keyForeground, containerBackground)
             else -> keyForeground
         }
 

@@ -333,10 +333,10 @@ private fun ToolGridItem(
     onCoordinatesPositioned: ((LayoutCoordinates) -> Unit)? = null
 ) {
     val colorScheme = KiebordTheme.colorScheme
-    val optionLabelColor = if (isHovered || isActive) {
-        colorScheme.accentColor
-    } else {
-        ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.containerBackground)
+    val optionLabelColor = when {
+        isHovered -> colorScheme.accentColor
+        isActive -> colorScheme.effectiveActiveOptionHighlight
+        else -> ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.containerBackground)
     }
 
     Column(
@@ -363,24 +363,25 @@ private fun ToolGridItem(
                 .background(
                     when {
                         isHovered -> colorScheme.accentColor.copy(alpha = 0.25f)
-                        isActive -> colorScheme.accentColor.copy(alpha = 0.20f)
+                        isActive -> colorScheme.effectiveActiveOptionHighlight.copy(alpha = 0.20f)
                         else -> colorScheme.keyBackground
                     }
                 )
                 .border(
                     width = if (isDragging || isHovered || isActive) 1.5.dp else 0.dp,
                     color = when {
-                        isHovered || isDragging || isActive -> colorScheme.accentColor
+                        isHovered || isDragging -> colorScheme.accentColor
+                        isActive -> colorScheme.effectiveActiveOptionHighlight
                         else -> Color.Transparent
                     },
                     shape = RoundedCornerShape(14.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
-            val iconTint = if (isDragging || isHovered || isActive) {
-                colorScheme.accentColor
-            } else {
-                colorScheme.keyForeground
+            val iconTint = when {
+                isDragging || isHovered -> colorScheme.accentColor
+                isActive -> colorScheme.effectiveActiveOptionHighlight
+                else -> colorScheme.keyForeground
             }
             if (isHovered) {
                 Icon(

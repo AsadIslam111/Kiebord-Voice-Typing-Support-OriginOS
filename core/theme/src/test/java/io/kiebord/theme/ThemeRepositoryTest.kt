@@ -989,5 +989,119 @@ class ThemeRepositoryTest {
         assertEquals("Test Export Theme", parsedBack.name)
         assertEquals("#2196F3", parsedBack.accentColor)
     }
+
+    @Test
+    fun testFlatKeyLabelColorAndActiveOptionHighlightInV2() {
+        val themeJson = """
+            {
+              "schemaVersion": 2,
+              "id": "flat_test_v2",
+              "name": "Flat Test Theme",
+              "background": {
+                "solidColor": "#FFFFFF"
+              },
+              "characterKey": {
+                "background": "#000000",
+                "foreground": "#FFFFFF"
+              },
+              "accentColor": "#FF5722",
+              "flatKeyLabelColor": "#121212",
+              "activeOptionHighlightColor": "#00E5FF"
+            }
+        """.trimIndent()
+
+        val spec = json.decodeFromString<KeyboardThemeSpec>(themeJson)
+        assertEquals("#121212", spec.flatKeyLabelColor)
+        assertEquals("#00E5FF", spec.activeOptionHighlightColor)
+
+        val scheme = spec.toKeyboardColorScheme()
+        assertEquals(0x12 / 255f, scheme.flatKeyForeground.red, 0.02f)
+        assertEquals(0x00 / 255f, scheme.effectiveActiveOptionHighlight.red, 0.02f)
+        assertEquals(0xE5 / 255f, scheme.effectiveActiveOptionHighlight.green, 0.02f)
+        assertEquals(0xFF / 255f, scheme.effectiveActiveOptionHighlight.blue, 0.02f)
+
+        // When showKeyBorders = true -> foreground is standard characterKey.foreground (#FFFFFF)
+        val charKeyDef = io.kiebord.common.model.KeyDef(label = "a")
+        val borderedVisual = scheme.resolveKeycapVisual(key = charKeyDef, showKeyBorders = true)
+        assertEquals(1.0f, borderedVisual.foregroundColor.red, 0.01f)
+
+        // When showKeyBorders = false -> foreground is flatKeyForeground (#121212)
+        val flatVisual = scheme.resolveKeycapVisual(key = charKeyDef, showKeyBorders = false)
+        assertEquals(0x12 / 255f, flatVisual.foregroundColor.red, 0.02f)
+    }
+
+    @Test
+    fun testFlatKeyLabelColorAndActiveOptionHighlightInV1() {
+        val v1Json = """
+            {
+              "schemaVersion": 1,
+              "name": "V1 Flat Test",
+              "backgroundColor": "#FFFFFF",
+              "keyColor": "#000000",
+              "labelKeyColor": "#FFFFFF",
+              "functionalKeyColor": "#222222",
+              "labelFunctionalKeyColor": "#FFFFFF",
+              "enterColor": "#FF5722",
+              "flatKeyLabelColor": "#333333",
+              "activeOptionHighlightColor": "#4CAF50"
+            }
+        """.trimIndent()
+
+        val v1Theme = json.decodeFromString<BornoExportedTheme>(v1Json)
+        assertEquals("#333333", v1Theme.flatKeyLabelColor)
+        assertEquals("#4CAF50", v1Theme.activeOptionHighlightColor)
+
+        val customDef = with(ThemeColorUtils) { v1Theme.toCustomThemeDef() }
+        assertEquals("#333333", customDef.flatKeyForeground)
+        assertEquals("#4CAF50", customDef.activeOptionHighlightColor)
+
+        val scheme = with(ThemeColorUtils) { customDef.toKeyboardColorScheme() }
+        assertEquals(0x33 / 255f, scheme.flatKeyForeground.red, 0.02f)
+        assertEquals(0x4C / 255f, scheme.effectiveActiveOptionHighlight.red, 0.02f)
+    }
+
+    @Test
+    fun testAssetsSrcBornoThemeFilesParsing() {
+        val lightFile = java.io.File("../../assets-src/light.bornotheme").takeIf { it.exists() }
+            ?: java.io.File("../../assets-src/themes/light.bornotheme")
+        val darkFile = java.io.File("../../assets-src/dark.bornotheme").takeIf { it.exists() }
+            ?: java.io.File("../../assets-src/themes/dark.bornotheme")
+        val gradientBlurFile = java.io.File("../../assets-src/gradient_blur.bornotheme").takeIf { it.exists() }
+            ?: java.io.File("../../assets-src/themes/gradient_blur.bornotheme")
+
+        if (lightFile.exists()) {
+            val lightSpec = json.decodeFromString<KeyboardThemeSpec>(lightFile.readText())
+            assertEquals(2, lightSpec.schemaVersion)
+            assertEquals("Polar Light", lightSpec.name)
+            assertFalse(lightSpec.isDark)
+            assertNotNull(lightSpec.flatKeyLabelColor)
+            assertNotNull(lightSpec.activeOptionHighlightColor)
+            val lightScheme = lightSpec.toKeyboardColorScheme()
+            assertNotNull(lightScheme)
+        }
+
+        if (darkFile.exists()) {
+            val darkSpec = json.decodeFromString<KeyboardThemeSpec>(darkFile.readText())
+            assertEquals(2, darkSpec.schemaVersion)
+            assertEquals("Obsidian Dark", darkSpec.name)
+            assertTrue(darkSpec.isDark)
+            assertNotNull(darkSpec.flatKeyLabelColor)
+            assertNotNull(darkSpec.activeOptionHighlightColor)
+            val darkScheme = darkSpec.toKeyboardColorScheme()
+            assertNotNull(darkScheme)
+        }
+
+        if (gradientBlurFile.exists()) {
+            val gradSpec = json.decodeFromString<KeyboardThemeSpec>(gradientBlurFile.readText())
+            assertEquals(2, gradSpec.schemaVersion)
+            assertEquals("Aurora Blur", gradSpec.name)
+            assertTrue(gradSpec.isDark)
+            assertNotNull(gradSpec.background.gradient)
+            assertNotNull(gradSpec.flatKeyLabelColor)
+            assertNotNull(gradSpec.activeOptionHighlightColor)
+            val gradScheme = gradSpec.toKeyboardColorScheme()
+            assertNotNull(gradScheme)
+        }
+    }
 }
 

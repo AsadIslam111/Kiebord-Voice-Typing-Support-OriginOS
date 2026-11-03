@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "id": "aurora_blur",
+  "name": "Aurora Blur",
+  "author": "Kiebord",
+  "version": 1,
+  "isDark": true,
+  "background": {
+    "gradient": {
+      "type": "linear",
+      "colors": ["#0B0C1E", "#1E1338", "#112D3C"],
+      "stops": [0.0, 0.5, 1.0],
+      "angle": 140.0
+    }
+  },
+  "characterKey": {
+    "background": "#40FFFFFF",
+    "foreground": "#FFFFFF",
+    "stroke": {
+      "color": "#60FFFFFF",
+      "widthDp": 0.75,
+      "alpha": 0.5
+    },
+    "shadow": {
+      "color": "#33000000",
+      "elevationDp": 2.0
+    },
+    "cornerRadiusDp": 10.0,
+    "pressedBackground": "#66FFFFFF"
+  },
+  "functionalKey": {
+    "background": "#25FFFFFF",
+    "foreground": "#C7D2FE",
+    "stroke": {
+      "color": "#45FFFFFF",
+      "widthDp": 0.75,
+      "alpha": 0.4
+    },
+    "shadow": {
+      "color": "#26000000",
+      "elevationDp": 1.5
+    },
+    "cornerRadiusDp": 10.0,
+    "pressedBackground": "#45FFFFFF"
+  },
+  "actionKey": {
+    "background": "#EC4899",
+    "foreground": "#FFFFFF",
+    "isPill": true,
+    "pressedBackground": "#DB2777"
+  },
+  "spaceKey": {
+    "background": "#30FFFFFF",
+    "foreground": "#FFFFFF",
+    "cornerRadiusDp": 14.0,
+    "stroke": {
+      "color": "#50FFFFFF",
+      "widthDp": 0.75,
+      "alpha": 0.5
+    },
+    "shadow": {
+      "color": "#33000000",
+      "elevationDp": 2.0
+    }
+  },
+  "accentColor": "#EC4899",
+  "shiftActiveColor": "#F472B6",
+  "flatKeyLabelColor": "#FFFFFF",
+  "activeOptionHighlightColor": "#38BDF8",
+  "suggestionBackground": {
+    "solidColor": "#00000000"
+  },
+  "suggestionForeground": "#F3E8FF",
+  "moreKeysBackground": "#1E1338",
+  "guidelineColor": "#EC4899"
+}
+

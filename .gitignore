@@ -15,6 +15,11 @@ native/kiebord-engine/target/
 *.jks
 *.log
 .kotlin/
-assets-src/
+assets-src/*
+!assets-src/themes/
+!assets-src/*.bornotheme
+!assets-src/fonts/
+!assets-src/layouts/
+assets-src/layouts/*.md
 *.dict
 *.so
