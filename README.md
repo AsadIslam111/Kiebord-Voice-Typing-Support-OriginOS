@@ -31,7 +31,7 @@ Kiebord comes with the essential features you need for everyday typing, without 
 | English | QWERTY |
 | Arabic | Arabic (with dedicated Harakat / diacritics row) |
 
-*Custom layouts can also be added by placing JSON layout files in `assets/layouts/` or importing them via settings.*
+*Custom layouts can also be added by placing JSON layout files in `assets/layouts/`.*
 
 ### Input & Editing
 * **Gesture Typing**: Swipe-to-type support across supported layouts.
