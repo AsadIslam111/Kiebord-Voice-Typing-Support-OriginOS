@@ -4,6 +4,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,6 +56,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.min
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -80,6 +89,101 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+internal fun Modifier.verticalFadingEdge(
+    scrollState: ScrollState,
+    topEdgeHeight: Dp = 20.dp,
+    bottomEdgeHeight: Dp = 28.dp
+): Modifier = this
+    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithContent {
+        drawContent()
+        val topFadePx = min(topEdgeHeight.toPx(), scrollState.value.toFloat())
+        if (topFadePx > 0.5f) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Black, Color.Transparent),
+                    startY = 0f,
+                    endY = topFadePx
+                ),
+                topLeft = Offset.Zero,
+                size = Size(size.width, topFadePx),
+                blendMode = BlendMode.DstOut
+            )
+        }
+        val maxScroll = scrollState.maxValue
+        if (maxScroll in 1 until Int.MAX_VALUE) {
+            val remainingPx = (maxScroll - scrollState.value).coerceAtLeast(0).toFloat()
+            val bottomFadePx = min(bottomEdgeHeight.toPx(), remainingPx)
+            if (bottomFadePx > 0.5f) {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black),
+                        startY = size.height - bottomFadePx,
+                        endY = size.height
+                    ),
+                    topLeft = Offset(0f, size.height - bottomFadePx),
+                    size = Size(size.width, bottomFadePx),
+                    blendMode = BlendMode.DstOut
+                )
+            }
+        }
+    }
+
+internal fun Modifier.horizontalFadingEdge(
+    scrollState: ScrollState,
+    edgeWidth: Dp = 24.dp
+): Modifier = this
+    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithContent {
+        drawContent()
+        val maxEdgePx = edgeWidth.toPx()
+        val leftFadePx = min(maxEdgePx, scrollState.value.toFloat())
+        if (leftFadePx > 0.5f) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(Color.Black, Color.Transparent),
+                    startX = 0f,
+                    endX = leftFadePx
+                ),
+                topLeft = Offset.Zero,
+                size = Size(leftFadePx, size.height),
+                blendMode = BlendMode.DstOut
+            )
+        }
+        val maxScroll = scrollState.maxValue
+        if (maxScroll in 1 until Int.MAX_VALUE) {
+            val remainingPx = (maxScroll - scrollState.value).coerceAtLeast(0).toFloat()
+            val rightFadePx = min(maxEdgePx, remainingPx)
+            if (rightFadePx > 0.5f) {
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(Color.Transparent, Color.Black),
+                        startX = size.width - rightFadePx,
+                        endX = size.width
+                    ),
+                    topLeft = Offset(size.width - rightFadePx, 0f),
+                    size = Size(rightFadePx, size.height),
+                    blendMode = BlendMode.DstOut
+                )
+            }
+        }
+    }
+
+internal fun Modifier.verticalScrollWithFadingEdge(
+    scrollState: ScrollState,
+    topEdgeHeight: Dp = 20.dp,
+    bottomEdgeHeight: Dp = 28.dp
+): Modifier = this
+    .verticalFadingEdge(scrollState, topEdgeHeight, bottomEdgeHeight)
+    .verticalScroll(scrollState)
+
+internal fun Modifier.horizontalScrollWithFadingEdge(
+    scrollState: ScrollState,
+    edgeWidth: Dp = 24.dp
+): Modifier = this
+    .horizontalFadingEdge(scrollState, edgeWidth)
+    .horizontalScroll(scrollState)
 
 private enum class ItemPos { TOP, MIDDLE, BOTTOM, ALONE }
 
@@ -363,6 +467,7 @@ internal fun ThemeDesignerScreenContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .verticalFadingEdge(scrollState, topEdgeHeight = 20.dp, bottomEdgeHeight = 28.dp)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 28.dp)
@@ -732,7 +837,7 @@ internal fun ThemeDesignerScreenContent(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
+                            .horizontalScrollWithFadingEdge(rememberScrollState())
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -1135,7 +1240,7 @@ internal fun ThemeDesignerScreenContent(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
+                                        .horizontalScrollWithFadingEdge(rememberScrollState()),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     QuickOverrideTargets.forEach { (keyId, label) ->
@@ -1163,7 +1268,7 @@ internal fun ThemeDesignerScreenContent(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .horizontalScroll(rememberScrollState()),
+                                            .horizontalScrollWithFadingEdge(rememberScrollState()),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         state.perKeyOverrides.entries.forEach { (k, style) ->
@@ -1891,7 +1996,7 @@ private fun PresetPaletteStripRow(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
+                    .horizontalScrollWithFadingEdge(rememberScrollState())
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
