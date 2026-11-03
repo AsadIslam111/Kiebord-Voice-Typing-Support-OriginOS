@@ -83,6 +83,8 @@ data class KeyboardLayoutDef(
     val direction: String = "LTR",
     @kotlinx.serialization.json.JsonNames("gesture_mode", "gestureMode")
     val gestureMode: String? = null,
+    val processor: String? = null,
+    val rules: String? = null,
     val extraRows: List<LayoutExtraRow> = emptyList(),
     val numberRow: KeyRow? = null,
     val shiftedNumberRow: KeyRow? = null,

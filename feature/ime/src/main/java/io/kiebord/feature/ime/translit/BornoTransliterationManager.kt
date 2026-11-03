@@ -130,6 +130,77 @@ class BornoTransliterationManager(
     isAutoCorrectEnabled: Boolean = true
 ) : GenericTransliterationManager("bn_borno", inputConnectionProvider, isAutoCorrectEnabled)
 
+/**
+ * M17n rule-based input manager.
+ * Strictly executes the compiled m17n rules table and never applies phonetic heuristics.
+ */
+class M17nTransliterationManager(
+    override val layoutId: String,
+    private val inputConnectionProvider: () -> InputConnection?
+) : TransliterationManager {
+    private val buffer = StringBuilder()
+    private var cachedOutput: String = ""
+
+    override val isComposing: Boolean
+        get() = buffer.isNotEmpty()
+
+    override val currentRawInput: String
+        get() = buffer.toString()
+
+    override val currentTransliteration: String
+        get() = cachedOutput
+
+    override fun handleCharacter(char: String): Boolean {
+        if (!NativeEngine.isAvailable()) return false
+        val ic = inputConnectionProvider() ?: return false
+        buffer.append(char)
+        val transliterated = NativeEngine.transliterateM17n(layoutId, buffer.toString())
+        cachedOutput = transliterated
+        ic.setComposingText(transliterated, 1)
+        return true
+    }
+
+    override fun handleDelete(): Boolean {
+        if (!isComposing) return false
+        val ic = inputConnectionProvider() ?: return false
+        if (buffer.isNotEmpty()) {
+            val codePoint = buffer.codePointBefore(buffer.length)
+            val charCount = Character.charCount(codePoint)
+            buffer.delete(buffer.length - charCount, buffer.length)
+        }
+        if (buffer.isEmpty()) {
+            cachedOutput = ""
+            ic.setComposingText("", 1)
+            ic.finishComposingText()
+        } else {
+            val transliterated = NativeEngine.transliterateM17n(layoutId, buffer.toString())
+            cachedOutput = transliterated
+            ic.setComposingText(transliterated, 1)
+        }
+        return true
+    }
+
+    override fun commitCustom(text: String) {
+        val ic = inputConnectionProvider()
+        ic?.commitText(text, 1)
+        buffer.clear()
+        cachedOutput = ""
+    }
+
+    override fun finishComposing() {
+        if (!isComposing) return
+        val ic = inputConnectionProvider()
+        ic?.finishComposingText()
+        buffer.clear()
+        cachedOutput = ""
+    }
+
+    override fun reset() {
+        buffer.clear()
+        cachedOutput = ""
+    }
+}
+
 object TransliterationManagerFactory {
     private val phoneticLayoutCache = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
 
@@ -149,6 +220,9 @@ object TransliterationManagerFactory {
         isAutoCorrectEnabled: Boolean = true,
         inputConnectionProvider: () -> InputConnection?
     ): TransliterationManager {
+        if (layoutId == "khipro" || layoutId == "bn_khipro" || NativeEngine.isM17nLayoutReady(layoutId)) {
+            return M17nTransliterationManager(layoutId, inputConnectionProvider)
+        }
         return GenericTransliterationManager(layoutId, inputConnectionProvider, isAutoCorrectEnabled)
     }
 }

@@ -859,26 +859,6 @@ private fun LanguageSectionHeader(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(
-                    if (isAnyActive) colors.accent.copy(alpha = 0.15f)
-                    else colors.iconBackground
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = badgeText,
-                fontSize = if (badgeText.length > 3) 10.sp else 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isAnyActive) colors.accent else colors.textSecondary,
-                maxLines = 1
-            )
-        }
-
-        Spacer(modifier = Modifier.width(14.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

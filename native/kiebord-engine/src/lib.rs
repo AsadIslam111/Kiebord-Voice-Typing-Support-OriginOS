@@ -4,6 +4,7 @@ use jni::JNIEnv;
 
 pub mod dictionary;
 pub mod gesture;
+pub mod m17n;
 pub mod spatial;
 pub mod translit;
 
@@ -274,12 +275,21 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_transliterate(
         Err(_) => return env.new_string("").unwrap().into_raw(),
     };
 
+    // 1. If this is an m17n layout, strictly parse via m17n engine.
+    // It is NOT a phonetic layout and must never fall back to Borno/Avro phonetic.
+    if m17n::is_m17n_layout(&layout) {
+        let result = m17n::transliterate_m17n(&layout, &input_str).unwrap_or(input_str);
+        return env.new_string(result).unwrap().into_raw();
+    }
+
     if let Some(t) = translit::get_phonetic_transliterator(&layout) {
         let result = t.transliterate(&input_str);
         env.new_string(result).unwrap().into_raw()
-    } else {
+    } else if translit::is_phonetic_layout(&layout) {
         let result = BornoPhonetic::convert(&input_str);
         env.new_string(result).unwrap().into_raw()
+    } else {
+        env.new_string(input_str).unwrap().into_raw()
     }
 }
 
@@ -294,6 +304,61 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_isPhoneticLayout
         Err(_) => return 0,
     };
     if translit::is_phonetic_layout(&layout) { 1 } else { 0 }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_isM17nLayout(
+    mut env: JNIEnv,
+    _class: JClass,
+    layout_id: JString,
+) -> jboolean {
+    let layout: String = match env.get_string(&layout_id) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    if m17n::is_m17n_layout(&layout) { 1 } else { 0 }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_loadM17nRules(
+    mut env: JNIEnv,
+    _class: JClass,
+    layout_id: JString,
+    rules_content: JString,
+) -> jboolean {
+    let id_str: String = match env.get_string(&layout_id) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    let rules_str: String = match env.get_string(&rules_content) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+
+    match m17n::register_m17n_layout(&id_str, &rules_str) {
+        Ok(_) => 1,
+        Err(_) => 0,
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_transliterateM17n(
+    mut env: JNIEnv,
+    _class: JClass,
+    layout_id: JString,
+    input: JString,
+) -> jstring {
+    let id_str: String = match env.get_string(&layout_id) {
+        Ok(s) => s.into(),
+        Err(_) => return env.new_string("").unwrap().into_raw(),
+    };
+    let input_str: String = match env.get_string(&input) {
+        Ok(s) => s.into(),
+        Err(_) => return env.new_string("").unwrap().into_raw(),
+    };
+
+    let result = m17n::transliterate_m17n(&id_str, &input_str).unwrap_or_else(|| input_str);
+    env.new_string(result).unwrap().into_raw()
 }
 
 #[no_mangle]

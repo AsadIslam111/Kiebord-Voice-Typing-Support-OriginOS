@@ -85,14 +85,22 @@ class KiebordService : InputMethodService() {
     private var lastSpaceTapTime: Long = 0L
     private var lastAutoSpacePunctuationTime: Long = 0L
 
+    private fun isM17nLayout(): Boolean {
+        return activeLayout.processor == "m17n" ||
+                !activeLayout.rules.isNullOrBlank() ||
+                activeLayout.id == "khipro" ||
+                activeLayout.id == "bn_khipro" ||
+                NativeEngine.isM17nLayoutReady(activeLayout.id)
+    }
+
     private fun isTransliterationLayout(): Boolean {
         if (PredefinedLayouts.isNumberLayout(activeLayout.id)) return false
+        if (isM17nLayout()) return true
         return TransliterationManagerFactory.isTransliterationLayout(activeLayout.id)
     }
 
     private fun isPhoneticLayout(): Boolean {
-        return isTransliterationLayout() ||
-                activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO ||
+        return activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO ||
                 activeLayout.id == KiebordPreferences.LAYOUT_BN_AVRO ||
                 primaryAlphaLayout.id == KiebordPreferences.LAYOUT_BN_BORNO ||
                 primaryAlphaLayout.id == KiebordPreferences.LAYOUT_BN_AVRO
@@ -104,6 +112,14 @@ class KiebordService : InputMethodService() {
         if (activeLayout.id.startsWith("bn_") || primaryAlphaLayout.id.startsWith("bn_")) return false
         if (isUrlOrCodeField()) return false
         return true
+    }
+
+    private fun ensureLayoutProcessorInitialized(layout: KeyboardLayoutDef) {
+        if (layout.processor == "m17n" && !layout.rules.isNullOrBlank()) {
+            NativeEngine.ensureM17nInitialized(this@KiebordService, layout.id, layout.rules!!)
+        } else if (layout.id == "khipro" || layout.id == "bn_khipro") {
+            NativeEngine.ensureM17nInitialized(this@KiebordService, layout.id, "bn-khipro.classic.mim")
+        }
     }
 
     private fun getTransliterationManager(): TransliterationManager {
@@ -228,6 +244,7 @@ class KiebordService : InputMethodService() {
         val secondaryLang = if (initialLang == "bn") "en" else "bn"
         serviceScope.launch(Dispatchers.IO) {
             NativeEngine.ensureInitialized(this@KiebordService, initialLang)
+            ensureLayoutProcessorInitialized(primaryAlphaLayout)
             kotlinx.coroutines.withContext(Dispatchers.Main) {
                 updateSuggestions()
             }
@@ -646,6 +663,7 @@ class KiebordService : InputMethodService() {
         isBornoEasyKarMode = false
         bornoEasyTypedCluster = ""
         primaryAlphaLayout = layoutRepo.getLayout(layoutId)
+        ensureLayoutProcessorInitialized(primaryAlphaLayout)
         activeLayout = if (!isSymbolsMode) {
             primaryAlphaLayout
         } else {
@@ -1339,6 +1357,13 @@ class KiebordService : InputMethodService() {
     private fun isTransliterableChar(text: String): Boolean {
         if (text.length != 1) return false
         val c = text[0]
+        if (isM17nLayout()) {
+            return (c in 'a'..'z') || (c in 'A'..'Z') || (c in '0'..'9') ||
+                    c == '/' || c == '\\' || c == '.' || c == ':' || c == '$' ||
+                    c == '&' || c == '*' || c == '~' || c == '^' || c == '+' ||
+                    c == '-' || c == '_' || c == '\'' || c == '"' || c == '`' ||
+                    c == ';' || c == '?' || c == '!'
+        }
         return (c in 'a'..'z') || (c in 'A'..'Z')
     }
 

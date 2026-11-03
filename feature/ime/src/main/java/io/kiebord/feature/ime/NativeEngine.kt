@@ -42,7 +42,16 @@ object NativeEngine {
     external fun transliterate(layoutId: String, input: String): String
 
     @JvmStatic
+    external fun loadM17nRules(layoutId: String, rulesContent: String): Boolean
+
+    @JvmStatic
+    external fun transliterateM17n(layoutId: String, input: String): String
+
+    @JvmStatic
     external fun isPhoneticLayout(layoutId: String): Boolean
+
+    @JvmStatic
+    external fun isM17nLayout(layoutId: String): Boolean
 
     @JvmStatic
     external fun getSuggestions(prefix: String, lang: String, maxResults: Int): String
@@ -153,6 +162,54 @@ object NativeEngine {
                 initializedLangs.add(baseLang)
             }
         } catch (_: Throwable) {}
+    }
+
+    fun isM17nLayoutReady(layoutId: String): Boolean {
+        if (!isLoaded) return false
+        return initializedM17nLayouts.contains(layoutId) ||
+                initializedM17nLayouts.contains(layoutId.removePrefix("bn_")) ||
+                initializedM17nLayouts.contains("bn_$layoutId") ||
+                try { isM17nLayout(layoutId) } catch (_: Throwable) { false }
+    }
+
+    private val initializedM17nLayouts = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    @Synchronized
+    fun ensureM17nInitialized(context: android.content.Context, layoutId: String, rulesFileName: String): Boolean {
+        if (!isLoaded) return false
+        if (initializedM17nLayouts.contains(layoutId)) return true
+
+        return try {
+            val candidates = listOf(
+                "rules/$rulesFileName",
+                rulesFileName,
+                "rules/bn-khipro.classic.mim",
+                "bn-khipro.classic.mim"
+            )
+            var content: String? = null
+            for (candidate in candidates) {
+                try {
+                    context.assets.open(candidate).use { stream ->
+                        content = stream.bufferedReader(Charsets.UTF_8).readText()
+                    }
+                    if (!content.isNullOrBlank()) break
+                } catch (_: Throwable) {}
+            }
+
+            if (!content.isNullOrBlank()) {
+                val ok = loadM17nRules(layoutId, content!!)
+                if (ok) {
+                    initializedM17nLayouts.add(layoutId)
+                    initializedM17nLayouts.add(layoutId.removePrefix("bn_"))
+                    initializedM17nLayouts.add("bn_$layoutId")
+                }
+                ok
+            } else {
+                false
+            }
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     fun queryDictionaryMetadata(langOrPath: String): DictionaryMetadata? {

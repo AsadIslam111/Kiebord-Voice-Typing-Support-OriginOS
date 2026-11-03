@@ -1020,4 +1020,77 @@ class PredefinedLayoutsTest {
         assertEquals(listOf("‹", "≤", "«"), moreSym.rows[3].keys[2].moreKeys)
         assertEquals(listOf("›", "≥", "»"), moreSym.rows[3].keys[4].moreKeys)
     }
+
+    @Test
+    fun testKhiproJsonAssetIntegrity() {
+        val candidates = listOf(
+            java.io.File("../../feature/ime/src/main/assets/layouts/khipro.json"),
+            java.io.File("feature/ime/src/main/assets/layouts/khipro.json"),
+            java.io.File("../feature/ime/src/main/assets/layouts/khipro.json"),
+        )
+        val jsonFile = candidates.firstOrNull { it.exists() }
+        assertNotNull("khipro.json must exist in assets/layouts/", jsonFile)
+
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val layout = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(jsonFile!!.readText())
+
+        assertEquals("khipro", layout.id)
+        assertEquals("Khipro", layout.name)
+        assertEquals("Khipro", layout.displayName)
+        assertEquals("bn", layout.language)
+        assertEquals("LTR", layout.direction)
+        assertEquals("m17n", layout.processor)
+        assertEquals("bn-khipro.classic.mim", layout.rules)
+        assertTrue(layout.isQwertyBased())
+
+        // Verify exact EN QWERTY rows
+        val row1 = layout.rows[0].keys.map { it.label }
+        assertEquals(listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"), row1)
+
+        val row2 = layout.rows[1].keys.map { it.label }
+        assertEquals(listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"), row2)
+
+        // Verify row 3 (primary page) is shift-key-less with '/' replacing Shift
+        val slashKey = layout.rows[2].keys[0]
+        assertEquals("/", slashKey.label)
+        assertTrue(layout.rows[2].keys.none { it.type == io.kiebord.common.model.KeyType.SHIFT })
+        val row3Chars = layout.rows[2].keys.filter { it.type == io.kiebord.common.model.KeyType.CHARACTER }.map { it.label }
+        assertEquals(listOf("/", "z", "x", "c", "v", "b", "n", "m"), row3Chars)
+
+        // Verify bottom row has ';' and '।' (dari) to the right of spacebar
+        val spaceIdx = layout.rows[3].keys.indexOfFirst { it.type == io.kiebord.common.model.KeyType.SPACE }
+        assertTrue("Space key must exist in bottom row", spaceIdx >= 0)
+        val rightKeys = layout.rows[3].keys.drop(spaceIdx + 1)
+        val semicolonKey = rightKeys.find { it.label == ";" }
+        assertNotNull("; key must exist to the right of space", semicolonKey)
+        val dariKey = rightKeys.find { it.label == "।" }
+        assertNotNull("Dari key (।) must exist to the right of space", dariKey)
+        assertEquals(9, dariKey!!.moreKeysColumns)
+        val expectedDariMoreKeys = listOf(".", ",", "?", "!", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "%", "&")
+        assertEquals(expectedDariMoreKeys, dariKey.moreKeys)
+
+        // Verify full symbolsLayout as QWERTY
+        val sym = layout.symbolsLayout
+        assertNotNull("symbolsLayout must be present", sym)
+        assertEquals("symbols_1", sym!!.id)
+        assertEquals(4, sym.rows.size)
+        assertEquals(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), sym.rows[0].keys.map { it.label })
+
+        // Verify full moreSymbolsLayout as QWERTY
+        val moreSym = layout.moreSymbolsLayout
+        assertNotNull("moreSymbolsLayout must be present", moreSym)
+        assertEquals("symbols_2", moreSym!!.id)
+        assertEquals(4, moreSym.rows.size)
+        assertEquals(listOf("~", "`", "|", "•", "√", "π", "÷", "×", "¶", "∆"), moreSym.rows[0].keys.map { it.label })
+
+        // Verify rules file exists in assets
+        val rulesCandidates = listOf(
+            java.io.File("../../feature/ime/src/main/assets/rules/bn-khipro.classic.mim"),
+            java.io.File("feature/ime/src/main/assets/rules/bn-khipro.classic.mim"),
+            java.io.File("../feature/ime/src/main/assets/rules/bn-khipro.classic.mim"),
+        )
+        val rulesFile = rulesCandidates.firstOrNull { it.exists() }
+        assertNotNull("bn-khipro.classic.mim must exist in assets/rules/", rulesFile)
+        assertTrue("rules file must not be empty", rulesFile!!.length() > 0)
+    }
 }

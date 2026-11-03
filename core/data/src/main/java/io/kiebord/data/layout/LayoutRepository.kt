@@ -74,17 +74,22 @@ class LayoutRepository private constructor(private val context: Context) {
         }
 
         // 2. Check bundled assets
-        try {
-            val assetPath = "layouts/$id.json"
-            context.assets.open(assetPath).use { stream ->
-                val content = stream.bufferedReader(Charsets.UTF_8).readText()
-                val layout = json.decodeFromString<KeyboardLayoutDef>(content)
-                cache[id] = layout
-                layout.effectiveSymbolsLayout()?.let { cache[it.id] = it }
-                layout.effectiveMoreSymbolsLayout()?.let { cache[it.id] = it }
-                return layout
-            }
-        } catch (_: Exception) {}
+        val candidates = listOf(id, id.removePrefix("bn_"), "bn_$id").distinct()
+        for (name in candidates) {
+            try {
+                val assetPath = "layouts/$name.json"
+                context.assets.open(assetPath).use { stream ->
+                    val content = stream.bufferedReader(Charsets.UTF_8).readText()
+                    val layout = json.decodeFromString<KeyboardLayoutDef>(content)
+                    cache[id] = layout
+                    cache[layout.id] = layout
+                    cache[name] = layout
+                    layout.effectiveSymbolsLayout()?.let { cache[it.id] = it }
+                    layout.effectiveMoreSymbolsLayout()?.let { cache[it.id] = it }
+                    return layout
+                }
+            } catch (_: Exception) {}
+        }
 
         // 3. Fallback to PredefinedLayouts
         val fallback = PredefinedLayouts.fromId(id)
