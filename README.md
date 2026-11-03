@@ -3,6 +3,14 @@
 <img width="128" height="128" alt="Kiebord" src="https://github.com/user-attachments/assets/346d3099-7f42-462a-931c-959a216ebccc" />
 </p>
 
+
+<table>
+  <tr>
+<td><img width="512" alt="borno-phonetic" src="https://github.com/user-attachments/assets/35c84108-40bb-4f04-99e7-04c9f9d58019" /></td>
+<td><img width="512" alt="national" src="https://github.com/user-attachments/assets/ce2f1910-4eb1-4d67-8f2b-b00b0153ae72" /></td>
+  </tr>
+</table>
+
 [![CI Build](https://github.com/JayedAhsan/Kiebord/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/JayedAhsan/Kiebord/actions/workflows/publish.yml)
 [![Latest Release](https://img.shields.io/github/v/release/JayedAhsan/Kiebord?include_prereleases&label=Latest%20Release)](https://github.com/JayedAhsan/Kiebord/releases)
 [![Android](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2024%2B)-blue)](https://developer.android.com)
