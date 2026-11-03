@@ -862,4 +862,160 @@ class PredefinedLayoutsTest {
             PredefinedLayouts.resolveNumberLayout(android.text.InputType.TYPE_CLASS_TEXT, 0)
         )
     }
+
+    @Test
+    fun testBornoMathJsonLayoutValidation() {
+        val jsonFile = java.io.File("../../feature/ime/src/main/assets/layouts/borno_math.json")
+        assertTrue("borno_math.json must exist in assets/layouts/", jsonFile.exists())
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val mathLayout = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(jsonFile.readText())
+
+        assertEquals("borno_math", mathLayout.id)
+        assertEquals("Borno Math", mathLayout.name)
+        assertEquals("Borno Math", mathLayout.displayName)
+        assertEquals("en", mathLayout.language)
+        assertEquals("LTR", mathLayout.direction)
+
+        // Validate number row
+        val numRow = mathLayout.numberRow
+        assertNotNull("numberRow must be defined", numRow)
+        assertEquals(10, numRow!!.keys.size)
+        val superscripts = listOf("¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "⁰")
+        for (i in 0 until 10) {
+            assertEquals(superscripts[i], numRow.keys[i].flickUp)
+        }
+        assertEquals(listOf("¹", "₁", "½", "⅓", "¼", "⅛"), numRow.keys[0].moreKeys)
+        assertEquals(listOf("²", "₂", "⅔"), numRow.keys[1].moreKeys)
+        assertEquals(listOf("³", "₃", "¾", "⅜"), numRow.keys[2].moreKeys)
+        assertEquals(listOf("⁴", "₄"), numRow.keys[3].moreKeys)
+        assertEquals(listOf("⁵", "₅", "⅝"), numRow.keys[4].moreKeys)
+        assertEquals(listOf("⁶", "₆"), numRow.keys[5].moreKeys)
+        assertEquals(listOf("⁷", "₇", "⅞"), numRow.keys[6].moreKeys)
+        assertEquals(listOf("⁸", "₈"), numRow.keys[7].moreKeys)
+        assertEquals(listOf("⁹", "₉"), numRow.keys[8].moreKeys)
+        assertEquals(listOf("⁰", "₀", "ⁿ", "∅"), numRow.keys[9].moreKeys)
+
+        // Validate 4 main rows
+        assertEquals(4, mathLayout.rows.size)
+
+        // Row 0: q..p with math flick-ups and exact morekeys
+        val r0 = mathLayout.rows[0].keys
+        assertEquals(10, r0.size)
+        val r0FlickUps = listOf("θ", "∧", "ε", "ρ", "τ", "ψ", "∪", "∫", "ω", "π")
+        for (i in 0 until 10) {
+            assertEquals(r0FlickUps[i], r0[i].flickUp)
+            assertEquals(1.0f, r0[i].widthWeight, 0.01f)
+        }
+        assertEquals(listOf("θ", "Θ", "¹", "₁"), r0[0].moreKeys)
+        assertEquals(listOf("∧", "ʷ", "²", "₂"), r0[1].moreKeys)
+        assertEquals(listOf("ε", "∃", "ᵉ", "ₑ", "³", "₃"), r0[2].moreKeys)
+        assertEquals(listOf("ρ", "ʳ", "ᵣ", "⁴", "₄"), r0[3].moreKeys)
+        assertEquals(listOf("τ", "×", "tan", "ᵗ", "ₜ", "⁵", "₅"), r0[4].moreKeys)
+        assertEquals(listOf("ψ", "ʸ", "⁶", "₆"), r0[5].moreKeys)
+        assertEquals(listOf("∪", "ᵘ", "ᵤ", "⁷", "₇"), r0[6].moreKeys)
+        assertEquals(listOf("∫", "∞", "∈", "ⁱ", "ᵢ", "⁸", "₈"), r0[7].moreKeys)
+        assertEquals(listOf("ω", "Ω", "∘", "ᵒ", "ₒ", "⁹", "₉"), r0[8].moreKeys)
+        assertEquals(listOf("π", "∂", "∏", "ᵖ", "ₚ", "⁰", "₀"), r0[9].moreKeys)
+
+        // Row 1: a..l with math flick-ups and 0.5 side padding
+        val r1 = mathLayout.rows[1]
+        assertEquals(9, r1.keys.size)
+        assertEquals(0.5f, r1.startPaddingWeight, 0.01f)
+        assertEquals(0.5f, r1.endPaddingWeight, 0.01f)
+        val r1FlickUps = listOf("α", "σ", "δ", "φ", "γ", "ℏ", "ȷ", "κ", "λ")
+        for (i in 0 until 9) {
+            assertEquals(r1FlickUps[i], r1.keys[i].flickUp)
+            assertEquals(1.0f, r1.keys[i].widthWeight, 0.01f)
+        }
+        val r1TotalWidth = r1.startPaddingWeight + r1.keys.sumOf { it.widthWeight.toDouble() } + r1.endPaddingWeight
+        assertEquals(10.0, r1TotalWidth, 0.01)
+
+        // Row 2: Shift + z..m + Delete
+        val r2 = mathLayout.rows[2].keys
+        assertEquals(9, r2.size)
+        assertEquals(KeyType.SHIFT, r2[0].type)
+        assertEquals(1.5f, r2[0].widthWeight, 0.01f)
+        val r2FlickUps = listOf("ζ", "×", "cos", "∨", "β", "∇", "μ")
+        for (i in 0 until 7) {
+            assertEquals(r2FlickUps[i], r2[i + 1].flickUp)
+            assertEquals(1.0f, r2[i + 1].widthWeight, 0.01f)
+        }
+        assertEquals(KeyType.DELETE, r2[8].type)
+        assertEquals(1.5f, r2[8].widthWeight, 0.01f)
+        val r2TotalWidth = r2.sumOf { it.widthWeight.toDouble() }
+        assertEquals(10.0, r2TotalWidth, 0.01)
+
+        // Row 3: ?123, comma, globe, space (4.0), period, enter
+        val r3 = mathLayout.rows[3].keys
+        assertEquals(6, r3.size)
+        assertEquals(KeyType.SYMBOLS, r3[0].type)
+        assertEquals(1.5f, r3[0].widthWeight, 0.01f)
+        assertEquals(listOf("ACTION_SETTINGS", "ACTION_ONE_HANDED"), r3[1].moreKeys)
+        assertEquals(KeyType.SWITCH_LANGUAGE, r3[2].type)
+        assertEquals(KeyType.SPACE, r3[3].type)
+        assertEquals(4.0f, r3[3].widthWeight, 0.01f)
+        assertEquals(".", r3[4].label)
+        assertEquals(8, r3[4].moreKeysColumns)
+        assertEquals(
+            listOf(",", "?", "!", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "%", "&"),
+            r3[4].moreKeys
+        )
+        assertEquals(KeyType.ACTION, r3[5].type)
+        assertEquals(1.5f, r3[5].widthWeight, 0.01f)
+        assertEquals(listOf("ACTION_EMOJI"), r3[5].moreKeys)
+        val r3TotalWidth = r3.sumOf { it.widthWeight.toDouble() }
+        assertEquals(10.0, r3TotalWidth, 0.01)
+
+        // Validate symbolsLayout (?123)
+        val sym = mathLayout.effectiveSymbolsLayout()
+        assertNotNull("symbolsLayout must be present", sym)
+        assertEquals("borno_math_symbols", sym!!.id)
+        assertTrue(sym.isSymbolsLayout())
+        assertEquals(4, sym.rows.size)
+        assertEquals(10, sym.rows[0].keys.size)
+        assertEquals(listOf("¹", "½"), sym.rows[0].keys[0].moreKeys)
+        assertEquals(listOf("²"), sym.rows[0].keys[1].moreKeys)
+        assertEquals(listOf("³", "¾"), sym.rows[0].keys[2].moreKeys)
+        assertEquals(listOf("⁴", "¼"), sym.rows[0].keys[3].moreKeys)
+        assertEquals(listOf("⁵"), sym.rows[0].keys[4].moreKeys)
+        assertEquals(listOf("⁶"), sym.rows[0].keys[5].moreKeys)
+        assertEquals(listOf("⁷"), sym.rows[0].keys[6].moreKeys)
+        assertEquals(listOf("⁸"), sym.rows[0].keys[7].moreKeys)
+        assertEquals(listOf("⁹"), sym.rows[0].keys[8].moreKeys)
+        assertEquals(listOf("⁰"), sym.rows[0].keys[9].moreKeys)
+        assertEquals("±", sym.rows[1].keys[0].label)
+        assertEquals(listOf("+", "⁺", "⁻"), sym.rows[1].keys[0].moreKeys)
+        assertEquals(listOf("*"), sym.rows[1].keys[1].moreKeys)
+        assertEquals(listOf("/"), sym.rows[1].keys[2].moreKeys)
+        assertEquals(listOf("~"), sym.rows[1].keys[3].moreKeys)
+        assertEquals(listOf("≠", "⁼"), sym.rows[1].keys[4].moreKeys)
+        assertEquals(listOf("<"), sym.rows[1].keys[5].moreKeys)
+        assertEquals(listOf(">"), sym.rows[1].keys[6].moreKeys)
+        assertTrue(sym.rows[1].keys[7].moreKeys.isEmpty())
+        assertTrue(sym.rows[1].keys[8].moreKeys.isEmpty())
+        assertEquals(listOf("∬", "∭", "∮"), sym.rows[1].keys[9].moreKeys)
+        assertEquals("=\\<", sym.rows[2].keys[0].label)
+        assertEquals(KeyType.SYMBOLS, sym.rows[2].keys[0].type)
+        assertEquals("∇", sym.rows[2].keys[1].label)
+        assertEquals(KeyType.DELETE, sym.rows[2].keys[8].type)
+        assertEquals("ABC", sym.rows[3].keys[0].label)
+        assertEquals(KeyType.SPACE, sym.rows[3].keys[3].type)
+
+        // Validate moreSymbolsLayout (=\<)
+        val moreSym = mathLayout.effectiveMoreSymbolsLayout()
+        assertNotNull("moreSymbolsLayout must be present", moreSym)
+        assertEquals("borno_math_symbols_2", moreSym!!.id)
+        assertTrue(moreSym.isSymbolsLayout())
+        assertEquals(4, moreSym.rows.size)
+        assertEquals("∈", moreSym.rows[0].keys[0].label)
+        assertEquals("∅", moreSym.rows[1].keys[0].label)
+        assertEquals(0.5f, moreSym.rows[1].startPaddingWeight, 0.01f)
+        assertEquals("?123", moreSym.rows[2].keys[0].label)
+        assertEquals(KeyType.SYMBOLS, moreSym.rows[2].keys[0].type)
+        assertEquals("∯", moreSym.rows[2].keys[1].label)
+        assertEquals(KeyType.DELETE, moreSym.rows[2].keys[8].type)
+        assertEquals("ABC", moreSym.rows[3].keys[0].label)
+        assertEquals(listOf("‹", "≤", "«"), moreSym.rows[3].keys[2].moreKeys)
+        assertEquals(listOf("›", "≥", "»"), moreSym.rows[3].keys[4].moreKeys)
+    }
 }

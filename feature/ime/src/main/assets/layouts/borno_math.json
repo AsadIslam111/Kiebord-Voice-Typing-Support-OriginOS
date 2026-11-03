@@ -1,0 +1,871 @@
+{
+  "id": "borno_math",
+  "name": "Borno Math",
+  "displayName": "Borno Math",
+  "language": "en",
+  "direction": "LTR",
+  "numberRow": {
+    "keys": [
+      {
+        "label": "1",
+        "shiftedLabel": "!",
+        "flickUp": "¹",
+        "moreKeys": [
+          "¹",
+          "₁",
+          "½",
+          "⅓",
+          "¼",
+          "⅛"
+        ]
+      },
+      {
+        "label": "2",
+        "shiftedLabel": "@",
+        "flickUp": "²",
+        "moreKeys": [
+          "²",
+          "₂",
+          "⅔"
+        ]
+      },
+      {
+        "label": "3",
+        "shiftedLabel": "#",
+        "flickUp": "³",
+        "moreKeys": [
+          "³",
+          "₃",
+          "¾",
+          "⅜"
+        ]
+      },
+      {
+        "label": "4",
+        "shiftedLabel": "$",
+        "flickUp": "⁴",
+        "moreKeys": [
+          "⁴",
+          "₄"
+        ]
+      },
+      {
+        "label": "5",
+        "shiftedLabel": "%",
+        "flickUp": "⁵",
+        "moreKeys": [
+          "⁵",
+          "₅",
+          "⅝"
+        ]
+      },
+      {
+        "label": "6",
+        "shiftedLabel": "^",
+        "flickUp": "⁶",
+        "moreKeys": [
+          "⁶",
+          "₆"
+        ]
+      },
+      {
+        "label": "7",
+        "shiftedLabel": "&",
+        "flickUp": "⁷",
+        "moreKeys": [
+          "⁷",
+          "₇",
+          "⅞"
+        ]
+      },
+      {
+        "label": "8",
+        "shiftedLabel": "*",
+        "flickUp": "⁸",
+        "moreKeys": [
+          "⁸",
+          "₈"
+        ]
+      },
+      {
+        "label": "9",
+        "shiftedLabel": "(",
+        "flickUp": "⁹",
+        "moreKeys": [
+          "⁹",
+          "₉"
+        ]
+      },
+      {
+        "label": "0",
+        "shiftedLabel": ")",
+        "flickUp": "⁰",
+        "moreKeys": [
+          "⁰",
+          "₀",
+          "ⁿ",
+          "∅"
+        ]
+      }
+    ]
+  },
+  "rows": [
+    {
+      "keys": [
+        {
+          "label": "q",
+          "shiftedLabel": "Q",
+          "flickUp": "θ",
+          "moreKeys": [
+            "θ",
+            "Θ",
+            "¹",
+            "₁"
+          ]
+        },
+        {
+          "label": "w",
+          "shiftedLabel": "W",
+          "flickUp": "∧",
+          "moreKeys": [
+            "∧",
+            "ʷ",
+            "²",
+            "₂"
+          ]
+        },
+        {
+          "label": "e",
+          "shiftedLabel": "E",
+          "flickUp": "ε",
+          "moreKeys": [
+            "ε",
+            "∃",
+            "ᵉ",
+            "ₑ",
+            "³",
+            "₃"
+          ]
+        },
+        {
+          "label": "r",
+          "shiftedLabel": "R",
+          "flickUp": "ρ",
+          "moreKeys": [
+            "ρ",
+            "ʳ",
+            "ᵣ",
+            "⁴",
+            "₄"
+          ]
+        },
+        {
+          "label": "t",
+          "shiftedLabel": "T",
+          "flickUp": "τ",
+          "moreKeys": [
+            "τ",
+            "×",
+            "tan",
+            "ᵗ",
+            "ₜ",
+            "⁵",
+            "₅"
+          ]
+        },
+        {
+          "label": "y",
+          "shiftedLabel": "Y",
+          "flickUp": "ψ",
+          "moreKeys": [
+            "ψ",
+            "ʸ",
+            "⁶",
+            "₆"
+          ]
+        },
+        {
+          "label": "u",
+          "shiftedLabel": "U",
+          "flickUp": "∪",
+          "moreKeys": [
+            "∪",
+            "ᵘ",
+            "ᵤ",
+            "⁷",
+            "₇"
+          ]
+        },
+        {
+          "label": "i",
+          "shiftedLabel": "I",
+          "flickUp": "∫",
+          "moreKeys": [
+            "∫",
+            "∞",
+            "∈",
+            "ⁱ",
+            "ᵢ",
+            "⁸",
+            "₈"
+          ]
+        },
+        {
+          "label": "o",
+          "shiftedLabel": "O",
+          "flickUp": "ω",
+          "moreKeys": [
+            "ω",
+            "Ω",
+            "∘",
+            "ᵒ",
+            "ₒ",
+            "⁹",
+            "₉"
+          ]
+        },
+        {
+          "label": "p",
+          "shiftedLabel": "P",
+          "flickUp": "π",
+          "moreKeys": [
+            "π",
+            "∂",
+            "∏",
+            "ᵖ",
+            "ₚ",
+            "⁰",
+            "₀"
+          ]
+        }
+      ]
+    },
+    {
+      "startPaddingWeight": 0.5,
+      "endPaddingWeight": 0.5,
+      "keys": [
+        {
+          "label": "a",
+          "shiftedLabel": "A",
+          "flickUp": "α",
+          "moreKeys": [
+            "α",
+            "≈",
+            "∀",
+            "ᵃ",
+            "ₐ"
+          ]
+        },
+        {
+          "label": "s",
+          "shiftedLabel": "S",
+          "flickUp": "σ",
+          "moreKeys": [
+            "σ",
+            "∑",
+            "√",
+            "sin",
+            "ˢ",
+            "ₛ"
+          ]
+        },
+        {
+          "label": "d",
+          "shiftedLabel": "D",
+          "flickUp": "δ",
+          "moreKeys": [
+            "δ",
+            "Δ",
+            "°",
+            "ᵈ"
+          ]
+        },
+        {
+          "label": "f",
+          "shiftedLabel": "F",
+          "flickUp": "φ",
+          "moreKeys": [
+            "φ",
+            "ϕ",
+            "f"
+          ]
+        },
+        {
+          "label": "g",
+          "shiftedLabel": "G",
+          "flickUp": "γ",
+          "moreKeys": [
+            "γ",
+            "Γ",
+            "ᵍ"
+          ]
+        },
+        {
+          "label": "h",
+          "shiftedLabel": "H",
+          "flickUp": "ℏ",
+          "moreKeys": [
+            "ℏ",
+            "ʰ",
+            "ₕ"
+          ]
+        },
+        {
+          "label": "j",
+          "shiftedLabel": "J",
+          "flickUp": "ȷ",
+          "moreKeys": [
+            "ȷ",
+            "ʲ",
+            "ⱼ"
+          ]
+        },
+        {
+          "label": "k",
+          "shiftedLabel": "K",
+          "flickUp": "κ",
+          "moreKeys": [
+            "κ",
+            "ᵏ",
+            "ₖ"
+          ]
+        },
+        {
+          "label": "l",
+          "shiftedLabel": "L",
+          "flickUp": "λ",
+          "moreKeys": [
+            "λ",
+            "lim",
+            "ˡ",
+            "ₗ"
+          ]
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "type": "SHIFT",
+          "icon": "shift",
+          "widthWeight": 1.5
+        },
+        {
+          "label": "z",
+          "shiftedLabel": "Z",
+          "flickUp": "ζ",
+          "moreKeys": [
+            "ACTION_SELECT_ALL",
+            "ζ",
+            "ᶻ"
+          ]
+        },
+        {
+          "label": "x",
+          "shiftedLabel": "X",
+          "flickUp": "×",
+          "moreKeys": [
+            "ACTION_CUT",
+            "×",
+            "ˣ",
+            "ₓ"
+          ]
+        },
+        {
+          "label": "c",
+          "shiftedLabel": "C",
+          "flickUp": "cos",
+          "moreKeys": [
+            "ACTION_COPY",
+            "cos",
+            "χ",
+            "ᶜ"
+          ]
+        },
+        {
+          "label": "v",
+          "shiftedLabel": "V",
+          "flickUp": "∨",
+          "moreKeys": [
+            "ACTION_PASTE",
+            "∨",
+            "ᵛ",
+            "ᵥ"
+          ]
+        },
+        {
+          "label": "b",
+          "shiftedLabel": "B",
+          "flickUp": "β",
+          "moreKeys": [
+            "β",
+            "ᵇ"
+          ]
+        },
+        {
+          "label": "n",
+          "shiftedLabel": "N",
+          "flickUp": "∇",
+          "moreKeys": [
+            "∇",
+            "≠",
+            "ⁿ",
+            "ₙ"
+          ]
+        },
+        {
+          "label": "m",
+          "shiftedLabel": "M",
+          "flickUp": "μ",
+          "moreKeys": [
+            "μ",
+            "ᵐ",
+            "ₘ"
+          ]
+        },
+        {
+          "type": "DELETE",
+          "icon": "backspace",
+          "widthWeight": 1.5
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "?123",
+          "type": "SYMBOLS",
+          "widthWeight": 1.5,
+          "slidingInput": true
+        },
+        {
+          "label": ",",
+          "widthWeight": 1.0,
+          "moreKeys": [
+            "ACTION_SETTINGS",
+            "ACTION_ONE_HANDED"
+          ]
+        },
+        {
+          "type": "SWITCH_LANGUAGE",
+          "icon": "globe",
+          "widthWeight": 1.0
+        },
+        {
+          "label": " ",
+          "type": "SPACE",
+          "icon": "space",
+          "widthWeight": 4.0
+        },
+        {
+          "label": ".",
+          "widthWeight": 1.0,
+          "moreKeysColumns": 8,
+          "moreKeys": [
+            ",",
+            "?",
+            "!",
+            "#",
+            ")",
+            "(",
+            "/",
+            ";",
+            "'",
+            "@",
+            ":",
+            "-",
+            "\"",
+            "+",
+            "%",
+            "&"
+          ]
+        },
+        {
+          "type": "ACTION",
+          "icon": "enter",
+          "widthWeight": 1.5,
+          "moreKeys": [
+            "ACTION_EMOJI"
+          ]
+        }
+      ]
+    }
+  ],
+  "symbolsLayout": {
+    "id": "borno_math_symbols",
+    "name": "Symbols",
+    "language": "sym",
+    "direction": "LTR",
+    "rows": [
+      {
+        "keys": [
+          {
+            "label": "1",
+            "moreKeys": [
+              "¹",
+              "½"
+            ]
+          },
+          {
+            "label": "2",
+            "moreKeys": [
+              "²"
+            ]
+          },
+          {
+            "label": "3",
+            "moreKeys": [
+              "³",
+              "¾"
+            ]
+          },
+          {
+            "label": "4",
+            "moreKeys": [
+              "⁴",
+              "¼"
+            ]
+          },
+          {
+            "label": "5",
+            "moreKeys": [
+              "⁵"
+            ]
+          },
+          {
+            "label": "6",
+            "moreKeys": [
+              "⁶"
+            ]
+          },
+          {
+            "label": "7",
+            "moreKeys": [
+              "⁷"
+            ]
+          },
+          {
+            "label": "8",
+            "moreKeys": [
+              "⁸"
+            ]
+          },
+          {
+            "label": "9",
+            "moreKeys": [
+              "⁹"
+            ]
+          },
+          {
+            "label": "0",
+            "moreKeys": [
+              "⁰"
+            ]
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "±",
+            "moreKeys": [
+              "+",
+              "⁺",
+              "⁻"
+            ]
+          },
+          {
+            "label": "×",
+            "moreKeys": [
+              "*"
+            ]
+          },
+          {
+            "label": "÷",
+            "moreKeys": [
+              "/"
+            ]
+          },
+          {
+            "label": "≈",
+            "moreKeys": [
+              "~"
+            ]
+          },
+          {
+            "label": "=",
+            "moreKeys": [
+              "≠",
+              "⁼"
+            ]
+          },
+          {
+            "label": "≤",
+            "moreKeys": [
+              "<"
+            ]
+          },
+          {
+            "label": "≥",
+            "moreKeys": [
+              ">"
+            ]
+          },
+          {
+            "label": "√"
+          },
+          {
+            "label": "∞"
+          },
+          {
+            "label": "∫",
+            "moreKeys": [
+              "∬",
+              "∭",
+              "∮"
+            ]
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "=\\<",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": "∇"
+          },
+          {
+            "label": "∑"
+          },
+          {
+            "label": "∏"
+          },
+          {
+            "label": "∂"
+          },
+          {
+            "label": "π"
+          },
+          {
+            "label": "e"
+          },
+          {
+            "label": "i"
+          },
+          {
+            "type": "DELETE",
+            "icon": "backspace",
+            "widthWeight": 1.5
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "ABC",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": ",",
+            "widthWeight": 1.0
+          },
+          {
+            "label": "_",
+            "widthWeight": 1.0
+          },
+          {
+            "label": " ",
+            "type": "SPACE",
+            "icon": "space",
+            "widthWeight": 3.0
+          },
+          {
+            "label": "/",
+            "widthWeight": 1.0
+          },
+          {
+            "label": ".",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "…"
+            ]
+          },
+          {
+            "type": "ACTION",
+            "icon": "enter",
+            "widthWeight": 1.5,
+            "moreKeys": [
+              "ACTION_EMOJI"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "moreSymbolsLayout": {
+    "id": "borno_math_symbols_2",
+    "name": "More Symbols",
+    "language": "sym",
+    "direction": "LTR",
+    "rows": [
+      {
+        "keys": [
+          {
+            "label": "∈"
+          },
+          {
+            "label": "∉"
+          },
+          {
+            "label": "⊂"
+          },
+          {
+            "label": "⊃"
+          },
+          {
+            "label": "∪"
+          },
+          {
+            "label": "∩"
+          },
+          {
+            "label": "∧"
+          },
+          {
+            "label": "∨"
+          },
+          {
+            "label": "∴"
+          },
+          {
+            "label": "∵"
+          }
+        ]
+      },
+      {
+        "startPaddingWeight": 0.5,
+        "endPaddingWeight": 0.5,
+        "keys": [
+          {
+            "label": "∅"
+          },
+          {
+            "label": "∀"
+          },
+          {
+            "label": "∃"
+          },
+          {
+            "label": "∠"
+          },
+          {
+            "label": "⊥"
+          },
+          {
+            "label": "∥"
+          },
+          {
+            "label": "∬"
+          },
+          {
+            "label": "∭"
+          },
+          {
+            "label": "∮"
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "?123",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": "∯"
+          },
+          {
+            "label": "∰"
+          },
+          {
+            "label": "∱"
+          },
+          {
+            "label": "∲"
+          },
+          {
+            "label": "∳"
+          },
+          {
+            "label": "∝"
+          },
+          {
+            "label": "∾"
+          },
+          {
+            "type": "DELETE",
+            "icon": "backspace",
+            "widthWeight": 1.5
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "ABC",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": ",",
+            "widthWeight": 1.0
+          },
+          {
+            "label": "<",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "‹",
+              "≤",
+              "«"
+            ]
+          },
+          {
+            "label": " ",
+            "type": "SPACE",
+            "icon": "space",
+            "widthWeight": 3.0
+          },
+          {
+            "label": ">",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "›",
+              "≥",
+              "»"
+            ]
+          },
+          {
+            "label": ".",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "…"
+            ]
+          },
+          {
+            "type": "ACTION",
+            "icon": "enter",
+            "widthWeight": 1.5,
+            "moreKeys": [
+              "ACTION_EMOJI"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -198,6 +198,32 @@ fun KeyboardLayoutsScreen(
         availableMeta = loadedMeta
     }
 
+    val curatedIds = remember(englishCard, banglaCards, arabicCard) {
+        (listOf(englishCard.id) + banglaCards.map { it.id } + listOf(arabicCard.id)).toSet()
+    }
+    val otherBundledMeta = remember(availableMeta, curatedIds) {
+        availableMeta.filter { !it.isCustom && it.id !in curatedIds && !it.id.contains("symbols") }
+    }
+    var otherBundledCards by remember { mutableStateOf<List<LayoutCardData>>(emptyList()) }
+
+    LaunchedEffect(otherBundledMeta, reloadTrigger) {
+        val cards = withContext(Dispatchers.IO) {
+            otherBundledMeta.map { meta ->
+                val def = layoutRepo.getLayout(meta.id)
+                val badge = (meta.displayName ?: meta.language).uppercase().take(4)
+                val desc = "Bundled ${meta.displayName ?: meta.name} layout"
+                LayoutCardData(
+                    id = meta.id,
+                    name = meta.displayName ?: meta.name,
+                    badge = badge,
+                    description = desc,
+                    layoutDef = def
+                )
+            }
+        }
+        otherBundledCards = cards
+    }
+
     val customMeta = remember(availableMeta) { availableMeta.filter { it.isCustom } }
     var customCards by remember { mutableStateOf<List<LayoutCardData>>(emptyList()) }
 
@@ -217,8 +243,8 @@ fun KeyboardLayoutsScreen(
         customCards = cards
     }
 
-    val allKnownCards = remember(englishCard, banglaCards, arabicCard, customCards) {
-        listOf(englishCard) + banglaCards + listOf(arabicCard) + customCards
+    val allKnownCards = remember(englishCard, banglaCards, arabicCard, otherBundledCards, customCards) {
+        listOf(englishCard) + banglaCards + listOf(arabicCard) + otherBundledCards + customCards
     }
     var orderedActiveIds by remember(preferences.enabledLayoutIds) {
         mutableStateOf(preferences.enabledLayoutIds.toList())
@@ -595,9 +621,10 @@ fun KeyboardLayoutsScreen(
             }
 
             // 3. Arabic Item
+            val hasOtherBundled = otherBundledCards.isNotEmpty()
             val hasCustom = customCards.isNotEmpty()
             SettingsItemCard(
-                position = if (hasCustom) GroupPosition.MIDDLE else GroupPosition.BOTTOM,
+                position = if (hasOtherBundled || hasCustom) GroupPosition.MIDDLE else GroupPosition.BOTTOM,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
@@ -648,7 +675,22 @@ fun KeyboardLayoutsScreen(
                 }
             }
 
-            // 4. Custom Imported Layouts (if present)
+            // 4. Other Bundled Layouts (e.g. Borno Math)
+            otherBundledCards.forEachIndexed { index, card ->
+                key(card.id) {
+                    val isLastBundled = index == otherBundledCards.lastIndex
+                    val itemPosition = if (isLastBundled && !hasCustom) GroupPosition.BOTTOM else GroupPosition.MIDDLE
+                    BundledLayoutSectionItem(
+                        card = card,
+                        preferences = preferences,
+                        onToggleLayout = handleToggleLayout,
+                        onToggleExtraRow = onToggleExtraRow,
+                        position = itemPosition
+                    )
+                }
+            }
+
+            // 5. Custom Imported Layouts (if present)
             if (hasCustom) {
                 val activeCustomCount = customCards.count { preferences.enabledLayoutIds.contains(it.id) }
                 SettingsItemCard(
@@ -1009,6 +1051,70 @@ private fun ExtraRowsOptionsSection(
                                 uncheckedTrackColor = colors.iconBackground,
                                 uncheckedBorderColor = colors.inputBorder
                             )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BundledLayoutSectionItem(
+    card: LayoutCardData,
+    preferences: KiebordPreferences,
+    onToggleLayout: (LayoutCardData) -> Unit,
+    onToggleExtraRow: (String, String, Boolean) -> Unit,
+    position: GroupPosition
+) {
+    val isEnabled = preferences.enabledLayoutIds.contains(card.id)
+    var isExpanded by remember { mutableStateOf(false) }
+    var isOptionsOpen by remember { mutableStateOf(false) }
+
+    SettingsItemCard(
+        position = position,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column {
+            LanguageSectionHeader(
+                title = card.name,
+                subtitle = card.description,
+                badgeText = card.badge,
+                activeCount = if (isEnabled) 1 else 0,
+                totalCount = 1,
+                isExpanded = isExpanded,
+                onToggleExpand = { isExpanded = !isExpanded },
+                directToggleState = isEnabled,
+                onDirectToggle = { onToggleLayout(card) }
+            )
+
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 18.dp, top = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    KeyboardLayoutPreviewItem(
+                        cardData = card,
+                        preferences = preferences,
+                        isEnabled = isEnabled,
+                        isPrimary = preferences.primaryLayoutId == card.id && isEnabled,
+                        onToggle = { onToggleLayout(card) }
+                    )
+
+                    if (card.layoutDef.extraRows.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ExtraRowsOptionsSection(
+                            cardData = card,
+                            preferences = preferences,
+                            isOpen = isOptionsOpen,
+                            onToggleOpen = { isOptionsOpen = !isOptionsOpen },
+                            onToggleExtraRow = onToggleExtraRow
                         )
                     }
                 }
