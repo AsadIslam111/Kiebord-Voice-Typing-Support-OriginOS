@@ -1,6 +1,6 @@
 [package]
 name = "kiebord-engine"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["Kiebord Authors"]
 description = "High-performance hybrid spatial Borno Keyboard core and Borno phonetic engine in pure Rust"
