@@ -4,6 +4,7 @@
   "displayName": "Borno Math",
   "language": "en",
   "direction": "LTR",
+  "gesture_mode": "qwerty",
   "numberRow": {
     "keys": [
       {

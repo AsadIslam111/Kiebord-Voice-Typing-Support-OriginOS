@@ -73,6 +73,7 @@ data class LayoutExtraRow(
     val keys: List<KeyDef>
 )
 
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class KeyboardLayoutDef(
     val id: String = "symbols",
@@ -80,6 +81,8 @@ data class KeyboardLayoutDef(
     val displayName: String? = null,
     val language: String = "",
     val direction: String = "LTR",
+    @kotlinx.serialization.json.JsonNames("gesture_mode", "gestureMode")
+    val gestureMode: String? = null,
     val extraRows: List<LayoutExtraRow> = emptyList(),
     val numberRow: KeyRow? = null,
     val shiftedNumberRow: KeyRow? = null,
@@ -92,6 +95,16 @@ data class KeyboardLayoutDef(
     fun effectiveSymbolsLayout(): KeyboardLayoutDef? = symbolsLayout ?: symbols
     fun effectiveMoreSymbolsLayout(): KeyboardLayoutDef? = moreSymbolsLayout
     fun isSymbolsLayout(): Boolean = id.startsWith("symbols") || id.contains("_symbols") || language == "sym"
+
+    fun isQwertyBased(): Boolean {
+        if (isSymbolsLayout()) return false
+        if (gestureMode?.equals("qwerty", ignoreCase = true) == true) return true
+        if (id == "en_qwerty" || id == "bn_borno" || id == "bn_avro") return true
+        return rows.any { row ->
+            val charLabels = row.keys.filter { it.type == KeyType.CHARACTER }.map { it.label.lowercase() }
+            charLabels.size >= 6 && charLabels.take(6) == listOf("q", "w", "e", "r", "t", "y")
+        }
+    }
 
     /**
      * Resolves extra rows for a symbols layout based on the active alphabet layout.

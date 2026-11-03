@@ -652,7 +652,7 @@ fun KeyboardRootView(
         numberRow + extraRowsToRender + coreRowsToRender
     }
 
-    val isQwertyBasedLayout = displayLayout.id == "en_qwerty" || displayLayout.id == "bn_borno" || displayLayout.id == "bn_avro"
+    val isQwertyBasedLayout = displayLayout.isQwertyBased()
     val isEffectiveGestureTypingEnabled = gestureTypingEnabled && isQwertyBasedLayout
 
     val extractCentroids: (LayoutCoordinates) -> Pair<List<KeyCentroid>, Float> = { rCoords ->

@@ -369,7 +369,7 @@ class KiebordService : InputMethodService() {
                     lastDeletedBatch = lastDeletedBatchState,
                     onGestureCommit = ::handleGestureCommit,
                     onGestureLivePredict = ::predictLiveGestureCandidate,
-                    gestureTypingEnabled = preferencesState.gestureTypingEnabled && isQwertyBasedLayout(activeLayout.id),
+                    gestureTypingEnabled = preferencesState.gestureTypingEnabled && activeLayout.isQwertyBased(),
                     showGestureTrail = preferencesState.showGestureTrail,
                     longPressDelayMs = preferencesState.longPressDelayMs.toLong(),
                     cursorTrackpadEnabled = preferencesState.cursorTrackpadEnabled,
@@ -832,8 +832,8 @@ class KiebordService : InputMethodService() {
                             commitCharacterWithPunctuationHandling(ic, text)
                         }
                     }
-                    // English Qwerty mode
-                    activeLayout.id == "en_qwerty" -> {
+                    // English mode
+                    isEnglishLayout() -> {
                         if (isEnglishLetter(text)) {
                             composingBuffer.append(text)
                             ic.setComposingText(composingBuffer.toString(), 1)
@@ -2147,11 +2147,13 @@ class KiebordService : InputMethodService() {
     }
 
     private fun isEnglishLayout(layout: io.kiebord.common.model.KeyboardLayoutDef = activeLayout): Boolean {
-        return layout.language == "en" || layout.id.startsWith("en")
+        return layout.language == "en" || layout.id.startsWith("en") || layout.gestureMode.equals("qwerty", ignoreCase = true)
     }
 
     private fun isQwertyBasedLayout(layoutId: String): Boolean {
-        return layoutId == "en_qwerty" || layoutId == "bn_borno" || layoutId == "bn_avro"
+        val layout = if (layoutId == activeLayout.id) activeLayout else layoutRepo.getCachedLayout(layoutId)
+        return layout?.isQwertyBased()
+            ?: (layoutId == "en_qwerty" || layoutId == "bn_borno" || layoutId == "bn_avro")
     }
 
     private fun filterCandidatesForLayout(candidates: List<SuggestionCandidate>): List<SuggestionCandidate> {
@@ -2193,12 +2195,12 @@ class KiebordService : InputMethodService() {
         centroids: List<KeyCentroid>,
         keyWidthPx: Float
     ) {
-        if (!preferencesState.gestureTypingEnabled || !isQwertyBasedLayout(activeLayout.id)) return
+        if (!preferencesState.gestureTypingEnabled || !activeLayout.isQwertyBased()) return
         if (trail.size < 2 || centroids.isEmpty()) return
 
         gestureCommitJob?.cancel()
         gestureCommitJob = serviceScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            val lang = activeLayout.id
+            val lang = if (isBanglaLayout()) activeLayout.id else "en"
             val learnedWords = if (preferencesState.learnedWordsEnabled) {
                 val all = userDictionaryRepo.getLearnedGestureWords(20)
                 if (isBanglaLayout()) {
@@ -2241,9 +2243,9 @@ class KiebordService : InputMethodService() {
         centroids: List<KeyCentroid>,
         keyWidthPx: Float
     ): String? {
-        if (!preferencesState.gestureTypingEnabled || !isQwertyBasedLayout(activeLayout.id)) return null
+        if (!preferencesState.gestureTypingEnabled || !activeLayout.isQwertyBased()) return null
         if (trail.size < 4 || centroids.isEmpty()) return null
-        val lang = activeLayout.id
+        val lang = if (isBanglaLayout()) activeLayout.id else "en"
         val rawCandidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, emptyList())
         val candidates = filterCandidatesForLayout(rawCandidates)
         return candidates.firstOrNull()?.text?.trim()
@@ -2384,7 +2386,8 @@ class KiebordService : InputMethodService() {
             return
         }
 
-        when (activeLayout.id) {
+        val layoutMode = if (isEnglishLayout()) "en_qwerty" else activeLayout.id
+        when (layoutMode) {
             "bn_probhat", "bn_national", "bn_easy" -> {
                 val prefix = BengaliBstiEngine.cleanPending(composingBuffer.toString())
                 if (prefix.isNotEmpty()) {

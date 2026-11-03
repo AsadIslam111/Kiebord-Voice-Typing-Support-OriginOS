@@ -875,6 +875,8 @@ class PredefinedLayoutsTest {
         assertEquals("Borno Math", mathLayout.displayName)
         assertEquals("en", mathLayout.language)
         assertEquals("LTR", mathLayout.direction)
+        assertEquals("qwerty", mathLayout.gestureMode)
+        assertTrue(mathLayout.isQwertyBased())
 
         // Validate number row
         val numRow = mathLayout.numberRow
