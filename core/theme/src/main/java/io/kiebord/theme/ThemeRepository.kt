@@ -588,6 +588,57 @@ class ThemeRepository private constructor(private val context: Context) {
         }
     }
 
+    /**
+     * Exports a theme into `<cacheDir>/shared_themes/<name>.bornotheme` ready to be shared via FileProvider.
+     * Uses a ZIP `.bornotheme` archive if the theme bundles local assets (wallpaper, font, icons),
+     * or a clean single-file JSON `.bornotheme` if it is a pure color/gradient theme.
+     */
+    fun exportThemeFileForSharing(id: String): Result<File> {
+        return runCatching {
+            val cid = canonicalId(id)
+            val richSpec = richThemes[cid]
+                ?: customThemes[cid]?.toKeyboardThemeSpec()
+                ?: bundledThemes[cid]?.toKeyboardThemeSpec()
+                ?: throw IllegalArgumentException("Theme not found: $id")
+
+            val shareDir = File(context.cacheDir, "shared_themes").apply {
+                if (!exists()) mkdirs()
+            }
+            val safeName = richSpec.name
+                .trim()
+                .replace("[^a-zA-Z0-9_\\- ]".toRegex(), "")
+                .trim()
+                .replace("\\s+".toRegex(), "_")
+                .ifEmpty { cid }
+            val outFile = File(shareDir, "$safeName.bornotheme")
+            if (outFile.exists()) outFile.delete()
+
+            val hasLocalAssets = listOfNotNull(
+                richSpec.background.image?.imagePath,
+                richSpec.fontPath,
+                richSpec.icons.shift,
+                richSpec.icons.shiftOneShot,
+                richSpec.icons.capsLock,
+                richSpec.icons.backspace,
+                richSpec.icons.action,
+                richSpec.icons.language,
+                richSpec.icons.emoji,
+                richSpec.icons.settings,
+                richSpec.icons.voice,
+                richSpec.icons.search,
+                richSpec.icons.moreKeys
+            ).any { path -> path.isNotBlank() && File(path).exists() }
+
+            if (hasLocalAssets) {
+                ThemeZipUtils.packageThemeZip(richSpec, outFile, json)
+            } else {
+                val jsonStr = exportTheme(cid, asBase64 = false).getOrThrow()
+                outFile.writeText(jsonStr, Charsets.UTF_8)
+                outFile
+            }
+        }
+    }
+
     fun deleteCustomTheme(id: String): Boolean {
         var anyDeleted = false
         val themeDir = File(customThemesDir, id)

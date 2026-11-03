@@ -1,8 +1,10 @@
 package io.kiebord.app.ui.settings
 
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
@@ -35,8 +37,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -356,6 +360,39 @@ fun AppearanceThemesScreen(
                         val targetId = currentPreview.id
                         previewThemeOption = null
                         onOpenThemeDesigner(targetId)
+                    }
+                } else null,
+                onShareTheme = if (currentPreview.isCustom) {
+                    {
+                        val targetId = currentPreview.id
+                        val targetName = currentPreview.name
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                themeRepo.exportThemeFileForSharing(targetId)
+                            }
+                            result.onSuccess { exportedFile ->
+                                try {
+                                    val shareUri = FileProvider.getUriForFile(
+                                        context,
+                                        "${context.packageName}.fileprovider",
+                                        exportedFile
+                                    )
+                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "application/octet-stream"
+                                        putExtra(Intent.EXTRA_STREAM, shareUri)
+                                        putExtra(Intent.EXTRA_SUBJECT, "$targetName.bornotheme")
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(
+                                        Intent.createChooser(sendIntent, "Share $targetName")
+                                    )
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Could not share theme: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                            }.onFailure { err ->
+                                Toast.makeText(context, "Export failed: ${err.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     }
                 } else null,
                 onDeleteTheme = if (currentPreview.isCustom) {
@@ -790,6 +827,7 @@ private fun ThemePreviewBottomSheetContent(
     onToggleKeyShadows: (Boolean) -> Unit,
     onApplyTheme: () -> Unit,
     onEditTheme: (() -> Unit)? = null,
+    onShareTheme: (() -> Unit)? = null,
     onDeleteTheme: (() -> Unit)? = null,
     isImportMode: Boolean = false,
     onCancelImport: (() -> Unit)? = null,
@@ -898,8 +936,8 @@ private fun ThemePreviewBottomSheetContent(
                     onClick = { onConfirmImport?.invoke() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(20.dp),
+                        .height(50.dp),
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.accent
                     )
@@ -918,8 +956,8 @@ private fun ThemePreviewBottomSheetContent(
                     onClick = { onCancelImport?.invoke() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(20.dp),
+                        .height(50.dp),
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (colors.isDark) Color(0xFF2C2C32) else Color(0xFFE0E2EC),
                         contentColor = colors.textPrimary
@@ -937,8 +975,8 @@ private fun ThemePreviewBottomSheetContent(
                     onClick = onApplyTheme,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(20.dp),
+                        .height(50.dp),
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.accent
                     )
@@ -951,61 +989,70 @@ private fun ThemePreviewBottomSheetContent(
                     )
                 }
 
-                if (onEditTheme != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Button(
-                        onClick = onEditTheme,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (colors.isDark) Color(0xFF2C2C32) else Color(0xFFE0E2EC),
-                            contentColor = colors.textPrimary
-                        )
+                if (onEditTheme != null || onShareTheme != null || onDeleteTheme != null) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Palette,
-                            contentDescription = "Edit in Theme Studio",
-                            tint = colors.textPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Edit in Theme Studio",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.textPrimary
-                        )
-                    }
-                }
+                        val neutralCircleBg = if (colors.isDark) Color(0xFF2C2C32) else Color(0xFFE0E2EC)
 
-                if (onDeleteTheme != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Button(
-                        onClick = onDeleteTheme,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE53935),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = "Delete",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Delete Custom Theme",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
+                        if (onEditTheme != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(neutralCircleBg)
+                                    .border(1.dp, colors.cardBorder, CircleShape)
+                                    .clickable(onClick = onEditTheme),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Edit,
+                                    contentDescription = "Edit Theme",
+                                    tint = colors.textPrimary,
+                                    modifier = Modifier.size(21.dp)
+                                )
+                            }
+                        }
+
+                        if (onShareTheme != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(neutralCircleBg)
+                                    .border(1.dp, colors.cardBorder, CircleShape)
+                                    .clickable(onClick = onShareTheme),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Share,
+                                    contentDescription = "Share Theme",
+                                    tint = colors.textPrimary,
+                                    modifier = Modifier.size(21.dp)
+                                )
+                            }
+                        }
+
+                        if (onDeleteTheme != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE53935))
+                                    .clickable(onClick = onDeleteTheme),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Delete,
+                                    contentDescription = "Delete Theme",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(21.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
