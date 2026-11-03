@@ -96,6 +96,7 @@ fun AppearanceThemesScreen(
     onUpdateShowKeyShadows: (Boolean) -> Unit = {},
     pendingImportUri: Uri? = null,
     onClearPendingImportUri: () -> Unit = {},
+    onOpenThemeDesigner: (editingThemeId: String?) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -252,7 +253,11 @@ fun AppearanceThemesScreen(
                             BlankThemePlusCard(
                                 modifier = Modifier.weight(1f),
                                 onClick = {
-                                    showCreatePopup = true
+                                    if (io.kiebord.theme.designer.ThemeDesignerRegistry.isAvailable) {
+                                        showCreatePopup = true
+                                    } else {
+                                        importLauncher.launch(arrayOf("*/*"))
+                                    }
                                 }
                             )
                         } else if (itemIndex - 1 < customThemes.size) {
@@ -346,6 +351,13 @@ fun AppearanceThemesScreen(
                     onUpdateShowKeyShadows(previewShowKeyShadows)
                     previewThemeOption = null
                 },
+                onEditTheme = if (currentPreview.isCustom && io.kiebord.theme.designer.ThemeDesignerRegistry.isAvailable) {
+                    {
+                        val targetId = currentPreview.id
+                        previewThemeOption = null
+                        onOpenThemeDesigner(targetId)
+                    }
+                } else null,
                 onDeleteTheme = if (currentPreview.isCustom) {
                     {
                         val targetId = currentPreview.id
@@ -505,52 +517,54 @@ fun AppearanceThemesScreen(
                         }
 
                         // Button 2: Create Theme - Squared Button
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(if (colors.isDark) Color(0xFF22242A) else Color(0xFFF1F3F9))
-                                .border(1.5.dp, colors.cardBorder, RoundedCornerShape(16.dp))
-                                .clickable {
-                                    showCreatePopup = false
-                                    Toast.makeText(context, "Not yet implemented", Toast.LENGTH_SHORT).show()
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(6.dp)
+                        if (io.kiebord.theme.designer.ThemeDesignerRegistry.isAvailable) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(if (colors.isDark) Color(0xFF22242A) else Color(0xFFF1F3F9))
+                                    .border(1.5.dp, colors.cardBorder, RoundedCornerShape(16.dp))
+                                    .clickable {
+                                        showCreatePopup = false
+                                        onOpenThemeDesigner(null)
+                                    },
+                                contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(46.dp)
-                                        .clip(CircleShape)
-                                        .background(if (colors.isDark) Color(0xFF2C2C32) else Color(0xFFE2E2EC)),
-                                    contentAlignment = Alignment.Center
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.padding(6.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Palette,
-                                        contentDescription = "Create",
-                                        tint = colors.textPrimary,
-                                        modifier = Modifier.size(24.dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(CircleShape)
+                                            .background(if (colors.isDark) Color(0xFF2C2C32) else Color(0xFFE2E2EC)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Palette,
+                                            contentDescription = "Create",
+                                            tint = colors.textPrimary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Create",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Text(
+                                        text = "Theme Studio",
+                                        fontSize = 11.sp,
+                                        color = colors.textSecondary,
+                                        textAlign = TextAlign.Center
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Create",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.textPrimary,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    text = "Theme Studio",
-                                    fontSize = 11.sp,
-                                    color = colors.textSecondary,
-                                    textAlign = TextAlign.Center
-                                )
                             }
                         }
                     }
@@ -775,6 +789,7 @@ private fun ThemePreviewBottomSheetContent(
     onToggleKeyBorders: (Boolean) -> Unit,
     onToggleKeyShadows: (Boolean) -> Unit,
     onApplyTheme: () -> Unit,
+    onEditTheme: (() -> Unit)? = null,
     onDeleteTheme: (() -> Unit)? = null,
     isImportMode: Boolean = false,
     onCancelImport: (() -> Unit)? = null,
@@ -934,6 +949,35 @@ private fun ThemePreviewBottomSheetContent(
                         fontWeight = FontWeight.Bold,
                         color = if (colors.isDark) Color(0xFF0F141C) else Color.White
                     )
+                }
+
+                if (onEditTheme != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = onEditTheme,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (colors.isDark) Color(0xFF2C2C32) else Color(0xFFE0E2EC),
+                            contentColor = colors.textPrimary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Palette,
+                            contentDescription = "Edit in Theme Studio",
+                            tint = colors.textPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Edit in Theme Studio",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textPrimary
+                        )
+                    }
                 }
 
                 if (onDeleteTheme != null) {

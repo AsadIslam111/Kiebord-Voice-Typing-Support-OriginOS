@@ -403,8 +403,46 @@ fun KiebordSettingsApp(
                             },
                             pendingImportUri = pendingThemeImportUri,
                             onClearPendingImportUri = onClearPendingThemeImportUri,
+                            onOpenThemeDesigner = { editingThemeId ->
+                                navigateTo(SettingsScreen.ThemeDesigner(editingThemeId))
+                            },
                             onBack = navigateBack
                         )
+                    }
+
+                    is SettingsScreen.ThemeDesigner -> {
+                        val settingsColors = io.kiebord.app.ui.settings.LocalSettingsColors.current
+                        val designerFeature = io.kiebord.theme.designer.ThemeDesignerRegistry.feature
+                        if (designerFeature != null) {
+                            designerFeature.Screen(
+                                editingThemeId = screen.editingThemeId,
+                                colors = io.kiebord.theme.designer.ThemeDesignerColors(
+                                    background = settingsColors.background,
+                                    cardBackground = settingsColors.cardBackground,
+                                    cardBorder = settingsColors.cardBorder,
+                                    textPrimary = settingsColors.textPrimary,
+                                    textSecondary = settingsColors.textSecondary,
+                                    accent = settingsColors.accent,
+                                    divider = settingsColors.divider,
+                                    inputBackground = settingsColors.inputBackground,
+                                    inputBorder = settingsColors.inputBorder,
+                                    isDark = settingsColors.isDark
+                                ),
+                                previewConfig = io.kiebord.theme.designer.ThemeDesignerPreviewConfig(
+                                    showNumberRow = preferences.showNumberRow,
+                                    keyboardHeightScale = preferences.keyboardHeightScale,
+                                    showKeyBorders = preferences.showKeyBorders,
+                                    showKeyShadows = preferences.showKeyShadows
+                                ),
+                                onBack = navigateBack,
+                                onThemeSaved = { savedId ->
+                                    scope.launch { preferencesRepo.updateTheme(savedId) }
+                                    navigateBack()
+                                }
+                            )
+                        } else {
+                            androidx.compose.runtime.LaunchedEffect(Unit) { navigateBack() }
+                        }
                     }
 
                     is SettingsScreen.KeyboardLayouts -> {

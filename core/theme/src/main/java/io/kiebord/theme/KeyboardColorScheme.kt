@@ -60,12 +60,14 @@ data class KeyboardColorScheme(
         val spec = themeSpec
         if (spec != null) {
             val style = spec.resolveKeycapStyle(rowIndex, keyIndex, key)
+            val explicitOverride = spec.resolvePerKeyOverride(rowIndex, keyIndex, key)
             val bgHex = if (isPressed) (style.pressedBackground ?: style.background) else style.background
             val fgHex = if (isPressed) (style.pressedForeground ?: style.foreground) else style.foreground
 
             val isComma = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
             val isActionOrModifier = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || isComma
-            val isPillColoredKey = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SPACE
+            val hasExplicitKeyBg = explicitOverride?.background != null
+            val isPillColoredKey = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || key.type == KeyType.SPACE || hasExplicitKeyBg
 
             val hasContainerBackdrop = spec.background.gradient != null || spec.background.image != null
             val flatKeyBg = if (hasContainerBackdrop) Color.Transparent else containerBackground
@@ -78,7 +80,7 @@ data class KeyboardColorScheme(
                 else -> flatKeyBg
             }
 
-            val baseBgColor = if (showKeyBorders) {
+            val baseBgColor = if (showKeyBorders || hasExplicitKeyBg) {
                 if (bgHex != null) cachedParseHex(bgHex, defaultBg) else defaultBg
             } else {
                 when {
@@ -107,7 +109,9 @@ data class KeyboardColorScheme(
             }
 
             val fgColor = when {
-                key.type == KeyType.ACTION -> actionKeyForeground
+                explicitOverride?.foreground != null -> cachedParseHex(explicitOverride.foreground, keyForeground)
+                key.type == KeyType.SPACE && spec.spaceKey?.foreground != null -> cachedParseHex(spec.spaceKey.foreground, keyForeground)
+                key.type == KeyType.ACTION -> if (fgHex != null) cachedParseHex(fgHex, actionKeyForeground) else actionKeyForeground
                 isPressed && keyPressedForeground != Color.Unspecified -> keyPressedForeground
                 !showKeyBorders && style.flatForeground != null -> cachedParseHex(style.flatForeground)
                 !showKeyBorders && flatKeyForeground != Color.Unspecified -> flatKeyForeground

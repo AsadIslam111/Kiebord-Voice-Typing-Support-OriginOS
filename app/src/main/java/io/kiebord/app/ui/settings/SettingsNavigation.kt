@@ -6,6 +6,7 @@ package io.kiebord.app.ui.settings
 sealed class SettingsScreen {
     data object Main : SettingsScreen()
     data object AppearanceThemes : SettingsScreen()
+    data class ThemeDesigner(val editingThemeId: String? = null) : SettingsScreen()
     data object KeyboardLayouts : SettingsScreen()
     data object Preferences : SettingsScreen()
     data object CorrectionsSuggestions : SettingsScreen()

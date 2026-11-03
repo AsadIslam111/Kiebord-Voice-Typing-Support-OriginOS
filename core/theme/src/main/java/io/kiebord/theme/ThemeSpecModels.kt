@@ -356,6 +356,25 @@ data class KeyboardThemeSpec(
         return merged
     }
 
+    fun resolvePerKeyOverride(
+        rowIndex: Int,
+        keyIndex: Int,
+        key: KeyDef
+    ): KeycapStyleSpec? {
+        if (perKeyOverrides.isEmpty()) return null
+        val typeOverride = perKeyOverrides[key.type.name]
+        val labelKey = key.label.lowercase().trim()
+        val labelOverride = if (labelKey.isNotEmpty()) perKeyOverrides[labelKey] else null
+        val coordKey = "${rowIndex}_${keyIndex}"
+        val coordOverride = perKeyOverrides[coordKey]
+        if (typeOverride == null && labelOverride == null && coordOverride == null) return null
+        var merged = KeycapStyleSpec()
+        if (typeOverride != null) merged = merged.merge(typeOverride)
+        if (labelOverride != null) merged = merged.merge(labelOverride)
+        if (coordOverride != null) merged = merged.merge(coordOverride)
+        return merged
+    }
+
     fun toKeyboardColorScheme(): KeyboardColorScheme {
         val charBg = characterKey.background?.let { ThemeColorUtils.parseHexColor(it) }
             ?: if (isDark) Color(0xFF2C2C30) else Color(0xFFFFFFFF)

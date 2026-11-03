@@ -166,6 +166,7 @@ fun SettingsUnifiedTopBar(
     val title = when (screen) {
         is SettingsScreen.Main -> "Kiebord"
         is SettingsScreen.AppearanceThemes -> "Appearance & Themes"
+        is SettingsScreen.ThemeDesigner -> "Theme Studio"
         is SettingsScreen.KeyboardLayouts -> "Keyboard Layouts"
         is SettingsScreen.Preferences -> "Preferences"
         is SettingsScreen.CorrectionsSuggestions -> "Corrections & Suggestions"
@@ -178,6 +179,7 @@ fun SettingsUnifiedTopBar(
     val subtitle: String? = when (screen) {
         is SettingsScreen.Main -> null
         is SettingsScreen.AppearanceThemes -> "Themes & key styling"
+        is SettingsScreen.ThemeDesigner -> if (screen.editingThemeId != null) "Edit custom theme" else "Create & customize theme"
         is SettingsScreen.KeyboardLayouts -> "Active layouts & preview"
         is SettingsScreen.Preferences -> "Haptics, smart gestures & ergonomics"
         is SettingsScreen.CorrectionsSuggestions -> "Candidate strip, auto-fix & glide typing"
