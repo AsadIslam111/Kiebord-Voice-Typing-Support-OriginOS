@@ -7,7 +7,9 @@ This guide describes how to create, test, and package custom keyboard layouts fo
 ## 1. Overview
 
 Kiebord supports dynamic and bundled keyboard layouts defined in JSON. Layouts can be:
-- Bundled with the application under `assets/layouts/<layout_id>.json`.
+- Bundled with the application under `assets/layouts/<layout_id>.json` (shipped within the APK).
+- Loaded dynamically by users from the device's custom layouts folder.
+- Authored and referenced in the repository under [`assets-src/layouts/`](../assets-src/layouts/).
 
 Layouts are parsed with compile-time serializers and cached in memory to ensure zero latency during typing and language switching.
 
@@ -27,17 +29,39 @@ Layouts are parsed with compile-time serializers and cached in memory to ensure 
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | String | Yes | Unique identifier for the layout (e.g., `ar_arabic`, `en_dvorak`). |
-| `name` | String | Yes | Name shown in Settings (e.g., `Arabic`, `English`). |
-| `displayName` | String | No | Concise display name for space bar and quick switchers (e.g., `Arabic`). Defaults to `name`. |
+| `id` | String | Yes | Unique identifier for the layout (e.g., `ar_arabic`, `en_qwerty`, `bn_khipro`). |
+| `name` | String | Yes | Name shown in Settings (e.g., `Arabic`, `English (QWERTY)`). |
+| `displayName` | String | No | Concise display name for space bar and quick switchers (e.g., `English`). Defaults to `name`. |
+| `description` | String | No | Subtitle description displayed under the layout in Settings (e.g., `"Standard Latin layout with gesture typing"`). |
 | `language` | String | Yes | ISO 639-1 two-letter language code (e.g., `en`, `bn`, `ar`, `es`). |
 | `direction` | String | No | Text and keyboard flow direction: `"LTR"` (default) or `"RTL"`. |
+| `gesture_mode` | String | No | Gesture typing model identifier (e.g., `"qwerty"`). |
+| `flag` / `flags` | String or Array of String | No | One or more behavioral flags (e.g., `"NoAutoCapitalization"`, `["NoAutoCapitalization", "NoSuggestions"]`). See Supported Layout Flags below. |
+| `processor` | String | No | Transliteration engine processor (e.g., `"m17n"`). |
+| `rules` | String | No | Path to the transliteration ruleset file located in `assets/rules/` (e.g., `"bn-khipro.classic.mim"`). |
+| `extraCompositionChars` | Array of String or String | No | Characters that remain part of the active composing word rather than triggering an auto-commit (e.g., `[",", "।"]`). |
 | `extraRows` | Array of `LayoutExtraRow` | No | Optional feature rows that appear above the main alphabet keys. |
 | `numberRow` | `KeyRow` | No | Optional layout-specific number row override. |
 | `shiftedNumberRow` | `KeyRow` | No | Optional layout-specific number row displayed when Shift or Caps Lock is active. |
-| `symbolsLayout` | `KeyboardLayoutDef` | No | Optional layout-specific symbols page (`?123`). Used to match row count and supply language-specific symbols. Falls back to default symbols if omitted. |
+| `symbolsLayout` | `KeyboardLayoutDef` | No | Optional layout-specific symbols page (`?123`). Used to match row count and supply language-specific symbols. Falls back to default symbols if omitted (`symbols` is also accepted). |
 | `moreSymbolsLayout` | `KeyboardLayoutDef` | No | Optional secondary symbols page (`=\<`). Falls back to default more symbols if omitted. |
 | `rows` | Array of `KeyRow` | Yes | List of main keyboard rows from top to bottom. |
+
+---
+
+### Supported Layout Flags (`flag` / `flags`)
+
+Flags can be specified as a single string (`"flag": "NoAutoCapitalization"`), a delimited string (`"flag": "NoAutoCapitalization, NoSuggestions"`), or a JSON array (`"flags": ["NoAutoCapitalization", "NoSuggestions"]`).
+
+| Flag | Description |
+|---|---|
+| `NoAutoCapitalization` | Prevents automatically shifting to uppercase at sentence boundaries. Essential for transliteration layouts like Khipro. |
+| `NoAutoSpace` | Disables automatically inserting a space after punctuation or suggestions. |
+| `NoDoubleSpacePeriod` | Disables inserting a period (`.`) on double spacebar tap. |
+| `NoSuggestions` | Disables next-word prediction and candidate completion bars for this layout. |
+| `NoLearnedWords` | Prevents words typed in this layout from being learned into the dynamic user dictionary. |
+| `NoGesture` | Disables gesture (swipe) typing even if enabled globally in settings. |
+| `NoAutoCorrect` | Disables automatic replacement of misspelled words. |
 
 ---
 
@@ -93,6 +117,7 @@ Extra rows allow layouts to provide specialized key rows (such as Arabic Harakat
 | `shiftedFlickUp` | String | No | Flick-up character when Shift or Caps Lock is active. |
 | `moreKeys` | Array of String | No | List of characters or actions shown in the long-press popup menu. |
 | `moreKeysColumns` | Integer | No | Maximum number of columns in the long-press popup menu. |
+| `shiftedMoreKeys` | Array of String | No | Long-press popup menu items displayed when Shift or Caps Lock is active. |
 | `slidingInput` | Boolean | No | When `true`, sliding from this key seamlessly transitions to symbols mode (used on `?123`). |
 
 ---
@@ -135,6 +160,7 @@ Save the following content as `sample_layout.json` to create a starter layout:
 {
   "id": "sample_layout",
   "name": "Sample QWERTY",
+  "description": "Sample QWERTY layout for testing",
   "language": "en",
   "direction": "LTR",
   "rows": [
@@ -240,3 +266,17 @@ When Kiebord loads this layout:
 4. On symbol pages (`?123` and `=\<`):
    - For each enabled extra row in the alphabet layout, if the symbol page defines a corresponding extra row (matching `id`), that row is used. If not found, the alphabet extra row is moved to the symbol page so row counts and heights match.
    - If the top number row is enabled, the symbol page uses its own defined `numberRow` or automatically places the alphabet layout's number row at the top.
+
+---
+
+## 8. Reference Sample Layouts in `assets-src/layouts/`
+
+Complete, production-tested sample layouts are provided in the repository under [`assets-src/layouts/`](../assets-src/layouts/):
+
+| File | Layout ID | Highlights & Featured Capabilities |
+|---|---|---|
+| [`en_qwerty.json`](../assets-src/layouts/en_qwerty.json) | `en_qwerty` | **Canonical Reference Schema**: 10-key number row with superscript fractions & Bangla numerals in `moreKeys`, dedicated embedded symbol pages (`symbols_1` and `symbols_2`), gesture typing mode (`"gesture_mode": "qwerty"`), and action shortcuts (`ACTION_SELECT_ALL`, `ACTION_CUT`, `ACTION_COPY`, `ACTION_PASTE`, `ACTION_EMOJI`). |
+| [`bn_national_2004.json`](../assets-src/layouts/bn_national_2004.json) | `bn_national_2004` | National Layout: BDS 1738:2004 Layout |
+| [`khipro.json`](../assets-src/layouts/khipro.json) | `khipro` | **Transliteration Engine Layout**: Integrates with the m17n engine (`"processor": "m17n"`, `"rules": "bn-khipro.classic.mim"`), behavioral flags (`"flag": "NoAutoCapitalization"`), non-breaking composition characters (`"extraCompositionChars": [",", "।"]`), and dedicated Bangla digits number row. |
+
+Developers and contributors can use these sample files as starting blueprints when designing new layouts or adapting existing ones.

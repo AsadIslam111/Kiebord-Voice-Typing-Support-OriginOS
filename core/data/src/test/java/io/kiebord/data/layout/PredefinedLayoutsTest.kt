@@ -1116,12 +1116,12 @@ class PredefinedLayoutsTest {
     @Test
     fun testEnQwertyJsonAssetValidation() {
         val candidates = listOf(
-            java.io.File("../../feature/ime/src/main/assets/layouts/en_qwerty.json"),
-            java.io.File("feature/ime/src/main/assets/layouts/en_qwerty.json"),
-            java.io.File("../feature/ime/src/main/assets/layouts/en_qwerty.json")
+            java.io.File("../../assets-src/layouts/en_qwerty.json"),
+            java.io.File("assets-src/layouts/en_qwerty.json"),
+            java.io.File("../assets-src/layouts/en_qwerty.json")
         )
         val jsonFile = candidates.firstOrNull { it.exists() }
-        assertNotNull("en_qwerty.json must exist in assets/layouts/", jsonFile)
+        assertNotNull("en_qwerty.json must exist in assets-src/layouts/", jsonFile)
 
         val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
         val layout = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(jsonFile!!.readText())
@@ -1142,6 +1142,30 @@ class PredefinedLayoutsTest {
         assertEquals(listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"), layout.rows[0].keys.map { it.label })
         assertNotNull("symbolsLayout must be defined", layout.symbolsLayout)
         assertNotNull("moreSymbolsLayout must be defined", layout.moreSymbolsLayout)
+    }
+
+    @Test
+    fun testPredefinedEnglishQwertyProperties() {
+        val layout = PredefinedLayouts.EnglishQwerty
+        assertEquals("en_qwerty", layout.id)
+        assertEquals("English (QWERTY)", layout.name)
+        assertEquals("English", layout.displayName)
+        assertEquals("en", layout.language)
+        assertEquals("LTR", layout.direction)
+        assertEquals("qwerty", layout.gestureMode)
+        assertEquals("Standard Latin layout with gesture typing", layout.description)
+        assertTrue(layout.isQwertyBased())
+
+        assertNotNull("numberRow must be defined", layout.numberRow)
+        assertEquals(10, layout.numberRow!!.keys.size)
+        assertEquals(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), layout.numberRow!!.keys.map { it.label })
+
+        assertEquals(4, layout.rows.size)
+        assertEquals(listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"), layout.rows[0].keys.map { it.label })
+        assertNotNull("symbolsLayout must be defined", layout.symbolsLayout)
+        assertNotNull("moreSymbolsLayout must be defined", layout.moreSymbolsLayout)
+        assertEquals("symbols_1", layout.symbolsLayout!!.id)
+        assertEquals("symbols_2", layout.moreSymbolsLayout!!.id)
     }
 
     @Test

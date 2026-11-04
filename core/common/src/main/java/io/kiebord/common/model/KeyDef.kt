@@ -129,10 +129,11 @@ data class KeyDef(
     }
 
     fun flickUp(shiftState: ShiftState): String? {
-        return when (shiftState) {
+        val raw = when (shiftState) {
             ShiftState.UNSHIFTED -> flickUp
-            ShiftState.ONE_SHOT, ShiftState.CAPS_LOCK -> shiftedFlickUp ?: (if (shiftedMoreKeys != null) shiftedMoreKeys.firstOrNull() else flickUp)
+            ShiftState.ONE_SHOT, ShiftState.CAPS_LOCK -> shiftedFlickUp ?: (if (shiftedMoreKeys != null) shiftedMoreKeys.firstOrNull { !it.startsWith("ACTION_") && !it.startsWith("action:") } else flickUp)
         }
+        return if (raw.isNullOrEmpty() || raw.startsWith("ACTION_") || raw.startsWith("action:")) null else raw
     }
 }
 
