@@ -101,11 +101,31 @@ data class KeyDef(
         }
     }
 
+    fun isEnterKey(): Boolean = type == KeyType.ACTION || icon == "enter"
+
+    fun resolveActionMoreKeys(base: List<String> = moreKeys): List<String> {
+        if (!isEnterKey()) return base
+        val result = base.toMutableList()
+        if ("ACTION_EMOJI" !in result && "action:emoji" !in result && "EMOJI" !in result) {
+            result.add(0, "ACTION_EMOJI")
+        }
+        if ("ACTION_NEW_LINE" !in result && "ACTION_NEWLINE" !in result && "action:newline" !in result && "NEWLINE" !in result) {
+            val emojiIdx = result.indexOfFirst { it == "ACTION_EMOJI" || it == "action:emoji" || it == "EMOJI" }
+            if (emojiIdx >= 0) {
+                result.add(emojiIdx + 1, "ACTION_NEW_LINE")
+            } else {
+                result.add("ACTION_NEW_LINE")
+            }
+        }
+        return result
+    }
+
     fun moreKeys(shiftState: ShiftState): List<String> {
-        return when (shiftState) {
+        val base = when (shiftState) {
             ShiftState.UNSHIFTED -> moreKeys
             ShiftState.ONE_SHOT, ShiftState.CAPS_LOCK -> shiftedMoreKeys ?: moreKeys
         }
+        return if (isEnterKey()) resolveActionMoreKeys(base) else base
     }
 
     fun flickUp(shiftState: ShiftState): String? {

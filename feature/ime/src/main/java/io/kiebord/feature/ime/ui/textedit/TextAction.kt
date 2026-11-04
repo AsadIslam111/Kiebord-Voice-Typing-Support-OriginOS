@@ -18,5 +18,6 @@ enum class TextAction {
     REDO,
     DELETE_BACKWARD,
     DELETE_FORWARD,
-    ENTER
+    ENTER,
+    NEW_LINE
 }

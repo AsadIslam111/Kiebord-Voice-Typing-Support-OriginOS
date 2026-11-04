@@ -2045,6 +2045,16 @@ class KiebordService : InputMethodService() {
                 }
                 true
             }
+            TextAction.NEW_LINE -> {
+                selectionAnchor = null
+                selectionCursor = null
+                finishComposing()
+                sendKeyChar('\n')
+                if (shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {
+                    shiftState = ShiftState.ONE_SHOT
+                }
+                true
+            }
         }
         updateSuggestions()
         return moved

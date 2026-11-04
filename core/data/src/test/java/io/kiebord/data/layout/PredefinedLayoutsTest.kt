@@ -1187,4 +1187,39 @@ class PredefinedLayoutsTest {
         assertTrue(layout5.isExtraCompositionChar(","))
         assertTrue(layout5.isExtraCompositionChar("।"))
     }
+    @Test
+    fun testDynamicEnterMoreKeys() {
+        // 1. Enter key identification
+        val actionKey = io.kiebord.common.model.KeyDef(type = KeyType.ACTION)
+        val iconEnterKey = io.kiebord.common.model.KeyDef(icon = "enter")
+        val normalKey = io.kiebord.common.model.KeyDef(label = "a", moreKeys = listOf("à", "á"))
+
+        assertTrue(actionKey.isEnterKey())
+        assertTrue(iconEnterKey.isEnterKey())
+        assertFalse(normalKey.isEnterKey())
+
+        // 2. resolveActionMoreKeys
+        assertEquals(listOf("ACTION_EMOJI", "ACTION_NEW_LINE"), actionKey.resolveActionMoreKeys())
+        assertEquals(listOf("ACTION_EMOJI", "ACTION_NEW_LINE"), iconEnterKey.resolveActionMoreKeys())
+        assertEquals(listOf("à", "á"), normalKey.resolveActionMoreKeys())
+
+        val enterWithEmojiOnly = io.kiebord.common.model.KeyDef(type = KeyType.ACTION, moreKeys = listOf("ACTION_EMOJI"))
+        assertEquals(listOf("ACTION_EMOJI", "ACTION_NEW_LINE"), enterWithEmojiOnly.resolveActionMoreKeys())
+
+        val enterWithNewLineOnly = io.kiebord.common.model.KeyDef(type = KeyType.ACTION, moreKeys = listOf("ACTION_NEW_LINE"))
+        assertEquals(listOf("ACTION_EMOJI", "ACTION_NEW_LINE"), enterWithNewLineOnly.resolveActionMoreKeys())
+
+        // 3. moreKeys(ShiftState) dynamically returns both for enter keys
+        assertEquals(listOf("ACTION_EMOJI", "ACTION_NEW_LINE"), actionKey.moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+        assertEquals(listOf("ACTION_EMOJI", "ACTION_NEW_LINE"), actionKey.moreKeys(io.kiebord.common.model.ShiftState.ONE_SHOT))
+        assertEquals(listOf("ACTION_EMOJI", "ACTION_NEW_LINE"), actionKey.moreKeys(io.kiebord.common.model.ShiftState.CAPS_LOCK))
+        assertEquals(listOf("à", "á"), normalKey.moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+
+        // 4. Predefined layout enter key verification
+        val qwerty = PredefinedLayouts.fromId("en_qwerty")
+        val qwertyEnter = qwerty.rows.last().keys.last()
+        assertTrue(qwertyEnter.isEnterKey())
+        assertEquals(listOf("ACTION_EMOJI"), qwertyEnter.moreKeys) // Raw JSON preserved
+        assertEquals(listOf("ACTION_EMOJI", "ACTION_NEW_LINE"), qwertyEnter.moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+    }
 }

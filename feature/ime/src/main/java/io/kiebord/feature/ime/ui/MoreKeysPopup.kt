@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardReturn
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
@@ -347,6 +348,14 @@ private fun MoreKeyCell(
                 Icon(
                     imageVector = Icons.Outlined.Mood,
                     contentDescription = "Emoji",
+                    tint = contentColor,
+                    modifier = Modifier.size(actionIconSize)
+                )
+            }
+            "ACTION_NEW_LINE", "ACTION_NEWLINE", "action:newline", "NEWLINE" -> {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
+                    contentDescription = "New Line",
                     tint = contentColor,
                     modifier = Modifier.size(actionIconSize)
                 )

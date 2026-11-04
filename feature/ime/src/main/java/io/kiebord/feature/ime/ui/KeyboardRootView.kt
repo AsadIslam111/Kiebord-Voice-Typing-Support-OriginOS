@@ -1434,6 +1434,7 @@ fun KeyboardRootView(
                         // Shared MoreKeys & key press handlers for NumberRowBar and keyboard rows
 
                     val openMoreKeysForAnchor: (KeyDef, Rect) -> Unit = { keyDef, keyRect ->
+                        val effectiveItems = if (keyDef.isEnterKey()) keyDef.resolveActionMoreKeys(keyDef.moreKeys) else keyDef.moreKeys
                         val dims = MoreKeysLayoutHelper.calculateDimensions(
                             density = density.density,
                             scaleFactor = scaleFactor,
@@ -1442,7 +1443,7 @@ fun KeyboardRootView(
                         )
                         val anchorXInKeyboard = (keyRect.center.x - keyboardLeftPx).coerceAtLeast(0f)
                         val layoutResult = MoreKeysLayoutHelper.computeLayout(
-                            itemCount = keyDef.moreKeys.size,
+                            itemCount = effectiveItems.size,
                             columnsHint = keyDef.moreKeysColumns,
                             anchorCenterX = anchorXInKeyboard,
                             keyboardWidthPx = effectiveKeyboardWidthPx,
@@ -1484,7 +1485,7 @@ fun KeyboardRootView(
                         moreKeysState = MoreKeysPopupState(
                             anchorKey = keyDef,
                             anchorRect = keyRect,
-                            items = keyDef.moreKeys,
+                            items = effectiveItems,
                             dims = dims,
                             layoutResult = layoutResult,
                             clampedLeft = clampedLeft,
@@ -1591,6 +1592,9 @@ fun KeyboardRootView(
                                         isResizerOpen = false
                                         isTextEditOpen = false
                                         isSuggestionsExpanded = false
+                                    }
+                                    "ACTION_NEW_LINE", "ACTION_NEWLINE", "action:newline", "NEWLINE" -> {
+                                        onTextAction(TextAction.NEW_LINE, false)
                                     }
                                     "ACTION_SELECT_ALL", "action:select_all", "SELECT_ALL" -> {
                                         onTextAction(TextAction.SELECT_ALL, true)
@@ -1866,7 +1870,7 @@ fun KeyboardRootView(
                                         slidingHoveredKey = hoveredKey
                                         slidingHoveredBounds = hoveredBounds
 
-                                        if (hoveredKey != null && hoveredKey.moreKeys.isNotEmpty()) {
+                                        if (hoveredKey != null && (hoveredKey.moreKeys.isNotEmpty() || hoveredKey.isEnterKey())) {
                                             val targetKey = hoveredKey
                                             val targetBounds = hoveredBounds!!
                                             slidingDwellJob = coroutineScope.launch {
