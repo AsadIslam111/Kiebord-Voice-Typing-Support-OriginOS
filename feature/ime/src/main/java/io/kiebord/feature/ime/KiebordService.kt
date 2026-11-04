@@ -495,11 +495,17 @@ class KiebordService : InputMethodService() {
     }
 
     override fun onWindowHidden() {
+        finishComposing()
         super.onWindowHidden()
         try {
             (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                 ?.removePrimaryClipChangedListener(clipboardListener)
         } catch (_: Exception) {}
+    }
+
+    override fun onFinishInput() {
+        finishComposing()
+        super.onFinishInput()
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -623,6 +629,7 @@ class KiebordService : InputMethodService() {
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        finishComposing()
         super.onFinishInputView(finishingInput)
         if (::voiceInputManager.isInitialized) {
             voiceInputManager.stop()
@@ -631,7 +638,6 @@ class KiebordService : InputMethodService() {
             (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                 ?.removePrimaryClipChangedListener(clipboardListener)
         } catch (_: Exception) {}
-        finishComposing()
         lastGestureCommittedWord = ""
         isGestureAlternativeActive = false
         lastSpaceTapTime = 0L
@@ -738,17 +744,19 @@ class KiebordService : InputMethodService() {
                 val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
                 userDictionaryRepo.recordWord(word, prevWord)
             }
-            ic?.commitText(translitMgr.currentTransliteration, 1)
             translitMgr.reset()
             wasComposing = true
         }
         if (composingBuffer.isNotEmpty()) {
-            val clean = BengaliBstiEngine.cleanPending(composingBuffer.toString()).trim()
+            val word = composingBuffer.toString().trim()
+            val clean = BengaliBstiEngine.cleanPending(word)
             if (preferencesState.learnedWordsEnabled && clean.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                 val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
                 userDictionaryRepo.recordWord(clean, prevWord)
             }
-            ic?.commitText(clean, 1)
+            if (composingBuffer.contains("\u200B")) {
+                ic?.setComposingText(clean, 1)
+            }
             composingBuffer.clear()
             wasComposing = true
         }
