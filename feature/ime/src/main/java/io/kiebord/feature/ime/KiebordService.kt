@@ -53,6 +53,7 @@ import io.kiebord.data.prefs.KiebordPreferencesRepository
 import io.kiebord.feature.ime.translit.TransliterationManagerFactory
 import io.kiebord.feature.ime.action.ActionKeyResolver
 import io.kiebord.feature.ime.action.ActionKeyVisual
+import io.kiebord.feature.ime.action.InputModeResolver
 import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
 import io.kiebord.feature.ime.ui.textedit.TextAction
@@ -859,7 +860,10 @@ class KiebordService : InputMethodService() {
                     }
                     // English mode
                     isEnglishLayout() -> {
-                        if (isEnglishLetter(text)) {
+                        if (InputModeResolver.isDirectCommit(currentInputEditorInfo)) {
+                            finishComposing()
+                            commitCharacterWithPunctuationHandling(ic, text)
+                        } else if (isEnglishLetter(text)) {
                             composingBuffer.append(text)
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
@@ -1023,7 +1027,10 @@ class KiebordService : InputMethodService() {
                     return
                 }
 
-                ic.deleteSurroundingText(1, 0)
+                val deleted = ic.deleteSurroundingText(1, 0)
+                if (!deleted && (InputModeResolver.isDirectCommit(currentInputEditorInfo) || currentInputEditorInfo?.inputType == InputType.TYPE_NULL)) {
+                    sendNavKeyEvent(ic, KeyEvent.KEYCODE_DEL, isSelecting = false)
+                }
                 if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
                     val before = ic.getTextBeforeCursor(10, 0)?.toString() ?: ""
                     updateBornoEasyStateFromText(before)
@@ -1374,43 +1381,7 @@ class KiebordService : InputMethodService() {
     }
 
     private fun isUrlOrCodeField(): Boolean {
-        val info = currentInputEditorInfo ?: return false
-        val inputType = info.inputType
-        val inputClass = inputType and InputType.TYPE_MASK_CLASS
-        val variation = inputType and InputType.TYPE_MASK_VARIATION
-        val flags = inputType and InputType.TYPE_MASK_FLAGS
-
-        // Non-text fields (Number, Phone, DateTime)
-        if (inputClass != InputType.TYPE_CLASS_TEXT) {
-            return true
-        }
-
-        // URI / URL fields
-        if (variation == InputType.TYPE_TEXT_VARIATION_URI) {
-            return true
-        }
-
-        // Email address fields
-        if (variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
-            variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
-        ) {
-            return true
-        }
-
-        // Password fields
-        if (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
-        ) {
-            return true
-        }
-
-        // Code / Terminal fields: typically have TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        if ((flags and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
-            return true
-        }
-
-        return false
+        return InputModeResolver.isUrlOrCodeField(currentInputEditorInfo)
     }
 
     private fun isDigitChar(c: Char): Boolean {
@@ -2227,7 +2198,7 @@ class KiebordService : InputMethodService() {
         centroids: List<KeyCentroid>,
         keyWidthPx: Float
     ) {
-        if (!preferencesState.gestureTypingEnabled || !activeLayout.isQwertyBased()) return
+        if (!preferencesState.gestureTypingEnabled || !activeLayout.isQwertyBased() || (isEnglishLayout() && InputModeResolver.isDirectCommit(currentInputEditorInfo))) return
         if (trail.size < 2 || centroids.isEmpty()) return
 
         gestureCommitJob?.cancel()
@@ -2304,6 +2275,11 @@ class KiebordService : InputMethodService() {
 
     private fun updateSuggestions() {
         if (!preferencesState.suggestionsEnabled || !NativeEngine.isAvailable() || isSymbolsMode || PredefinedLayouts.isNumberLayout(activeLayout.id)) {
+            activeSuggestions = emptyList()
+            return
+        }
+
+        if (isEnglishLayout() && (InputModeResolver.isDirectCommit(currentInputEditorInfo) || isUrlOrCodeField())) {
             activeSuggestions = emptyList()
             return
         }
