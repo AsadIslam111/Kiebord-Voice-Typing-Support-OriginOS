@@ -1094,7 +1094,7 @@ class PredefinedLayoutsTest {
         assertNotNull("symbolsLayout must be present", sym)
         assertEquals("symbols_1", sym!!.id)
         assertEquals(4, sym.rows.size)
-        assertEquals(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), sym.rows[0].keys.map { it.label })
+        assertEquals(listOf("১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "০"), sym.rows[0].keys.map { it.label })
 
         // Verify full moreSymbolsLayout as QWERTY
         val moreSym = layout.moreSymbolsLayout
