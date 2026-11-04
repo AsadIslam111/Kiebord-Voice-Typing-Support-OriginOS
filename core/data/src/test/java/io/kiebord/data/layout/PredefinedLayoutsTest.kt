@@ -395,11 +395,19 @@ class PredefinedLayoutsTest {
         assertEquals(5, customWithSym.effectiveSymbolsLayout()!!.rows.size)
         assertTrue(customSym.isSymbolsLayout())
 
-        // Default / predefined layouts without symbolsLayout safely return null and fall back
+        // Borno Phonetic defines its own symbolsLayout with Bangla numbers in row 0
         val borno = PredefinedLayouts.BengaliBorno
-        org.junit.Assert.assertNull(borno.effectiveSymbolsLayout())
-        org.junit.Assert.assertFalse(borno.isSymbolsLayout())
-        val fallback = borno.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
+        org.junit.Assert.assertNotNull(borno.effectiveSymbolsLayout())
+        val bornoSym = borno.effectiveSymbolsLayout()!!
+        assertEquals("bn_borno_symbols", bornoSym.id)
+        assertTrue(bornoSym.isSymbolsLayout())
+        assertEquals(listOf("১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "০"), bornoSym.rows[0].keys.map { it.label })
+
+        // Predefined layouts without symbolsLayout safely return null and fall back
+        val avro = PredefinedLayouts.BengaliAvro
+        org.junit.Assert.assertNull(avro.effectiveSymbolsLayout())
+        org.junit.Assert.assertFalse(avro.isSymbolsLayout())
+        val fallback = avro.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
         assertEquals("symbols_1", fallback.id)
     }
 

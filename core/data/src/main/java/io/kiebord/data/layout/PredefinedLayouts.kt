@@ -124,6 +124,67 @@ object PredefinedLayouts {
         )
     )
 
+    val BengaliBornoSymbols: KeyboardLayoutDef = KeyboardLayoutDef(
+        id = "bn_borno_symbols",
+        name = "বর্ণ ফোনেটিক Symbols",
+        displayName = "বর্ণ ফোনেটিক",
+        language = "sym",
+        rows = listOf(
+            KeyRow(
+                listOf(
+                    KeyDef("১", moreKeys = listOf("1", "¹", "½", "⅓", "¼", "⅛", "১")),
+                    KeyDef("২", moreKeys = listOf("2", "²", "⅔", "২")),
+                    KeyDef("৩", moreKeys = listOf("3", "³", "¾", "⅜", "৩")),
+                    KeyDef("৪", moreKeys = listOf("4", "⁴", "৪")),
+                    KeyDef("৫", moreKeys = listOf("5", "⅝", "৫")),
+                    KeyDef("৬", moreKeys = listOf("6", "৬")),
+                    KeyDef("৭", moreKeys = listOf("7", "⅞", "৭")),
+                    KeyDef("৮", moreKeys = listOf("8", "৮")),
+                    KeyDef("৯", moreKeys = listOf("9", "৯")),
+                    KeyDef("০", moreKeys = listOf("0", "ⁿ", "∅", "০"))
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("@"),
+                    KeyDef("#"),
+                    KeyDef("$", moreKeys = listOf("$", "৳", "₹", "€", "£", "¥", "¢")),
+                    KeyDef("%", moreKeys = listOf("%", "‰")),
+                    KeyDef("&"),
+                    KeyDef("-", moreKeys = listOf("-", "_", "–", "—", "·", "⁻")),
+                    KeyDef("+", moreKeys = listOf("+", "±", "⁺")),
+                    KeyDef("(", moreKeys = listOf("(", "[", "{", "<")),
+                    KeyDef(")", moreKeys = listOf(")", "]", "}", ">")),
+                    KeyDef("ZW\nNJ", commitText = "\u200C", moreKeys = listOf("ZWJ", "/"))
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("=\\<", type = KeyType.SYMBOLS, widthWeight = 1.5f),
+                    KeyDef("*", moreKeys = listOf("*", "★", "†", "‡")),
+                    KeyDef("\"", moreKeys = listOf("\"", "”", "“", "„", "»", "«")),
+                    KeyDef("'", moreKeys = listOf("'", "’", "‘", "‚", "›", "‹")),
+                    KeyDef(":", moreKeys = listOf(":", "ঃ")),
+                    KeyDef(";", moreKeys = listOf(";")),
+                    KeyDef("!", moreKeys = listOf("!", "¡")),
+                    KeyDef("?", moreKeys = listOf("?", "¿")),
+                    KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.5f)
+                )
+            ),
+            KeyRow(
+                listOf(
+                    KeyDef("ABC", type = KeyType.SYMBOLS, widthWeight = 1.5f),
+                    KeyDef(",", widthWeight = 1.0f, moreKeys = listOf("ACTION_SETTINGS", "ACTION_ONE_HANDED")),
+                    KeyDef("_", widthWeight = 1.0f),
+                    KeyDef(" ", type = KeyType.SPACE, icon = "space", widthWeight = 3.0f),
+                    KeyDef("/", widthWeight = 1.0f),
+                    KeyDef(".", widthWeight = 1.0f, moreKeys = listOf(".", "…")),
+                    KeyDef(type = KeyType.ACTION, icon = "enter", widthWeight = 1.5f, moreKeys = listOf("ACTION_EMOJI"))
+                )
+            )
+        )
+    )
+
     val BengaliBorno = KeyboardLayoutDef(
         id = "bn_borno",
         name = "বর্ণ ফোনেটিক",
@@ -131,6 +192,7 @@ object PredefinedLayouts {
         description = "(ami → আমি) with Enhanced Suggestions.",
         language = "bn",
         flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
+        symbolsLayout = BengaliBornoSymbols,
         rows = listOf(
             KeyRow(
                 listOf(
@@ -1098,6 +1160,7 @@ object PredefinedLayouts {
             "bn_avro" -> BengaliAvro
             "bn_probhat" -> BengaliProbhat
             "bn_national" -> BengaliNational
+            "bn_borno_symbols" -> BengaliBornoSymbols
             "symbols_1" -> Symbols
             "symbols_2" -> SymbolsMore
             "num_extended" -> NumberPadExtended
