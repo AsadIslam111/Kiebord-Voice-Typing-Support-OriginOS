@@ -79,6 +79,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -96,7 +97,6 @@ import kotlinx.coroutines.withContext
 private data class LayoutCardData(
     val id: String,
     val name: String,
-    val badge: String,
     val description: String,
     val layoutDef: KeyboardLayoutDef
 )
@@ -117,55 +117,50 @@ fun KeyboardLayoutsScreen(
     val scrollState = rememberScrollState()
     val colors = LocalSettingsColors.current
 
-    val englishCard = remember {
+    val defaultEnglishCard = remember {
         LayoutCardData(
             id = KiebordPreferences.LAYOUT_EN_QWERTY,
             name = "English (QWERTY)",
-            badge = "EN",
-            description = "Standard Latin layout with gesture typing",
+            description = PredefinedLayouts.EnglishQwerty.description ?: "Standard Latin layout with gesture typing",
             layoutDef = PredefinedLayouts.EnglishQwerty
         )
     }
 
-    val banglaCards = remember {
+    val defaultBanglaCards = remember {
         listOf(
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_BORNO,
                 name = "বর্ণ ফোনেটিক",
-                badge = "বর্ণ",
-                description = "Phonetic (ami → আমি)",
+                description = PredefinedLayouts.BengaliBorno.description ?: "(ami → আমি) with Enhanced Suggestions.",
                 layoutDef = PredefinedLayouts.BengaliBorno
             ),
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_AVRO,
                 name = "অভ্র ফোনেটিক",
-                badge = "অভ্র",
-                description = "Phonetic (ami → আমি)",
+                description = PredefinedLayouts.BengaliAvro.description ?: "Popular Bangla Phonetic Layout by OmicronLab.",
                 layoutDef = PredefinedLayouts.BengaliAvro
             ),
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_EASY,
                 name = "বর্ণ ইজি",
-                badge = "বর্ণ ইজি",
-                description = "Easy 5-row alphabetical layout",
+                description = PredefinedLayouts.BengaliBornoEasy.description ?: "Easy 5-row alphabetical layout",
                 layoutDef = PredefinedLayouts.BengaliBornoEasy
             ),
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_NATIONAL,
                 name = "জাতীয় (BSTI)",
-                badge = "জাতীয়",
-                description = "National BSTI layout",
+                description = PredefinedLayouts.BengaliNational.description ?: "National BSTI layout",
                 layoutDef = PredefinedLayouts.BengaliNational
             ),
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_PROBHAT,
                 name = "প্রভাত",
-                badge = "প্রভাত",
-                description = "Fixed traditional layout",
+                description = PredefinedLayouts.BengaliProbhat.description ?: "Fixed traditional layout",
                 layoutDef = PredefinedLayouts.BengaliProbhat
             )
         )
     }
+    val defaultBanglaIds = remember(defaultBanglaCards) { defaultBanglaCards.map { it.id }.toSet() }
 
     var arabicLayout by remember {
         mutableStateOf(
@@ -177,8 +172,7 @@ fun KeyboardLayoutsScreen(
         LayoutCardData(
             id = KiebordPreferences.LAYOUT_AR_ARABIC,
             name = "Arabic (العربية)",
-            badge = "عربي",
-            description = "Standard Arabic with Harakat diacritics",
+            description = arabicLayout.description ?: "Standard Arabic with Harakat diacritics",
             layoutDef = arabicLayout
         )
     }
@@ -198,8 +192,49 @@ fun KeyboardLayoutsScreen(
         availableMeta = loadedMeta
     }
 
-    val curatedIds = remember(englishCard, banglaCards, arabicCard) {
-        (listOf(englishCard.id) + banglaCards.map { it.id } + listOf(arabicCard.id)).toSet()
+    var extraEnglishCards by remember { mutableStateOf<List<LayoutCardData>>(emptyList()) }
+    var extraBanglaCards by remember { mutableStateOf<List<LayoutCardData>>(emptyList()) }
+
+    LaunchedEffect(availableMeta, reloadTrigger) {
+        val extraEn = withContext(Dispatchers.IO) {
+            availableMeta.filter { !it.isCustom && it.language == "en" && it.id != defaultEnglishCard.id && !it.id.contains("symbols") }
+                .map { meta ->
+                    val def = layoutRepo.getLayout(meta.id)
+                    val desc = def.description ?: meta.description ?: "Bundled ${meta.displayName ?: meta.name} layout"
+                    LayoutCardData(
+                        id = meta.id,
+                        name = meta.displayName ?: meta.name,
+                        description = desc,
+                        layoutDef = def
+                    )
+                }
+        }
+        val extraBn = withContext(Dispatchers.IO) {
+            availableMeta.filter { !it.isCustom && it.language == "bn" && it.id !in defaultBanglaIds && !it.id.contains("symbols") }
+                .map { meta ->
+                    val def = layoutRepo.getLayout(meta.id)
+                    val desc = def.description ?: meta.description ?: "Bundled ${meta.displayName ?: meta.name} layout"
+                    LayoutCardData(
+                        id = meta.id,
+                        name = meta.displayName ?: meta.name,
+                        description = desc,
+                        layoutDef = def
+                    )
+                }
+        }
+        extraEnglishCards = extraEn
+        extraBanglaCards = extraBn
+    }
+
+    val englishCards = remember(defaultEnglishCard, extraEnglishCards) {
+        listOf(defaultEnglishCard) + extraEnglishCards
+    }
+    val banglaCards = remember(defaultBanglaCards, extraBanglaCards) {
+        defaultBanglaCards + extraBanglaCards
+    }
+
+    val curatedIds = remember(englishCards, banglaCards, arabicCard) {
+        (englishCards.map { it.id } + banglaCards.map { it.id } + listOf(arabicCard.id)).toSet()
     }
     val otherBundledMeta = remember(availableMeta, curatedIds) {
         availableMeta.filter { !it.isCustom && it.id !in curatedIds && !it.id.contains("symbols") }
@@ -210,12 +245,10 @@ fun KeyboardLayoutsScreen(
         val cards = withContext(Dispatchers.IO) {
             otherBundledMeta.map { meta ->
                 val def = layoutRepo.getLayout(meta.id)
-                val badge = (meta.displayName ?: meta.language).uppercase().take(4)
-                val desc = "Bundled ${meta.displayName ?: meta.name} layout"
+                val desc = def.description ?: meta.description ?: "Bundled ${meta.displayName ?: meta.name} layout"
                 LayoutCardData(
                     id = meta.id,
                     name = meta.displayName ?: meta.name,
-                    badge = badge,
                     description = desc,
                     layoutDef = def
                 )
@@ -234,8 +267,7 @@ fun KeyboardLayoutsScreen(
                 LayoutCardData(
                     id = meta.id,
                     name = meta.displayName ?: meta.name,
-                    badge = meta.language.uppercase(),
-                    description = "Custom imported layout",
+                    description = def.description ?: meta.description ?: "Custom imported layout",
                     layoutDef = def
                 )
             }
@@ -243,8 +275,8 @@ fun KeyboardLayoutsScreen(
         customCards = cards
     }
 
-    val allKnownCards = remember(englishCard, banglaCards, arabicCard, otherBundledCards, customCards) {
-        listOf(englishCard) + banglaCards + listOf(arabicCard) + otherBundledCards + customCards
+    val allKnownCards = remember(englishCards, banglaCards, arabicCard, otherBundledCards, customCards) {
+        englishCards + banglaCards + listOf(arabicCard) + otherBundledCards + customCards
     }
     var orderedActiveIds by remember(preferences.enabledLayoutIds) {
         mutableStateOf(preferences.enabledLayoutIds.toList())
@@ -265,8 +297,6 @@ fun KeyboardLayoutsScreen(
     val groupSpacingPx = with(density) { 3.dp.toPx() }
     val swipeThresholdPx = with(density) { 72.dp.toPx() }
 
-    val isEnglishEnabled = preferences.enabledLayoutIds.contains(englishCard.id)
-    val isAnyBanglaEnabled = preferences.enabledLayoutIds.any { it.startsWith("bn") }
     val isArabicEnabled = preferences.enabledLayoutIds.contains(arabicCard.id)
 
     var isEnglishExpanded by remember { mutableStateOf(false) }
@@ -530,17 +560,16 @@ fun KeyboardLayoutsScreen(
                 position = GroupPosition.TOP,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                val isSingle = englishCards.size == 1
+
                 Column {
                     LanguageSectionHeader(
                         title = "English",
-                        subtitle = "Standard Latin layout with gesture typing",
-                        badgeText = "EN",
-                        activeCount = if (isEnglishEnabled) 1 else 0,
-                        totalCount = 1,
+                        subtitle = if (isSingle) englishCards.first().description else englishCards.joinToString(", ") { it.name },
                         isExpanded = isEnglishExpanded,
                         onToggleExpand = { isEnglishExpanded = !isEnglishExpanded },
-                        directToggleState = isEnglishEnabled,
-                        onDirectToggle = { handleToggleLayout(englishCard) }
+                        directToggleState = if (isSingle) preferences.enabledLayoutIds.contains(englishCards.first().id) else null,
+                        onDirectToggle = if (isSingle) { { handleToggleLayout(englishCards.first()) } } else null
                     )
 
                     AnimatedVisibility(
@@ -548,19 +577,51 @@ fun KeyboardLayoutsScreen(
                         enter = expandVertically() + fadeIn(),
                         exit = shrinkVertically() + fadeOut()
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 16.dp, end = 16.dp, bottom = 18.dp, top = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            KeyboardLayoutPreviewItem(
-                                cardData = englishCard,
-                                preferences = preferences,
-                                isEnabled = isEnglishEnabled,
-                                isPrimary = preferences.primaryLayoutId == englishCard.id && isEnglishEnabled,
-                                onToggle = { handleToggleLayout(englishCard) }
-                            )
+                        if (isSingle) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 16.dp, bottom = 18.dp, top = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val card = englishCards.first()
+                                val isEnabled = preferences.enabledLayoutIds.contains(card.id)
+                                KeyboardLayoutPreviewItem(
+                                    cardData = card,
+                                    preferences = preferences,
+                                    isEnabled = isEnabled,
+                                    isPrimary = preferences.primaryLayoutId == card.id && isEnabled,
+                                    onToggle = { handleToggleLayout(card) }
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 18.dp, top = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                LazyRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    items(
+                                        items = englishCards,
+                                        key = { it.id }
+                                    ) { cardData ->
+                                        val isEnabled = preferences.enabledLayoutIds.contains(cardData.id)
+
+                                        KeyboardLayoutPreviewItem(
+                                            cardData = cardData,
+                                            preferences = preferences,
+                                            isEnabled = isEnabled,
+                                            isPrimary = preferences.primaryLayoutId == cardData.id && isEnabled,
+                                            onToggle = { handleToggleLayout(cardData) }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -571,15 +632,10 @@ fun KeyboardLayoutsScreen(
                 position = GroupPosition.MIDDLE,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                val activeBanglaCount = banglaCards.count { preferences.enabledLayoutIds.contains(it.id) }
-
                 Column {
                     LanguageSectionHeader(
                         title = "Bangla (বাংলা)",
-                        subtitle = "বর্ণ ফোনেটিক, অভ্র, জাতীয় (BSTI), প্রভাত",
-                        badgeText = "বাংলা",
-                        activeCount = activeBanglaCount,
-                        totalCount = banglaCards.size,
+                        subtitle = banglaCards.joinToString(", ") { it.name },
                         isExpanded = isBanglaExpanded,
                         onToggleExpand = { isBanglaExpanded = !isBanglaExpanded }
                     )
@@ -630,10 +686,7 @@ fun KeyboardLayoutsScreen(
                 Column {
                     LanguageSectionHeader(
                         title = "Arabic (العربية)",
-                        subtitle = "Standard Arabic with Harakat diacritics",
-                        badgeText = "عربي",
-                        activeCount = if (isArabicEnabled) 1 else 0,
-                        totalCount = 1,
+                        subtitle = arabicCard.description,
                         isExpanded = isArabicExpanded,
                         onToggleExpand = { isArabicExpanded = !isArabicExpanded },
                         directToggleState = isArabicEnabled,
@@ -701,9 +754,6 @@ fun KeyboardLayoutsScreen(
                         LanguageSectionHeader(
                             title = "Custom Layouts",
                             subtitle = "${customCards.size} imported layout(s) installed",
-                            badgeText = "JSON",
-                            activeCount = activeCustomCount,
-                            totalCount = customCards.size,
                             isExpanded = isCustomExpanded,
                             onToggleExpand = { isCustomExpanded = !isCustomExpanded }
                         )
@@ -841,16 +891,12 @@ fun KeyboardLayoutsScreen(
 private fun LanguageSectionHeader(
     title: String,
     subtitle: String,
-    badgeText: String,
-    activeCount: Int,
-    totalCount: Int,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
     directToggleState: Boolean? = null,
     onDirectToggle: (() -> Unit)? = null
 ) {
     val colors = LocalSettingsColors.current
-    val isAnyActive = activeCount > 0
 
     Row(
         modifier = Modifier
@@ -861,35 +907,12 @@ private fun LanguageSectionHeader(
     ) {
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.textPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(
-                            if (isAnyActive) colors.accent.copy(alpha = 0.15f)
-                            else colors.iconBackground
-                        )
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = if (totalCount == 1) {
-                            if (isAnyActive) "Active" else "Off"
-                        } else {
-                            if (isAnyActive) "$activeCount active" else "Off"
-                        },
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isAnyActive) colors.accent else colors.textSecondary
-                    )
-                }
-            }
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary
+            )
             Text(
                 text = subtitle,
                 fontSize = 12.sp,
@@ -1059,9 +1082,6 @@ private fun BundledLayoutSectionItem(
             LanguageSectionHeader(
                 title = card.name,
                 subtitle = card.description,
-                badgeText = card.badge,
-                activeCount = if (isEnabled) 1 else 0,
-                totalCount = 1,
                 isExpanded = isExpanded,
                 onToggleExpand = { isExpanded = !isExpanded },
                 directToggleState = isEnabled,
@@ -1224,8 +1244,8 @@ private fun KeyboardLayoutPreviewItem(
                 text = cardData.description,
                 fontSize = 11.sp,
                 color = colors.textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                textAlign = TextAlign.Center,
+                lineHeight = 14.sp
             )
         }
     }

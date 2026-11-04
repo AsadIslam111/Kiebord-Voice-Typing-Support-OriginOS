@@ -65,6 +65,7 @@ object PredefinedLayouts {
         id = "en_qwerty",
         name = "English",
         displayName = "English",
+        description = "Standard Latin layout with gesture typing",
         language = "en",
         rows = listOf(
             KeyRow(
@@ -126,6 +127,7 @@ object PredefinedLayouts {
         id = "bn_borno",
         name = "বর্ণ ফোনেটিক",
         displayName = "বর্ণ ফোনেটিক",
+        description = "(ami → আমি) with Enhanced Suggestions.",
         language = "bn",
         rows = listOf(
             KeyRow(
@@ -187,6 +189,7 @@ object PredefinedLayouts {
         id = "bn_avro",
         name = "অভ্র",
         displayName = "অভ্র",
+        description = "Popular Bangla Phonetic Layout by OmicronLab.",
         language = "bn",
         rows = listOf(
             KeyRow(
@@ -248,6 +251,7 @@ object PredefinedLayouts {
         id = "bn_probhat",
         name = "প্রভাত",
         displayName = "প্রভাত",
+        description = "Fixed traditional layout",
         language = "bn",
         rows = listOf(
             KeyRow(
@@ -313,6 +317,7 @@ object PredefinedLayouts {
         id = "bn_national",
         name = "জাতীয় (BSTI)",
         displayName = "জাতীয় (BSTI)",
+        description = "National BSTI layout",
         language = "bn",
         rows = listOf(
             KeyRow(
@@ -609,6 +614,7 @@ object PredefinedLayouts {
         id = "bn_easy",
         name = "বর্ণ ইজি",
         displayName = "বর্ণ ইজি",
+        description = "Easy 5-row alphabetical layout",
         language = "bn",
         symbolsLayout = BengaliBornoEasySymbols,
         moreSymbolsLayout = BengaliBornoEasySymbolsMore,

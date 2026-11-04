@@ -1,0 +1,932 @@
+{
+  "id": "en_qwerty",
+  "name": "English (QWERTY)",
+  "displayName": "English (QWERTY)",
+  "description": "Standard Latin layout with gesture typing",
+  "language": "en",
+  "direction": "LTR",
+  "gesture_mode": "qwerty",
+  "numberRow": {
+    "keys": [
+      {
+        "label": "1",
+        "shiftedLabel": "!",
+        "moreKeys": [
+          "1",
+          "¹",
+          "½",
+          "১"
+        ]
+      },
+      {
+        "label": "2",
+        "shiftedLabel": "@",
+        "moreKeys": [
+          "2",
+          "²",
+          "⅔",
+          "২"
+        ]
+      },
+      {
+        "label": "3",
+        "shiftedLabel": "#",
+        "moreKeys": [
+          "3",
+          "³",
+          "¾",
+          "৩"
+        ]
+      },
+      {
+        "label": "4",
+        "shiftedLabel": "$",
+        "moreKeys": [
+          "4",
+          "⁴",
+          "৪"
+        ]
+      },
+      {
+        "label": "5",
+        "shiftedLabel": "%",
+        "moreKeys": [
+          "5",
+          "⁵",
+          "৫"
+        ]
+      },
+      {
+        "label": "6",
+        "shiftedLabel": "^",
+        "moreKeys": [
+          "6",
+          "⁶",
+          "৬"
+        ]
+      },
+      {
+        "label": "7",
+        "shiftedLabel": "&",
+        "moreKeys": [
+          "7",
+          "⁷",
+          "৭"
+        ]
+      },
+      {
+        "label": "8",
+        "shiftedLabel": "*",
+        "moreKeys": [
+          "8",
+          "⁸",
+          "৮"
+        ]
+      },
+      {
+        "label": "9",
+        "shiftedLabel": "(",
+        "moreKeys": [
+          "9",
+          "⁹",
+          "৯"
+        ]
+      },
+      {
+        "label": "0",
+        "shiftedLabel": ")",
+        "moreKeys": [
+          "0",
+          "⁰",
+          "০",
+          "∅"
+        ]
+      }
+    ]
+  },
+  "rows": [
+    {
+      "keys": [
+        {
+          "label": "q",
+          "shiftedLabel": "Q",
+          "flickUp": "1",
+          "moreKeys": [
+            "1"
+          ]
+        },
+        {
+          "label": "w",
+          "shiftedLabel": "W",
+          "flickUp": "2",
+          "moreKeys": [
+            "2"
+          ]
+        },
+        {
+          "label": "e",
+          "shiftedLabel": "E",
+          "flickUp": "3",
+          "moreKeys": [
+            "3",
+            "é",
+            "è",
+            "ê",
+            "ë",
+            "ē"
+          ]
+        },
+        {
+          "label": "r",
+          "shiftedLabel": "R",
+          "flickUp": "4",
+          "moreKeys": [
+            "4"
+          ]
+        },
+        {
+          "label": "t",
+          "shiftedLabel": "T",
+          "flickUp": "5",
+          "moreKeys": [
+            "5"
+          ]
+        },
+        {
+          "label": "y",
+          "shiftedLabel": "Y",
+          "flickUp": "6",
+          "moreKeys": [
+            "6"
+          ]
+        },
+        {
+          "label": "u",
+          "shiftedLabel": "U",
+          "flickUp": "7",
+          "moreKeys": [
+            "7",
+            "ú",
+            "ù",
+            "û",
+            "ü",
+            "ū"
+          ]
+        },
+        {
+          "label": "i",
+          "shiftedLabel": "I",
+          "flickUp": "8",
+          "moreKeys": [
+            "8",
+            "í",
+            "ì",
+            "î",
+            "ï",
+            "ī"
+          ]
+        },
+        {
+          "label": "o",
+          "shiftedLabel": "O",
+          "flickUp": "9",
+          "moreKeys": [
+            "9",
+            "ó",
+            "ò",
+            "ô",
+            "ö",
+            "œ",
+            "ø",
+            "ō",
+            "õ"
+          ]
+        },
+        {
+          "label": "p",
+          "shiftedLabel": "P",
+          "flickUp": "0",
+          "moreKeys": [
+            "0"
+          ]
+        }
+      ]
+    },
+    {
+      "startPaddingWeight": 0.5,
+      "endPaddingWeight": 0.5,
+      "keys": [
+        {
+          "label": "a",
+          "shiftedLabel": "A",
+          "flickUp": "@",
+          "moreKeys": [
+            "@",
+            "à",
+            "á",
+            "â",
+            "ä",
+            "æ",
+            "ã",
+            "å",
+            "ā"
+          ]
+        },
+        {
+          "label": "s",
+          "shiftedLabel": "S",
+          "flickUp": "#",
+          "moreKeys": [
+            "#",
+            "ß"
+          ]
+        },
+        {
+          "label": "d",
+          "shiftedLabel": "D",
+          "flickUp": "$",
+          "moreKeys": [
+            "$"
+          ]
+        },
+        {
+          "label": "f",
+          "shiftedLabel": "F",
+          "flickUp": "%",
+          "moreKeys": [
+            "%"
+          ]
+        },
+        {
+          "label": "g",
+          "shiftedLabel": "G",
+          "flickUp": "&",
+          "moreKeys": [
+            "&"
+          ]
+        },
+        {
+          "label": "h",
+          "shiftedLabel": "H",
+          "flickUp": "-",
+          "moreKeys": [
+            "-",
+            "_"
+          ]
+        },
+        {
+          "label": "j",
+          "shiftedLabel": "J",
+          "flickUp": "+",
+          "moreKeys": [
+            "+"
+          ]
+        },
+        {
+          "label": "k",
+          "shiftedLabel": "K",
+          "flickUp": "(",
+          "moreKeys": [
+            "("
+          ]
+        },
+        {
+          "label": "l",
+          "shiftedLabel": "L",
+          "flickUp": ")",
+          "moreKeys": [
+            ")"
+          ]
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "type": "SHIFT",
+          "icon": "shift",
+          "widthWeight": 1.5
+        },
+        {
+          "label": "z",
+          "shiftedLabel": "Z",
+          "flickUp": "*",
+          "moreKeys": [
+            "ACTION_SELECT_ALL",
+            "*"
+          ]
+        },
+        {
+          "label": "x",
+          "shiftedLabel": "X",
+          "flickUp": "\"",
+          "moreKeys": [
+            "ACTION_CUT",
+            "\""
+          ]
+        },
+        {
+          "label": "c",
+          "shiftedLabel": "C",
+          "flickUp": "'",
+          "moreKeys": [
+            "ACTION_COPY",
+            "'",
+            "ç"
+          ]
+        },
+        {
+          "label": "v",
+          "shiftedLabel": "V",
+          "flickUp": ":",
+          "moreKeys": [
+            "ACTION_PASTE",
+            ":"
+          ]
+        },
+        {
+          "label": "b",
+          "shiftedLabel": "B",
+          "flickUp": ";",
+          "moreKeys": [
+            ";"
+          ]
+        },
+        {
+          "label": "n",
+          "shiftedLabel": "N",
+          "flickUp": "!",
+          "moreKeys": [
+            "!",
+            "ñ"
+          ]
+        },
+        {
+          "label": "m",
+          "shiftedLabel": "M",
+          "flickUp": "?",
+          "moreKeys": [
+            "?"
+          ]
+        },
+        {
+          "type": "DELETE",
+          "icon": "backspace",
+          "widthWeight": 1.5
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "label": "?123",
+          "type": "SYMBOLS",
+          "widthWeight": 1.5,
+          "slidingInput": true
+        },
+        {
+          "label": ",",
+          "widthWeight": 1.0,
+          "moreKeys": [
+            "ACTION_SETTINGS",
+            "ACTION_ONE_HANDED"
+          ]
+        },
+        {
+          "type": "SWITCH_LANGUAGE",
+          "icon": "globe",
+          "widthWeight": 1.0
+        },
+        {
+          "label": " ",
+          "type": "SPACE",
+          "icon": "space",
+          "widthWeight": 4.0
+        },
+        {
+          "label": ".",
+          "widthWeight": 1.0,
+          "moreKeysColumns": 8,
+          "moreKeys": [
+            ",",
+            "?",
+            "!",
+            "#",
+            ")",
+            "(",
+            "/",
+            ";",
+            "'",
+            "@",
+            ":",
+            "-",
+            "\"",
+            "+",
+            "%",
+            "&"
+          ]
+        },
+        {
+          "type": "ACTION",
+          "icon": "enter",
+          "widthWeight": 1.5,
+          "moreKeys": [
+            "ACTION_EMOJI"
+          ]
+        }
+      ]
+    }
+  ],
+  "symbolsLayout": {
+    "id": "symbols_1",
+    "name": "Symbols",
+    "language": "sym",
+    "rows": [
+      {
+        "keys": [
+          {
+            "label": "1",
+            "moreKeys": [
+              "1",
+              "¹",
+              "½",
+              "⅓",
+              "¼",
+              "⅛",
+              "১"
+            ]
+          },
+          {
+            "label": "2",
+            "moreKeys": [
+              "2",
+              "²",
+              "⅔",
+              "২"
+            ]
+          },
+          {
+            "label": "3",
+            "moreKeys": [
+              "3",
+              "³",
+              "¾",
+              "⅜",
+              "৩"
+            ]
+          },
+          {
+            "label": "4",
+            "moreKeys": [
+              "4",
+              "⁴",
+              "৪"
+            ]
+          },
+          {
+            "label": "5",
+            "moreKeys": [
+              "5",
+              "⅝",
+              "৫"
+            ]
+          },
+          {
+            "label": "6",
+            "moreKeys": [
+              "6",
+              "৬"
+            ]
+          },
+          {
+            "label": "7",
+            "moreKeys": [
+              "7",
+              "⅞",
+              "৭"
+            ]
+          },
+          {
+            "label": "8",
+            "moreKeys": [
+              "8",
+              "৮"
+            ]
+          },
+          {
+            "label": "9",
+            "moreKeys": [
+              "9",
+              "৯"
+            ]
+          },
+          {
+            "label": "0",
+            "moreKeys": [
+              "0",
+              "ⁿ",
+              "∅",
+              "০"
+            ]
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "@"
+          },
+          {
+            "label": "#"
+          },
+          {
+            "label": "$",
+            "moreKeys": [
+              "$",
+              "৳",
+              "₹",
+              "€",
+              "£",
+              "¥",
+              "¢"
+            ]
+          },
+          {
+            "label": "%",
+            "moreKeys": [
+              "%",
+              "‰"
+            ]
+          },
+          {
+            "label": "&"
+          },
+          {
+            "label": "-",
+            "moreKeys": [
+              "-",
+              "_",
+              "–",
+              "—",
+              "·",
+              "⁻"
+            ]
+          },
+          {
+            "label": "+",
+            "moreKeys": [
+              "+",
+              "±",
+              "⁺"
+            ]
+          },
+          {
+            "label": "(",
+            "moreKeys": [
+              "(",
+              "[",
+              "{",
+              "<"
+            ]
+          },
+          {
+            "label": ")",
+            "moreKeys": [
+              ")",
+              "]",
+              "}",
+              ">"
+            ]
+          },
+          {
+            "label": "ZW\nNJ",
+            "commitText": "‌",
+            "moreKeys": [
+              "ZWJ",
+              "/"
+            ]
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "=\\<",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": "*",
+            "moreKeys": [
+              "*",
+              "★",
+              "†",
+              "‡"
+            ]
+          },
+          {
+            "label": "\"",
+            "moreKeys": [
+              "\"",
+              "”",
+              "“",
+              "„",
+              "»",
+              "«"
+            ]
+          },
+          {
+            "label": "'",
+            "moreKeys": [
+              "'",
+              "’",
+              "‘",
+              "‚",
+              "›",
+              "‹"
+            ]
+          },
+          {
+            "label": ":",
+            "moreKeys": [
+              ":",
+              "ঃ"
+            ]
+          },
+          {
+            "label": ";",
+            "moreKeys": [
+              ";"
+            ]
+          },
+          {
+            "label": "!",
+            "moreKeys": [
+              "!",
+              "¡"
+            ]
+          },
+          {
+            "label": "?",
+            "moreKeys": [
+              "?",
+              "¿"
+            ]
+          },
+          {
+            "type": "DELETE",
+            "icon": "backspace",
+            "widthWeight": 1.5
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "ABC",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": ",",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "ACTION_SETTINGS",
+              "ACTION_ONE_HANDED"
+            ]
+          },
+          {
+            "label": "_",
+            "widthWeight": 1.0
+          },
+          {
+            "label": " ",
+            "type": "SPACE",
+            "icon": "space",
+            "widthWeight": 3.0
+          },
+          {
+            "label": "/",
+            "widthWeight": 1.0
+          },
+          {
+            "label": ".",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              ".",
+              "…"
+            ]
+          },
+          {
+            "type": "ACTION",
+            "icon": "enter",
+            "widthWeight": 1.5,
+            "moreKeys": [
+              "ACTION_EMOJI"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "moreSymbolsLayout": {
+    "id": "symbols_2",
+    "name": "More Symbols",
+    "language": "sym",
+    "rows": [
+      {
+        "keys": [
+          {
+            "label": "~"
+          },
+          {
+            "label": "`"
+          },
+          {
+            "label": "|"
+          },
+          {
+            "label": "•",
+            "moreKeys": [
+              "•",
+              "♪",
+              "♥",
+              "♠",
+              "♦",
+              "♣"
+            ]
+          },
+          {
+            "label": "√"
+          },
+          {
+            "label": "π",
+            "moreKeys": [
+              "π",
+              "Π"
+            ]
+          },
+          {
+            "label": "÷"
+          },
+          {
+            "label": "×"
+          },
+          {
+            "label": "¶",
+            "moreKeys": [
+              "¶",
+              "§"
+            ]
+          },
+          {
+            "label": "∆"
+          }
+        ]
+      },
+      {
+        "startPaddingWeight": 0.5,
+        "endPaddingWeight": 0.5,
+        "keys": [
+          {
+            "label": "£"
+          },
+          {
+            "label": "¢"
+          },
+          {
+            "label": "€"
+          },
+          {
+            "label": "¥"
+          },
+          {
+            "label": "^",
+            "moreKeys": [
+              "^",
+              "↑",
+              "↓",
+              "←",
+              "→"
+            ]
+          },
+          {
+            "label": "°",
+            "moreKeys": [
+              "°",
+              "′",
+              "″"
+            ]
+          },
+          {
+            "label": "=",
+            "moreKeys": [
+              "=",
+              "≠",
+              "≈",
+              "∞"
+            ]
+          },
+          {
+            "label": "{"
+          },
+          {
+            "label": "}"
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "?123",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": "\\"
+          },
+          {
+            "label": "©"
+          },
+          {
+            "label": "®"
+          },
+          {
+            "label": "™"
+          },
+          {
+            "label": "℅"
+          },
+          {
+            "label": "["
+          },
+          {
+            "label": "]"
+          },
+          {
+            "type": "DELETE",
+            "icon": "backspace",
+            "widthWeight": 1.5
+          }
+        ]
+      },
+      {
+        "keys": [
+          {
+            "label": "ABC",
+            "type": "SYMBOLS",
+            "widthWeight": 1.5
+          },
+          {
+            "label": ",",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "ACTION_SETTINGS",
+              "ACTION_ONE_HANDED"
+            ]
+          },
+          {
+            "label": "<",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              "<",
+              "«",
+              "≤"
+            ]
+          },
+          {
+            "label": " ",
+            "type": "SPACE",
+            "icon": "space",
+            "widthWeight": 3.0
+          },
+          {
+            "label": ">",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              ">",
+              "»",
+              "≥"
+            ]
+          },
+          {
+            "label": ".",
+            "widthWeight": 1.0,
+            "moreKeys": [
+              ".",
+              "…"
+            ]
+          },
+          {
+            "type": "ACTION",
+            "icon": "enter",
+            "widthWeight": 1.5,
+            "moreKeys": [
+              "ACTION_EMOJI"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

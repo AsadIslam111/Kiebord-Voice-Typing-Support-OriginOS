@@ -873,6 +873,7 @@ class PredefinedLayoutsTest {
         assertEquals("borno_math", mathLayout.id)
         assertEquals("Borno Math", mathLayout.name)
         assertEquals("Borno Math", mathLayout.displayName)
+        assertEquals("English layout with mathematical symbols", mathLayout.description)
         assertEquals("en", mathLayout.language)
         assertEquals("LTR", mathLayout.direction)
         assertEquals("qwerty", mathLayout.gestureMode)
@@ -1041,6 +1042,9 @@ class PredefinedLayoutsTest {
         assertEquals("LTR", layout.direction)
         assertEquals("m17n", layout.processor)
         assertEquals("bn-khipro.classic.mim", layout.rules)
+        assertEquals("Compositional Layout", layout.description)
+        assertNotNull("khipro numberRow must be defined", layout.numberRow)
+        assertEquals(listOf("১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "০"), layout.numberRow!!.keys.map { it.label })
         assertTrue(layout.isQwertyBased())
 
         // Verify exact EN QWERTY rows
@@ -1093,4 +1097,35 @@ class PredefinedLayoutsTest {
         assertNotNull("bn-khipro.classic.mim must exist in assets/rules/", rulesFile)
         assertTrue("rules file must not be empty", rulesFile!!.length() > 0)
     }
+    @Test
+    fun testEnQwertyJsonAssetValidation() {
+        val candidates = listOf(
+            java.io.File("../../feature/ime/src/main/assets/layouts/en_qwerty.json"),
+            java.io.File("feature/ime/src/main/assets/layouts/en_qwerty.json"),
+            java.io.File("../feature/ime/src/main/assets/layouts/en_qwerty.json")
+        )
+        val jsonFile = candidates.firstOrNull { it.exists() }
+        assertNotNull("en_qwerty.json must exist in assets/layouts/", jsonFile)
+
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val layout = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(jsonFile!!.readText())
+
+        assertEquals("en_qwerty", layout.id)
+        assertEquals("English (QWERTY)", layout.name)
+        assertEquals("en", layout.language)
+        assertEquals("LTR", layout.direction)
+        assertEquals("qwerty", layout.gestureMode)
+        assertEquals("Standard Latin layout with gesture typing", layout.description)
+        assertTrue(layout.isQwertyBased())
+
+        assertNotNull("numberRow must be defined", layout.numberRow)
+        assertEquals(10, layout.numberRow!!.keys.size)
+        assertEquals(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), layout.numberRow!!.keys.map { it.label })
+
+        assertEquals(4, layout.rows.size)
+        assertEquals(listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"), layout.rows[0].keys.map { it.label })
+        assertNotNull("symbolsLayout must be defined", layout.symbolsLayout)
+        assertNotNull("moreSymbolsLayout must be defined", layout.moreSymbolsLayout)
+    }
+
 }

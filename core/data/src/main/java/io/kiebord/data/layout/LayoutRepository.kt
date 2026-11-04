@@ -13,7 +13,8 @@ data class LayoutItemMeta(
     val language: String,
     val direction: String,
     val isCustom: Boolean,
-    val hasExtraRows: Boolean
+    val hasExtraRows: Boolean,
+    val description: String? = null
 )
 
 class LayoutRepository private constructor(private val context: Context) {
@@ -113,7 +114,8 @@ class LayoutRepository private constructor(private val context: Context) {
                         language = layout.language,
                         direction = layout.direction,
                         isCustom = false,
-                        hasExtraRows = layout.extraRows.isNotEmpty()
+                        hasExtraRows = layout.extraRows.isNotEmpty(),
+                        description = layout.description
                     )
                 )
             }
@@ -133,7 +135,8 @@ class LayoutRepository private constructor(private val context: Context) {
                                 language = layout.language,
                                 direction = layout.direction,
                                 isCustom = false,
-                                hasExtraRows = layout.extraRows.isNotEmpty()
+                                hasExtraRows = layout.extraRows.isNotEmpty(),
+                        description = layout.description
                             )
                         )
                     }
@@ -158,7 +161,8 @@ class LayoutRepository private constructor(private val context: Context) {
                                     language = layout.language,
                                     direction = layout.direction,
                                     isCustom = true,
-                                    hasExtraRows = layout.extraRows.isNotEmpty()
+                                    hasExtraRows = layout.extraRows.isNotEmpty(),
+                        description = layout.description
                                 )
                             )
                         }

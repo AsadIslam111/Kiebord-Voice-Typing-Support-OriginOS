@@ -79,6 +79,7 @@ data class KeyboardLayoutDef(
     val id: String = "symbols",
     val name: String = "Symbols",
     val displayName: String? = null,
+    val description: String? = null,
     val language: String = "",
     val direction: String = "LTR",
     @kotlinx.serialization.json.JsonNames("gesture_mode", "gestureMode")
