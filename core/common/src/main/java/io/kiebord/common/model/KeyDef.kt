@@ -1,6 +1,75 @@
 package io.kiebord.common.model
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonNames
+import kotlinx.serialization.json.JsonPrimitive
+
+object LayoutFlags {
+    const val NO_AUTO_CAPITALIZATION = "NoAutoCapitalization"
+    const val NO_AUTO_SPACE = "NoAutoSpace"
+    const val NO_DOUBLE_SPACE_PERIOD = "NoDoubleSpacePeriod"
+    const val NO_SUGGESTIONS = "NoSuggestions"
+    const val NO_LEARNED_WORDS = "NoLearnedWords"
+    const val NO_GESTURE = "NoGesture"
+    const val NO_AUTO_CORRECT = "NoAutoCorrect"
+}
+
+object FlexibleStringListSerializer : KSerializer<List<String>> {
+    override val descriptor: SerialDescriptor = ListSerializer(String.serializer()).descriptor
+
+    override fun deserialize(decoder: Decoder): List<String> {
+        val jsonDecoder = decoder as? JsonDecoder ?: return ListSerializer(String.serializer()).deserialize(decoder)
+        return when (val elem = jsonDecoder.decodeJsonElement()) {
+            is JsonArray -> elem.mapNotNull { (it as? JsonPrimitive)?.content }
+            is JsonPrimitive -> {
+                val str = elem.content
+                if (str.isEmpty()) {
+                    emptyList()
+                } else if (str.contains(',') || str.contains(';')) {
+                    str.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }
+                } else if (str.contains(' ')) {
+                    str.split(' ').map { it.trim() }.filter { it.isNotEmpty() }
+                } else {
+                    listOf(str)
+                }
+            }
+            else -> emptyList()
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: List<String>) {
+        ListSerializer(String.serializer()).serialize(encoder, value)
+    }
+}
+
+object FlexibleCharListSerializer : KSerializer<List<String>> {
+    override val descriptor: SerialDescriptor = ListSerializer(String.serializer()).descriptor
+
+    override fun deserialize(decoder: Decoder): List<String> {
+        val jsonDecoder = decoder as? JsonDecoder ?: return ListSerializer(String.serializer()).deserialize(decoder)
+        return when (val elem = jsonDecoder.decodeJsonElement()) {
+            is JsonArray -> elem.mapNotNull { (it as? JsonPrimitive)?.content }
+            is JsonPrimitive -> {
+                val str = elem.content
+                if (str.isEmpty()) emptyList()
+                else str.map { it.toString() }
+            }
+            else -> emptyList()
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: List<String>) {
+        ListSerializer(String.serializer()).serialize(encoder, value)
+    }
+}
 
 @Serializable
 data class KeyDef(
@@ -82,10 +151,16 @@ data class KeyboardLayoutDef(
     val description: String? = null,
     val language: String = "",
     val direction: String = "LTR",
-    @kotlinx.serialization.json.JsonNames("gesture_mode", "gestureMode")
+    @JsonNames("gesture_mode", "gestureMode")
     val gestureMode: String? = null,
     val processor: String? = null,
     val rules: String? = null,
+    val flag: String? = null,
+    @Serializable(with = FlexibleStringListSerializer::class)
+    val flags: List<String> = emptyList(),
+    @Serializable(with = FlexibleCharListSerializer::class)
+    @JsonNames("extraCompositionChars", "extra_composition_chars")
+    val extraCompositionChars: List<String> = emptyList(),
     val extraRows: List<LayoutExtraRow> = emptyList(),
     val numberRow: KeyRow? = null,
     val shiftedNumberRow: KeyRow? = null,
@@ -94,13 +169,34 @@ data class KeyboardLayoutDef(
     val moreSymbolsLayout: KeyboardLayoutDef? = null,
     val rows: List<KeyRow> = emptyList()
 ) {
+    fun hasFlag(flagName: String): Boolean {
+        if (flag != null && flag.split(',', ';', ' ').any { it.trim().equals(flagName, ignoreCase = true) }) {
+            return true
+        }
+        return flags.any { it.equals(flagName, ignoreCase = true) }
+    }
+
+    val noAutoCapitalization: Boolean get() = hasFlag(LayoutFlags.NO_AUTO_CAPITALIZATION)
+    val noAutoSpace: Boolean get() = hasFlag(LayoutFlags.NO_AUTO_SPACE)
+    val noDoubleSpacePeriod: Boolean get() = hasFlag(LayoutFlags.NO_DOUBLE_SPACE_PERIOD)
+    val noSuggestions: Boolean get() = hasFlag(LayoutFlags.NO_SUGGESTIONS)
+    val noLearnedWords: Boolean get() = hasFlag(LayoutFlags.NO_LEARNED_WORDS)
+    val noGesture: Boolean get() = hasFlag(LayoutFlags.NO_GESTURE)
+    val noAutoCorrect: Boolean get() = hasFlag(LayoutFlags.NO_AUTO_CORRECT)
+
+    fun isExtraCompositionChar(text: String): Boolean {
+        if (text.isEmpty()) return false
+        return extraCompositionChars.contains(text) ||
+                (text.length == 1 && extraCompositionChars.any { it.length == 1 && it[0] == text[0] })
+    }
+
     fun effectiveDisplayName(): String = displayName ?: name.ifEmpty { id }
     fun effectiveSymbolsLayout(): KeyboardLayoutDef? = symbolsLayout ?: symbols
     fun effectiveMoreSymbolsLayout(): KeyboardLayoutDef? = moreSymbolsLayout
     fun isSymbolsLayout(): Boolean = id.startsWith("symbols") || id.contains("_symbols") || language == "sym"
 
     fun isQwertyBased(): Boolean {
-        if (isSymbolsLayout()) return false
+        if (isSymbolsLayout() || noGesture) return false
         if (gestureMode?.equals("qwerty", ignoreCase = true) == true) return true
         if (id == "en_qwerty" || id == "bn_borno" || id == "bn_avro") return true
         return rows.any { row ->

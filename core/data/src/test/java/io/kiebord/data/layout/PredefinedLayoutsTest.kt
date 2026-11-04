@@ -3,6 +3,7 @@ package io.kiebord.data.layout
 import io.kiebord.common.model.KeyType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -1043,6 +1044,13 @@ class PredefinedLayoutsTest {
         assertEquals("m17n", layout.processor)
         assertEquals("bn-khipro.classic.mim", layout.rules)
         assertEquals("Compositional Layout", layout.description)
+        assertEquals("NoAutoCapitalization", layout.flag)
+        assertTrue("khipro must have NoAutoCapitalization flag", layout.hasFlag("NoAutoCapitalization"))
+        assertTrue("khipro.noAutoCapitalization must be true", layout.noAutoCapitalization)
+        assertEquals(listOf(",", "।"), layout.extraCompositionChars)
+        assertTrue(layout.isExtraCompositionChar(","))
+        assertTrue(layout.isExtraCompositionChar("।"))
+        assertFalse(layout.isExtraCompositionChar("a"))
         assertNotNull("khipro numberRow must be defined", layout.numberRow)
         assertEquals(listOf("১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "০"), layout.numberRow!!.keys.map { it.label })
         assertTrue(layout.isQwertyBased())
@@ -1128,4 +1136,47 @@ class PredefinedLayoutsTest {
         assertNotNull("moreSymbolsLayout must be defined", layout.moreSymbolsLayout)
     }
 
+    @Test
+    fun testLayoutFlagsAndExtraCompositionChars() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+        // 1. Single string flag
+        val json1 = """{"id": "test1", "name": "Test 1", "flag": "NoAutoCapitalization"}"""
+        val layout1 = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(json1)
+        assertTrue(layout1.hasFlag("NoAutoCapitalization"))
+        assertTrue(layout1.hasFlag("noautocapitalization"))
+        assertTrue(layout1.noAutoCapitalization)
+        assertFalse(layout1.noAutoSpace)
+
+        // 2. Array flags
+        val json2 = """{"id": "test2", "name": "Test 2", "flags": ["NoAutoCapitalization", "NoAutoSpace", "NoDoubleSpacePeriod"]}"""
+        val layout2 = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(json2)
+        assertTrue(layout2.noAutoCapitalization)
+        assertTrue(layout2.noAutoSpace)
+        assertTrue(layout2.noDoubleSpacePeriod)
+        assertFalse(layout2.noSuggestions)
+
+        // 3. Comma-separated flags
+        val json3 = """{"id": "test3", "name": "Test 3", "flag": "NoSuggestions, NoLearnedWords, NoGesture"}"""
+        val layout3 = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(json3)
+        assertTrue(layout3.noSuggestions)
+        assertTrue(layout3.noLearnedWords)
+        assertTrue(layout3.noGesture)
+        assertFalse(layout3.isQwertyBased())
+
+        // 4. extraCompositionChars as JSON array
+        val json4 = """{"id": "test4", "name": "Test 4", "extraCompositionChars": [",", "।"]}"""
+        val layout4 = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(json4)
+        assertEquals(listOf(",", "।"), layout4.extraCompositionChars)
+        assertTrue(layout4.isExtraCompositionChar(","))
+        assertTrue(layout4.isExtraCompositionChar("।"))
+        assertFalse(layout4.isExtraCompositionChar("."))
+
+        // 5. extraCompositionChars as single string
+        val json5 = """{"id": "test5", "name": "Test 5", "extraCompositionChars": ",।"}"""
+        val layout5 = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(json5)
+        assertEquals(listOf(",", "।"), layout5.extraCompositionChars)
+        assertTrue(layout5.isExtraCompositionChar(","))
+        assertTrue(layout5.isExtraCompositionChar("।"))
+    }
 }

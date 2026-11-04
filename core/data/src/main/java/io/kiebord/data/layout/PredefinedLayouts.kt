@@ -4,6 +4,7 @@ import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyRow
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
+import io.kiebord.common.model.LayoutFlags
 
 object PredefinedLayouts {
 
@@ -129,6 +130,7 @@ object PredefinedLayouts {
         displayName = "বর্ণ ফোনেটিক",
         description = "(ami → আমি) with Enhanced Suggestions.",
         language = "bn",
+        flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
         rows = listOf(
             KeyRow(
                 listOf(
@@ -191,6 +193,7 @@ object PredefinedLayouts {
         displayName = "অভ্র",
         description = "Popular Bangla Phonetic Layout by OmicronLab.",
         language = "bn",
+        flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
         rows = listOf(
             KeyRow(
                 listOf(
@@ -253,6 +256,7 @@ object PredefinedLayouts {
         displayName = "প্রভাত",
         description = "Fixed traditional layout",
         language = "bn",
+        flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
         rows = listOf(
             KeyRow(
                 listOf(
@@ -319,6 +323,7 @@ object PredefinedLayouts {
         displayName = "জাতীয় (BSTI)",
         description = "National BSTI layout",
         language = "bn",
+        flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
         rows = listOf(
             KeyRow(
                 listOf(
@@ -616,6 +621,7 @@ object PredefinedLayouts {
         displayName = "বর্ণ ইজি",
         description = "Easy 5-row alphabetical layout",
         language = "bn",
+        flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
         symbolsLayout = BengaliBornoEasySymbols,
         moreSymbolsLayout = BengaliBornoEasySymbolsMore,
         numberRow = NumberRowBn,

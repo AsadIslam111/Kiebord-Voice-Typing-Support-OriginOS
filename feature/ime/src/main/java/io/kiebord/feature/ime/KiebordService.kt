@@ -109,10 +109,16 @@ class KiebordService : InputMethodService() {
 
     private fun shouldAutoCapitalize(): Boolean {
         if (!preferencesState.autoCapitalization) return false
+        if (activeLayout.noAutoCapitalization || primaryAlphaLayout.noAutoCapitalization) return false
         if (isPhoneticLayout()) return false
         if (activeLayout.id.startsWith("bn_") || primaryAlphaLayout.id.startsWith("bn_")) return false
         if (isUrlOrCodeField()) return false
         return true
+    }
+
+    private fun isExtraCompositionChar(text: String): Boolean {
+        if (text.isEmpty()) return false
+        return activeLayout.isExtraCompositionChar(text) || primaryAlphaLayout.isExtraCompositionChar(text)
     }
 
     private fun ensureLayoutProcessorInitialized(layout: KeyboardLayoutDef) {
@@ -845,12 +851,23 @@ class KiebordService : InputMethodService() {
 
                 when {
                     isTransliterationLayout() -> {
-                        if (isTransliterableChar(text) || isBengaliOrModifier(text)) {
-                            getTransliterationManager().handleCharacter(text)
+                        if (isTransliterableChar(text) || isBengaliOrModifier(text) || isExtraCompositionChar(text)) {
+                            val translitMgr = getTransliterationManager()
+                            if (!translitMgr.isComposing && preferencesState.removeSpaceBeforePunctuation &&
+                                !isUrlOrCodeField() && isRemoveSpaceBeforePunctuation(text)
+                            ) {
+                                val textBefore = ic.getTextBeforeCursor(1, 0)
+                                if (textBefore != null && textBefore.endsWith(" ")) {
+                                    ic.deleteSurroundingText(1, 0)
+                                }
+                            }
+                            translitMgr.handleCharacter(text)
                         } else {
                             val translitMgr = getTransliterationManager()
-                            val word = translitMgr.currentTransliteration.trim()
-                            if (preferencesState.learnedWordsEnabled && translitMgr.isComposing && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                            val word = translitMgr.currentTransliteration.trim().trimEnd { isPunctuationChar(it) }
+                            if (preferencesState.learnedWordsEnabled && !activeLayout.noLearnedWords && !primaryAlphaLayout.noLearnedWords &&
+                                translitMgr.isComposing && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH
+                            ) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
                                 userDictionaryRepo.recordWord(word, prevWord)
                             }
@@ -1070,8 +1087,10 @@ class KiebordService : InputMethodService() {
                 val translitMgr = getTransliterationManager()
                 if (translitMgr.isComposing) {
                     val committed = translitMgr.currentTransliteration
-                    val cleanCommitted = committed.trim()
-                    if (preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                    val cleanCommitted = committed.trim().trimEnd { isPunctuationChar(it) }
+                    if (preferencesState.learnedWordsEnabled && !activeLayout.noLearnedWords && !primaryAlphaLayout.noLearnedWords &&
+                        cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH
+                    ) {
                         val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
                         userDictionaryRepo.recordWord(cleanCommitted, prevWord)
                     }
@@ -1104,6 +1123,8 @@ class KiebordService : InputMethodService() {
                     lastAutoSpacePunctuationTime = 0L
 
                     val isDoubleSpace = preferencesState.doubleSpacePeriod &&
+                            !activeLayout.noDoubleSpacePeriod &&
+                            !primaryAlphaLayout.noDoubleSpacePeriod &&
                             !isUrlOrCodeField() &&
                             (now - lastSpaceTapTime <= 500L)
 
@@ -1229,8 +1250,17 @@ class KiebordService : InputMethodService() {
         }
         if (charToInsert.isEmpty()) return
 
-        if (isTransliterationLayout() && (isTransliterableChar(charToInsert) || isBengaliOrModifier(charToInsert))) {
-            getTransliterationManager().handleCharacter(charToInsert)
+        if (isTransliterationLayout() && (isTransliterableChar(charToInsert) || isBengaliOrModifier(charToInsert) || isExtraCompositionChar(charToInsert))) {
+            val translitMgr = getTransliterationManager()
+            if (!translitMgr.isComposing && preferencesState.removeSpaceBeforePunctuation &&
+                !isUrlOrCodeField() && isRemoveSpaceBeforePunctuation(charToInsert)
+            ) {
+                val textBefore = ic.getTextBeforeCursor(1, 0)
+                if (textBefore != null && textBefore.endsWith(" ")) {
+                    ic.deleteSurroundingText(1, 0)
+                }
+            }
+            translitMgr.handleCharacter(charToInsert)
         } else {
             finishComposing()
             commitCharacterWithPunctuationHandling(ic, charToInsert)
@@ -1424,6 +1454,7 @@ class KiebordService : InputMethodService() {
     }
 
     private fun shouldAutoSpaceAfterPunctuation(precedingChar: Char, puncText: String): Boolean {
+        if (activeLayout.noAutoSpace || primaryAlphaLayout.noAutoSpace) return false
         // Do not auto-space if preceded by whitespace
         if (precedingChar.isWhitespace()) return false
 
@@ -2274,7 +2305,8 @@ class KiebordService : InputMethodService() {
     }
 
     private fun updateSuggestions() {
-        if (!preferencesState.suggestionsEnabled || !NativeEngine.isAvailable() || isSymbolsMode || PredefinedLayouts.isNumberLayout(activeLayout.id)) {
+        if (!preferencesState.suggestionsEnabled || activeLayout.noSuggestions || primaryAlphaLayout.noSuggestions ||
+            !NativeEngine.isAvailable() || isSymbolsMode || PredefinedLayouts.isNumberLayout(activeLayout.id)) {
             activeSuggestions = emptyList()
             return
         }
