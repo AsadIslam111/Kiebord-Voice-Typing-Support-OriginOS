@@ -28,6 +28,7 @@ import io.kiebord.feature.ime.action.ActionKeyVisual
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -671,6 +672,14 @@ fun KeycapView(
                         modifier = Modifier.size(actionIconSize)
                     )
                 }
+            }
+            KeyType.EMOJI -> {
+                Icon(
+                    imageVector = Icons.Outlined.Mood,
+                    contentDescription = "Emoji",
+                    tint = foregroundColor,
+                    modifier = Modifier.size((20 * iconScaleFactor).coerceAtLeast(11f).dp)
+                )
             }
             KeyType.SWITCH_LANGUAGE -> {
                 Icon(

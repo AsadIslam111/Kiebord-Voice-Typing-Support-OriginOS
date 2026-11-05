@@ -42,6 +42,7 @@ fun PreferencesScreen(
     onUpdateShowNumberRow: (Boolean) -> Unit,
     onUpdateShowKeyPopups: (Boolean) -> Unit,
     onUpdateShowSecondaryKeys: (Boolean) -> Unit = {},
+    onUpdateShowEmojiKey: (Boolean) -> Unit = {},
     onUpdateCursorTrackpad: (Boolean) -> Unit = {},
     onUpdateOneHandedMode: (String) -> Unit,
     onUpdateLongPressDelete: (Boolean) -> Unit = {},
@@ -189,6 +190,14 @@ fun PreferencesScreen(
                 checked = preferences.showNumberRow,
                 position = GroupPosition.TOP,
                 onCheckedChange = onUpdateShowNumberRow
+            )
+
+            SettingsToggleItem(
+                title = "Show Emoji Key",
+                subtitle = "Show emoji key instead of globe key",
+                checked = preferences.showEmojiKey,
+                position = GroupPosition.MIDDLE,
+                onCheckedChange = onUpdateShowEmojiKey
             )
 
             SettingsToggleItem(

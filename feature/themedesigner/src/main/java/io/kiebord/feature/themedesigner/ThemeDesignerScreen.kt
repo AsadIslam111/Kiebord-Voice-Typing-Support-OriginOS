@@ -219,6 +219,7 @@ private val QuickOverrideTargets = listOf(
     KeyType.SPACE.name to "Space",
     KeyType.ACTION.name to "Enter",
     KeyType.SWITCH_LANGUAGE.name to "Globe",
+    KeyType.EMOJI.name to "Emoji",
     "q" to "Q",
     "w" to "W",
     "e" to "E",

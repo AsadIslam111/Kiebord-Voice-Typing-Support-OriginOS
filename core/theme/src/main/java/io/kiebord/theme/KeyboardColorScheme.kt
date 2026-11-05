@@ -75,7 +75,7 @@ data class KeyboardColorScheme(
             val defaultBg = when {
                 key.type == KeyType.ACTION -> accentColor
                 key.type == KeyType.SYMBOLS -> actionKeyBackground
-                key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE -> if (showKeyBorders || key.type == KeyType.SPACE) keyBackground else flatKeyBg
+                key.type == KeyType.SPACE || key.type == KeyType.SWITCH_LANGUAGE || key.type == KeyType.EMOJI -> if (showKeyBorders || key.type == KeyType.SPACE) keyBackground else flatKeyBg
                 showKeyBorders -> if (isActionOrModifier) actionKeyBackground else keyBackground
                 else -> flatKeyBg
             }
@@ -252,6 +252,7 @@ data class KeyboardColorScheme(
             KeyType.DELETE -> icons.backspace
             KeyType.ACTION -> icons.action
             KeyType.SWITCH_LANGUAGE -> icons.language
+            KeyType.EMOJI -> icons.emoji
             KeyType.MORE_KEYS -> icons.moreKeys
             else -> null
         }

@@ -21,6 +21,8 @@ enum class KeyType {
     SYMBOLS,
     @JsonNames("switch_language", "SWITCH_LANGUAGE")
     SWITCH_LANGUAGE,
+    @JsonNames("emoji", "EMOJI")
+    EMOJI,
     @JsonNames("more_keys", "MORE_KEYS")
     MORE_KEYS
 }

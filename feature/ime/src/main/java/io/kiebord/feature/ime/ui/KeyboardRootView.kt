@@ -184,6 +184,7 @@ fun KeyboardRootView(
     onSecondaryKeysToggle: ((Boolean) -> Unit)? = null,
     defaultShowKeyPopups: Boolean = true,
     onKeyPopupsToggle: ((Boolean) -> Unit)? = null,
+    showEmojiKey: Boolean = false,
     defaultTraditionalMode: Boolean = false,
     onTraditionalModeToggle: ((Boolean) -> Unit)? = null,
     onKeyPress: (KeyDef) -> Unit = {},
@@ -417,7 +418,11 @@ fun KeyboardRootView(
         if (voiceInputState is VoiceInputState.Listening) {
             onDismissVoiceTyping()
         }
-        if (isEmojiSearchOpen) {
+        if (key.type == KeyType.EMOJI) {
+            isEmojiOpen = true
+            isEmojiSearchOpen = false
+            emojiSearchQuery = ""
+        } else if (isEmojiSearchOpen) {
             when (key.type) {
                 KeyType.CHARACTER -> {
                     val text = key.commitText ?: key.label
@@ -1417,6 +1422,8 @@ fun KeyboardRootView(
                                                                 displayLayout.displayName ?: PredefinedLayouts.displayName(displayLayout.id)
                                                             }
                                                             rawKey.copy(label = spaceLabel)
+                                                        } else if (rawKey.type == KeyType.SWITCH_LANGUAGE && showEmojiKey) {
+                                                            rawKey.copy(type = KeyType.EMOJI, icon = "emoji")
                                                         } else {
                                                             rawKey
                                                         }
@@ -1704,6 +1711,8 @@ fun KeyboardRootView(
                                     displayLayout.displayName ?: PredefinedLayouts.displayName(displayLayout.id)
                                 }
                                 key.copy(label = spaceLabel)
+                            } else if (key.type == KeyType.SWITCH_LANGUAGE && showEmojiKey) {
+                                key.copy(type = KeyType.EMOJI, icon = "emoji")
                             } else {
                                 key
                             }
@@ -1736,7 +1745,7 @@ fun KeyboardRootView(
                                 onKeyPress = handleKeyPress,
                                 onKeyTap = handleKeyTapUnified,
                                 onKeyLongPress = { keyDef ->
-                                    if (keyDef.type == KeyType.SWITCH_LANGUAGE) {
+                                    if (keyDef.type == KeyType.SWITCH_LANGUAGE || keyDef.type == KeyType.EMOJI) {
                                         isLanguagePickerOpen = true
                                         performHaptic(HapticFeedbackType.LongPress)
                                     } else {
@@ -1860,6 +1869,8 @@ fun KeyboardRootView(
                                                             displayLayout.displayName ?: PredefinedLayouts.displayName(displayLayout.id)
                                                         }
                                                         rawKey.copy(label = spaceLabel)
+                                                    } else if (rawKey.type == KeyType.SWITCH_LANGUAGE && showEmojiKey) {
+                                                        rawKey.copy(type = KeyType.EMOJI, icon = "emoji")
                                                     } else {
                                                         rawKey
                                                     }

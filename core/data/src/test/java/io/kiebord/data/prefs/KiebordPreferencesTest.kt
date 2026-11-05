@@ -33,4 +33,13 @@ class KiebordPreferencesTest {
         val enabledPrefs = prefs.copy(fastDeleteEnabled = true)
         assertEquals(true, enabledPrefs.fastDeleteEnabled)
     }
+
+    @Test
+    fun testShowEmojiKeyDefaultAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(false, prefs.showEmojiKey)
+
+        val enabledPrefs = prefs.copy(showEmojiKey = true)
+        assertEquals(true, enabledPrefs.showEmojiKey)
+    }
 }

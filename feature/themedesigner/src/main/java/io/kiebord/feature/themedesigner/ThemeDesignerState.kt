@@ -370,6 +370,7 @@ data class ThemeDesignerState(
                 KeyType.SPACE.name -> "Spacebar"
                 KeyType.ACTION.name -> "Enter / Action"
                 KeyType.SWITCH_LANGUAGE.name -> "Globe"
+                KeyType.EMOJI.name -> "Emoji"
                 KeyType.MORE_KEYS.name -> "More Keys"
                 "," -> "Comma"
                 "." -> "Period"

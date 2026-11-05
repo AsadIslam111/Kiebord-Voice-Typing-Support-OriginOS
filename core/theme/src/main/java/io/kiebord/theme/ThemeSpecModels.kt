@@ -335,6 +335,7 @@ data class KeyboardThemeSpec(
             KeyType.DELETE,
             KeyType.SYMBOLS,
             KeyType.SWITCH_LANGUAGE,
+            KeyType.EMOJI,
             KeyType.MORE_KEYS -> functionalKey
             KeyType.CHARACTER -> {
                 val isComma = key.label == "," || key.label == "،"

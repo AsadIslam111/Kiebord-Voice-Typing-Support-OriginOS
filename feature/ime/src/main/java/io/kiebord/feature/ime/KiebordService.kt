@@ -424,6 +424,7 @@ class KiebordService : InputMethodService() {
                     onKeyPopupsToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateShowKeyPopups(enabled) }
                     },
+                    showEmojiKey = preferencesState.showEmojiKey,
                     defaultTraditionalMode = preferencesState.traditionalMode,
                     onTraditionalModeToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateTraditionalMode(enabled) }
@@ -1223,6 +1224,9 @@ class KiebordService : InputMethodService() {
                     switchToLayout(nextId)
                 }
             }
+            KeyType.EMOJI -> {
+                // Handled in KeyboardRootView
+            }
             KeyType.MORE_KEYS -> {
                 // Secondary popups
             }
@@ -1230,7 +1234,7 @@ class KiebordService : InputMethodService() {
     }
 
     private fun handleKeyLongPress(key: KeyDef) {
-        if (key.type == KeyType.SWITCH_LANGUAGE) {
+        if (key.type == KeyType.SWITCH_LANGUAGE || key.type == KeyType.EMOJI) {
             return
         }
         if (key.type == KeyType.SPACE) {
