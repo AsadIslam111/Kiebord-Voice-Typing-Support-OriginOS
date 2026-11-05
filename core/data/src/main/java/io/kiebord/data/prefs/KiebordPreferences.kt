@@ -28,6 +28,7 @@ data class KiebordPreferences(
     val oneHandedMode: String = ONE_HANDED_OFF,
     val longPressDeleteEnabled: Boolean = true,
     val selectiveDeleteMode: String = DELETE_MODE_WORD,
+    val fastDeleteEnabled: Boolean = false,
 
     // Keyboard Layouts
     val primaryLayoutId: String = LAYOUT_EN_QWERTY,

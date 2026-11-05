@@ -24,4 +24,13 @@ class KiebordPreferencesTest {
         val disabledPrefs = prefs.copy(phoneticAutoCorrect = false)
         assertEquals(false, disabledPrefs.phoneticAutoCorrect)
     }
+
+    @Test
+    fun testFastDeleteEnabledDefaultAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(false, prefs.fastDeleteEnabled)
+
+        val enabledPrefs = prefs.copy(fastDeleteEnabled = true)
+        assertEquals(true, enabledPrefs.fastDeleteEnabled)
+    }
 }

@@ -446,6 +446,8 @@ class KiebordService : InputMethodService() {
                     onDeleteSwipeMove = ::handleDeleteSwipeMove,
                     onDeleteSwipeEnd = ::handleDeleteSwipeEnd,
                     onDeleteSwipeCancel = ::handleDeleteSwipeCancel,
+                    fastDeleteEnabled = preferencesState.fastDeleteEnabled,
+                    onFastDelete = ::handleFastDelete,
                     enabledLayoutIds = preferencesState.enabledLayoutIds.toList().filter { id ->
                         id in availableLayoutIds || id == KiebordPreferences.LAYOUT_AR_ARABIC
                     }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) },
@@ -1341,6 +1343,32 @@ class KiebordService : InputMethodService() {
                 ic.setSelection(textLen, textLen)
             }
         }
+    }
+    private fun handleFastDelete() {
+        val ic = currentInputConnection ?: return
+        finishComposing()
+
+        val textBefore = ic.getTextBeforeCursor(6144, 0)?.toString() ?: ""
+        val selectedText = ic.getSelectedText(0)?.toString()
+
+        val textToDelete = if (!selectedText.isNullOrEmpty()) {
+            selectedText
+        } else {
+            textBefore
+        }
+
+        if (textToDelete.isNotEmpty()) {
+            ic.deleteSurroundingText(textToDelete.length, 0)
+            ic.finishComposingText()
+            lastDeletedBatchState = textToDelete
+        }
+
+        if (isTransliterationLayout()) {
+            getTransliterationManager().reset()
+        }
+        composingBuffer.clear()
+        lastGestureCommittedWord = ""
+        updateSuggestions()
     }
 
     private fun handleLongPressDelete() {

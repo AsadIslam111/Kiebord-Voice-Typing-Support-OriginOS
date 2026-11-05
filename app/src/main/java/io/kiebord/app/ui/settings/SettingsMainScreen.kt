@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsBackupRestore
 import androidx.compose.material.icons.outlined.Spellcheck
+import androidx.compose.material.icons.outlined.Gesture
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
@@ -215,29 +216,44 @@ fun SettingsMainScreen(
             SettingsNavigationItem(
                 title = "Preferences",
                 icon = Icons.Outlined.Tune,
-                position = GroupPosition.MIDDLE,
+                position = GroupPosition.BOTTOM,
                 onClick = { onNavigate(SettingsScreen.Preferences) }
             )
+        }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SettingsGroup {
             SettingsNavigationItem(
                 title = "Corrections & Suggestions",
                 icon = Icons.Outlined.Spellcheck,
-                position = GroupPosition.MIDDLE,
+                position = GroupPosition.TOP,
                 onClick = { onNavigate(SettingsScreen.CorrectionsSuggestions) }
             )
 
             SettingsNavigationItem(
-                title = "Clipboard",
-                icon = Icons.Outlined.ContentPaste,
+                title = "Smart Gestures",
+                icon = Icons.Outlined.Gesture,
                 position = GroupPosition.MIDDLE,
-                onClick = { onNavigate(SettingsScreen.Clipboard) }
+                onClick = { onNavigate(SettingsScreen.SmartGestures) }
             )
 
             SettingsNavigationItem(
                 title = "Voice Typing",
                 icon = Icons.Outlined.Mic,
-                position = GroupPosition.MIDDLE,
+                position = GroupPosition.BOTTOM,
                 onClick = { onNavigate(SettingsScreen.VoiceTyping) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SettingsGroup {
+            SettingsNavigationItem(
+                title = "Clipboard",
+                icon = Icons.Outlined.ContentPaste,
+                position = GroupPosition.TOP,
+                onClick = { onNavigate(SettingsScreen.Clipboard) }
             )
 
             SettingsNavigationItem(

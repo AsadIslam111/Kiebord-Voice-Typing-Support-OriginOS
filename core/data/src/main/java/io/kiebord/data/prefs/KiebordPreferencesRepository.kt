@@ -54,6 +54,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val ONE_HANDED_MODE = stringPreferencesKey("pref_one_handed_mode")
         val LONG_PRESS_DELETE_ENABLED = booleanPreferencesKey("pref_long_press_delete_enabled")
         val SELECTIVE_DELETE_MODE = stringPreferencesKey("pref_selective_delete_mode")
+        val FAST_DELETE_ENABLED = booleanPreferencesKey("pref_fast_delete_enabled")
 
         val PRIMARY_LAYOUT_ID = stringPreferencesKey("pref_primary_layout_id")
         val ENABLED_LAYOUT_IDS = stringSetPreferencesKey("pref_enabled_layout_ids")
@@ -114,6 +115,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 oneHandedMode = prefs[PreferencesKeys.ONE_HANDED_MODE] ?: KiebordPreferences.ONE_HANDED_OFF,
                 longPressDeleteEnabled = prefs[PreferencesKeys.LONG_PRESS_DELETE_ENABLED] ?: true,
                 selectiveDeleteMode = prefs[PreferencesKeys.SELECTIVE_DELETE_MODE] ?: KiebordPreferences.DELETE_MODE_WORD,
+                fastDeleteEnabled = prefs[PreferencesKeys.FAST_DELETE_ENABLED] ?: false,
 
                 primaryLayoutId = prefs[PreferencesKeys.PRIMARY_LAYOUT_ID] ?: KiebordPreferences.LAYOUT_EN_QWERTY,
                 enabledLayoutIds = run {
@@ -283,6 +285,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateSelectiveDeleteMode(mode: String) {
         context.kiebordDataStore.edit { it[PreferencesKeys.SELECTIVE_DELETE_MODE] = mode }
+    }
+
+    suspend fun updateFastDeleteEnabled(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.FAST_DELETE_ENABLED] = enabled }
     }
 
     // Layout mutators

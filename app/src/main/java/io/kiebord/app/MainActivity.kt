@@ -66,6 +66,7 @@ import io.kiebord.app.ui.settings.PreferencesScreen
 import io.kiebord.app.ui.settings.SettingsMainScreen
 import io.kiebord.app.ui.settings.SettingsScreen
 import io.kiebord.app.ui.settings.SettingsUnifiedTopBar
+import io.kiebord.app.ui.settings.SmartGesturesScreen
 import io.kiebord.app.ui.settings.VoiceTypingScreen
 import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
 import io.kiebord.data.dictionary.UserDictionaryRepository
@@ -282,6 +283,12 @@ fun KiebordSettingsApp(
                     if (currentScreen != SettingsScreen.Preferences) {
                         backStack = listOf(SettingsScreen.Main)
                         currentScreen = SettingsScreen.Preferences
+                    }
+                }
+                "gestures", "smart_gestures" -> {
+                    if (currentScreen != SettingsScreen.SmartGestures) {
+                        backStack = listOf(SettingsScreen.Main)
+                        currentScreen = SettingsScreen.SmartGestures
                     }
                 }
                 "clipboard" -> {
@@ -503,6 +510,22 @@ fun KiebordSettingsApp(
                             },
                             onUpdateSelectiveDeleteMode = { mode ->
                                 scope.launch { preferencesRepo.updateSelectiveDeleteMode(mode) }
+                            },
+                            onBack = navigateBack
+                        )
+                    }
+
+                    is SettingsScreen.SmartGestures -> {
+                        SmartGesturesScreen(
+                            preferences = preferences,
+                            onUpdateFastDeleteEnabled = { enabled ->
+                                scope.launch { preferencesRepo.updateFastDeleteEnabled(enabled) }
+                            },
+                            onUpdateSelectiveDeleteMode = { mode ->
+                                scope.launch { preferencesRepo.updateSelectiveDeleteMode(mode) }
+                            },
+                            onUpdateCursorTrackpad = { enabled ->
+                                scope.launch { preferencesRepo.updateCursorTrackpadEnabled(enabled) }
                             },
                             onBack = navigateBack
                         )

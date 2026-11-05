@@ -190,6 +190,8 @@ fun KeyboardRootView(
     onDeleteSwipeMove: (Float) -> Unit = {},
     onDeleteSwipeEnd: () -> Unit = {},
     onDeleteSwipeCancel: () -> Unit = {},
+    fastDeleteEnabled: Boolean = false,
+    onFastDelete: () -> Unit = {},
     navBarBottomInset: Dp = 0.dp,
     applySystemInsets: Boolean = true,
     isInteractive: Boolean = true,
@@ -1658,6 +1660,8 @@ fun KeyboardRootView(
                             onDeleteSwipeMove = onDeleteSwipeMove,
                             onDeleteSwipeEnd = onDeleteSwipeEnd,
                             onDeleteSwipeCancel = onDeleteSwipeCancel,
+                            fastDeleteEnabled = fastDeleteEnabled,
+                            onFastDelete = onFastDelete,
                             handleShowMoreKeys = handleShowMoreKeys
                         )
                     } else {
@@ -1742,6 +1746,8 @@ fun KeyboardRootView(
                                 onDeleteSwipeMove = onDeleteSwipeMove,
                                 onDeleteSwipeEnd = onDeleteSwipeEnd,
                                 onDeleteSwipeCancel = onDeleteSwipeCancel,
+                                fastDeleteEnabled = fastDeleteEnabled,
+                                onFastDelete = onFastDelete,
                                 onSpacebarSwipeMove = { deltaX ->
                                     isSpacebarSwiping = true
                                     spacebarSwipeDeltaX = deltaX
@@ -2871,6 +2877,8 @@ private fun NumberPadExtendedLayout(
     onDeleteSwipeMove: (Float) -> Unit,
     onDeleteSwipeEnd: () -> Unit,
     onDeleteSwipeCancel: () -> Unit,
+    fastDeleteEnabled: Boolean = false,
+    onFastDelete: () -> Unit = {},
     handleShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit
 ) {
     val extendedOperators = remember { listOf("+", "-", "*", "/", "(", ")", "#") }
@@ -3083,6 +3091,8 @@ private fun NumberPadExtendedLayout(
                                 onDeleteSwipeMove = onDeleteSwipeMove,
                                 onDeleteSwipeEnd = onDeleteSwipeEnd,
                                 onDeleteSwipeCancel = onDeleteSwipeCancel,
+                                fastDeleteEnabled = fastDeleteEnabled,
+                                onFastDelete = onFastDelete,
                                 onShowMoreKeys = handleShowMoreKeys
                             )
                         }
@@ -3134,7 +3144,9 @@ private fun NumberPadExtendedLayout(
                     onDeleteSwipeMove = onDeleteSwipeMove,
                     onDeleteSwipeEnd = onDeleteSwipeEnd,
                     onDeleteSwipeCancel = onDeleteSwipeCancel,
-                    onShowMoreKeys = handleShowMoreKeys
+                                fastDeleteEnabled = fastDeleteEnabled,
+                                onFastDelete = onFastDelete,
+                                onShowMoreKeys = handleShowMoreKeys
                 )
             }
         }

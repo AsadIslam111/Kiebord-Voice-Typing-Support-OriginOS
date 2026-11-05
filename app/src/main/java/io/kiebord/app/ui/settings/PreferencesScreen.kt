@@ -42,10 +42,10 @@ fun PreferencesScreen(
     onUpdateShowNumberRow: (Boolean) -> Unit,
     onUpdateShowKeyPopups: (Boolean) -> Unit,
     onUpdateShowSecondaryKeys: (Boolean) -> Unit = {},
-    onUpdateCursorTrackpad: (Boolean) -> Unit,
+    onUpdateCursorTrackpad: (Boolean) -> Unit = {},
     onUpdateOneHandedMode: (String) -> Unit,
     onUpdateLongPressDelete: (Boolean) -> Unit = {},
-    onUpdateSelectiveDeleteMode: (String) -> Unit,
+    onUpdateSelectiveDeleteMode: (String) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
@@ -224,35 +224,6 @@ fun PreferencesScreen(
                 valueLabel = delayLabel,
                 position = GroupPosition.ALONE,
                 onValueChange = { onUpdateLongPressDelay(it.toInt()) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        SettingsCategoryHeader(title = "Smart Gestures")
-
-        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
-            SettingsRadioOption(
-                title = "Swipe Delete (Selective): By Word",
-                subtitle = "Swiping left from backspace selects and deletes text word-by-word",
-                selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_WORD,
-                position = GroupPosition.TOP,
-                onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_WORD) }
-            )
-
-            SettingsRadioOption(
-                title = "Swipe Delete (Selective): By Character",
-                subtitle = "Swiping left from backspace selects and deletes text character-by-character",
-                selected = preferences.selectiveDeleteMode == KiebordPreferences.DELETE_MODE_CHARACTER,
-                position = GroupPosition.MIDDLE,
-                onSelect = { onUpdateSelectiveDeleteMode(KiebordPreferences.DELETE_MODE_CHARACTER) }
-            )
-
-            SettingsToggleItem(
-                title = "Spacebar Cursor Trackpad",
-                subtitle = "Slide thumb horizontally across spacebar to position cursor",
-                checked = preferences.cursorTrackpadEnabled,
-                position = GroupPosition.BOTTOM,
-                onCheckedChange = onUpdateCursorTrackpad
             )
         }
     }

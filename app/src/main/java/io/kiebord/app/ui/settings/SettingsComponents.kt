@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -169,6 +169,7 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.ThemeDesigner -> "Theme Studio"
         is SettingsScreen.KeyboardLayouts -> "Keyboard Layouts"
         is SettingsScreen.Preferences -> "Preferences"
+        is SettingsScreen.SmartGestures -> "Smart Gestures"
         is SettingsScreen.CorrectionsSuggestions -> "Corrections & Suggestions"
         is SettingsScreen.Clipboard -> "Clipboard"
         is SettingsScreen.VoiceTyping -> "Voice Typing"
@@ -182,7 +183,8 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.AppearanceThemes -> "Themes & key styling"
         is SettingsScreen.ThemeDesigner -> if (screen.editingThemeId != null) "Edit custom theme" else "Create & customize theme"
         is SettingsScreen.KeyboardLayouts -> "Active layouts & preview"
-        is SettingsScreen.Preferences -> "Haptics, smart gestures & ergonomics"
+        is SettingsScreen.Preferences -> "Haptics, key display & feedback"
+        is SettingsScreen.SmartGestures -> "Delete gestures & spacebar trackpad"
         is SettingsScreen.CorrectionsSuggestions -> "Candidate strip, auto-fix & glide typing"
         is SettingsScreen.Clipboard -> "Manage copied items & pins"
         is SettingsScreen.VoiceTyping -> "Speech recognition & providers"
@@ -402,9 +404,7 @@ private fun SettingsItemIcon(
 ) {
     if (icon == null && iconResId == null) return
 
-    val colors = LocalSettingsColors.current
     val isAppIcon = iconResId == R.drawable.ic_launcher || iconResId == R.drawable.ic_launcher_foreground
-    val isKeyboardIcon = icon == Icons.Outlined.Keyboard
 
     if (isAppIcon) {
         Image(
@@ -412,24 +412,9 @@ private fun SettingsItemIcon(
             contentDescription = null,
             modifier = Modifier.size(size)
         )
-    } else if (isKeyboardIcon) {
-        Box(
-            modifier = Modifier.size(size),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon!!,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(iconSize)
-            )
-        }
     } else {
         Box(
-            modifier = Modifier
-                .size(size)
-                .clip(CircleShape)
-                .background(colors.iconBackground),
+            modifier = Modifier.size(size),
             contentAlignment = Alignment.Center
         ) {
             if (iconResId != null) {
@@ -481,7 +466,7 @@ fun SettingsNavigationItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onClick)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (icon != null || iconResId != null) {
@@ -548,7 +533,7 @@ fun SettingsNavigationItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onClick)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (icon != null || iconResId != null) {
@@ -650,7 +635,7 @@ fun SettingsToggleItem(
     checked: Boolean,
     position: GroupPosition? = null,
     showDivider: Boolean = true,
-    verticalPadding: Dp = 14.dp,
+    verticalPadding: Dp = 16.dp,
     onCheckedChange: (Boolean) -> Unit
 ) {
     val colors = LocalSettingsColors.current
@@ -669,7 +654,7 @@ fun SettingsToggleItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onCheckedChange(!checked) }
-                    .padding(horizontal = 16.dp, vertical = verticalPadding),
+                    .padding(horizontal = 18.dp, vertical = verticalPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (icon != null || iconResId != null) {
@@ -845,7 +830,7 @@ fun SettingsSliderItem(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .padding(horizontal = 18.dp, vertical = 16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1014,7 +999,7 @@ fun SettingsRadioOption(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onSelect)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {

@@ -47,6 +47,8 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -118,6 +120,8 @@ fun KeycapView(
     onDeleteSwipeMove: (Float) -> Unit = {},
     onDeleteSwipeEnd: () -> Unit = {},
     onDeleteSwipeCancel: () -> Unit = {},
+    fastDeleteEnabled: Boolean = false,
+    onFastDelete: () -> Unit = {},
     onGestureStart: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
     onGestureMove: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
     onGestureEnd: () -> Unit = {},
@@ -127,6 +131,7 @@ fun KeycapView(
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     // Capped scale factor for font, icons, and horizontal spacing:
     // When keyboard height increases, font/horizontal scaling MUST NOT increase beyond 1.0f,
@@ -187,6 +192,8 @@ fun KeycapView(
     val currentOnDeleteSwipeMove = rememberUpdatedState(onDeleteSwipeMove)
     val currentOnDeleteSwipeEnd = rememberUpdatedState(onDeleteSwipeEnd)
     val currentOnDeleteSwipeCancel = rememberUpdatedState(onDeleteSwipeCancel)
+    val currentFastDeleteEnabled = rememberUpdatedState(fastDeleteEnabled)
+    val currentOnFastDelete = rememberUpdatedState(onFastDelete)
     val currentOnShowMoreKeys = rememberUpdatedState(onShowMoreKeys)
     val currentOnMoreKeysHover = rememberUpdatedState(onMoreKeysHover)
     val currentOnMoreKeysCommit = rememberUpdatedState(onMoreKeysCommit)
@@ -236,6 +243,9 @@ fun KeycapView(
                             var isSpacebarTrackpadActive = false
                             var isGestureTyping = false
                             var isDeleteSwipeActive = false
+                            var isFastDeleteArmed = false
+                            val fastDeleteThresholdPx = with(density) { 56.dp.toPx() }
+                            val fastDeleteCancelThresholdPx = with(density) { 20.dp.toPx() }
                             var gestureEnded = false
                             var lastTrackpadX = 0f
                             val trackpadStepPx = with(density) { 14.dp.toPx() }
@@ -297,7 +307,10 @@ fun KeycapView(
                                     val wasMoreKeysActive = isMoreKeysActive
                                     isMoreKeysActive = false
                                 val delta = change.position - initialDownPos
-                                if (isDeleteSwipeActive) {
+                                if (isFastDeleteArmed) {
+                                    change.consume()
+                                    currentOnFastDelete.value()
+                                } else if (isDeleteSwipeActive) {
                                     if (delta.x < -18f) {
                                         currentOnDeleteSwipeEnd.value()
                                     } else {
@@ -336,19 +349,40 @@ fun KeycapView(
                             val delta = currentPos - initialDownPos
                             val distance = delta.getDistance()
 
-                            // Swipe on Delete key (Selective Delete): sliding left selects range
+                                                        // Swipe on Delete key:
+                            // 1. Sliding left selects range (Selective Delete)
+                            // 2. Sliding up arms Fast Delete (deletes all text before cursor on release)
                             if (initialKey.type == KeyType.DELETE) {
-                                if (delta.x < -14f) {
-                                    if (!isDeleteSwipeActive) {
-                                        isDeleteSwipeActive = true
-                                        longPressJob?.cancel()
-                                        isPressed = false
+                                if (currentFastDeleteEnabled.value && !isDeleteSwipeActive) {
+                                    if (delta.y < -fastDeleteThresholdPx && Math.abs(delta.y) > Math.abs(delta.x) * 1.25f) {
+                                        if (!isFastDeleteArmed) {
+                                            isFastDeleteArmed = true
+                                            longPressJob?.cancel()
+                                            isPressed = false
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        }
+                                        change.consume()
+                                    } else if (isFastDeleteArmed && delta.y > -fastDeleteCancelThresholdPx) {
+                                        isFastDeleteArmed = false
+                                        change.consume()
+                                    } else if (isFastDeleteArmed) {
+                                        change.consume()
                                     }
-                                    change.consume()
-                                    currentOnDeleteSwipeMove.value(delta.x)
-                                } else if (isDeleteSwipeActive) {
-                                    change.consume()
-                                    currentOnDeleteSwipeMove.value(delta.x.coerceAtMost(0f))
+                                }
+
+                                if (!isFastDeleteArmed) {
+                                    if (delta.x < -14f) {
+                                        if (!isDeleteSwipeActive) {
+                                            isDeleteSwipeActive = true
+                                            longPressJob?.cancel()
+                                            isPressed = false
+                                        }
+                                        change.consume()
+                                        currentOnDeleteSwipeMove.value(delta.x)
+                                    } else if (isDeleteSwipeActive) {
+                                        change.consume()
+                                        currentOnDeleteSwipeMove.value(delta.x.coerceAtMost(0f))
+                                    }
                                 }
                             }
 
