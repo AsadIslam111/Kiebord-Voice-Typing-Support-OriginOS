@@ -217,7 +217,7 @@ fun KeyboardRootView(
     voiceTypingEnabled: Boolean = true,
     isNumberPadActive: Boolean = false,
     onToggleNumberPad: () -> Unit = {},
-    enablePopupHeadroom: Boolean = true,
+    enablePopupHeadroom: Boolean = isInteractive,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme

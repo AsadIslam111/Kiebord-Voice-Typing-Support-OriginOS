@@ -883,6 +883,8 @@ private fun ThemePreviewBottomSheetContent(
                         showKeyShadows = showKeyShadows,
                         defaultShowNumberRow = preferences.showNumberRow,
                         defaultShowSecondaryKeys = false,
+                        defaultShowKeyPopups = false,
+                        enablePopupHeadroom = false,
                         initialRowHeight = targetRowHeight,
                         heightScalePortrait = preferences.keyboardHeightScale,
                         applySystemInsets = false,

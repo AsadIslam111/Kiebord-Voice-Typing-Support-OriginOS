@@ -158,6 +158,8 @@ fun OnboardingPreferencesStep(
                         showKeyBorders = showKeyBorders,
                         defaultShowNumberRow = showNumberRow,
                         defaultShowSecondaryKeys = showSecondaryKeys,
+                        defaultShowKeyPopups = false,
+                        enablePopupHeadroom = false,
                         initialRowHeight = fullRowHeight,
                         applySystemInsets = false,
                         isInteractive = false,
