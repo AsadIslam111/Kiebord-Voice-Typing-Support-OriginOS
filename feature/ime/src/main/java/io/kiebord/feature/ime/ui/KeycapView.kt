@@ -770,12 +770,8 @@ fun KeycapView(
 
                     // Prevent popup from being cut off at the top of the keyboard window
                     val keyTopInRoot = with(density) { rootPos.y.toDp() }
-                    val minTopDp = 6.dp
-                    val offsetY = if (keyTopInRoot + defaultOffsetY < minTopDp) {
-                        minTopDp - keyTopInRoot
-                    } else {
-                        defaultOffsetY
-                    }
+                    val minTopDp = 4.dp
+                    val offsetY = (keyTopInRoot + defaultOffsetY).coerceAtLeast(minTopDp) - keyTopInRoot
                     offsetX to offsetY
                 } catch (_: Exception) {
                     0.dp to defaultOffsetY

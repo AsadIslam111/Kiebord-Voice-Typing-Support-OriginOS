@@ -347,6 +347,7 @@ internal fun ThemeDesignerScreenContent(
                                 defaultShowNumberRow = previewConfig.showNumberRow,
                                 defaultShowSecondaryKeys = false,
                                 defaultShowKeyPopups = false,
+                                enablePopupHeadroom = false,
                                 initialRowHeight = targetRowHeight,
                                 heightScalePortrait = previewConfig.keyboardHeightScale,
                                 applySystemInsets = false,

@@ -217,6 +217,7 @@ fun KeyboardRootView(
     voiceTypingEnabled: Boolean = true,
     isNumberPadActive: Boolean = false,
     onToggleNumberPad: () -> Unit = {},
+    enablePopupHeadroom: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -480,6 +481,7 @@ fun KeyboardRootView(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val screenHeightDp = configuration.screenHeightDp.dp
+    val popupHeadroomDp = if (!enablePopupHeadroom) 0.dp else if (isLandscape) 28.dp else 56.dp
 
     // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
     val displayLayout = if (isSlidingSymbolMode) (layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols) else layout
@@ -919,14 +921,26 @@ fun KeyboardRootView(
                 rootCoordinates = coords
                 rootWidthPx = coords.size.width.toFloat()
             }
-            .then(
-                if (containerBgBrush != null) {
-                    Modifier.background(containerBgBrush)
-                } else {
-                    Modifier.background(colorScheme.containerBackground)
-                }
-            )
     ) {
+        if (popupHeadroomDp > 0.dp) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(popupHeadroomDp)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = popupHeadroomDp)
+                .then(
+                    if (containerBgBrush != null) {
+                        Modifier.background(containerBgBrush)
+                    } else {
+                        Modifier.background(colorScheme.containerBackground)
+                    }
+                )
+        ) {
         if (bgImageSpec != null) {
             io.kiebord.theme.ThemeImageBackgroundView(
                 spec = bgImageSpec,
@@ -2182,6 +2196,7 @@ fun KeyboardRootView(
                     .background(overlayColor)
             )
         }
+        }
 
         // 2. Borno Keyboard rounded pill MoreKeys floating popup
         MoreKeysPopup(
@@ -2293,6 +2308,66 @@ fun KeyboardRootView(
 
         // 6. Language Selection Modal Dialog (Long-press on globe key)
         if (isLanguagePickerOpen) {
+            val globeKeyCoords = run {
+                for (r in keyboardRows.indices) {
+                    val row = keyboardRows[r]
+                    for (c in row.keys.indices) {
+                        val k = row.keys[c]
+                        if (k.type == KeyType.SWITCH_LANGUAGE || k.type == KeyType.EMOJI) {
+                            return@run cellCoordinatesMap.get((r shl 16) or (c and 0xFFFF))
+                        }
+                    }
+                }
+                null
+            }
+
+            val keyboardSurfaceHeightDp = remember(toolbarHeight, keyboardContentHeight, totalBottomPadding) {
+                toolbarHeight + keyboardContentHeight + totalBottomPadding
+            }
+
+            val (globeBottomOffsetDp, horizontalOffsetDp, maxDialogHeightDp) = remember(
+                globeKeyCoords,
+                rootCoordinates,
+                popupHeadroomDp,
+                bottomRowHeight,
+                totalBottomPadding,
+                keyboardSurfaceHeightDp,
+                keyboardLeftPx,
+                keyboardRightPx,
+                rootWidthPx,
+                oneHandedSide,
+                isLandscape
+            ) {
+                val rCoords = rootCoordinates
+                val globeBounds = if (globeKeyCoords != null && globeKeyCoords.isAttached &&
+                    rCoords != null && rCoords.isAttached) {
+                    try {
+                        rCoords.localBoundingBoxOf(globeKeyCoords)
+                    } catch (_: Exception) {
+                        null
+                    }
+                } else null
+
+                val bottomOffset = if (globeBounds != null) {
+                    val rootHeightPx = rCoords?.size?.height?.toFloat() ?: 0f
+                    val spaceFromBottomPx = (rootHeightPx - globeBounds.top).coerceAtLeast(0f)
+                    with(density) { spaceFromBottomPx.toDp() } + 4.dp
+                } else {
+                    bottomRowHeight + totalBottomPadding + 4.dp
+                }
+
+                val hOffset = if (oneHandedSide != "OFF" && rootWidthPx > 0f) {
+                    val activeCenterX = keyboardLeftPx + (keyboardRightPx - keyboardLeftPx) / 2f
+                    val rootCenterX = rootWidthPx / 2f
+                    with(density) { (activeCenterX - rootCenterX).toDp() }
+                } else {
+                    0.dp
+                }
+
+                val maxAllowedHeight = (keyboardSurfaceHeightDp - bottomOffset - 4.dp).coerceAtLeast(160.dp)
+                Triple(bottomOffset, hOffset, maxAllowedHeight)
+            }
+
             LanguageSelectionDialog(
                 currentLayoutId = layout.id,
                 enabledLayoutIds = effectiveLayoutList,
@@ -2311,7 +2386,12 @@ fun KeyboardRootView(
                     onOpenInputMethodPicker()
                 },
                 onDismiss = { isLanguagePickerOpen = false },
-                modifier = Modifier.matchParentSize()
+                bottomOffsetDp = globeBottomOffsetDp,
+                horizontalOffsetDp = horizontalOffsetDp,
+                maxAvailableHeightDp = maxDialogHeightDp,
+                modifier = Modifier
+                    .padding(top = popupHeadroomDp)
+                    .matchParentSize()
             )
         }
 
@@ -2326,7 +2406,9 @@ fun KeyboardRootView(
                     performHaptic(HapticFeedbackType.LongPress)
                 },
                 onDismiss = { unlearnCandidateTarget = null },
-                modifier = Modifier.matchParentSize()
+                modifier = Modifier
+                    .padding(top = popupHeadroomDp)
+                    .matchParentSize()
             )
         }
 
@@ -2361,6 +2443,7 @@ fun KeyboardRootView(
                     onOneHandedModeChange?.invoke(nextSide)
                 },
                 modifier = Modifier
+                    .padding(top = popupHeadroomDp)
                     .height(toolbarHeight + keyboardContentHeight)
                     .align(if (oneHandedSide == "LEFT") Alignment.TopEnd else Alignment.TopStart)
             )

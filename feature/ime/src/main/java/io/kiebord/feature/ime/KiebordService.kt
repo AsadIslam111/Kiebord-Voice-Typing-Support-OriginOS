@@ -5,7 +5,9 @@ import android.content.ClipboardManager
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
+import kotlin.math.roundToInt
 import android.os.Build
 import android.os.SystemClock
 import android.os.VibrationEffect
@@ -297,6 +299,21 @@ class KiebordService : InputMethodService() {
     override fun onConfigureWindow(win: Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, false, isCandidatesOnly)
         lifecycleOwner.attachToView(win.decorView)
+    }
+
+    override fun onComputeInsets(outInsets: Insets) {
+        super.onComputeInsets(outInsets)
+        val decorView = window?.window?.decorView ?: return
+        val decorHeight = decorView.height
+        if (decorHeight > 0) {
+            val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+            val headroomDp = if (isLandscape) 28f else 56f
+            val headroomPx = (headroomDp * resources.displayMetrics.density).roundToInt()
+            val keyboardTopInWindow = headroomPx.coerceIn(0, decorHeight)
+            outInsets.contentTopInsets = keyboardTopInWindow
+            outInsets.visibleTopInsets = keyboardTopInWindow
+            outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
+        }
     }
 
     override fun onCreateInputView(): View {
