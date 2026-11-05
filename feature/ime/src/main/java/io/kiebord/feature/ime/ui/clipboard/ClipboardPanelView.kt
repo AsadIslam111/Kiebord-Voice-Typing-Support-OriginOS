@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -421,7 +422,7 @@ fun ClipboardPanelView(
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.PushPin,
+                                    imageVector = if (entry.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                                     contentDescription = null,
                                     tint = if (entry.isPinned) colorScheme.accentColor else colorScheme.keyForeground,
                                     modifier = Modifier.size(17.dp)
@@ -534,18 +535,15 @@ private fun ClipboardCard(
             }
         }
 
-        // Top-right Pin icon button
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .size(24.dp)
-                .clip(CircleShape)
-                .background(if (entry.isPinned) colorScheme.accentColor.copy(alpha = 0.15f) else Color.Transparent)
                 .clickable { onTogglePin() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Outlined.PushPin,
+                imageVector = if (entry.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                 contentDescription = if (entry.isPinned) "Unpin" else "Pin",
                 tint = if (entry.isPinned) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.4f),
                 modifier = Modifier.size(15.dp)

@@ -66,6 +66,9 @@ data class KiebordPreferences(
     val voiceTypingEnabled: Boolean = true,
     val voiceTypingProvider: String = VOICE_PROVIDER_GOOGLE,
 
+    val autoDeleteRecentClips: Boolean = false,
+    val autoDeleteRecentClipsDurationHours: Int = 24,
+
     // Layout-specific dynamic extra row overrides ("${layoutId}_${rowId}" -> Boolean)
     val extraRowOverrides: Map<String, Boolean> = emptyMap(),
 

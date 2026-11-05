@@ -173,6 +173,7 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.CorrectionsSuggestions -> "Corrections & Suggestions"
         is SettingsScreen.PersonalDictionary -> "Personal Dictionary"
         is SettingsScreen.Clipboard -> "Clipboard"
+        is SettingsScreen.ClipboardManager -> "Manage Clips"
         is SettingsScreen.VoiceTyping -> "Voice Typing"
         is SettingsScreen.BackupRestore -> "Backup & Restore"
         is SettingsScreen.About -> "About Kiebord"
@@ -188,7 +189,8 @@ fun SettingsUnifiedTopBar(
         is SettingsScreen.SmartGestures -> "Delete gestures & spacebar trackpad"
         is SettingsScreen.CorrectionsSuggestions -> "Candidate strip, auto-fix & glide typing"
         is SettingsScreen.PersonalDictionary -> "Custom words & shortcut mappings"
-        is SettingsScreen.Clipboard -> "Manage copied items & pins"
+        is SettingsScreen.Clipboard -> "Clipboard preferences & cleanup"
+        is SettingsScreen.ClipboardManager -> "Search, filter & organize clips"
         is SettingsScreen.VoiceTyping -> "Speech recognition & providers"
         is SettingsScreen.BackupRestore -> "Import, export & data migration"
         is SettingsScreen.About -> null

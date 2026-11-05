@@ -57,6 +57,7 @@ import io.kiebord.app.ui.settings.AboutScreen
 import io.kiebord.app.ui.settings.AppearanceThemesScreen
 import io.kiebord.app.ui.settings.BackupRestoreScreen
 import io.kiebord.app.ui.settings.ClipboardSettingsScreen
+import io.kiebord.app.ui.settings.ClipboardManagerScreen
 import io.kiebord.app.ui.settings.CorrectionsSuggestionsScreen
 import io.kiebord.app.ui.settings.PersonalDictionaryScreen
 import io.kiebord.app.ui.settings.DarkSettingsColors
@@ -297,6 +298,12 @@ fun KiebordSettingsApp(
                     if (currentScreen != SettingsScreen.Clipboard) {
                         backStack = listOf(SettingsScreen.Main)
                         currentScreen = SettingsScreen.Clipboard
+                    }
+                }
+                "clipboard_manager", "manage_clips" -> {
+                    if (currentScreen != SettingsScreen.ClipboardManager) {
+                        backStack = listOf(SettingsScreen.Main, SettingsScreen.Clipboard)
+                        currentScreen = SettingsScreen.ClipboardManager
                     }
                 }
                 "dictionary", "personal_dictionary" -> {
@@ -603,6 +610,23 @@ fun KiebordSettingsApp(
 
                     is SettingsScreen.Clipboard -> {
                         ClipboardSettingsScreen(
+                            clipboardManager = SandboxedClipboardManager.getInstance(context),
+                            preferences = preferences,
+                            onUpdateAutoDeleteRecentClips = { enabled ->
+                                scope.launch { preferencesRepo.updateAutoDeleteRecentClips(enabled) }
+                            },
+                            onUpdateAutoDeleteRecentClipsDurationHours = { hours ->
+                                scope.launch { preferencesRepo.updateAutoDeleteRecentClipsDurationHours(hours) }
+                            },
+                            onNavigateToManageClips = {
+                                navigateTo(SettingsScreen.ClipboardManager)
+                            },
+                            onBack = navigateBack
+                        )
+                    }
+
+                    is SettingsScreen.ClipboardManager -> {
+                        ClipboardManagerScreen(
                             clipboardManager = SandboxedClipboardManager.getInstance(context),
                             onBack = navigateBack
                         )

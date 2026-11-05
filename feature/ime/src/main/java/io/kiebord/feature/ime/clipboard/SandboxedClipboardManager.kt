@@ -1,5 +1,6 @@
 package io.kiebord.feature.ime.clipboard
 
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.runtime.getValue
@@ -7,8 +8,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 
 data class ClipboardEntry(
@@ -19,15 +18,25 @@ data class ClipboardEntry(
     val isOtp: Boolean = false
 )
 
-class SandboxedClipboardManager(context: Context) {
-    private val appContext = context.applicationContext
-    private val systemClipboard = appContext.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+class SandboxedClipboardManager internal constructor(
+    private val filesDir: File,
+    private val systemClipboard: ClipboardManager? = null,
+    context: Context? = null
+) {
+    private val appContext = context?.applicationContext
+
+    constructor(context: Context) : this(
+        filesDir = context.applicationContext.filesDir,
+        systemClipboard = context.applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager,
+        context = context
+    )
+
     val clips = mutableStateListOf<ClipboardEntry>()
 
     var quickPasteClip by mutableStateOf<ClipboardEntry?>(null)
 
     private val otpPattern = Regex("^\\b\\d{4,8}\\b$")
-    private val storageFile by lazy { File(appContext.filesDir, "kiebord_clipboard_v1.json") }
+    private val storageFile by lazy { File(filesDir, "kiebord_clipboard_v1.json") }
     private val ioScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
 
     private var lastSyncedText: String? = null
@@ -35,74 +44,91 @@ class SandboxedClipboardManager(context: Context) {
 
     init {
         loadClipsFromDiskSync()
-        ioScope.launch {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                syncFromSystemClipboard()
+        purgeExpiredRecentClipsFromPrefs()
+        if (appContext != null) {
+            ioScope.launch {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    syncFromSystemClipboard()
+                }
             }
         }
+    }
+
+    private fun extractPrimaryClipText(cm: ClipboardManager, callingContext: Context? = null): String? {
+        if (!cm.hasPrimaryClip()) return null
+        val clipData = cm.primaryClip ?: return null
+        val targetContext = callingContext ?: appContext
+        for (i in 0 until clipData.itemCount) {
+            val item = clipData.getItemAt(i) ?: continue
+            val text = item.text?.toString()
+                ?: runCatching { item.coerceToText(targetContext)?.toString() }.getOrNull()
+                ?: item.htmlText?.let {
+                    runCatching {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                            android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_COMPACT).toString()
+                        } else {
+                            @Suppress("DEPRECATION")
+                            android.text.Html.fromHtml(it).toString()
+                        }
+                    }.getOrNull()
+                }
+                ?: item.htmlText
+
+            if (!text.isNullOrBlank()) {
+                return text
+            }
+        }
+        return null
+    }
+
+    private fun clearSystemClipboardIfMatching(predicate: (String) -> Boolean) {
+        try {
+            val cm = (appContext?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                ?: systemClipboard
+                ?: return
+            val currentText = extractPrimaryClipText(cm)?.trim() ?: return
+            if (predicate(currentText)) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    cm.clearPrimaryClip()
+                } else {
+                    cm.setPrimaryClip(ClipData.newPlainText("", ""))
+                }
+                lastSyncedText = null
+                lastSyncedTimestamp = 0L
+            }
+        } catch (_: Exception) {}
     }
 
     fun syncFromSystemClipboard(callingContext: Context? = null, forceNotify: Boolean = false) {
         try {
             purgeExpiredOtps()
+            purgeExpiredRecentClipsFromPrefs()
             val cm = (callingContext?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
-                ?: (appContext.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                ?: (appContext?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                 ?: systemClipboard
                 ?: return
 
-            if (!cm.hasPrimaryClip()) return
+            val foundText = extractPrimaryClipText(cm, callingContext) ?: return
+            val trimmed = foundText.trim()
+            if (trimmed.isEmpty()) return
 
-            val clipData = cm.primaryClip ?: return
-            var foundText: String? = null
-            for (i in 0 until clipData.itemCount) {
-                val item = clipData.getItemAt(i) ?: continue
-                val text = item.text?.toString()
-                    ?: runCatching { item.coerceToText(callingContext ?: appContext)?.toString() }.getOrNull()
-                    ?: item.htmlText?.let {
-                        runCatching {
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                                android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_COMPACT).toString()
-                            } else {
-                                @Suppress("DEPRECATION")
-                                android.text.Html.fromHtml(it).toString()
-                            }
-                        }.getOrNull()
-                    }
-                    ?: item.htmlText
-
-                if (!text.isNullOrBlank()) {
-                    foundText = text
-                    break
-                }
+            val clipTimestamp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                try {
+                    cm.primaryClipDescription?.timestamp ?: 0L
+                } catch (_: Exception) { 0L }
+            } else {
+                0L
             }
 
-            if (!foundText.isNullOrBlank()) {
-                val trimmed = foundText.trim()
-                if (trimmed.isNotEmpty()) {
-                    val clipTimestamp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        try {
-                            cm.primaryClipDescription?.timestamp ?: 0L
-                        } catch (_: Exception) { 0L }
-                    } else {
-                        0L
-                    }
+            val isNewCopy = forceNotify || (trimmed != lastSyncedText) || (clipTimestamp > 0L && clipTimestamp != lastSyncedTimestamp)
 
-                    val isNewCopy = forceNotify || (trimmed != lastSyncedText) || (clipTimestamp > 0L && clipTimestamp != lastSyncedTimestamp)
+            if (clipTimestamp > 0L) {
+                lastSyncedTimestamp = clipTimestamp
+            }
+            lastSyncedText = trimmed
 
-                    if (clipTimestamp > 0L) {
-                        lastSyncedTimestamp = clipTimestamp
-                    }
-                    lastSyncedText = trimmed
-
-                    if (isNewCopy) {
-                        addClip(trimmed, notifyQuickPaste = true)
-                    } else {
-                        val existing = clips.firstOrNull { it.text == trimmed }
-                        if (existing == null) {
-                            addClip(trimmed, notifyQuickPaste = false)
-                        }
-                    }
-                }
+            if (isNewCopy) {
+                addClip(trimmed, notifyQuickPaste = true)
             }
         } catch (_: Exception) {}
     }
@@ -163,30 +189,36 @@ class SandboxedClipboardManager(context: Context) {
         if (quickPasteClip?.id == entry.id) {
             quickPasteClip = null
         }
+        clearSystemClipboardIfMatching { it == entry.text.trim() }
         saveClipsToDisk()
     }
 
     fun deleteClips(ids: Collection<String>) {
         if (ids.isEmpty()) return
         val idSet = ids.toSet()
+        val deletedTexts = clips.filter { it.id in idSet }.map { it.text.trim() }.toSet()
         clips.removeAll { it.id in idSet }
         if (quickPasteClip?.id in idSet) {
             quickPasteClip = null
         }
+        clearSystemClipboardIfMatching { it in deletedTexts }
         saveClipsToDisk()
     }
 
     fun clearAllUnpinned() {
+        val unpinnedTexts = clips.filter { !it.isPinned }.map { it.text.trim() }.toSet()
         clips.removeAll { !it.isPinned }
         if (quickPasteClip?.isPinned == false) {
             quickPasteClip = null
         }
+        clearSystemClipboardIfMatching { it in unpinnedTexts }
         saveClipsToDisk()
     }
 
     fun clearAll() {
         clips.clear()
         quickPasteClip = null
+        clearSystemClipboardIfMatching { true }
         saveClipsToDisk()
     }
 
@@ -315,29 +347,55 @@ class SandboxedClipboardManager(context: Context) {
         }
     }
 
+    fun purgeExpiredRecentClips(durationHours: Int) {
+        val now = System.currentTimeMillis()
+        val cutoff = now - (durationHours.coerceIn(1, 48) * 3600_000L)
+        val removed = clips.removeAll { !it.isPinned && it.timestamp < cutoff }
+        if (removed) {
+            saveClipsToDisk()
+        }
+    }
+
+    private fun purgeExpiredRecentClipsFromPrefs() {
+        val ctx = appContext ?: return
+        try {
+            val prefs = ctx.getSharedPreferences("kiebord_fast_cache", Context.MODE_PRIVATE)
+            val enabled = prefs.getBoolean("auto_delete_recent_clips", false)
+            if (enabled) {
+                val hours = prefs.getInt("auto_delete_recent_clips_duration_hours", 24)
+                purgeExpiredRecentClips(hours)
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun isPotentialOtp(text: String): Boolean {
         return otpPattern.matches(text) || (text.length in 4..8 && text.all { it.isDigit() })
     }
 
     private fun writeClipsToFileDirect(snapshot: List<ClipboardEntry>) {
         try {
-            val jsonArray = JSONArray()
-            for (entry in snapshot) {
-                val obj = JSONObject().apply {
-                    put("id", entry.id)
-                    put("text", entry.text)
-                    put("timestamp", entry.timestamp)
-                    put("isPinned", entry.isPinned)
-                    put("isOtp", entry.isOtp)
-                }
-                jsonArray.put(obj)
+            val sb = StringBuilder()
+            sb.append("[\n")
+            for (i in snapshot.indices) {
+                val entry = snapshot[i]
+                sb.append("  {\n")
+                sb.append("    \"id\": \"").append(BornoClipboardBackupHelper.escapeJson(entry.id)).append("\",\n")
+                sb.append("    \"text\": \"").append(BornoClipboardBackupHelper.escapeJson(entry.text)).append("\",\n")
+                sb.append("    \"timestamp\": ").append(entry.timestamp).append(",\n")
+                sb.append("    \"isPinned\": ").append(entry.isPinned).append(",\n")
+                sb.append("    \"isOtp\": ").append(entry.isOtp).append("\n")
+                sb.append("  }")
+                if (i < snapshot.size - 1) sb.append(",")
+                sb.append("\n")
             }
+            sb.append("]\n")
+
             val parent = storageFile.parentFile
             if (parent != null && !parent.exists()) {
                 parent.mkdirs()
             }
-            val tempFile = File(appContext.filesDir, "kiebord_clipboard_v1.tmp")
-            tempFile.writeText(jsonArray.toString())
+            val tempFile = File(filesDir, "kiebord_clipboard_v1.tmp")
+            tempFile.writeText(sb.toString())
             if (tempFile.exists()) {
                 if (storageFile.exists()) {
                     storageFile.delete()
@@ -359,20 +417,24 @@ class SandboxedClipboardManager(context: Context) {
         writeClipsToFileDirect(snapshot)
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun loadClipsFromDiskSync() {
         try {
             if (!storageFile.exists()) return
             val jsonStr = storageFile.readText()
             if (jsonStr.isBlank()) return
-            val jsonArray = JSONArray(jsonStr)
+            val parsed = BornoClipboardBackupHelper.MiniJson.parse(jsonStr) as? List<Map<String, Any?>> ?: return
             val loaded = mutableListOf<ClipboardEntry>()
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.optJSONObject(i) ?: continue
-                val id = obj.optString("id", java.util.UUID.randomUUID().toString())
-                val text = obj.optString("text", "")
-                val timestamp = obj.optLong("timestamp", System.currentTimeMillis())
-                val isPinned = obj.optBoolean("isPinned", false)
-                val isOtp = obj.optBoolean("isOtp", false)
+            for (map in parsed) {
+                val id = (map["id"] as? String)?.takeIf { it.isNotBlank() } ?: java.util.UUID.randomUUID().toString()
+                val text = map["text"] as? String ?: ""
+                val timestamp = when (val t = map["timestamp"]) {
+                    is Number -> t.toLong()
+                    is String -> t.toLongOrNull() ?: System.currentTimeMillis()
+                    else -> System.currentTimeMillis()
+                }
+                val isPinned = map["isPinned"] as? Boolean ?: (map["isPinned"] == 1 || map["isPinned"] == "1")
+                val isOtp = map["isOtp"] as? Boolean ?: (map["isOtp"] == 1 || map["isOtp"] == "1")
                 if (text.isNotBlank()) {
                     loaded.add(
                         ClipboardEntry(

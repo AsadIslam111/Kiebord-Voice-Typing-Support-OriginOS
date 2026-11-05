@@ -42,4 +42,15 @@ class KiebordPreferencesTest {
         val enabledPrefs = prefs.copy(showEmojiKey = true)
         assertEquals(true, enabledPrefs.showEmojiKey)
     }
+
+    @Test
+    fun testAutoDeleteRecentClipsDefaultsAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(false, prefs.autoDeleteRecentClips)
+        assertEquals(24, prefs.autoDeleteRecentClipsDurationHours)
+
+        val updated = prefs.copy(autoDeleteRecentClips = true, autoDeleteRecentClipsDurationHours = 12)
+        assertEquals(true, updated.autoDeleteRecentClips)
+        assertEquals(12, updated.autoDeleteRecentClipsDurationHours)
+    }
 }

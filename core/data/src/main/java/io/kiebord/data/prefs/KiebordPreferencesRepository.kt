@@ -81,6 +81,8 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val DRAWER_TOOLS = stringPreferencesKey("pref_drawer_tools")
         val VOICE_TYPING_ENABLED = booleanPreferencesKey("pref_voice_typing_enabled")
         val VOICE_TYPING_PROVIDER = stringPreferencesKey("pref_voice_typing_provider")
+        val AUTO_DELETE_RECENT_CLIPS = booleanPreferencesKey("pref_auto_delete_recent_clips")
+        val AUTO_DELETE_RECENT_CLIPS_DURATION_HOURS = intPreferencesKey("pref_auto_delete_recent_clips_duration_hours")
         val SETUP_COMPLETED = booleanPreferencesKey("pref_setup_completed")
     }
 
@@ -183,6 +185,8 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 },
                 voiceTypingEnabled = prefs[PreferencesKeys.VOICE_TYPING_ENABLED] ?: true,
                 voiceTypingProvider = prefs[PreferencesKeys.VOICE_TYPING_PROVIDER] ?: KiebordPreferences.VOICE_PROVIDER_GOOGLE,
+                autoDeleteRecentClips = prefs[PreferencesKeys.AUTO_DELETE_RECENT_CLIPS] ?: fastCache.getBoolean("auto_delete_recent_clips", false),
+                autoDeleteRecentClipsDurationHours = prefs[PreferencesKeys.AUTO_DELETE_RECENT_CLIPS_DURATION_HOURS] ?: fastCache.getInt("auto_delete_recent_clips_duration_hours", 24),
                 extraRowOverrides = run {
                     val overrides = mutableMapOf<String, Boolean>()
                     for ((key, value) in prefs.asMap()) {
@@ -446,6 +450,17 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateVoiceTypingProvider(provider: String) {
         context.kiebordDataStore.edit { it[PreferencesKeys.VOICE_TYPING_PROVIDER] = provider }
+    }
+
+    suspend fun updateAutoDeleteRecentClips(enabled: Boolean) {
+        fastCache.edit().putBoolean("auto_delete_recent_clips", enabled).apply()
+        context.kiebordDataStore.edit { it[PreferencesKeys.AUTO_DELETE_RECENT_CLIPS] = enabled }
+    }
+
+    suspend fun updateAutoDeleteRecentClipsDurationHours(hours: Int) {
+        val clamped = hours.coerceIn(1, 48)
+        fastCache.edit().putInt("auto_delete_recent_clips_duration_hours", clamped).apply()
+        context.kiebordDataStore.edit { it[PreferencesKeys.AUTO_DELETE_RECENT_CLIPS_DURATION_HOURS] = clamped }
     }
 
     suspend fun updateSetupCompleted(completed: Boolean) {
