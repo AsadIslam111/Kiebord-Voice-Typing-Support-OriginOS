@@ -37,6 +37,7 @@ import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
+import io.kiebord.data.dictionary.PersonalDictionaryRepository
 import io.kiebord.data.dictionary.UserDictionaryRepository
 import io.kiebord.data.layout.LayoutRepository
 import io.kiebord.data.layout.PredefinedLayouts
@@ -157,6 +158,7 @@ class KiebordService : InputMethodService() {
         clipboardManager.syncFromSystemClipboard(this, forceNotify = true)
     }
     private lateinit var userDictionaryRepo: UserDictionaryRepository
+    private lateinit var personalDictionaryRepo: PersonalDictionaryRepository
     private lateinit var layoutRepo: LayoutRepository
     private var selectionAnchor: Int? = null
     private var selectionCursor: Int? = null
@@ -223,6 +225,7 @@ class KiebordService : InputMethodService() {
         layoutRepo = LayoutRepository.getInstance(this)
         clipboardManager = SandboxedClipboardManager.getInstance(this)
         userDictionaryRepo = UserDictionaryRepository.getInstance(this)
+        personalDictionaryRepo = PersonalDictionaryRepository.getInstance(this)
         voiceInputManager = VoiceInputManager(this).apply {
             onPartialResult = { text ->
                 currentInputConnection?.setComposingText(text, 1)
@@ -1103,7 +1106,11 @@ class KiebordService : InputMethodService() {
                 }
                 val translitMgr = getTransliterationManager()
                 if (translitMgr.isComposing) {
-                    val committed = translitMgr.currentTransliteration
+                    val raw = translitMgr.currentRawInput
+                    val shortcutMatch = if (raw.isNotBlank()) {
+                        personalDictionaryRepo.getShortcutMatches(raw, "bn").firstOrNull()?.word
+                    } else null
+                    val committed = shortcutMatch ?: translitMgr.currentTransliteration
                     val cleanCommitted = committed.trim().trimEnd { isPunctuationChar(it) }
                     if (preferencesState.learnedWordsEnabled && !activeLayout.noLearnedWords && !primaryAlphaLayout.noLearnedWords &&
                         cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH
@@ -1115,7 +1122,10 @@ class KiebordService : InputMethodService() {
                     translitMgr.reset()
                     lastSpaceTapTime = SystemClock.uptimeMillis()
                 } else if (composingBuffer.isNotEmpty()) {
-                    val committed = BengaliBstiEngine.cleanPending(composingBuffer.toString())
+                    val raw = composingBuffer.toString()
+                    val config = resolveSuggestionConfig(activeLayout)
+                    val shortcutMatch = personalDictionaryRepo.getShortcutMatches(raw, config.dictLang).firstOrNull()?.word
+                    val committed = shortcutMatch ?: BengaliBstiEngine.cleanPending(raw)
                     val cleanCommitted = committed.trim()
                     if (preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                         val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
@@ -2290,7 +2300,9 @@ class KiebordService : InputMethodService() {
         val isEnglish = isEnglishLayout()
         return candidates.filter { cand ->
             val text = cand.text
-            if (cand.rawInput != null && cand.text == cand.rawInput) {
+            if (cand.isLearned) {
+                true
+            } else if (cand.rawInput != null && cand.text == cand.rawInput) {
                 true
             } else {
                 when {
@@ -2425,14 +2437,35 @@ class KiebordService : InputMethodService() {
 
                 val list = mutableListOf<SuggestionCandidate>()
 
-                // 1. Raw typed English word as first candidate if toggle is enabled
-                if (preferencesState.bengaliShowRawInputCandidate && raw.isNotBlank()) {
-                    list.add(SuggestionCandidate(text = raw, isPrimary = false, rawInput = raw))
+                val personalShortcuts = if (raw.isNotBlank()) {
+                    personalDictionaryRepo.getShortcutMatches(raw, "bn")
+                } else emptyList()
+
+                if (personalShortcuts.isNotEmpty()) {
+                    for (entry in personalShortcuts) {
+                        if (list.none { it.text == entry.word }) {
+                            list.add(SuggestionCandidate(text = entry.word, isPrimary = list.isEmpty(), rawInput = raw, isLearned = true))
+                        }
+                    }
+                    if (list.none { it.text == raw }) {
+                        list.add(SuggestionCandidate(text = raw, isPrimary = false, rawInput = raw))
+                    }
+                } else {
+                    if (preferencesState.bengaliShowRawInputCandidate && raw.isNotBlank()) {
+                        list.add(SuggestionCandidate(text = raw, isPrimary = false, rawInput = raw))
+                    }
                 }
 
-                // 2. Primary transliterated word (strictly non-Latin/Bengali)
-                if (primaryWord.isNotEmpty()) {
-                    list.add(SuggestionCandidate(text = primaryWord, isPrimary = true, rawInput = raw))
+                if (primaryWord.isNotEmpty() && list.none { it.text == primaryWord }) {
+                    list.add(SuggestionCandidate(text = primaryWord, isPrimary = list.none { it.isPrimary }, rawInput = raw))
+                }
+
+                val personalPrefixes = (if (raw.isNotBlank()) personalDictionaryRepo.getPrefixMatches(raw, "bn", 3) else emptyList()) +
+                        (if (primaryWord.isNotEmpty()) personalDictionaryRepo.getPrefixMatches(primaryWord, "bn", 3) else emptyList())
+                for (entry in personalPrefixes) {
+                    if (list.size < 12 && list.none { it.text == entry.word }) {
+                        list.add(SuggestionCandidate(text = entry.word, isPrimary = false, isLearned = true))
+                    }
                 }
 
                 // 2b. If phonetic auto-correct modified the word, offer literal uncorrected transliteration as alternative candidate
@@ -2533,15 +2566,34 @@ class KiebordService : InputMethodService() {
         val config = resolveSuggestionConfig(activeLayout)
         val prefix = config.cleanPrefix(composingBuffer.toString())
         if (prefix.isNotEmpty()) {
+            val personalShortcuts = personalDictionaryRepo.getShortcutMatches(prefix, config.dictLang)
+            val shortcutWords = personalShortcuts.map { it.word }.distinct()
+            val personalPrefixes = personalDictionaryRepo.getPrefixMatches(prefix, config.dictLang, 4)
+            val otherPersonalWords = personalPrefixes.map { it.word }.filter { it !in shortcutWords && it != prefix }.distinct()
+
+            val personalWords = (personalShortcuts + personalPrefixes).distinctBy { it.id }.map { it.word }
+
             val learned = if (preferencesState.learnedWordsEnabled) {
                 userDictionaryRepo.getCompletions(prefix, 4, config.isValidCandidate)
             } else emptyList()
             val matches = NativeEngine.querySuggestions(prefix, config.dictLang, 12)
                 .filter(config.isValidCandidate)
-            val merged = (learned + matches).distinct().take(12)
-            activeSuggestions = filterAndMarkCandidates(if (merged.isNotEmpty()) {
-                merged.mapIndexed { i, w ->
-                    SuggestionCandidate(text = w, isPrimary = i == 0)
+
+            val mergedWords = if (shortcutWords.isNotEmpty()) {
+                (shortcutWords + listOf(prefix) + otherPersonalWords + learned + matches).distinct().take(12)
+            } else {
+                (personalWords + learned + matches).distinct().take(12)
+            }
+
+            activeSuggestions = filterAndMarkCandidates(if (mergedWords.isNotEmpty()) {
+                mergedWords.mapIndexed { i, w ->
+                    val isPersonal = personalWords.contains(w)
+                    SuggestionCandidate(
+                        text = w,
+                        isPrimary = i == 0,
+                        rawInput = prefix,
+                        isLearned = isPersonal
+                    )
                 }
             } else {
                 if (config.isValidCandidate(prefix)) {

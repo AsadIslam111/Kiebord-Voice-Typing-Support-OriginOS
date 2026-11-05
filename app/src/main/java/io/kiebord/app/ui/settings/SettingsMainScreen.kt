@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsBackupRestore
@@ -254,6 +255,13 @@ fun SettingsMainScreen(
                 icon = Icons.Outlined.ContentPaste,
                 position = GroupPosition.TOP,
                 onClick = { onNavigate(SettingsScreen.Clipboard) }
+            )
+
+            SettingsNavigationItem(
+                title = "Personal Dictionary",
+                icon = Icons.AutoMirrored.Outlined.MenuBook,
+                position = GroupPosition.MIDDLE,
+                onClick = { onNavigate(SettingsScreen.PersonalDictionary) }
             )
 
             SettingsNavigationItem(

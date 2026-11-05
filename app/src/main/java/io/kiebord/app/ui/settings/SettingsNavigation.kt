@@ -11,6 +11,7 @@ sealed class SettingsScreen {
     data object Preferences : SettingsScreen()
     data object SmartGestures : SettingsScreen()
     data object CorrectionsSuggestions : SettingsScreen()
+    data object PersonalDictionary : SettingsScreen()
     data object Clipboard : SettingsScreen()
     data object VoiceTyping : SettingsScreen()
     data object BackupRestore : SettingsScreen()

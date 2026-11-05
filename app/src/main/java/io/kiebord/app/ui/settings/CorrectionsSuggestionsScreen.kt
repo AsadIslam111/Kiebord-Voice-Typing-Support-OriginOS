@@ -214,7 +214,7 @@ fun CorrectionsSuggestionsScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-        SettingsCategoryHeader(title = "Text Corrections & Shortcuts")
+        SettingsCategoryHeader(title = "Text Corrections")
 
         SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsToggleItem(

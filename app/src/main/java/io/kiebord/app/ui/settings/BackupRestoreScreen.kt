@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.feature.ime.clipboard.BornoClipboardBackupHelper
 import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
+import io.kiebord.data.dictionary.PersonalDictionaryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,6 +45,7 @@ fun BackupRestoreScreen(
     val colors = LocalSettingsColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val personalDictionaryRepo = remember { PersonalDictionaryRepository.getInstance(context) }
 
     var pendingError by remember { mutableStateOf<String?>(null) }
 
@@ -104,6 +106,66 @@ fun BackupRestoreScreen(
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Export failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    val exportDictionaryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch(Dispatchers.IO) {
+            try {
+                val result = context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    personalDictionaryRepo.exportToJson(stream)
+                }
+                withContext(Dispatchers.Main) {
+                    if (result != null && result.isSuccess) {
+                        val count = result.getOrNull() ?: 0
+                        Toast.makeText(context, "Exported $count dictionary entries", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val error = result?.exceptionOrNull()?.localizedMessage ?: "Write error"
+                        Toast.makeText(context, "Export failed: $error", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Export failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    val importDictionaryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch(Dispatchers.IO) {
+            try {
+                val result = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    personalDictionaryRepo.importFromJson(stream, replaceExisting = false)
+                }
+                withContext(Dispatchers.Main) {
+                    if (result != null && result.isSuccess) {
+                        val res = result.getOrNull()!!
+                        val msg = if (res.importedCount > 0) {
+                            "Imported ${res.importedCount} words" +
+                                    if (res.skippedDuplicates > 0) " (${res.skippedDuplicates} duplicates skipped)" else ""
+                        } else if (res.skippedDuplicates > 0) {
+                            "All ${res.totalFound} words already exist in personal dictionary"
+                        } else {
+                            "Import completed (${res.totalFound} found)"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    } else {
+                        val error = result?.exceptionOrNull()?.localizedMessage ?: "Invalid dictionary file"
+                        pendingError = "Import failed: $error"
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    pendingError = "Failed to import dictionary: ${e.localizedMessage ?: "Unknown error"}"
                 }
             }
         }
@@ -179,6 +241,33 @@ fun BackupRestoreScreen(
                 position = GroupPosition.BOTTOM,
                 onClick = {
                     importClipboardLauncher.launch(arrayOf("*/*"))
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SettingsCategoryHeader(title = "Personal Dictionary")
+
+        SettingsGroup {
+            SettingsNavigationItem(
+                title = "Export Personal Dictionary",
+                subtitle = "Save custom words and shortcut mappings to JSON file",
+                icon = Icons.Outlined.FileUpload,
+                position = GroupPosition.TOP,
+                onClick = {
+                    val defaultName = "kiebord_personal_dict_${System.currentTimeMillis()}.json"
+                    exportDictionaryLauncher.launch(defaultName)
+                }
+            )
+
+            SettingsNavigationItem(
+                title = "Restore Personal Dictionary",
+                subtitle = "Import words and shortcuts from backup file",
+                icon = Icons.Outlined.Restore,
+                position = GroupPosition.BOTTOM,
+                onClick = {
+                    importDictionaryLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
                 }
             )
         }
