@@ -5,6 +5,7 @@
   "description": "Unijoy Bangla Keyboard Layout",
   "language": "bn",
   "direction": "LTR",
+  "processor": "bn_fixed",
   "flag": "NoAutoCapitalization",
   "numberRow": {
     "keys": [
