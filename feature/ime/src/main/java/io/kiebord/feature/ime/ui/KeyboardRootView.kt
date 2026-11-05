@@ -484,7 +484,7 @@ fun KeyboardRootView(
     val popupHeadroomDp = if (!enablePopupHeadroom) 0.dp else if (isLandscape) 28.dp else 56.dp
 
     // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
-    val displayLayout = if (isSlidingSymbolMode) (layout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols) else layout
+    val displayLayout = if (isSlidingSymbolMode) PredefinedLayouts.resolveSymbolsLayout(layout) else layout
 
     val isDisplayBornoEasy = PredefinedLayouts.isBornoEasy(displayLayout.id)
     val isPrimaryBornoEasy = PredefinedLayouts.isBornoEasy(primaryAlphaLayout.id)

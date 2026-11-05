@@ -18,6 +18,7 @@
           "label": "q",
           "flickUp": "1",
           "moreKeys": [
+            "১",
             "1"
           ]
         },
@@ -25,6 +26,7 @@
           "label": "w",
           "flickUp": "2",
           "moreKeys": [
+            "২",
             "2"
           ]
         },
@@ -32,6 +34,7 @@
           "label": "e",
           "flickUp": "3",
           "moreKeys": [
+            "৩",
             "3",
             "é",
             "è",
@@ -44,6 +47,7 @@
           "label": "r",
           "flickUp": "4",
           "moreKeys": [
+            "৪",
             "4"
           ]
         },
@@ -51,6 +55,7 @@
           "label": "t",
           "flickUp": "5",
           "moreKeys": [
+            "৫",
             "5"
           ]
         },
@@ -58,6 +63,7 @@
           "label": "y",
           "flickUp": "6",
           "moreKeys": [
+            "৬",
             "6"
           ]
         },
@@ -65,6 +71,7 @@
           "label": "u",
           "flickUp": "7",
           "moreKeys": [
+            "৭",
             "7",
             "ú",
             "ù",
@@ -77,6 +84,7 @@
           "label": "i",
           "flickUp": "8",
           "moreKeys": [
+            "৮",
             "8",
             "í",
             "ì",
@@ -89,6 +97,7 @@
           "label": "o",
           "flickUp": "9",
           "moreKeys": [
+            "৯",
             "9",
             "ó",
             "ò",
@@ -104,6 +113,7 @@
           "label": "p",
           "flickUp": "0",
           "moreKeys": [
+            "০",
             "0"
           ]
         }
@@ -138,8 +148,9 @@
         },
         {
           "label": "d",
-          "flickUp": "$",
+          "flickUp": "৳",
           "moreKeys": [
+            "৳",
             "$"
           ]
         },
@@ -435,10 +446,10 @@
             "label": "#"
           },
           {
-            "label": "$",
+            "label": "৳",
             "moreKeys": [
-              "$",
               "৳",
+              "$",
               "₹",
               "€",
               "£",

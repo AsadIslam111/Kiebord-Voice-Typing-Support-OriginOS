@@ -398,20 +398,32 @@ class PredefinedLayoutsTest {
         assertEquals(5, customWithSym.effectiveSymbolsLayout()!!.rows.size)
         assertTrue(customSym.isSymbolsLayout())
 
-        // Borno Phonetic defines its own symbolsLayout with Bangla numbers in row 0
+        // Borno Phonetic defines its own symbolsLayout with Bangla numbers in row 0 and ৳ currency symbol
         val borno = PredefinedLayouts.BengaliBorno
         org.junit.Assert.assertNotNull(borno.effectiveSymbolsLayout())
         val bornoSym = borno.effectiveSymbolsLayout()!!
         assertEquals("bn_borno_symbols", bornoSym.id)
         assertTrue(bornoSym.isSymbolsLayout())
         assertEquals(listOf("১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "০"), bornoSym.rows[0].keys.map { it.label })
+        assertEquals("৳", bornoSym.rows[1].keys[2].label)
+        assertTrue(bornoSym.rows[1].keys[2].moreKeys.contains("$"))
 
-        // Predefined layouts without symbolsLayout safely return null and fall back
+        // Avro Phonetic also defines its symbolsLayout with Bangla numbers and ৳
         val avro = PredefinedLayouts.BengaliAvro
-        org.junit.Assert.assertNull(avro.effectiveSymbolsLayout())
-        org.junit.Assert.assertFalse(avro.isSymbolsLayout())
-        val fallback = avro.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
-        assertEquals("symbols_1", fallback.id)
+        org.junit.Assert.assertNotNull(avro.effectiveSymbolsLayout())
+        val avroSym = avro.effectiveSymbolsLayout()!!
+        assertEquals("bn_borno_symbols", avroSym.id)
+        assertEquals(listOf("১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "০"), avroSym.rows[0].keys.map { it.label })
+        assertEquals("৳", avroSym.rows[1].keys[2].label)
+
+        // Custom layouts without symbolsLayout safely return null and resolveSymbolsLayout falls back appropriately
+        val customEn = io.kiebord.common.model.KeyboardLayoutDef(id = "custom_en", name = "Custom En", language = "en")
+        org.junit.Assert.assertNull(customEn.effectiveSymbolsLayout())
+        assertEquals("symbols_1", PredefinedLayouts.resolveSymbolsLayout(customEn).id)
+
+        val customBn = io.kiebord.common.model.KeyboardLayoutDef(id = "custom_bn", name = "Custom Bn", language = "bn")
+        org.junit.Assert.assertNull(customBn.effectiveSymbolsLayout())
+        assertEquals("bn_borno_symbols", PredefinedLayouts.resolveSymbolsLayout(customBn).id)
     }
 
     @Test
@@ -1272,5 +1284,54 @@ class PredefinedLayoutsTest {
         assertTrue(qwertyEnter.isEnterKey())
         assertEquals(listOf("ACTION_EMOJI"), qwertyEnter.moreKeys) // Raw JSON preserved
         assertEquals(listOf("ACTION_EMOJI", "ACTION_NEW_LINE"), qwertyEnter.moreKeys(io.kiebord.common.model.ShiftState.UNSHIFTED))
+    }
+
+    @Test
+    fun testBanglaPhoneticAndSymbolsPrioritization() {
+        val borno = PredefinedLayouts.BengaliBorno
+        val avro = PredefinedLayouts.BengaliAvro
+
+        val expectedBnDigits = listOf("১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "০")
+        val expectedEnDigits = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+
+        // 1. Verify phonetic layouts top row (q..p) contains both Bangla and English digits
+        for (layout in listOf(borno, avro)) {
+            val topKeys = layout.rows[0].keys
+            assertEquals(10, topKeys.size)
+            for (i in 0 until 10) {
+                val key = topKeys[i]
+                assertTrue("Key ${key.label} must contain Bangla digit ${expectedBnDigits[i]}", key.moreKeys.contains(expectedBnDigits[i]))
+                assertTrue("Key ${key.label} must contain English digit ${expectedEnDigits[i]}", key.moreKeys.contains(expectedEnDigits[i]))
+            }
+
+            // 2. Verify 'd' key flickUp and moreKeys prioritization
+            val dKey = layout.rows[1].keys.first { it.label == "d" }
+            assertEquals("৳", dKey.flickUp)
+            assertEquals("৳", dKey.moreKeys[0])
+            assertTrue(dKey.moreKeys.contains("$"))
+
+            // 3. Verify symbols page has Bangla digits in row 0 and ৳ in row 1
+            val sym = layout.symbolsLayout
+            assertNotNull(sym)
+            assertEquals(expectedBnDigits, sym!!.rows[0].keys.map { it.label })
+            val takaKey = sym.rows[1].keys[2]
+            assertEquals("৳", takaKey.label)
+            assertEquals("৳", takaKey.moreKeys[0])
+            assertTrue(takaKey.moreKeys.contains("$"))
+        }
+
+        // 4. Verify bn_unijoy.json symbols layout
+        val unijoyFile = listOf(
+            java.io.File("../../feature/ime/src/main/assets/layouts/bn_unijoy.json"),
+            java.io.File("feature/ime/src/main/assets/layouts/bn_unijoy.json"),
+            java.io.File("../feature/ime/src/main/assets/layouts/bn_unijoy.json")
+        ).firstOrNull { it.exists() }
+        assertNotNull("bn_unijoy.json must exist", unijoyFile)
+        val unijoyLayout = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(unijoyFile!!.readText())
+        val unijoySym = unijoyLayout.symbolsLayout
+        assertNotNull(unijoySym)
+        assertEquals(expectedBnDigits, unijoySym!!.rows[0].keys.map { it.label })
+        val unijoyTakaKey = unijoySym.rows[1].keys[2]
+        assertEquals("৳", unijoyTakaKey.label)
     }
 }

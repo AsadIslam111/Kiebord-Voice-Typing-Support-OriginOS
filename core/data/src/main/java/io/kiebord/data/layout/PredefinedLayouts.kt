@@ -325,7 +325,7 @@ object PredefinedLayouts {
                 listOf(
                     KeyDef("@"),
                     KeyDef("#"),
-                    KeyDef("$", moreKeys = listOf("$", "৳", "₹", "€", "£", "¥", "¢")),
+                    KeyDef("৳", moreKeys = listOf("৳", "$", "₹", "€", "£", "¥", "¢")),
                     KeyDef("%", moreKeys = listOf("%", "‰")),
                     KeyDef("&"),
                     KeyDef("-", moreKeys = listOf("-", "_", "–", "—", "·", "⁻")),
@@ -362,6 +362,8 @@ object PredefinedLayouts {
         )
     )
 
+    val BengaliSymbols: KeyboardLayoutDef = BengaliBornoSymbols
+
     val BengaliBorno = KeyboardLayoutDef(
         id = "bn_borno",
         name = "বর্ণ ফোনেটিক",
@@ -370,26 +372,27 @@ object PredefinedLayouts {
         language = "bn",
         flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
         symbolsLayout = BengaliBornoSymbols,
+        numberRow = NumberRowBn,
         rows = listOf(
             KeyRow(
                 listOf(
-                    KeyDef("q", "Q", flickUp = "1", moreKeys = listOf("1")),
-                    KeyDef("w", "W", flickUp = "2", moreKeys = listOf("2")),
-                    KeyDef("e", "E", flickUp = "3", moreKeys = listOf("3")),
-                    KeyDef("r", "R", flickUp = "4", moreKeys = listOf("4")),
-                    KeyDef("t", "T", flickUp = "5", moreKeys = listOf("ৎ", "5")),
-                    KeyDef("y", "Y", flickUp = "6", moreKeys = listOf("`", "6")),
-                    KeyDef("u", "U", flickUp = "7", moreKeys = listOf("7")),
-                    KeyDef("i", "I", flickUp = "8", moreKeys = listOf("8")),
-                    KeyDef("o", "O", flickUp = "9", moreKeys = listOf("9")),
-                    KeyDef("p", "P", flickUp = "0", moreKeys = listOf("0"))
+                    KeyDef("q", "Q", flickUp = "1", moreKeys = listOf("১", "1")),
+                    KeyDef("w", "W", flickUp = "2", moreKeys = listOf("২", "2")),
+                    KeyDef("e", "E", flickUp = "3", moreKeys = listOf("৩", "3")),
+                    KeyDef("r", "R", flickUp = "4", moreKeys = listOf("৪", "4")),
+                    KeyDef("t", "T", flickUp = "5", moreKeys = listOf("ৎ", "৫", "5")),
+                    KeyDef("y", "Y", flickUp = "6", moreKeys = listOf("`", "৬", "6")),
+                    KeyDef("u", "U", flickUp = "7", moreKeys = listOf("৭", "7")),
+                    KeyDef("i", "I", flickUp = "8", moreKeys = listOf("৮", "8")),
+                    KeyDef("o", "O", flickUp = "9", moreKeys = listOf("৯", "9")),
+                    KeyDef("p", "P", flickUp = "0", moreKeys = listOf("০", "0"))
                 )
             ),
             KeyRow(
                 keys = listOf(
                     KeyDef("a", "A", flickUp = "ঁ", moreKeys = listOf("ঁ", "@")),
                     KeyDef("s", "S", flickUp = "#", moreKeys = listOf("#")),
-                    KeyDef("d", "D", flickUp = "$", moreKeys = listOf("$")),
+                    KeyDef("d", "D", flickUp = "৳", moreKeys = listOf("৳", "$")),
                     KeyDef("f", "F", flickUp = "%", moreKeys = listOf("%")),
                     KeyDef("g", "G", flickUp = "&", moreKeys = listOf("্", "্\u200c", "়", "&")),
                     KeyDef("h", "H", flickUp = "-", moreKeys = listOf("-")),
@@ -433,26 +436,28 @@ object PredefinedLayouts {
         description = "Popular Bangla Phonetic Layout by OmicronLab.",
         language = "bn",
         flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
+        symbolsLayout = BengaliSymbols,
+        numberRow = NumberRowBn,
         rows = listOf(
             KeyRow(
                 listOf(
-                    KeyDef("q", "Q", flickUp = "1", moreKeys = listOf("1")),
-                    KeyDef("w", "W", flickUp = "2", moreKeys = listOf("2")),
-                    KeyDef("e", "E", flickUp = "3", moreKeys = listOf("3")),
-                    KeyDef("r", "R", flickUp = "4", moreKeys = listOf("4")),
-                    KeyDef("t", "T", flickUp = "5", moreKeys = listOf("ৎ", "5")),
-                    KeyDef("y", "Y", flickUp = "6", moreKeys = listOf("`", "6")),
-                    KeyDef("u", "U", flickUp = "7", moreKeys = listOf("7")),
-                    KeyDef("i", "I", flickUp = "8", moreKeys = listOf("8")),
-                    KeyDef("o", "O", flickUp = "9", moreKeys = listOf("9")),
-                    KeyDef("p", "P", flickUp = "0", moreKeys = listOf("0"))
+                    KeyDef("q", "Q", flickUp = "1", moreKeys = listOf("১", "1")),
+                    KeyDef("w", "W", flickUp = "2", moreKeys = listOf("২", "2")),
+                    KeyDef("e", "E", flickUp = "3", moreKeys = listOf("৩", "3")),
+                    KeyDef("r", "R", flickUp = "4", moreKeys = listOf("৪", "4")),
+                    KeyDef("t", "T", flickUp = "5", moreKeys = listOf("ৎ", "৫", "5")),
+                    KeyDef("y", "Y", flickUp = "6", moreKeys = listOf("`", "৬", "6")),
+                    KeyDef("u", "U", flickUp = "7", moreKeys = listOf("৭", "7")),
+                    KeyDef("i", "I", flickUp = "8", moreKeys = listOf("৮", "8")),
+                    KeyDef("o", "O", flickUp = "9", moreKeys = listOf("৯", "9")),
+                    KeyDef("p", "P", flickUp = "0", moreKeys = listOf("০", "0"))
                 )
             ),
             KeyRow(
                 keys = listOf(
                     KeyDef("a", "A", flickUp = "@", moreKeys = listOf("@")),
                     KeyDef("s", "S", flickUp = "#", moreKeys = listOf("#")),
-                    KeyDef("d", "D", flickUp = "$", moreKeys = listOf("$")),
+                    KeyDef("d", "D", flickUp = "৳", moreKeys = listOf("৳", "$")),
                     KeyDef("f", "F", flickUp = "%", moreKeys = listOf("%")),
                     KeyDef("g", "G", flickUp = "&", moreKeys = listOf("্", "্\u200c", "়", "&")),
                     KeyDef("h", "H", flickUp = "-", moreKeys = listOf("-")),
@@ -497,6 +502,8 @@ object PredefinedLayouts {
         language = "bn",
         processor = "bn_fixed",
         flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
+        symbolsLayout = BengaliSymbols,
+        numberRow = NumberRowBn,
         rows = listOf(
             KeyRow(
                 listOf(
@@ -565,6 +572,8 @@ object PredefinedLayouts {
         language = "bn",
         processor = "bn_fixed",
         flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
+        symbolsLayout = BengaliSymbols,
+        numberRow = NumberRowBn,
         rows = listOf(
             KeyRow(
                 listOf(
@@ -729,7 +738,7 @@ object PredefinedLayouts {
                     KeyDef("!"),
                     KeyDef("@"),
                     KeyDef("#"),
-                    KeyDef("$"),
+                    KeyDef("৳", moreKeys = listOf("৳", "$", "₹")),
                     KeyDef("%"),
                     KeyDef("^"),
                     KeyDef("&"),
@@ -1156,6 +1165,10 @@ object PredefinedLayouts {
         }
     }
 
+    fun resolveSymbolsLayout(layout: KeyboardLayoutDef): KeyboardLayoutDef {
+        return layout.effectiveSymbolsLayout() ?: if (layout.language == "bn") BengaliSymbols else Symbols
+    }
+
     val allPredefined: List<KeyboardLayoutDef> by lazy {
         listOf(EnglishQwerty, BengaliBorno, BengaliAvro, BengaliBornoEasy, BengaliNational, BengaliProbhat)
     }
@@ -1167,7 +1180,7 @@ object PredefinedLayouts {
             "bn_avro" -> BengaliAvro
             "bn_probhat" -> BengaliProbhat
             "bn_national" -> BengaliNational
-            "bn_borno_symbols" -> BengaliBornoSymbols
+            "bn_borno_symbols", "symbols_bn", "bn_symbols" -> BengaliSymbols
             "symbols_1" -> Symbols
             "symbols_2" -> SymbolsMore
             "num_extended" -> NumberPadExtended

@@ -691,7 +691,7 @@ class KiebordService : InputMethodService() {
         activeLayout = if (!isSymbolsMode) {
             primaryAlphaLayout
         } else {
-            primaryAlphaLayout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
+            PredefinedLayouts.resolveSymbolsLayout(primaryAlphaLayout)
         }
         if (!shouldAutoCapitalize()) {
             shiftState = ShiftState.UNSHIFTED
@@ -1186,7 +1186,7 @@ class KiebordService : InputMethodService() {
                             primaryAlphaLayout = activeLayout
                             isSymbolsMode = true
                         }
-                        activeLayout = primaryAlphaLayout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
+                        activeLayout = PredefinedLayouts.resolveSymbolsLayout(primaryAlphaLayout)
                     }
                     "=\\<", "=<" -> {
                         isSymbolsMode = true
@@ -1204,7 +1204,7 @@ class KiebordService : InputMethodService() {
                             primaryAlphaLayout = activeLayout
                             isSymbolsMode = true
                         }
-                        activeLayout = primaryAlphaLayout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
+                        activeLayout = PredefinedLayouts.resolveSymbolsLayout(primaryAlphaLayout)
                     }
                     else -> {
                         if (isSymbolsMode || PredefinedLayouts.isNumberLayout(activeLayout.id)) {
@@ -1216,7 +1216,7 @@ class KiebordService : InputMethodService() {
                         } else {
                             primaryAlphaLayout = activeLayout
                             isSymbolsMode = true
-                            activeLayout = primaryAlphaLayout.effectiveSymbolsLayout() ?: PredefinedLayouts.Symbols
+                            activeLayout = PredefinedLayouts.resolveSymbolsLayout(primaryAlphaLayout)
                         }
                     }
                 }
