@@ -50,6 +50,7 @@ fun LiveResizerOverlay(
     onDone: () -> Unit,
     onCancel: () -> Unit,
     baseRowHeight: Dp = 61.dp,
+    effectiveNavBarBottom: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -64,6 +65,7 @@ fun LiveResizerOverlay(
 
     val currentMarginState = rememberUpdatedState(currentHorizontalMargin)
     val onMarginChangeState = rememberUpdatedState(onHorizontalMarginChange)
+    val effectiveNavBarBottomState = rememberUpdatedState(effectiveNavBarBottom)
 
     // Bounding wireframe outline with touch-safe handles
     Box(
@@ -206,7 +208,8 @@ fun LiveResizerOverlay(
                     detectDragGestures { change, dragAmount ->
                         change.consume()
                         val deltaChin = with(density) { (-dragAmount.y).toDp() }
-                        val newChin = (currentChinState.value + deltaChin).coerceIn(0.dp, 48.dp)
+                        val minChin = -effectiveNavBarBottomState.value
+                        val newChin = (currentChinState.value + deltaChin).coerceIn(minChin, 64.dp)
                         onChinChangeState.value(newChin)
                     }
                 },
@@ -255,7 +258,8 @@ fun LiveResizerOverlay(
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
                                 val deltaChin = with(density) { (-dragAmount.y).toDp() }
-                                val newChin = (currentChinState.value + deltaChin).coerceIn(0.dp, 48.dp)
+                                val minChin = -effectiveNavBarBottomState.value
+                                val newChin = (currentChinState.value + deltaChin).coerceIn(minChin, 64.dp)
                                 onChinChangeState.value(newChin)
 
                                 val deltaMargin = with(density) { (dragAmount.x / 2f).toDp() }

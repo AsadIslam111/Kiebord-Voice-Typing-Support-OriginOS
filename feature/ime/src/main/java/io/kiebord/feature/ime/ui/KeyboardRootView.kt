@@ -170,8 +170,8 @@ fun KeyboardRootView(
     initialRowHeight: Dp? = null,
     heightScalePortrait: Float = 1.0f,
     heightScaleLandscape: Float = 1.0f,
-    chinPaddingPortraitDp: Float = 8.0f,
-    chinPaddingLandscapeDp: Float = 4.0f,
+    chinPaddingPortraitDp: Float = 16.0f,
+    chinPaddingLandscapeDp: Float = 6.0f,
     horizontalMarginPortraitDp: Float = 0.0f,
     horizontalMarginLandscapeDp: Float = 0.0f,
     onResizerValuesChange: ((isLandscape: Boolean, heightScale: Float, chinPaddingDp: Float, horizontalMarginDp: Float) -> Unit)? = null,
@@ -594,14 +594,16 @@ fun KeyboardRootView(
         }
     }
 
-    // Obey navigation bar insets: maximum of Compose WindowInsets and platform WindowInsetsCompat
+    // Obey navigation bar insets across all Android versions
     val composeNavBottom = if (applySystemInsets) {
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     } else {
         0.dp
     }
     val effectiveNavBarBottom = maxOf(navBarBottomInset, composeNavBottom)
-    val totalBottomPadding = chinPadding + effectiveNavBarBottom
+    // Total bottom padding combines navigation bar clearance with user chin preference,
+    // allowing chinPadding to reduce down to -effectiveNavBarBottom so users can reach 0.dp total padding.
+    val totalBottomPadding = (effectiveNavBarBottom + chinPadding).coerceAtLeast(0.dp)
 
     // Reset toolbar options & expanded suggestions visibility when suggestions clear
     LaunchedEffect(suggestions.isEmpty()) {
@@ -2182,17 +2184,18 @@ fun KeyboardRootView(
                 currentChinPadding = chinPadding,
                 currentHorizontalMargin = horizontalMargin,
                 baseRowHeight = activeBaseRowHeight,
+                effectiveNavBarBottom = effectiveNavBarBottom,
                 onRowHeightChange = { keyRowHeight = it },
                 onChinPaddingChange = { chinPadding = it },
                 onHorizontalMarginChange = { horizontalMargin = it },
                 onReset = {
                     keyRowHeight = activeBaseRowHeight
-                    chinPadding = if (isLandscape) 4.dp else 8.dp
+                    chinPadding = if (isLandscape) 6.dp else 16.dp
                     horizontalMargin = 0.dp
                     onResizerValuesChange?.invoke(
                         isLandscape,
                         1.0f,
-                        if (isLandscape) 4f else 8f,
+                        if (isLandscape) 6f else 16f,
                         0f
                     )
                     onHeightScaleChange?.invoke(1.0f)
@@ -2216,7 +2219,12 @@ fun KeyboardRootView(
                 },
                 modifier = Modifier
                     .matchParentSize()
-                    .padding(bottom = effectiveNavBarBottom)
+                    .padding(
+                        start = keyboardStartInset,
+                        end = keyboardEndInset,
+                        top = 0.dp,
+                        bottom = totalBottomPadding
+                    )
                     .zIndex(80f)
             )
         }

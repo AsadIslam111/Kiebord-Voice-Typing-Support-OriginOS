@@ -304,11 +304,8 @@ class KiebordService : InputMethodService() {
             lifecycleOwner.attachToView(decorView)
             ViewCompat.getRootWindowInsets(decorView)?.let { insets ->
                 val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-                val gestures = insets.getInsets(WindowInsetsCompat.Type.systemGestures())
-                val mandatory = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
-                val bottom = maxOf(nav.bottom, gestures.bottom, mandatory.bottom)
-                if (bottom > 0) {
-                    navBarInsetBottomPx = bottom
+                if (nav.bottom > 0) {
+                    navBarInsetBottomPx = nav.bottom
                 }
             }
         }
@@ -320,10 +317,7 @@ class KiebordService : InputMethodService() {
 
         ViewCompat.setOnApplyWindowInsetsListener(composeView) { _, insets ->
             val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            val gestures = insets.getInsets(WindowInsetsCompat.Type.systemGestures())
-            val mandatory = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
-            val bottom = maxOf(nav.bottom, gestures.bottom, mandatory.bottom)
-            navBarInsetBottomPx = bottom
+            navBarInsetBottomPx = nav.bottom.coerceAtLeast(0)
             insets
         }
 
@@ -525,11 +519,8 @@ class KiebordService : InputMethodService() {
             lifecycleOwner.attachToView(decorView)
             ViewCompat.getRootWindowInsets(decorView)?.let { insets ->
                 val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-                val gestures = insets.getInsets(WindowInsetsCompat.Type.systemGestures())
-                val mandatory = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
-                val bottom = maxOf(nav.bottom, gestures.bottom, mandatory.bottom)
-                if (bottom > 0) {
-                    navBarInsetBottomPx = bottom
+                if (nav.bottom > 0) {
+                    navBarInsetBottomPx = nav.bottom
                 }
             }
         }
