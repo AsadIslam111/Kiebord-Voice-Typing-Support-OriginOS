@@ -1,0 +1,209 @@
+{
+  "id": "bn_unijoy",
+  "name": "Unijoy",
+  "displayName": "ইউনিজয়",
+  "description": "Unijoy Bangla Keyboard Layout",
+  "language": "bn",
+  "direction": "LTR",
+  "flag": "NoAutoCapitalization",
+  "numberRow": {
+    "keys": [
+      { "label": "১", "shiftedLabel": "!", "flickUp": "1", "moreKeys": ["1", "¹", "½", "⅓", "¼", "⅛"], "shiftedMoreKeys": [] },
+      { "label": "২", "shiftedLabel": "@", "flickUp": "2", "moreKeys": ["2", "²", "⅔"], "shiftedMoreKeys": [] },
+      { "label": "৩", "shiftedLabel": "#", "flickUp": "3", "moreKeys": ["3", "³", "¾", "⅜"], "shiftedMoreKeys": [] },
+      { "label": "৪", "shiftedLabel": "৳", "flickUp": "4", "moreKeys": ["4", "⁴", "৳", "$", "₹"], "shiftedMoreKeys": ["$", "₹"] },
+      { "label": "৫", "shiftedLabel": "%", "flickUp": "5", "moreKeys": ["5", "⅝"], "shiftedMoreKeys": [] },
+      { "label": "৬", "shiftedLabel": "^", "flickUp": "6", "moreKeys": ["6"], "shiftedMoreKeys": [] },
+      { "label": "৭", "shiftedLabel": "&", "flickUp": "7", "moreKeys": ["7", "⅞"], "shiftedMoreKeys": [] },
+      { "label": "৮", "shiftedLabel": "*", "flickUp": "8", "moreKeys": ["8"], "shiftedMoreKeys": [] },
+      { "label": "৯", "shiftedLabel": "(", "flickUp": "9", "moreKeys": ["9"], "shiftedMoreKeys": [] },
+      { "label": "০", "shiftedLabel": ")", "flickUp": "0", "moreKeys": ["0", "ⁿ", "∅"], "shiftedMoreKeys": [] }
+    ]
+  },
+  "rows": [
+    {
+      "keys": [
+        { "label": "ঙ", "shiftedLabel": "ং", "flickUp": "ং", "moreKeys": ["ং"], "shiftedMoreKeys": [] },
+        { "label": "য", "shiftedLabel": "য়", "flickUp": "য়", "moreKeys": ["য়"], "shiftedMoreKeys": [] },
+        { "label": "ড", "shiftedLabel": "ঢ", "flickUp": "ঢ", "moreKeys": ["ঢ"], "shiftedMoreKeys": [] },
+        { "label": "প", "shiftedLabel": "ফ", "flickUp": "ফ", "moreKeys": ["ফ"], "shiftedMoreKeys": [] },
+        { "label": "ট", "shiftedLabel": "ঠ", "flickUp": "ঠ", "moreKeys": ["ঠ"], "shiftedMoreKeys": [] },
+        { "label": "চ", "shiftedLabel": "ছ", "flickUp": "ছ", "moreKeys": ["ছ"], "shiftedMoreKeys": [] },
+        { "label": "জ", "shiftedLabel": "ঝ", "flickUp": "ঝ", "moreKeys": ["ঝ"], "shiftedMoreKeys": [] },
+        { "label": "হ", "shiftedLabel": "ঞ", "flickUp": "ঞ", "moreKeys": ["ঞ"], "shiftedMoreKeys": [] },
+        { "label": "গ", "shiftedLabel": "ঘ", "flickUp": "ঘ", "moreKeys": ["ঘ"], "shiftedMoreKeys": [] },
+        { "label": "ড়", "shiftedLabel": "ঢ়", "flickUp": "ঢ়", "moreKeys": ["ঢ়"], "shiftedMoreKeys": [] }
+      ]
+    },
+    {
+      "startPaddingWeight": 0.5,
+      "endPaddingWeight": 0.5,
+      "keys": [
+        { "label": "ৃ", "shiftedLabel": "ঃ", "flickUp": "ঋ", "moreKeys": ["ঋ"], "shiftedMoreKeys": [] },
+        { "label": "ু", "shiftedLabel": "ূ", "flickUp": "উ", "shiftedFlickUp": "ঊ", "moreKeys": ["উ"], "shiftedMoreKeys": ["ঊ"] },
+        { "label": "ি", "shiftedLabel": "ী", "flickUp": "ই", "shiftedFlickUp": "ঈ", "moreKeys": ["ই"], "shiftedMoreKeys": ["ঈ"] },
+        { "label": "া", "shiftedLabel": "অ", "flickUp": "আ", "moreKeys": ["আ", "অ"], "shiftedMoreKeys": [] },
+        {
+          "label": "্",
+          "shiftedLabel": "ঁ",
+          "flickUp": "ঁ",
+          "moreKeys": ["ঁ"],
+          "moreKeysColumns": 6,
+          "shiftedMoreKeys": ["়", "ৄ", "ঽ", "ৢ", "ৱ", "ৣ", "ৗ", "ৠ", "৺", "ঌ", "ৰ", "ৡ"]
+        },
+        { "label": "ব", "shiftedLabel": "ভ", "flickUp": "ভ", "moreKeys": ["ভ"], "shiftedMoreKeys": [] },
+        { "label": "ক", "shiftedLabel": "খ", "flickUp": "খ", "moreKeys": ["খ"], "shiftedMoreKeys": [] },
+        { "label": "ত", "shiftedLabel": "থ", "flickUp": "থ", "moreKeys": ["থ","ৎ"], "shiftedMoreKeys": [] },
+        { "label": "দ", "shiftedLabel": "ধ", "flickUp": "ধ", "moreKeys": ["ধ"], "shiftedMoreKeys": [] }
+      ]
+    },
+    {
+      "keys": [
+        { "type": "SHIFT", "icon": "shift", "widthWeight": 1.5 },
+        { "label": "্র", "shiftedLabel": "্য", "flickUp": "্য", "moreKeys": ["্য", "ACTION_SELECT_ALL"], "shiftedMoreKeys": ["ACTION_SELECT_ALL"] },
+        { "label": "ো", "shiftedLabel": "ৌ", "flickUp": "ও", "shiftedFlickUp": "ঔ", "moreKeys": ["ও", "ACTION_CUT"], "shiftedMoreKeys": ["ঔ", "ACTION_CUT"] },
+        { "label": "ে", "shiftedLabel": "ৈ", "flickUp": "এ", "shiftedFlickUp": "ঐ", "moreKeys": ["এ", "ACTION_COPY"], "shiftedMoreKeys": ["ঐ", "ACTION_COPY"] },
+        { "label": "র", "shiftedLabel": "ল", "flickUp": "ল", "moreKeys": ["ল", "র‍্য", "ACTION_PASTE"], "shiftedMoreKeys": ["ACTION_PASTE"] },
+        { "label": "ন", "shiftedLabel": "ণ", "flickUp": "ণ", "moreKeys": ["ণ"], "shiftedMoreKeys": [] },
+        { "label": "স", "shiftedLabel": "ষ", "flickUp": "ষ", "moreKeys": ["ষ"], "shiftedMoreKeys": [] },
+        { "label": "ম", "shiftedLabel": "শ", "flickUp": "শ", "moreKeys": ["শ"], "shiftedMoreKeys": [] },
+        { "type": "DELETE", "icon": "backspace", "widthWeight": 1.5 }
+      ]
+    },
+    {
+      "keys": [
+        { "label": "?১২৩", "type": "SYMBOLS", "widthWeight": 1.5, "slidingInput": true },
+        { "label": ",", "widthWeight": 1.0, "moreKeys": ["ACTION_SETTINGS", "ACTION_ONE_HANDED"] },
+        { "type": "SWITCH_LANGUAGE", "icon": "globe", "widthWeight": 1.0 },
+        { "label": " ", "type": "SPACE", "icon": "space", "widthWeight": 4.0 },
+        {
+          "label": "।",
+          "widthWeight": 1.0,
+          "moreKeysColumns": 10,
+          "moreKeys": [",", "॥", ".", "?", "!", "ZW\nNJ", "ZWJ", "#", ")", "(", "/", ";", "'", "@", ":", "-", "\"", "+", "%", "&"]
+        },
+        { "type": "ACTION", "icon": "enter", "widthWeight": 1.5, "moreKeys": ["ACTION_EMOJI"] }
+      ]
+    }
+  ],
+  "symbolsLayout": {
+    "id": "bn_unijoy_symbols",
+    "name": "Symbols",
+    "language": "sym",
+    "rows": [
+      {
+        "keys": [
+          { "label": "1", "moreKeys": ["1", "¹", "½", "⅓", "¼", "⅛", "১"] },
+          { "label": "2", "moreKeys": ["2", "²", "⅔", "২"] },
+          { "label": "3", "moreKeys": ["3", "³", "¾", "⅜", "৩"] },
+          { "label": "4", "moreKeys": ["4", "⁴", "৪"] },
+          { "label": "5", "moreKeys": ["5", "⅝", "৫"] },
+          { "label": "6", "moreKeys": ["6", "৬"] },
+          { "label": "7", "moreKeys": ["7", "⅞", "৭"] },
+          { "label": "8", "moreKeys": ["8", "৮"] },
+          { "label": "9", "moreKeys": ["9", "৯"] },
+          { "label": "0", "moreKeys": ["0", "ⁿ", "∅", "০"] }
+        ]
+      },
+      {
+        "startPaddingWeight": 0.5,
+        "endPaddingWeight": 0.5,
+        "keys": [
+          { "label": "@" },
+          { "label": "#" },
+          { "label": "৳", "moreKeys": ["$", "₹", "€", "£", "¥", "¢"] },
+          { "label": "%", "moreKeys": ["%", "‰"] },
+          { "label": "&" },
+          { "label": "-", "moreKeys": ["-", "_", "–", "—", "·", "⁻"] },
+          { "label": "+", "moreKeys": ["+", "±", "⁺"] },
+          { "label": "(", "moreKeys": ["(", "[", "{", "<"] },
+          { "label": ")", "moreKeys": [")", "]", "}", ">"] }
+        ]
+      },
+      {
+        "keys": [
+          { "label": "=\\<", "type": "SYMBOLS", "widthWeight": 1.5 },
+          { "label": "*", "moreKeys": ["*", "★", "†", "‡"] },
+          { "label": "\"", "moreKeys": ["\"", "”", "“", "„", "»", "«"] },
+          { "label": "'", "moreKeys": ["'", "’", "‘", "‚", "›", "‹"] },
+          { "label": ":", "moreKeys": [":", "ঃ"] },
+          { "label": ";", "moreKeys": [";"] },
+          { "label": "!", "moreKeys": ["!", "¡"] },
+          { "label": "?", "moreKeys": ["?", "¿"] },
+          { "type": "DELETE", "icon": "backspace", "widthWeight": 1.5 }
+        ]
+      },
+      {
+        "keys": [
+          { "label": "ABC", "type": "SYMBOLS", "widthWeight": 1.5 },
+          { "label": ",", "widthWeight": 1.0, "moreKeys": ["ACTION_SETTINGS", "ACTION_ONE_HANDED"] },
+          { "label": "_", "widthWeight": 1.0 },
+          { "label": " ", "type": "SPACE", "icon": "space", "widthWeight": 3.0 },
+          { "label": "/", "widthWeight": 1.0 },
+          { "label": ".", "widthWeight": 1.0, "moreKeys": [".", "…"] },
+          { "type": "ACTION", "icon": "enter", "widthWeight": 1.5, "moreKeys": ["ACTION_EMOJI"] }
+        ]
+      }
+    ]
+  },
+  "moreSymbolsLayout": {
+    "id": "bn_unijoy_symbols_2",
+    "name": "More Symbols",
+    "language": "sym",
+    "rows": [
+      {
+        "keys": [
+          { "label": "~" },
+          { "label": "`" },
+          { "label": "|" },
+          { "label": "•", "moreKeys": ["•", "♪", "♥", "♠", "♦", "♣"] },
+          { "label": "√" },
+          { "label": "π", "moreKeys": ["π", "Π"] },
+          { "label": "÷" },
+          { "label": "×" },
+          { "label": "¶", "moreKeys": ["¶", "§"] },
+          { "label": "∆" }
+        ]
+      },
+      {
+        "startPaddingWeight": 0.5,
+        "endPaddingWeight": 0.5,
+        "keys": [
+          { "label": "£" },
+          { "label": "¢" },
+          { "label": "€" },
+          { "label": "¥" },
+          { "label": "^", "moreKeys": ["^", "↑", "↓", "←", "→"] },
+          { "label": "°", "moreKeys": ["°", "′", "″"] },
+          { "label": "=", "moreKeys": ["=", "≠", "≈", "∞"] },
+          { "label": "{" },
+          { "label": "}" }
+        ]
+      },
+      {
+        "keys": [
+          { "label": "?123", "type": "SYMBOLS", "widthWeight": 1.5 },
+          { "label": "\\" },
+          { "label": "©" },
+          { "label": "®" },
+          { "label": "™" },
+          { "label": "℅" },
+          { "label": "[" },
+          { "label": "]" },
+          { "type": "DELETE", "icon": "backspace", "widthWeight": 1.5 }
+        ]
+      },
+      {
+        "keys": [
+          { "label": "ABC", "type": "SYMBOLS", "widthWeight": 1.5 },
+          { "label": ",", "widthWeight": 1.0, "moreKeys": ["ACTION_SETTINGS", "ACTION_ONE_HANDED"] },
+          { "label": "<", "widthWeight": 1.0, "moreKeys": ["<", "«", "≤"] },
+          { "label": " ", "type": "SPACE", "icon": "space", "widthWeight": 3.0 },
+          { "label": ">", "widthWeight": 1.0, "moreKeys": [">", "»", "≥"] },
+          { "label": ".", "widthWeight": 1.0, "moreKeys": [".", "…"] },
+          { "type": "ACTION", "icon": "enter", "widthWeight": 1.5, "moreKeys": ["ACTION_EMOJI"] }
+        ]
+      }
+    ]
+  }
+}
