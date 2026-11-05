@@ -2254,7 +2254,7 @@ fun KeyboardRootView(
                     .padding(
                         start = keyboardStartInset,
                         end = keyboardEndInset,
-                        top = 0.dp,
+                        top = popupHeadroomDp,
                         bottom = totalBottomPadding
                     )
                     .zIndex(80f)
