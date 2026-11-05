@@ -62,6 +62,19 @@ object InputModeResolver {
     }
 
     /**
+     * Checks if the field is a search field (e.g. Android SearchView, in-app search bar, or filter).
+     */
+    fun isSearchField(info: EditorInfo?): Boolean {
+        if (info == null) return false
+        val action = info.imeOptions and EditorInfo.IME_MASK_ACTION
+        val variation = info.inputType and InputType.TYPE_MASK_VARIATION
+        val flags = info.inputType and InputType.TYPE_MASK_FLAGS
+        return action == EditorInfo.IME_ACTION_SEARCH ||
+                variation == InputType.TYPE_TEXT_VARIATION_FILTER ||
+                (flags and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE) != 0
+    }
+
+    /**
      * Checks if the field is a URL, email, password, code, or terminal field where
      * auto-capitalization, double-space period, and predictive word suggestions should be suppressed.
      */
@@ -97,17 +110,22 @@ object InputModeResolver {
             return true
         }
 
-        // Code / Terminal fields: typically have TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        if ((flags and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
+        // Known terminal / console apps
+        if (isTerminalOrConsoleApp(info)) {
             return true
         }
 
-        // Known terminal / console apps
-        if (isTerminalOrConsoleApp(info)) {
+        // Search fields: even if they specify TYPE_TEXT_FLAG_NO_SUGGESTIONS, they are normal search
+        // inputs where predictive word suggestions should be shown.
+        if (isSearchField(info)) {
+            return false
+        }
+
+        // Code / Terminal fields: typically have TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        if ((flags and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
             return true
         }
 
         return false
     }
 }
-

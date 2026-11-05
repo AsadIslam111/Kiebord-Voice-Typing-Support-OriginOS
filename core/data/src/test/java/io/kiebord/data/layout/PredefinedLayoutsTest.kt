@@ -128,6 +128,9 @@ class PredefinedLayoutsTest {
     fun testNationalLayoutResolution() {
         val layout = PredefinedLayouts.fromId("bn_national")
         assertEquals("bn_national", layout.id)
+        assertEquals("bn_fixed", layout.processor)
+        assertEquals("bn_fixed", PredefinedLayouts.BengaliProbhat.processor)
+        assertEquals("bn_fixed", PredefinedLayouts.BengaliBornoEasy.processor)
         assertEquals(4, layout.rows.size)
 
         // Top row
@@ -1113,6 +1116,30 @@ class PredefinedLayoutsTest {
         assertNotNull("bn-khipro.classic.mim must exist in assets/rules/", rulesFile)
         assertTrue("rules file must not be empty", rulesFile!!.length() > 0)
     }
+
+    @Test
+    fun testBnNational2004JsonAssetIntegrity() {
+        val candidates = listOf(
+            java.io.File("../../feature/ime/src/main/assets/layouts/bn_national_2004.json"),
+            java.io.File("feature/ime/src/main/assets/layouts/bn_national_2004.json"),
+            java.io.File("../feature/ime/src/main/assets/layouts/bn_national_2004.json"),
+        )
+        val jsonFile = candidates.firstOrNull { it.exists() }
+        assertNotNull("bn_national_2004.json must exist in assets/layouts/", jsonFile)
+
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val layout = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(jsonFile!!.readText())
+
+        assertEquals("bn_national_2004", layout.id)
+        assertEquals("জাতীয়", layout.name)
+        assertEquals("জাতীয়", layout.displayName)
+        assertEquals("bn", layout.language)
+        assertEquals("LTR", layout.direction)
+        assertEquals("bn_fixed", layout.processor)
+        assertEquals("National Keyboard Layout: BDS 1738:2004", layout.description)
+        assertEquals("NoAutoCapitalization", layout.flag)
+    }
+
     @Test
     fun testEnQwertyJsonAssetValidation() {
         val candidates = listOf(

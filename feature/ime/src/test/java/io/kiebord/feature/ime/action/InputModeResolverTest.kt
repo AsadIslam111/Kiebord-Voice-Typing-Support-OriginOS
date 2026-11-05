@@ -102,6 +102,33 @@ class InputModeResolverTest {
     }
 
     @Test
+    fun testIsSearchField() {
+        assertFalse(InputModeResolver.isSearchField(null))
+
+        val searchActionInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+        }
+        assertTrue(InputModeResolver.isSearchField(searchActionInfo))
+
+        val filterVariationInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_FILTER
+        }
+        assertTrue(InputModeResolver.isSearchField(filterVariationInfo))
+
+        val autoCompleteInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE
+        }
+        assertTrue(InputModeResolver.isSearchField(autoCompleteInfo))
+
+        val regularTextInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            imeOptions = EditorInfo.IME_ACTION_DONE
+        }
+        assertFalse(InputModeResolver.isSearchField(regularTextInfo))
+    }
+
+    @Test
     fun testIsUrlOrCodeField() {
         val uriInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
@@ -123,6 +150,18 @@ class InputModeResolverTest {
         }
         assertTrue(InputModeResolver.isUrlOrCodeField(noSuggestionsInfo))
 
+        val searchWithNoSuggestions = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+        }
+        assertFalse(InputModeResolver.isUrlOrCodeField(searchWithNoSuggestions))
+
+        val searchViewInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+        }
+        assertFalse(InputModeResolver.isUrlOrCodeField(searchViewInfo))
+
         val termuxInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT
             packageName = "com.termux"
@@ -136,4 +175,3 @@ class InputModeResolverTest {
         assertFalse(InputModeResolver.isUrlOrCodeField(regularTextInfo))
     }
 }
-

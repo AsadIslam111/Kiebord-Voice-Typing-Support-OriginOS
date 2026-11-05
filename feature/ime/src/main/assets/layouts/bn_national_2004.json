@@ -5,6 +5,7 @@
   "description": "National Keyboard Layout: BDS 1738:2004",
   "language": "bn",
   "direction": "LTR",
+  "processor": "bn_fixed",
   "flag": "NoAutoCapitalization",
   "numberRow": {
     "keys": [

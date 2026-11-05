@@ -930,7 +930,7 @@ class KiebordService : InputMethodService() {
                         }
                     }
                     // Bengali National (BSTI) layout
-                    activeLayout.id == "bn_national" -> {
+                    activeLayout.processor == "bn_fixed" -> {
                         if (isBengaliChar(text)) {
                             composingBuffer.append(text)
                             val isTraditional = preferencesState.traditionalMode
@@ -2199,6 +2199,39 @@ class KiebordService : InputMethodService() {
             ?: (layoutId == "en_qwerty" || layoutId == "bn_borno" || layoutId == "bn_avro")
     }
 
+    private data class LanguageSuggestionConfig(
+        val dictLang: String,
+        val cleanPrefix: (String) -> String = { it },
+        val isValidCandidate: (String) -> Boolean = { true }
+    )
+
+    private fun resolveSuggestionConfig(layout: io.kiebord.common.model.KeyboardLayoutDef): LanguageSuggestionConfig {
+        val lang = when {
+            isBanglaLayout(layout) -> "bn"
+            isEnglishLayout(layout) -> "en"
+            layout.language.isNotEmpty() -> layout.language.lowercase()
+            layout.id.startsWith("bn") -> "bn"
+            else -> "en"
+        }
+        return when (lang) {
+            "bn" -> LanguageSuggestionConfig(
+                dictLang = "bn",
+                cleanPrefix = { BengaliBstiEngine.cleanPending(it) },
+                isValidCandidate = { !containsLatinText(it) }
+            )
+            "en" -> LanguageSuggestionConfig(
+                dictLang = "en",
+                cleanPrefix = { it },
+                isValidCandidate = { !containsBengaliText(it) }
+            )
+            else -> LanguageSuggestionConfig(
+                dictLang = lang,
+                cleanPrefix = { it },
+                isValidCandidate = { true }
+            )
+        }
+    }
+
     private fun filterCandidatesForLayout(candidates: List<SuggestionCandidate>): List<SuggestionCandidate> {
         if (candidates.isEmpty()) return emptyList()
         val isBangla = isBanglaLayout()
@@ -2445,83 +2478,40 @@ class KiebordService : InputMethodService() {
             return
         }
 
-        val layoutMode = if (isEnglishLayout()) "en_qwerty" else activeLayout.id
-        when (layoutMode) {
-            "bn_probhat", "bn_national", "bn_easy" -> {
-                val prefix = BengaliBstiEngine.cleanPending(composingBuffer.toString())
-                if (prefix.isNotEmpty()) {
-                    val learned = if (preferencesState.learnedWordsEnabled) {
-                        userDictionaryRepo.getCompletions(prefix, 4) { !containsLatinText(it) }
-                    } else emptyList()
-                    val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 12)
-                        .filter { !containsLatinText(it) }
-                    val merged = (learned + matches).distinct().take(12)
-                    activeSuggestions = filterAndMarkCandidates(if (merged.isNotEmpty()) {
-                        merged.mapIndexed { i, w ->
-                            SuggestionCandidate(text = w, isPrimary = i == 0)
-                        }
-                    } else {
-                        if (!containsLatinText(prefix)) {
-                            listOf(SuggestionCandidate(text = prefix, isPrimary = true))
-                        } else emptyList()
-                    })
-                } else {
-                    if (!preferencesState.nextWordPrediction || hasDoubleOrGreaterSpacing()) {
-                        activeSuggestions = emptyList()
-                        return
-                    }
-                    val prev = getPrecedingWord()
-                    val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
-                        userDictionaryRepo.getNextWords(prev, 5) { !containsLatinText(it) }
-                    } else emptyList()
-                    val predictions = if (prev.isNotEmpty()) {
-                        NativeEngine.queryNextWords(prev, activeLayout.id, 10).filter { !containsLatinText(it) }
-                    } else emptyList()
-                    val merged = (learnedNext + predictions).distinct().take(12)
-                    activeSuggestions = filterAndMarkCandidates(merged.mapIndexed { idx, word ->
-                        SuggestionCandidate(text = word, isPrimary = idx == 0)
-                    })
+        val config = resolveSuggestionConfig(activeLayout)
+        val prefix = config.cleanPrefix(composingBuffer.toString())
+        if (prefix.isNotEmpty()) {
+            val learned = if (preferencesState.learnedWordsEnabled) {
+                userDictionaryRepo.getCompletions(prefix, 4, config.isValidCandidate)
+            } else emptyList()
+            val matches = NativeEngine.querySuggestions(prefix, config.dictLang, 12)
+                .filter(config.isValidCandidate)
+            val merged = (learned + matches).distinct().take(12)
+            activeSuggestions = filterAndMarkCandidates(if (merged.isNotEmpty()) {
+                merged.mapIndexed { i, w ->
+                    SuggestionCandidate(text = w, isPrimary = i == 0)
                 }
-            }
-            "en_qwerty" -> {
-                val prefix = composingBuffer.toString()
-                if (prefix.isNotEmpty()) {
-                    val learned = if (preferencesState.learnedWordsEnabled) {
-                        userDictionaryRepo.getCompletions(prefix, 4) { !containsBengaliText(it) }
-                    } else emptyList()
-                    val matches = NativeEngine.querySuggestions(prefix, activeLayout.id, 12)
-                        .filter { !containsBengaliText(it) }
-                    val merged = (learned + matches).distinct().take(12)
-                    activeSuggestions = filterAndMarkCandidates(if (merged.isNotEmpty()) {
-                        merged.mapIndexed { i, w ->
-                            SuggestionCandidate(text = w, isPrimary = i == 0)
-                        }
-                    } else {
-                        if (!containsBengaliText(prefix)) {
-                            listOf(SuggestionCandidate(text = prefix, isPrimary = true))
-                        } else emptyList()
-                    })
-                } else {
-                    if (!preferencesState.nextWordPrediction || hasDoubleOrGreaterSpacing()) {
-                        activeSuggestions = emptyList()
-                        return
-                    }
-                    val prev = getPrecedingWord()
-                    val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
-                        userDictionaryRepo.getNextWords(prev, 5) { !containsBengaliText(it) }
-                    } else emptyList()
-                    val predictions = if (prev.isNotEmpty()) {
-                        NativeEngine.queryNextWords(prev, activeLayout.id, 10).filter { !containsBengaliText(it) }
-                    } else emptyList()
-                    val merged = (learnedNext + predictions).distinct().take(12)
-                    activeSuggestions = filterAndMarkCandidates(merged.mapIndexed { idx, word ->
-                        SuggestionCandidate(text = word, isPrimary = idx == 0)
-                    })
-                }
-            }
-            else -> {
+            } else {
+                if (config.isValidCandidate(prefix)) {
+                    listOf(SuggestionCandidate(text = prefix, isPrimary = true))
+                } else emptyList()
+            })
+        } else {
+            if (!preferencesState.nextWordPrediction || hasDoubleOrGreaterSpacing()) {
                 activeSuggestions = emptyList()
+                return
             }
+            val prev = getPrecedingWord()
+            val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
+                userDictionaryRepo.getNextWords(prev, 5, config.isValidCandidate)
+            } else emptyList()
+            val predictions = if (prev.isNotEmpty()) {
+                NativeEngine.queryNextWords(prev, config.dictLang, 10).filter(config.isValidCandidate)
+            } else emptyList()
+            val merged = (learnedNext + predictions).distinct().take(12)
+            activeSuggestions = filterAndMarkCandidates(merged.mapIndexed { idx, word ->
+                SuggestionCandidate(text = word, isPrimary = idx == 0)
+            })
         }
     }
 

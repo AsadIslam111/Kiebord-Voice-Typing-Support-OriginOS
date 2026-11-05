@@ -495,6 +495,7 @@ object PredefinedLayouts {
         displayName = "প্রভাত",
         description = "Fixed traditional layout",
         language = "bn",
+        processor = "bn_fixed",
         flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
         rows = listOf(
             KeyRow(
@@ -562,6 +563,7 @@ object PredefinedLayouts {
         displayName = "জাতীয় (BSTI)",
         description = "National BSTI layout",
         language = "bn",
+        processor = "bn_fixed",
         flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
         rows = listOf(
             KeyRow(
@@ -860,6 +862,7 @@ object PredefinedLayouts {
         displayName = "বর্ণ ইজি",
         description = "Easy 5-row alphabetical layout",
         language = "bn",
+        processor = "bn_fixed",
         flag = LayoutFlags.NO_AUTO_CAPITALIZATION,
         symbolsLayout = BengaliBornoEasySymbols,
         moreSymbolsLayout = BengaliBornoEasySymbolsMore,
