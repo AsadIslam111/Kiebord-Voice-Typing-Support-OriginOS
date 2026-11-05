@@ -112,7 +112,7 @@ fun BackupRestoreScreen(
     }
 
     val exportDictionaryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch(Dispatchers.IO) {
@@ -212,6 +212,7 @@ fun BackupRestoreScreen(
         SettingsGroup {
             SettingsNavigationItem(
                 title = "Import Borno Clipboard Backup",
+                subtitle = "Import from .bornoclip or .clip backup file",
                 icon = Icons.Outlined.FileDownload,
                 position = GroupPosition.ALONE,
                 onClick = {
@@ -222,21 +223,23 @@ fun BackupRestoreScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        SettingsCategoryHeader(title = "Backup")
+        SettingsCategoryHeader(title = "Clipboard")
 
         SettingsGroup {
             SettingsNavigationItem(
                 title = "Export Clipboard Backup",
+                subtitle = "Save clipboard history to .bornoclip file",
                 icon = Icons.Outlined.FileUpload,
                 position = GroupPosition.TOP,
                 onClick = {
-                    val defaultName = "kiebord_clipboard_backup_${System.currentTimeMillis()}.clip"
+                    val defaultName = "kiebord_clipboard_backup_${System.currentTimeMillis()}.bornoclip"
                     exportClipboardLauncher.launch(defaultName)
                 }
             )
 
             SettingsNavigationItem(
                 title = "Restore Clipboard Backup",
+                subtitle = "Import from .bornoclip or .clip backup file",
                 icon = Icons.Outlined.Restore,
                 position = GroupPosition.BOTTOM,
                 onClick = {
@@ -252,11 +255,11 @@ fun BackupRestoreScreen(
         SettingsGroup {
             SettingsNavigationItem(
                 title = "Export Personal Dictionary",
-                subtitle = "Save custom words and shortcut mappings to JSON file",
+                subtitle = "Save custom words and shortcut mappings to .bornopdb file",
                 icon = Icons.Outlined.FileUpload,
                 position = GroupPosition.TOP,
                 onClick = {
-                    val defaultName = "kiebord_personal_dict_${System.currentTimeMillis()}.json"
+                    val defaultName = "kiebord_personal_dict_${System.currentTimeMillis()}.bornopdb"
                     exportDictionaryLauncher.launch(defaultName)
                 }
             )
@@ -267,7 +270,7 @@ fun BackupRestoreScreen(
                 icon = Icons.Outlined.Restore,
                 position = GroupPosition.BOTTOM,
                 onClick = {
-                    importDictionaryLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                    importDictionaryLauncher.launch(arrayOf("*/*", "application/octet-stream", "application/json"))
                 }
             )
         }

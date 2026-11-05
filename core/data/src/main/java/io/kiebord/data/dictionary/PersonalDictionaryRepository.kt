@@ -276,15 +276,23 @@ class PersonalDictionaryRepository internal constructor(private val baseDir: Fil
     }
 
     /**
-     * Exports all personal dictionary entries to JSON.
+     * Exports all personal dictionary entries to a .bornopdb formatted stream.
      */
-    suspend fun exportToJson(outputStream: OutputStream): Result<Int> = withContext(Dispatchers.IO) {
+    suspend fun exportToBornopdb(outputStream: OutputStream): Result<Int> = withContext(Dispatchers.IO) {
         try {
             val snapshot = getAllEntries()
+            val now = System.currentTimeMillis()
             val backup = PersonalDictionaryBackup(
+                format = PersonalDictionaryBackup.FORMAT_BORNOPDB,
+                schemaVersion = 1,
+                type = PersonalDictionaryBackup.TYPE_PERSONAL_DICTIONARY,
+                generator = PersonalDictionaryBackup.GENERATOR_KIEBORD,
+                exportedAt = now,
+                count = snapshot.size,
+                db = PersonalDictionaryDbPayload(version = 1, data = snapshot),
+                entries = snapshot,
                 version = 1,
-                exportTime = System.currentTimeMillis(),
-                entries = snapshot
+                exportTime = now
             )
             val jsonString = json.encodeToString(PersonalDictionaryBackup.serializer(), backup)
 
@@ -297,6 +305,8 @@ class PersonalDictionaryRepository internal constructor(private val baseDir: Fil
             Result.failure(e)
         }
     }
+
+    suspend fun exportToJson(outputStream: OutputStream): Result<Int> = exportToBornopdb(outputStream)
 
     /**
      * Imports entries from an [inputStream].
@@ -396,6 +406,9 @@ class PersonalDictionaryRepository internal constructor(private val baseDir: Fil
                         if (backup.entries.isNotEmpty()) {
                             return backup.entries
                         }
+                        if (backup.db.data.isNotEmpty()) {
+                            return backup.db.data
+                        }
                     } catch (_: Exception) {}
                 }
 
@@ -452,6 +465,13 @@ class PersonalDictionaryRepository internal constructor(private val baseDir: Fil
                 }
             }
             is JsonObject -> {
+                val moduleObj = (element["modules"] as? JsonObject)?.get("personal_dictionary")
+                    ?: element["personal_dictionary"]
+                if (moduleObj != null) {
+                    extractEntriesFromJsonElement(moduleObj, list)
+                    if (list.isNotEmpty()) return
+                }
+
                 val entriesArr = element["entries"] as? JsonArray
                     ?: element["data"] as? JsonArray
                     ?: (element["db"] as? JsonObject)?.get("data") as? JsonArray
@@ -518,10 +538,18 @@ class PersonalDictionaryRepository internal constructor(private val baseDir: Fil
     private fun saveToDiskImmediate() {
         try {
             val snapshot = getAllEntries()
+            val now = System.currentTimeMillis()
             val backup = PersonalDictionaryBackup(
+                format = PersonalDictionaryBackup.FORMAT_BORNOPDB,
+                schemaVersion = 1,
+                type = PersonalDictionaryBackup.TYPE_PERSONAL_DICTIONARY,
+                generator = PersonalDictionaryBackup.GENERATOR_KIEBORD,
+                exportedAt = now,
+                count = snapshot.size,
+                db = PersonalDictionaryDbPayload(version = 1, data = snapshot),
+                entries = snapshot,
                 version = 1,
-                exportTime = System.currentTimeMillis(),
-                entries = snapshot
+                exportTime = now
             )
             val jsonString = json.encodeToString(PersonalDictionaryBackup.serializer(), backup)
 

@@ -1,6 +1,10 @@
 package io.kiebord.data.dictionary
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -219,6 +223,92 @@ class PersonalDictionaryRepositoryTest {
         assertEquals(3, entries.size)
         assertEquals(1, repo.getShortcutMatches("asm", "bn").size)
         assertEquals(1, repo.getShortcutMatches("omw", "en").size)
+    }
+
+    @Test
+    fun testExportToBornopdbFormatFields() = runBlocking {
+        val repo = PersonalDictionaryRepository(tempFolder.root)
+        repo.addOrUpdate(word = "আসসালামু আলাইকুম", shortcut = "asm", language = "bn")
+        repo.addOrUpdate(word = "Good day", shortcut = "gd", language = "en")
+
+        val out = ByteArrayOutputStream()
+        val result = repo.exportToBornopdb(out)
+        assertTrue(result.isSuccess)
+        assertEquals(2, result.getOrNull())
+
+        val jsonStr = out.toString(StandardCharsets.UTF_8.name())
+        val root = Json.parseToJsonElement(jsonStr) as JsonObject
+        assertEquals("bornopdb", root["format"]?.jsonPrimitive?.content)
+        assertEquals(1, root["schemaVersion"]?.jsonPrimitive?.int)
+        assertEquals("personal_dictionary", root["type"]?.jsonPrimitive?.content)
+        assertEquals("kiebord", root["generator"]?.jsonPrimitive?.content)
+        assertEquals(2, root["count"]?.jsonPrimitive?.int)
+        assertNotNull(root["db"])
+        assertNotNull(root["entries"])
+    }
+
+    @Test
+    fun testImportSelectiveBackupBundle() = runBlocking {
+        val repo = PersonalDictionaryRepository(tempFolder.root)
+
+        val bundleJson = """
+            {
+              "bundleFormat": "bornobackup",
+              "bundleVersion": 1,
+              "exportedAt": 1730821234567,
+              "modules": {
+                "personal_dictionary": {
+                  "format": "bornopdb",
+                  "schemaVersion": 1,
+                  "type": "personal_dictionary",
+                  "generator": "kiebord",
+                  "count": 2,
+                  "db": {
+                    "version": 1,
+                    "data": [
+                      { "word": "ব্যান্ডেল", "shortcut": "bdl", "language": "bn" },
+                      { "word": "Bundled Word", "shortcut": "bw", "language": "en" }
+                    ]
+                  }
+                },
+                "clipboard": {
+                  "db": { "version": 6, "data": [] }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val inStream = ByteArrayInputStream(bundleJson.toByteArray(StandardCharsets.UTF_8))
+        val result = repo.importFromJson(inStream)
+        assertTrue(result.isSuccess)
+
+        val importRes = result.getOrNull()!!
+        assertEquals(2, importRes.totalFound)
+        assertEquals(2, importRes.importedCount)
+
+        assertEquals("ব্যান্ডেল", repo.getShortcutMatches("bdl", "bn").first().word)
+        assertEquals("Bundled Word", repo.getShortcutMatches("bw", "en").first().word)
+    }
+
+    @Test
+    fun testImportLegacyJsonFormat() = runBlocking {
+        val repo = PersonalDictionaryRepository(tempFolder.root)
+
+        val legacyJson = """
+            {
+              "version": 1,
+              "exportTime": 1730000000000,
+              "entries": [
+                { "word": "Legacy Item", "shortcut": "leg", "language": "en" }
+              ]
+            }
+        """.trimIndent()
+
+        val inStream = ByteArrayInputStream(legacyJson.toByteArray(StandardCharsets.UTF_8))
+        val result = repo.importFromJson(inStream)
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrNull()!!.importedCount)
+        assertEquals("Legacy Item", repo.getShortcutMatches("leg", "en").first().word)
     }
 }
 

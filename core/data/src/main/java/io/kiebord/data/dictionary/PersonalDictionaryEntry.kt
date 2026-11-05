@@ -53,8 +53,28 @@ data class PersonalDictionaryEntry(
  * Container model used for JSON export/import backups of personal dictionary entries.
  */
 @Serializable
-data class PersonalDictionaryBackup(
+data class PersonalDictionaryDbPayload(
     val version: Int = 1,
-    val exportTime: Long = System.currentTimeMillis(),
-    val entries: List<PersonalDictionaryEntry> = emptyList()
+    val data: List<PersonalDictionaryEntry> = emptyList()
 )
+
+@Serializable
+data class PersonalDictionaryBackup(
+    val format: String = FORMAT_BORNOPDB,
+    val schemaVersion: Int = 1,
+    val type: String = TYPE_PERSONAL_DICTIONARY,
+    val generator: String = GENERATOR_KIEBORD,
+    val exportedAt: Long = System.currentTimeMillis(),
+    val count: Int = 0,
+    val db: PersonalDictionaryDbPayload = PersonalDictionaryDbPayload(),
+    val entries: List<PersonalDictionaryEntry> = emptyList(),
+    val version: Int = 1,
+    val exportTime: Long = exportedAt
+) {
+    companion object {
+        const val FORMAT_BORNOPDB = "bornopdb"
+        const val TYPE_PERSONAL_DICTIONARY = "personal_dictionary"
+        const val GENERATOR_KIEBORD = "kiebord"
+        const val EXTENSION_BORNOPDB = "bornopdb"
+    }
+}
