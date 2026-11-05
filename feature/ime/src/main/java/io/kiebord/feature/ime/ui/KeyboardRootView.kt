@@ -170,8 +170,8 @@ fun KeyboardRootView(
     initialRowHeight: Dp? = null,
     heightScalePortrait: Float = 1.0f,
     heightScaleLandscape: Float = 1.0f,
-    chinPaddingPortraitDp: Float = 16.0f,
-    chinPaddingLandscapeDp: Float = 6.0f,
+    chinPaddingPortraitDp: Float = 22.0f,
+    chinPaddingLandscapeDp: Float = 8.0f,
     horizontalMarginPortraitDp: Float = 0.0f,
     horizontalMarginLandscapeDp: Float = 0.0f,
     onResizerValuesChange: ((isLandscape: Boolean, heightScale: Float, chinPaddingDp: Float, horizontalMarginDp: Float) -> Unit)? = null,
@@ -522,11 +522,10 @@ fun KeyboardRootView(
     val scaleFactor = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.4f, 1.6f)
     val toolbarHeight = if (isLandscape) (38 * scaleFactor).coerceIn(32f, 44f).dp else (48 * scaleFactor).dp
 
-    val liveScale = if (isResizerOpen) scaleFactor else activeHeightScale
-    // Unified bottom row height across ALL layouts
-    val bottomRowHeight = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * liveScale
-    val standardRowHeight = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * liveScale
-    val bornoEasyRowHeight = (if (isLandscape) baseLandscapeBornoEasyRowHeight else baseBornoEasyPortraitRowHeight) * liveScale
+    // Unified bottom row height across ALL layouts using scaleFactor
+    val bottomRowHeight = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * scaleFactor
+    val standardRowHeight = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * scaleFactor
+    val bornoEasyRowHeight = (if (isLandscape) baseLandscapeBornoEasyRowHeight else baseBornoEasyPortraitRowHeight) * scaleFactor
 
     // Target keyboard height to match primary layout height
     val targetKeyboardHeight = remember(
@@ -560,6 +559,10 @@ fun KeyboardRootView(
     var savedRowHeight by remember { mutableStateOf(keyRowHeight) }
     var savedChinPadding by remember { mutableStateOf(chinPadding) }
     var savedHorizontalMargin by remember { mutableStateOf(horizontalMargin) }
+
+    var dragRowHeight by remember(isLandscape, keyRowHeight) { mutableStateOf(keyRowHeight) }
+    var dragChinPadding by remember(isLandscape, chinPadding) { mutableStateOf(chinPadding) }
+    var dragHorizontalMargin by remember(isLandscape, horizontalMargin) { mutableStateOf(horizontalMargin) }
 
     val hoveredToolbarAction: ToolbarAction? = if (activeDraggingFromDrawer != null && currentFingerInRoot != null) {
         val finger = currentFingerInRoot!!
@@ -766,6 +769,45 @@ fun KeyboardRootView(
         }
     }
 
+    fun calculateTotalKeyboardHeight(rowHeightDp: Dp): Dp {
+        val s = (rowHeightDp.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.4f, 1.6f)
+        val tbHeight = if (isLandscape) (38 * s).coerceIn(32f, 44f).dp else (48 * s).dp
+        val bRow = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * s
+        val content = if (isNumberLayout) {
+            val topNum = if (showNumberRow) (50 * s).dp else 0.dp
+            val stdRow = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * s
+            val bEasyRow = (if (isLandscape) baseLandscapeBornoEasyRowHeight else baseBornoEasyPortraitRowHeight) * s
+            if (isPrimaryBornoEasy) {
+                topNum + (bEasyRow * 5) + bRow
+            } else {
+                topNum + (stdRow * 3) + bRow
+            }
+        } else {
+            var total = 0.dp
+            val stdRow = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * s
+            val bEasyRow = (if (isLandscape) baseLandscapeBornoEasyRowHeight else baseBornoEasyPortraitRowHeight) * s
+            keyboardRows.forEachIndexed { index, _ ->
+                val isBottom = index == keyboardRows.lastIndex
+                val isTopNumber = hasTopNumberRow && index == 0
+                total += when {
+                    isBottom -> bRow
+                    isTopNumber -> (50 * s).dp
+                    isDisplayBornoEasy -> bEasyRow
+                    else -> stdRow
+                }
+            }
+            total
+        }
+        return tbHeight + content
+    }
+
+    val committedKeyboardHeight = toolbarHeight + keyboardContentHeight
+    val committedTotalHeight = popupHeadroomDp + committedKeyboardHeight + totalBottomPadding
+    val dragKeyboardHeight = calculateTotalKeyboardHeight(dragRowHeight)
+    val dragBottomPadding = (effectiveNavBarBottom + dragChinPadding).coerceAtLeast(0.dp)
+    val dragTotalHeight = popupHeadroomDp + dragKeyboardHeight + dragBottomPadding
+    val activeRootHeight = if (isResizerOpen) maxOf(committedTotalHeight, dragTotalHeight) else committedTotalHeight
+
     val handleToolbarAction: (ToolbarAction) -> Unit = { action ->
         when (action) {
             ToolbarAction.TEXT_EDIT -> {
@@ -794,6 +836,9 @@ fun KeyboardRootView(
                     savedRowHeight = keyRowHeight
                     savedChinPadding = chinPadding
                     savedHorizontalMargin = horizontalMargin
+                    dragRowHeight = keyRowHeight
+                    dragChinPadding = chinPadding
+                    dragHorizontalMargin = horizontalMargin
                     isEmojiOpen = false
                     isToolsDrawerOpen = false
                     isSuggestionsExpanded = false
@@ -929,8 +974,16 @@ fun KeyboardRootView(
                     .height(popupHeadroomDp)
             )
         }
+        if (isResizerOpen) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(activeRootHeight)
+            )
+        }
         Box(
             modifier = Modifier
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(top = popupHeadroomDp)
                 .then(
@@ -959,6 +1012,7 @@ fun KeyboardRootView(
         }
         Box(
             modifier = Modifier
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(
                     start = keyboardStartInset,
@@ -2212,38 +2266,55 @@ fun KeyboardRootView(
         // 3. Live Keyboard Resizer Overlay (Borno Keyboard 4-way drag handles)
         if (isResizerOpen) {
             LiveResizerOverlay(
-                currentRowHeight = keyRowHeight,
-                currentChinPadding = chinPadding,
-                currentHorizontalMargin = horizontalMargin,
+                dragRowHeight = dragRowHeight,
+                dragChinPadding = dragChinPadding,
+                dragHorizontalMargin = dragHorizontalMargin,
+                rectHeight = dragKeyboardHeight,
+                rectBottomPadding = dragBottomPadding,
+                oneHandedStart = oneHandedStart,
+                oneHandedEnd = oneHandedEnd,
                 baseRowHeight = activeBaseRowHeight,
                 effectiveNavBarBottom = effectiveNavBarBottom,
-                onRowHeightChange = { keyRowHeight = it },
-                onChinPaddingChange = { chinPadding = it },
-                onHorizontalMarginChange = { horizontalMargin = it },
+                onDragRowHeightChange = { dragRowHeight = it },
+                onDragChinPaddingChange = { dragChinPadding = it },
+                onDragHorizontalMarginChange = { dragHorizontalMargin = it },
+                onCommitDrag = {
+                    keyRowHeight = dragRowHeight
+                    chinPadding = dragChinPadding
+                    horizontalMargin = dragHorizontalMargin
+                },
                 onReset = {
+                    val defaultChin = if (isLandscape) 8.dp else 22.dp
+                    dragRowHeight = activeBaseRowHeight
+                    dragChinPadding = defaultChin
+                    dragHorizontalMargin = 0.dp
                     keyRowHeight = activeBaseRowHeight
-                    chinPadding = if (isLandscape) 6.dp else 16.dp
+                    chinPadding = defaultChin
                     horizontalMargin = 0.dp
                     onResizerValuesChange?.invoke(
                         isLandscape,
                         1.0f,
-                        if (isLandscape) 6f else 16f,
+                        defaultChin.value,
                         0f
                     )
-                    onHeightScaleChange?.invoke(1.0f)
                 },
                 onDone = {
-                    val scale = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.6f, 1.5f)
+                    keyRowHeight = dragRowHeight
+                    chinPadding = dragChinPadding
+                    horizontalMargin = dragHorizontalMargin
+                    val scale = (dragRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.6f, 1.5f)
                     onResizerValuesChange?.invoke(
                         isLandscape,
                         scale,
-                        chinPadding.value,
-                        horizontalMargin.value
+                        dragChinPadding.value,
+                        dragHorizontalMargin.value
                     )
-                    onHeightScaleChange?.invoke(scale)
                     isResizerOpen = false
                 },
                 onCancel = {
+                    dragRowHeight = savedRowHeight
+                    dragChinPadding = savedChinPadding
+                    dragHorizontalMargin = savedHorizontalMargin
                     keyRowHeight = savedRowHeight
                     chinPadding = savedChinPadding
                     horizontalMargin = savedHorizontalMargin
@@ -2251,12 +2322,6 @@ fun KeyboardRootView(
                 },
                 modifier = Modifier
                     .matchParentSize()
-                    .padding(
-                        start = keyboardStartInset,
-                        end = keyboardEndInset,
-                        top = popupHeadroomDp,
-                        bottom = totalBottomPadding
-                    )
                     .zIndex(80f)
             )
         }
