@@ -20,6 +20,7 @@ object LayoutFlags {
     const val NO_LEARNED_WORDS = "NoLearnedWords"
     const val NO_GESTURE = "NoGesture"
     const val NO_AUTO_CORRECT = "NoAutoCorrect"
+    const val NO_REMOVE_SPACE_BEFORE_PUNCTUATION = "NoRemoveSpaceBeforePunctuation"
 }
 
 object FlexibleStringListSerializer : KSerializer<List<String>> {
@@ -204,6 +205,7 @@ data class KeyboardLayoutDef(
     val noLearnedWords: Boolean get() = hasFlag(LayoutFlags.NO_LEARNED_WORDS)
     val noGesture: Boolean get() = hasFlag(LayoutFlags.NO_GESTURE)
     val noAutoCorrect: Boolean get() = hasFlag(LayoutFlags.NO_AUTO_CORRECT)
+    val noRemoveSpaceBeforePunctuation: Boolean get() = hasFlag(LayoutFlags.NO_REMOVE_SPACE_BEFORE_PUNCTUATION)
 
     fun isExtraCompositionChar(text: String): Boolean {
         if (text.isEmpty()) return false

@@ -872,9 +872,7 @@ class KiebordService : InputMethodService() {
                     isTransliterationLayout() -> {
                         if (isTransliterableChar(text) || isBengaliOrModifier(text) || isExtraCompositionChar(text)) {
                             val translitMgr = getTransliterationManager()
-                            if (!translitMgr.isComposing && preferencesState.removeSpaceBeforePunctuation &&
-                                !isUrlOrCodeField() && isRemoveSpaceBeforePunctuation(text)
-                            ) {
+                            if (!translitMgr.isComposing && shouldRemoveSpaceBeforePunctuation(text)) {
                                 val textBefore = ic.getTextBeforeCursor(1, 0)
                                 if (textBefore != null && textBefore.endsWith(" ")) {
                                     ic.deleteSurroundingText(1, 0)
@@ -1274,9 +1272,7 @@ class KiebordService : InputMethodService() {
 
         if (isTransliterationLayout() && (isTransliterableChar(charToInsert) || isBengaliOrModifier(charToInsert) || isExtraCompositionChar(charToInsert))) {
             val translitMgr = getTransliterationManager()
-            if (!translitMgr.isComposing && preferencesState.removeSpaceBeforePunctuation &&
-                !isUrlOrCodeField() && isRemoveSpaceBeforePunctuation(charToInsert)
-            ) {
+            if (!translitMgr.isComposing && shouldRemoveSpaceBeforePunctuation(charToInsert)) {
                 val textBefore = ic.getTextBeforeCursor(1, 0)
                 if (textBefore != null && textBefore.endsWith(" ")) {
                     ic.deleteSurroundingText(1, 0)
@@ -1478,6 +1474,14 @@ class KiebordService : InputMethodService() {
                c == '|' || c == '\\'
     }
 
+    private fun shouldRemoveSpaceBeforePunctuation(puncText: String): Boolean {
+        if (!preferencesState.removeSpaceBeforePunctuation) return false
+        if (activeLayout.noRemoveSpaceBeforePunctuation || primaryAlphaLayout.noRemoveSpaceBeforePunctuation) return false
+        if (isExtraCompositionChar(puncText)) return false
+        if (isUrlOrCodeField()) return false
+        return isRemoveSpaceBeforePunctuation(puncText)
+    }
+
     private fun isRemoveSpaceBeforePunctuation(str: String): Boolean {
         if (str.length != 1) return false
         val c = str[0]
@@ -1531,10 +1535,9 @@ class KiebordService : InputMethodService() {
 
     private fun commitCharacterWithPunctuationHandling(ic: InputConnection, text: String) {
         val inUrlOrCode = isUrlOrCodeField()
-        val isRemovePunc = isRemoveSpaceBeforePunctuation(text)
         val isAutoPunc = isAutoSpacePunctuation(text)
 
-        val canRemoveSpace = preferencesState.removeSpaceBeforePunctuation && !inUrlOrCode && isRemovePunc
+        val canRemoveSpace = shouldRemoveSpaceBeforePunctuation(text)
         val canAutoSpace = preferencesState.autoSpaceAfterPunctuation && !inUrlOrCode && isAutoPunc
 
         val textBefore = ic.getTextBeforeCursor(4, 0)?.toString() ?: ""

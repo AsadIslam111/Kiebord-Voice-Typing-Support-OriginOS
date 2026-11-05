@@ -6,7 +6,10 @@
   "direction": "LTR",
   "processor": "m17n",
   "rules": "bn-khipro.classic.mim",
-  "flag": "NoAutoCapitalization",
+  "flags": [
+    "NoAutoCapitalization",
+    "NoRemoveSpaceBeforePunctuation"
+  ],
   "extraCompositionChars": [
     ",",
     "।"

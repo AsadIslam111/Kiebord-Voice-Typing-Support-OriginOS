@@ -1067,9 +1067,11 @@ class PredefinedLayoutsTest {
         assertEquals("m17n", layout.processor)
         assertEquals("bn-khipro.classic.mim", layout.rules)
         assertEquals("Compositional Layout", layout.description)
-        assertEquals("NoAutoCapitalization", layout.flag)
+        assertEquals(listOf("NoAutoCapitalization", "NoRemoveSpaceBeforePunctuation"), layout.flags)
         assertTrue("khipro must have NoAutoCapitalization flag", layout.hasFlag("NoAutoCapitalization"))
         assertTrue("khipro.noAutoCapitalization must be true", layout.noAutoCapitalization)
+        assertTrue("khipro must have NoRemoveSpaceBeforePunctuation flag", layout.hasFlag("NoRemoveSpaceBeforePunctuation"))
+        assertTrue("khipro.noRemoveSpaceBeforePunctuation must be true", layout.noRemoveSpaceBeforePunctuation)
         assertEquals(listOf(",", "।"), layout.extraCompositionChars)
         assertTrue(layout.isExtraCompositionChar(","))
         assertTrue(layout.isExtraCompositionChar("।"))
@@ -1220,11 +1222,12 @@ class PredefinedLayoutsTest {
         assertFalse(layout1.noAutoSpace)
 
         // 2. Array flags
-        val json2 = """{"id": "test2", "name": "Test 2", "flags": ["NoAutoCapitalization", "NoAutoSpace", "NoDoubleSpacePeriod"]}"""
+        val json2 = """{"id": "test2", "name": "Test 2", "flags": ["NoAutoCapitalization", "NoAutoSpace", "NoDoubleSpacePeriod", "NoRemoveSpaceBeforePunctuation"]}"""
         val layout2 = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(json2)
         assertTrue(layout2.noAutoCapitalization)
         assertTrue(layout2.noAutoSpace)
         assertTrue(layout2.noDoubleSpacePeriod)
+        assertTrue(layout2.noRemoveSpaceBeforePunctuation)
         assertFalse(layout2.noSuggestions)
 
         // 3. Comma-separated flags

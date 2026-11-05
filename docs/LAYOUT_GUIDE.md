@@ -62,6 +62,7 @@ Flags can be specified as a single string (`"flag": "NoAutoCapitalization"`), a 
 | `NoLearnedWords` | Prevents words typed in this layout from being learned into the dynamic user dictionary. |
 | `NoGesture` | Disables gesture (swipe) typing even if enabled globally in settings. |
 | `NoAutoCorrect` | Disables automatic replacement of misspelled words. |
+| `NoRemoveSpaceBeforePunctuation` | Disables automatically removing space before punctuation marks. Essential for layouts where punctuation characters act as composition tokens (e.g., Khipro). |
 
 ---
 
@@ -277,6 +278,6 @@ Complete, production-tested sample layouts are provided in the repository under 
 |---|---|---|
 | [`en_qwerty.json`](../assets-src/layouts/en_qwerty.json) | `en_qwerty` | **Canonical Reference Schema**: 10-key number row with superscript fractions & Bangla numerals in `moreKeys`, dedicated embedded symbol pages (`symbols_1` and `symbols_2`), gesture typing mode (`"gesture_mode": "qwerty"`), and action shortcuts (`ACTION_SELECT_ALL`, `ACTION_CUT`, `ACTION_COPY`, `ACTION_PASTE`, `ACTION_EMOJI`). |
 | [`bn_national_2004.json`](../assets-src/layouts/bn_national_2004.json) | `bn_national_2004` | National Layout: BDS 1738:2004 Layout |
-| [`khipro.json`](../assets-src/layouts/khipro.json) | `khipro` | **Transliteration Engine Layout**: Integrates with the m17n engine (`"processor": "m17n"`, `"rules": "bn-khipro.classic.mim"`), behavioral flags (`"flag": "NoAutoCapitalization"`), non-breaking composition characters (`"extraCompositionChars": [",", "।"]`), and dedicated Bangla digits number row. |
+| [`khipro.json`](../assets-src/layouts/khipro.json) | `khipro` | **Transliteration Engine Layout**: Integrates with the m17n engine (`"processor": "m17n"`, `"rules": "bn-khipro.classic.mim"`), behavioral flags (`"flags": ["NoAutoCapitalization", "NoRemoveSpaceBeforePunctuation"]`), non-breaking composition characters (`"extraCompositionChars": [",", "।"]`), and dedicated Bangla digits number row. |
 
 Developers and contributors can use these sample files as starting blueprints when designing new layouts or adapting existing ones.
