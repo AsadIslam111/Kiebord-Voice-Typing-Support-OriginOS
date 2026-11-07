@@ -12,6 +12,9 @@
     "tr_f"
   ],
   "dictionaryFile": "dictionaries/tr.dict",
+  "dictionaryCredit": "Android Open Source Project (AOSP LatinIME)",
+  "dictionaryLicense": "Apache-2.0",
+  "dictionarySource": "https://android.googlesource.com/platform/packages/inputmethods/LatinIME/",
   "scriptRulesFile": "rules/script_rules.json",
   "charFoldingFile": "gesture/char_folding.json",
   "currencySymbol": "₺"

@@ -7,8 +7,10 @@
     "author": "Emon Bhuiyan",
     "description": "Türkçe (Turkish) (3 layout(s) and dictionary)",
     "downloadUrl": "https://raw.githubusercontent.com/JayedAhsan/Kiebord/main/language-packs/releases/tr.bornolang",
-    "sha256": "00a480db9bc1a4c2e6ae43ca338289a3e63a40dbea32ac3b95336b65d80830f5",
-    "sizeBytes": 13240,
-    "hasDictionary": true
+    "sha256": "db184cf4a77fa799359d485fbc24f12455d2419586b68311bfac1ee1a81e9076",
+    "sizeBytes": 882563,
+    "hasDictionary": true,
+    "dictionaryCredit": "Android Open Source Project (AOSP LatinIME)",
+    "dictionaryLicense": "Apache-2.0"
   }
 ]
