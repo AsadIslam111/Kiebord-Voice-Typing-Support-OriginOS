@@ -3,6 +3,8 @@
   "name": "Türkçe (Compact)",
   "displayName": "Türkçe (Compact)",
   "description": "10-key QWERTY layout with Turkish characters on long-press",
+  "credit": "10-key Turkish Q layout with diacritic long-press popups",
+  "license": "Public Domain",
   "language": "tr",
   "direction": "LTR",
   "gesture_mode": "tr",
