@@ -335,7 +335,7 @@ fun AboutScreen(
             )
 
             Text(
-                text = "Version 0.1.8",
+                text = "Version 0.1.9",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = colors.textSecondary,
