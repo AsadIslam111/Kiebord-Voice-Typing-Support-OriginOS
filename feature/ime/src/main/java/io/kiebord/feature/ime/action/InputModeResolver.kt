@@ -61,6 +61,31 @@ object InputModeResolver {
                 pkg.contains("shell")
     }
 
+    fun isEmailField(info: EditorInfo?): Boolean {
+        if (info == null) return false
+        val inputType = info.inputType
+        val inputClass = inputType and InputType.TYPE_MASK_CLASS
+        if (inputClass != InputType.TYPE_CLASS_TEXT) return false
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        return variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
+                variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
+    }
+
+    fun isWebBrowserApp(info: EditorInfo?): Boolean {
+        if (info == null) return false
+        val pkg = (info.packageName ?: "").lowercase()
+        return pkg.contains("browser") ||
+                pkg.contains("chrome") ||
+                pkg.contains("firefox") ||
+                pkg.contains("fenix") ||
+                pkg.contains("brave") ||
+                pkg.contains("duckduckgo") ||
+                pkg.contains("opera") ||
+                pkg.contains("vivaldi") ||
+                pkg.contains("edge") ||
+                pkg.contains("emmx")
+    }
+
     /**
      * Checks if the field is a search field (e.g. Android SearchView, in-app search bar, or filter).
      */
@@ -69,9 +94,16 @@ object InputModeResolver {
         val action = info.imeOptions and EditorInfo.IME_MASK_ACTION
         val variation = info.inputType and InputType.TYPE_MASK_VARIATION
         val flags = info.inputType and InputType.TYPE_MASK_FLAGS
+        val pkg = (info.packageName ?: "").lowercase()
         return action == EditorInfo.IME_ACTION_SEARCH ||
+                action == EditorInfo.IME_ACTION_GO ||
                 variation == InputType.TYPE_TEXT_VARIATION_FILTER ||
-                (flags and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE) != 0
+                variation == InputType.TYPE_TEXT_VARIATION_URI ||
+                variation == InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT ||
+                (flags and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE) != 0 ||
+                pkg.contains("googlequicksearchbox") ||
+                pkg.contains("search") ||
+                isWebBrowserApp(info)
     }
 
     /**
@@ -115,13 +147,80 @@ object InputModeResolver {
             return true
         }
 
-        // Search fields: even if they specify TYPE_TEXT_FLAG_NO_SUGGESTIONS, they are normal search
-        // inputs where predictive word suggestions should be shown.
+        val pkg = (info.packageName ?: "").lowercase()
+        if (pkg.contains("keep") || pkg.contains("note")) {
+            return false
+        }
+
         if (isSearchField(info)) {
+            return true
+        }
+
+        if ((flags and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0 ||
+            (flags and InputType.TYPE_TEXT_FLAG_CAP_WORDS) != 0
+        ) {
             return false
         }
 
         // Code / Terminal fields: typically have TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        if ((flags and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
+            return true
+        }
+
+        return false
+    }
+
+    fun shouldSuppressSuggestions(info: EditorInfo?): Boolean {
+        if (info == null) return true
+
+        val inputType = info.inputType
+        val inputClass = inputType and InputType.TYPE_MASK_CLASS
+        if (inputClass != InputType.TYPE_CLASS_TEXT) {
+            return true
+        }
+
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        if (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+            variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
+            variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+        ) {
+            return true
+        }
+
+        if (isTerminalOrConsoleApp(info)) {
+            return true
+        }
+
+        if (variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
+            variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
+        ) {
+            return true
+        }
+
+        if (isSearchField(info)) {
+            return false
+        }
+
+        if (variation == InputType.TYPE_TEXT_VARIATION_URI) {
+            return !isWebBrowserApp(info)
+        }
+
+        val pkg = (info.packageName ?: "").lowercase()
+        if (pkg.contains("keep") || pkg.contains("note")) {
+            return false
+        }
+
+        if (isWebBrowserApp(info) || variation == InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT) {
+            return false
+        }
+
+        val flags = inputType and InputType.TYPE_MASK_FLAGS
+        if ((flags and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0 ||
+            (flags and InputType.TYPE_TEXT_FLAG_CAP_WORDS) != 0
+        ) {
+            return false
+        }
+
         if ((flags and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
             return true
         }

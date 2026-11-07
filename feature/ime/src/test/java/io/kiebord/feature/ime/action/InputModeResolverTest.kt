@@ -139,6 +139,13 @@ class InputModeResolverTest {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
         }
         assertTrue(InputModeResolver.isUrlOrCodeField(emailInfo))
+        assertTrue(InputModeResolver.isEmailField(emailInfo))
+
+        val webEmailInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
+        }
+        assertTrue(InputModeResolver.isEmailField(webEmailInfo))
+        assertFalse(InputModeResolver.isEmailField(uriInfo))
 
         val passwordInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
@@ -154,13 +161,24 @@ class InputModeResolverTest {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             imeOptions = EditorInfo.IME_ACTION_SEARCH
         }
-        assertFalse(InputModeResolver.isUrlOrCodeField(searchWithNoSuggestions))
+        assertTrue(InputModeResolver.isUrlOrCodeField(searchWithNoSuggestions))
+        assertFalse(InputModeResolver.shouldSuppressSuggestions(searchWithNoSuggestions))
 
         val searchViewInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             imeOptions = EditorInfo.IME_ACTION_SEARCH
         }
-        assertFalse(InputModeResolver.isUrlOrCodeField(searchViewInfo))
+        assertTrue(InputModeResolver.isUrlOrCodeField(searchViewInfo))
+        assertFalse(InputModeResolver.shouldSuppressSuggestions(searchViewInfo))
+
+        val googleSearchWidget = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+            packageName = "com.google.android.googlequicksearchbox"
+        }
+        assertTrue(InputModeResolver.isSearchField(googleSearchWidget))
+        assertTrue(InputModeResolver.isUrlOrCodeField(googleSearchWidget))
+        assertFalse(InputModeResolver.shouldSuppressSuggestions(googleSearchWidget))
 
         val termuxInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT
@@ -173,5 +191,42 @@ class InputModeResolverTest {
             packageName = "com.example.chat"
         }
         assertFalse(InputModeResolver.isUrlOrCodeField(regularTextInfo))
+
+        val keepInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            packageName = "com.google.android.keep"
+        }
+        assertFalse(InputModeResolver.isUrlOrCodeField(keepInfo))
+        assertFalse(InputModeResolver.shouldSuppressSuggestions(keepInfo))
+
+        val braveOmnibox = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            imeOptions = EditorInfo.IME_ACTION_GO
+            packageName = "com.brave.browser"
+        }
+        assertTrue(InputModeResolver.isUrlOrCodeField(braveOmnibox))
+        assertFalse(InputModeResolver.shouldSuppressSuggestions(braveOmnibox))
+
+        val braveWebSearch = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            packageName = "com.brave.browser"
+        }
+        assertTrue(InputModeResolver.isUrlOrCodeField(braveWebSearch))
+        assertFalse(InputModeResolver.shouldSuppressSuggestions(braveWebSearch))
+
+        val standaloneUri = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            packageName = "com.example.app"
+        }
+        assertTrue(InputModeResolver.isUrlOrCodeField(standaloneUri))
+        assertTrue(InputModeResolver.shouldSuppressSuggestions(standaloneUri))
+
+        val multiLineWithCaps = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                    InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            packageName = "com.some.notes"
+        }
+        assertFalse(InputModeResolver.isUrlOrCodeField(multiLineWithCaps))
+        assertFalse(InputModeResolver.shouldSuppressSuggestions(multiLineWithCaps))
     }
 }

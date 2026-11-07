@@ -147,6 +147,7 @@ sealed class UndoRedoPillState {
 fun KeyboardRootView(
     layout: KeyboardLayoutDef,
     primaryAlphaLayout: KeyboardLayoutDef = layout,
+    isEmailField: Boolean = false,
     shiftState: ShiftState,
     isBornoEasyKarMode: Boolean = false,
     bornoEasyTypedCluster: String = "",
@@ -1492,6 +1493,8 @@ fun KeyboardRootView(
                                                             rawKey.copy(label = spaceLabel)
                                                         } else if (rawKey.type == KeyType.SWITCH_LANGUAGE && showEmojiKey) {
                                                             rawKey.copy(type = KeyType.EMOJI, icon = "emoji")
+                                                        } else if (isEmailField && r == keyboardRows.lastIndex && rawKey.label == "," && !displayLayout.isSymbolsLayout()) {
+                                                            rawKey.copy(label = "@", commitText = "@", shiftedCommitText = "@", shiftedLabel = "@")
                                                         } else {
                                                             rawKey
                                                         }
@@ -1781,6 +1784,8 @@ fun KeyboardRootView(
                                 key.copy(label = spaceLabel)
                             } else if (key.type == KeyType.SWITCH_LANGUAGE && showEmojiKey) {
                                 key.copy(type = KeyType.EMOJI, icon = "emoji")
+                            } else if (isEmailField && isBottomRow && key.label == "," && !displayLayout.isSymbolsLayout()) {
+                                key.copy(label = "@", commitText = "@", shiftedCommitText = "@", shiftedLabel = "@")
                             } else {
                                 key
                             }
@@ -1939,6 +1944,8 @@ fun KeyboardRootView(
                                                         rawKey.copy(label = spaceLabel)
                                                     } else if (rawKey.type == KeyType.SWITCH_LANGUAGE && showEmojiKey) {
                                                         rawKey.copy(type = KeyType.EMOJI, icon = "emoji")
+                                                    } else if (isEmailField && r == keyboardRows.lastIndex && rawKey.label == "," && !displayLayout.isSymbolsLayout()) {
+                                                        rawKey.copy(label = "@", commitText = "@", shiftedCommitText = "@", shiftedLabel = "@")
                                                     } else {
                                                         rawKey
                                                     }

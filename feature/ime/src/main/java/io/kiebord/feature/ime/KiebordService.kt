@@ -359,6 +359,9 @@ class KiebordService : InputMethodService() {
             val currentActionVisual = remember(currentEditorInfoState, shiftState) {
                 ActionKeyResolver.resolve(currentEditorInfoState, shiftState)
             }
+            val isEmailField = remember(currentEditorInfoState) {
+                InputModeResolver.isEmailField(currentEditorInfoState)
+            }
             val availableLayoutIds = remember {
                 layoutRepo.getAvailableLayouts().map { it.id }.toSet()
             }
@@ -367,6 +370,7 @@ class KiebordService : InputMethodService() {
                 KeyboardRootView(
                     layout = activeLayout,
                     primaryAlphaLayout = primaryAlphaLayout,
+                    isEmailField = isEmailField,
                     isNumberPadActive = activeLayout.id == PredefinedLayouts.NumberPadExtended.id,
                     onToggleNumberPad = {
                         finishComposing()
@@ -1515,8 +1519,9 @@ class KiebordService : InputMethodService() {
         return c == '.' || c == '!' || c == '?' || c == '।' || c == '॥'
     }
 
-    private fun shouldAutoSpaceAfterPunctuation(precedingChar: Char, puncText: String): Boolean {
+    private fun shouldAutoSpaceAfterPunctuation(textBefore: String, puncText: String): Boolean {
         if (activeLayout.noAutoSpace || primaryAlphaLayout.noAutoSpace) return false
+        val precedingChar = textBefore.lastOrNull() ?: return false
         // Do not auto-space if preceded by whitespace
         if (precedingChar.isWhitespace()) return false
 
@@ -1536,7 +1541,15 @@ class KiebordService : InputMethodService() {
         }
 
         // Do not auto-space for path/url-like prefixes: e.g. ./, ../
-        if (precedingChar == '/' || precedingChar == '\\' || precedingChar == '~') {
+        if (precedingChar == '/' || precedingChar == '\\' || precedingChar == '~' || precedingChar == ':' || precedingChar == '@') {
+            return false
+        }
+
+        val lower = textBefore.lowercase()
+        if (puncText == ":" && (lower.endsWith("http") || lower.endsWith("https") || lower.endsWith("ftp"))) {
+            return false
+        }
+        if (puncText == "." && (lower.endsWith("www") || lower.contains("://") || lower.contains("www."))) {
             return false
         }
 
@@ -1550,7 +1563,7 @@ class KiebordService : InputMethodService() {
         val canRemoveSpace = shouldRemoveSpaceBeforePunctuation(text)
         val canAutoSpace = preferencesState.autoSpaceAfterPunctuation && !inUrlOrCode && isAutoPunc
 
-        val textBefore = ic.getTextBeforeCursor(4, 0)?.toString() ?: ""
+        val textBefore = ic.getTextBeforeCursor(20, 0)?.toString() ?: ""
 
         if (textBefore.endsWith(" ")) {
             val nonSpacePrefix = textBefore.trimEnd(' ')
@@ -1560,7 +1573,7 @@ class KiebordService : InputMethodService() {
                 // Remove the space before the punctuation
                 ic.deleteSurroundingText(1, 0)
 
-                if (canAutoSpace && shouldAutoSpaceAfterPunctuation(precedingChar, text)) {
+                if (canAutoSpace && shouldAutoSpaceAfterPunctuation(nonSpacePrefix, text)) {
                     ic.commitText(text + " ", 1)
                     val now = SystemClock.uptimeMillis()
                     lastSpaceTapTime = now
@@ -1574,7 +1587,7 @@ class KiebordService : InputMethodService() {
                     lastAutoSpacePunctuationTime = 0L
                     return
                 }
-            } else if (canAutoSpace && precedingChar != null && shouldAutoSpaceAfterPunctuation(precedingChar, text)) {
+            } else if (canAutoSpace && precedingChar != null && shouldAutoSpaceAfterPunctuation(nonSpacePrefix, text)) {
                 // Space before punctuation was not removed, but auto-space is enabled
                 ic.commitText(text + " ", 1)
                 val now = SystemClock.uptimeMillis()
@@ -1588,8 +1601,7 @@ class KiebordService : InputMethodService() {
         } else {
             // Not preceded by a space (e.g. typing a punctuation immediately after a word)
             if (canAutoSpace && textBefore.isNotEmpty()) {
-                val precedingChar = textBefore.last()
-                if (shouldAutoSpaceAfterPunctuation(precedingChar, text)) {
+                if (shouldAutoSpaceAfterPunctuation(textBefore, text)) {
                     ic.commitText(text + " ", 1)
                     val now = SystemClock.uptimeMillis()
                     lastSpaceTapTime = now
@@ -2417,7 +2429,7 @@ class KiebordService : InputMethodService() {
             return
         }
 
-        if (isEnglishLayout() && (InputModeResolver.isDirectCommit(currentInputEditorInfo) || isUrlOrCodeField())) {
+        if (isEnglishLayout() && (InputModeResolver.isDirectCommit(currentInputEditorInfo) || InputModeResolver.shouldSuppressSuggestions(currentInputEditorInfo))) {
             activeSuggestions = emptyList()
             return
         }
