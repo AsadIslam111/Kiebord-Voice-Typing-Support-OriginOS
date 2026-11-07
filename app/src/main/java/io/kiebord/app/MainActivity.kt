@@ -588,6 +588,9 @@ fun KiebordSettingsApp(
                             onUpdateAutoSpaceAfterSuggestion = { enabled ->
                                 scope.launch { preferencesRepo.updateAutoSpaceAfterSuggestion(enabled) }
                             },
+                            onToggleAutoSpaceAfterSuggestionLanguage = { langCode, enabled ->
+                                scope.launch { preferencesRepo.setAutoSpaceAfterSuggestionLanguageEnabled(langCode, enabled) }
+                            },
                             onUpdateAutoSpaceAfterPunctuation = { enabled ->
                                 scope.launch { preferencesRepo.updateAutoSpaceAfterPunctuation(enabled) }
                             },

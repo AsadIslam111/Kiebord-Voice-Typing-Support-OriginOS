@@ -2210,7 +2210,12 @@ class KiebordService : InputMethodService() {
         }
         val ic = currentInputConnection ?: return
         val candidateText = candidate.text.trim()
-        val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
+        val activeLang = activeLayout.language.ifEmpty {
+            if (activeLayout.id.startsWith("bn")) "bn"
+            else if (activeLayout.id.startsWith("en")) "en"
+            else activeLayout.id.substringBefore('_')
+        }
+        val shouldAutoSpace = preferencesState.isAutoSpaceAfterSuggestionEnabled(activeLang)
         val textToCommit = if (shouldAutoSpace) "$candidateText " else candidateText
 
         if (isGestureAlternativeActive && lastGestureCommittedWord.isNotEmpty()) {
@@ -2235,17 +2240,33 @@ class KiebordService : InputMethodService() {
         }
         val translitMgr = getTransliterationManager()
         if (translitMgr.isComposing) {
-            translitMgr.commitCustom(textToCommit)
+            if (shouldAutoSpace) {
+                translitMgr.commitCustom(textToCommit)
+            } else {
+                translitMgr.setCustomComposing(candidateText)
+            }
         } else if (composingBuffer.isNotEmpty()) {
-            ic.commitText(textToCommit, 1)
-            composingBuffer.clear()
+            if (shouldAutoSpace) {
+                ic.commitText(textToCommit, 1)
+                composingBuffer.clear()
+            } else {
+                composingBuffer.clear()
+                composingBuffer.append(candidateText)
+                ic.setComposingText(composingBuffer.toString(), 1)
+            }
         } else {
-            ic.commitText(textToCommit, 1)
-        }
-        if (!shouldAutoCapitalize() && shiftState == ShiftState.ONE_SHOT) {
-            shiftState = ShiftState.UNSHIFTED
+            if (shouldAutoSpace) {
+                ic.commitText(textToCommit, 1)
+            } else {
+                composingBuffer.clear()
+                composingBuffer.append(candidateText)
+                ic.setComposingText(composingBuffer.toString(), 1)
+            }
         }
         if (shouldAutoSpace) {
+            if (!shouldAutoCapitalize() && shiftState == ShiftState.ONE_SHOT) {
+                shiftState = ShiftState.UNSHIFTED
+            }
             lastSpaceTapTime = SystemClock.uptimeMillis()
         }
         updateSuggestions()

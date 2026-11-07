@@ -53,6 +53,7 @@ data class KiebordPreferences(
     val autoCapitalization: Boolean = true,
     val doubleSpacePeriod: Boolean = true,
     val autoSpaceAfterSuggestion: Boolean = true,
+    val autoSpaceAfterSuggestionDisabledLanguages: Set<String> = emptySet(),
     val autoSpaceAfterPunctuation: Boolean = true,
     val removeSpaceBeforePunctuation: Boolean = true,
     val traditionalMode: Boolean = false,
@@ -77,6 +78,20 @@ data class KiebordPreferences(
 ) {
     fun isExtraRowEnabled(layoutId: String, rowId: String, default: Boolean = true): Boolean {
         return extraRowOverrides["${layoutId}_${rowId}"] ?: default
+    }
+
+    fun isAutoSpaceAfterSuggestionLanguageEnabled(languageCode: String): Boolean {
+        val lang = when {
+            languageCode.startsWith("bn") -> "bn"
+            languageCode.startsWith("en") -> "en"
+            else -> languageCode.lowercase().trim()
+        }
+        return lang !in autoSpaceAfterSuggestionDisabledLanguages
+    }
+
+    fun isAutoSpaceAfterSuggestionEnabled(languageCode: String): Boolean {
+        if (!autoSpaceAfterSuggestion) return false
+        return isAutoSpaceAfterSuggestionLanguageEnabled(languageCode)
     }
 
     companion object {

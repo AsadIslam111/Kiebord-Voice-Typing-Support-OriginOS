@@ -53,4 +53,25 @@ class KiebordPreferencesTest {
         assertEquals(true, updated.autoDeleteRecentClips)
         assertEquals(12, updated.autoDeleteRecentClipsDurationHours)
     }
+
+    @Test
+    fun testAutoSpaceAfterSuggestionPerLanguage() {
+        val prefs = KiebordPreferences(autoSpaceAfterSuggestion = true)
+        assertEquals(true, prefs.isAutoSpaceAfterSuggestionEnabled("en"))
+        assertEquals(true, prefs.isAutoSpaceAfterSuggestionEnabled("bn"))
+        assertEquals(true, prefs.isAutoSpaceAfterSuggestionEnabled("tr"))
+
+        val bnDisabled = prefs.copy(autoSpaceAfterSuggestionDisabledLanguages = setOf("bn"))
+        assertEquals(true, bnDisabled.isAutoSpaceAfterSuggestionEnabled("en"))
+        assertEquals(false, bnDisabled.isAutoSpaceAfterSuggestionEnabled("bn"))
+        assertEquals(false, bnDisabled.isAutoSpaceAfterSuggestionEnabled("bn_borno"))
+        assertEquals(true, bnDisabled.isAutoSpaceAfterSuggestionEnabled("tr"))
+
+        val masterDisabled = bnDisabled.copy(autoSpaceAfterSuggestion = false)
+        assertEquals(false, masterDisabled.isAutoSpaceAfterSuggestionEnabled("en"))
+        assertEquals(false, masterDisabled.isAutoSpaceAfterSuggestionEnabled("bn"))
+        assertEquals(false, masterDisabled.isAutoSpaceAfterSuggestionEnabled("tr"))
+        assertEquals(true, masterDisabled.isAutoSpaceAfterSuggestionLanguageEnabled("en"))
+        assertEquals(false, masterDisabled.isAutoSpaceAfterSuggestionLanguageEnabled("bn"))
+    }
 }

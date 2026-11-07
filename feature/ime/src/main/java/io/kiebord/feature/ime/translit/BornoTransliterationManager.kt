@@ -14,6 +14,7 @@ interface TransliterationManager {
     fun handleCharacter(char: String): Boolean
     fun handleDelete(): Boolean
     fun commitCustom(text: String)
+    fun setCustomComposing(text: String)
     fun finishComposing()
     fun reset()
 }
@@ -106,6 +107,15 @@ open class GenericTransliterationManager(
         isTransliterationDirty = false
     }
 
+    override fun setCustomComposing(text: String) {
+        val ic = inputConnectionProvider()
+        ic?.setComposingText(text, 1)
+        buffer.clear()
+        buffer.append(text)
+        cachedTransliteration = text
+        isTransliterationDirty = false
+    }
+
     override fun finishComposing() {
         if (!isComposing) return
         val ic = inputConnectionProvider()
@@ -185,6 +195,14 @@ class M17nTransliterationManager(
         ic?.commitText(text, 1)
         buffer.clear()
         cachedOutput = ""
+    }
+
+    override fun setCustomComposing(text: String) {
+        val ic = inputConnectionProvider()
+        ic?.setComposingText(text, 1)
+        buffer.clear()
+        buffer.append(text)
+        cachedOutput = text
     }
 
     override fun finishComposing() {

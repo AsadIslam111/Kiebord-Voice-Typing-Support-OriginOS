@@ -98,7 +98,6 @@ object InputModeResolver {
         return action == EditorInfo.IME_ACTION_SEARCH ||
                 action == EditorInfo.IME_ACTION_GO ||
                 variation == InputType.TYPE_TEXT_VARIATION_FILTER ||
-                variation == InputType.TYPE_TEXT_VARIATION_URI ||
                 variation == InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT ||
                 (flags and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE) != 0 ||
                 pkg.contains("googlequicksearchbox") ||

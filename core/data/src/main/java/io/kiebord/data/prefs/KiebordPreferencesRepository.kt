@@ -72,6 +72,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val AUTO_CAPITALIZATION = booleanPreferencesKey("pref_auto_capitalization")
         val DOUBLE_SPACE_PERIOD = booleanPreferencesKey("pref_double_space_period")
         val AUTO_SPACE_AFTER_SUGGESTION = booleanPreferencesKey("pref_auto_space_after_suggestion")
+        val AUTO_SPACE_AFTER_SUGGESTION_DISABLED_LANGUAGES = stringSetPreferencesKey("pref_auto_space_after_suggestion_disabled_languages")
         val AUTO_SPACE_AFTER_PUNCTUATION = booleanPreferencesKey("pref_auto_space_after_punctuation")
         val REMOVE_SPACE_BEFORE_PUNCTUATION = booleanPreferencesKey("pref_remove_space_before_punctuation")
         val TRADITIONAL_MODE = booleanPreferencesKey("pref_traditional_mode")
@@ -151,6 +152,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 autoCapitalization = prefs[PreferencesKeys.AUTO_CAPITALIZATION] ?: true,
                 doubleSpacePeriod = prefs[PreferencesKeys.DOUBLE_SPACE_PERIOD] ?: true,
                 autoSpaceAfterSuggestion = prefs[PreferencesKeys.AUTO_SPACE_AFTER_SUGGESTION] ?: true,
+                autoSpaceAfterSuggestionDisabledLanguages = prefs[PreferencesKeys.AUTO_SPACE_AFTER_SUGGESTION_DISABLED_LANGUAGES] ?: emptySet(),
                 autoSpaceAfterPunctuation = prefs[PreferencesKeys.AUTO_SPACE_AFTER_PUNCTUATION] ?: true,
                 removeSpaceBeforePunctuation = prefs[PreferencesKeys.REMOVE_SPACE_BEFORE_PUNCTUATION] ?: true,
                 traditionalMode = prefs[PreferencesKeys.TRADITIONAL_MODE] ?: false,
@@ -408,6 +410,23 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateAutoSpaceAfterSuggestion(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.AUTO_SPACE_AFTER_SUGGESTION] = enabled }
+    }
+
+    suspend fun setAutoSpaceAfterSuggestionLanguageEnabled(languageCode: String, enabled: Boolean) {
+        val lang = when {
+            languageCode.startsWith("bn") -> "bn"
+            languageCode.startsWith("en") -> "en"
+            else -> languageCode.lowercase().trim()
+        }
+        context.kiebordDataStore.edit { prefs ->
+            val current = prefs[PreferencesKeys.AUTO_SPACE_AFTER_SUGGESTION_DISABLED_LANGUAGES]?.toMutableSet() ?: mutableSetOf()
+            if (enabled) {
+                current.remove(lang)
+            } else {
+                current.add(lang)
+            }
+            prefs[PreferencesKeys.AUTO_SPACE_AFTER_SUGGESTION_DISABLED_LANGUAGES] = current
+        }
     }
 
     suspend fun updateAutoSpaceAfterPunctuation(enabled: Boolean) {

@@ -1,11 +1,20 @@
 package io.kiebord.app.ui.settings
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -13,6 +22,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Gesture
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,12 +34,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.kiebord.data.layout.LayoutRepository
 import io.kiebord.data.prefs.KiebordPreferences
 
 @Composable
@@ -43,6 +60,7 @@ fun CorrectionsSuggestionsScreen(
     onUpdateAutoCapitalization: (Boolean) -> Unit,
     onUpdateDoubleSpacePeriod: (Boolean) -> Unit,
     onUpdateAutoSpaceAfterSuggestion: (Boolean) -> Unit = {},
+    onToggleAutoSpaceAfterSuggestionLanguage: (String, Boolean) -> Unit = { _, _ -> },
     onUpdateAutoSpaceAfterPunctuation: (Boolean) -> Unit = {},
     onUpdateRemoveSpaceBeforePunctuation: (Boolean) -> Unit = {},
     onUpdateSuggestionBarMode: (String) -> Unit = {},
@@ -52,6 +70,43 @@ fun CorrectionsSuggestionsScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val colors = LocalSettingsColors.current
+    val layoutRepo = remember(context) { LayoutRepository.getInstance(context) }
+
+    val activeLanguages = remember(preferences.enabledLayoutIds) {
+        preferences.enabledLayoutIds
+            .mapNotNull { id ->
+                try {
+                    layoutRepo.getLayout(id)
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            .map { layout ->
+                val langCode = layout.language.trim().ifBlank {
+                    if (layout.id.startsWith("bn")) "bn"
+                    else if (layout.id.startsWith("en")) "en"
+                    else layout.id.substringBefore('_').lowercase()
+                }.lowercase()
+                val title = when (langCode) {
+                    "en" -> "English"
+                    "bn" -> "Bangla"
+                    else -> try {
+                        val loc = java.util.Locale.forLanguageTag(langCode)
+                        val display = loc.getDisplayLanguage(java.util.Locale.ENGLISH)
+                        if (display.isNotBlank() && !display.equals(langCode, ignoreCase = true)) {
+                            display
+                        } else {
+                            langCode.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ENGLISH) else it.toString() }
+                        }
+                    } catch (_: Exception) {
+                        langCode.uppercase()
+                    }
+                }
+                langCode to title
+            }
+            .distinctBy { it.first }
+            .ifEmpty { listOf("en" to "English", "bn" to "Bangla") }
+    }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -233,13 +288,115 @@ fun CorrectionsSuggestionsScreen(
                 onCheckedChange = onUpdateDoubleSpacePeriod
             )
 
-            SettingsToggleItem(
-                title = "Auto-Space after Suggestions",
-                subtitle = "Automatically insert a space after committing a word from the candidate strip",
-                checked = preferences.autoSpaceAfterSuggestion,
-                position = GroupPosition.MIDDLE,
-                onCheckedChange = onUpdateAutoSpaceAfterSuggestion
-            )
+            val autoSpaceShape = remember { getGroupItemShape(GroupPosition.MIDDLE) }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(autoSpaceShape),
+                shape = autoSpaceShape,
+                colors = CardDefaults.cardColors(containerColor = colors.cardBackground)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onUpdateAutoSpaceAfterSuggestion(!preferences.autoSpaceAfterSuggestion) }
+                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Auto-Space after Suggestions",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                text = "Automatically insert a space after committing a word from the candidate strip",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                color = colors.textSecondary,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Switch(
+                            checked = preferences.autoSpaceAfterSuggestion,
+                            onCheckedChange = onUpdateAutoSpaceAfterSuggestion,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = colors.accent,
+                                uncheckedThumbColor = colors.textSecondary,
+                                uncheckedTrackColor = colors.iconBackground,
+                                uncheckedBorderColor = colors.inputBorder
+                            )
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = preferences.autoSpaceAfterSuggestion,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                        ) {
+                            HorizontalDivider(
+                                color = colors.divider,
+                                thickness = 0.5.dp,
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
+                            )
+
+                            activeLanguages.forEach { (langCode, langTitle) ->
+                                val isLangEnabled = preferences.isAutoSpaceAfterSuggestionLanguageEnabled(langCode)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onToggleAutoSpaceAfterSuggestionLanguage(langCode, !isLangEnabled)
+                                        }
+                                        .padding(start = 28.dp, end = 18.dp, top = 8.dp, bottom = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = langTitle,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = colors.textPrimary
+                                        )
+                                        if (!isLangEnabled) {
+                                            Text(
+                                                text = "Keeps composing buffer active without trailing space",
+                                                fontSize = 12.sp,
+                                                color = colors.textSecondary
+                                            )
+                                        }
+                                    }
+
+                                    Switch(
+                                        checked = isLangEnabled,
+                                        onCheckedChange = { isChecked ->
+                                            onToggleAutoSpaceAfterSuggestionLanguage(langCode, isChecked)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = Color.White,
+                                            checkedTrackColor = colors.accent,
+                                            uncheckedThumbColor = colors.textSecondary,
+                                            uncheckedTrackColor = colors.iconBackground,
+                                            uncheckedBorderColor = colors.inputBorder
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             SettingsToggleItem(
                 title = "Auto-Space after Punctuation",
