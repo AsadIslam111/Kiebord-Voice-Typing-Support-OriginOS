@@ -2227,15 +2227,6 @@ fun KeyboardRootView(
 }
 }
 
-        // 1. Guideline overlay for sliding symbol input (matchParentSize prevents shifting)
-        QuickSymbolDragOverlay(
-            state = quickDragState,
-            isMoreKeysOpen = moreKeysState != null,
-            scaleFactor = scaleFactor,
-            keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f,
-            modifier = Modifier.matchParentSize()
-        )
-
         // Soft fading light overlay over keyboard background when morekeys panel is shown
         val moreKeysOverlayAlpha by animateFloatAsState(
             targetValue = if (moreKeysState != null) 1f else 0f,
@@ -2258,6 +2249,17 @@ fun KeyboardRootView(
             )
         }
         }
+
+        // 1. Guideline overlay for sliding symbol input (in outer Box matching rootCoordinates)
+        QuickSymbolDragOverlay(
+            state = quickDragState,
+            isMoreKeysOpen = moreKeysState != null,
+            scaleFactor = scaleFactor,
+            keyboardWidthPx = if (rootWidthPx > 0f) rootWidthPx else 1080f,
+            modifier = Modifier
+                .matchParentSize()
+                .zIndex(95f)
+        )
 
         // 2. Borno Keyboard rounded pill MoreKeys floating popup
         MoreKeysPopup(
