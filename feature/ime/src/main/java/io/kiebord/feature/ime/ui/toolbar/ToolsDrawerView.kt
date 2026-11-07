@@ -368,11 +368,11 @@ private fun ToolGridItem(
                     }
                 )
                 .border(
-                    width = if (isDragging || isHovered || isActive) 1.5.dp else 0.dp,
+                    width = if (isDragging || isHovered || isActive) 1.5.dp else 1.dp,
                     color = when {
                         isHovered || isDragging -> colorScheme.accentColor
                         isActive -> colorScheme.effectiveActiveOptionHighlight
-                        else -> Color.Transparent
+                        else -> colorScheme.keyForeground.copy(alpha = 0.12f)
                     },
                     shape = RoundedCornerShape(14.dp)
                 ),

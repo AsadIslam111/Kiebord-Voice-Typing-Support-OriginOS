@@ -32,7 +32,17 @@ data class KeyboardColorScheme(
     val themeSpec: KeyboardThemeSpec? = null
 ) {
     val effectiveActiveOptionHighlight: Color
-        get() = if (activeOptionHighlightColor != Color.Unspecified) activeOptionHighlightColor else accentColor
+        get() {
+            if (activeOptionHighlightColor != Color.Unspecified) return activeOptionHighlightColor
+            if (accentColor != Color.Unspecified && ThemeColorUtils.contrastRatio(accentColor, containerBackground) >= 1.25f) {
+                return accentColor
+            }
+            if (shiftActiveColor != Color.Unspecified && ThemeColorUtils.contrastRatio(shiftActiveColor, containerBackground) >= 1.25f) {
+                return shiftActiveColor
+            }
+            val isDark = themeSpec?.isDark ?: ThemeColorUtils.isColorDark(containerBackground)
+            return if (isDark) Color(0xFF38BDF8) else Color(0xFF0284C7)
+        }
 
     val effectiveFontFamily: androidx.compose.ui.text.font.FontFamily?
         get() {

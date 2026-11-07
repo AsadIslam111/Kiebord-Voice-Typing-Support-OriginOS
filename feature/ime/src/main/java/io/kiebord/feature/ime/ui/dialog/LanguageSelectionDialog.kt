@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import io.kiebord.data.layout.PredefinedLayouts
 import kotlinx.coroutines.launch
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.ThemeColorUtils
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -72,6 +73,14 @@ fun LanguageSelectionDialog(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
+    val dialogBg = colorScheme.containerBackground
+    val activeAccent = ThemeColorUtils.ensureContrast(
+        foreground = colorScheme.effectiveActiveOptionHighlight,
+        background = dialogBg,
+        minContrast = 2.5f,
+        fallbackLight = Color(0xFF38BDF8),
+        fallbackDark = Color(0xFF0284C7)
+    )
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val contentPaddingVertical = if (isLandscape) 5.dp else 8.dp
     val itemPaddingVertical = if (isLandscape) 4.dp else 7.dp
@@ -120,7 +129,7 @@ fun LanguageSelectionDialog(
                 Icon(
                     imageVector = Icons.Filled.Language,
                     contentDescription = null,
-                    tint = colorScheme.accentColor,
+                    tint = activeAccent,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -163,6 +172,7 @@ fun LanguageSelectionDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
+                            .background(if (isSelected) activeAccent.copy(alpha = 0.12f) else Color.Transparent)
                             .then(
                                 if (isSelected) {
                                     Modifier
@@ -192,7 +202,7 @@ fun LanguageSelectionDialog(
                     ) {
                         Text(
                             text = displayName,
-                            color = if (isSelected) colorScheme.accentColor else colorScheme.keyForeground,
+                            color = if (isSelected) activeAccent else colorScheme.keyForeground,
                             fontSize = 14.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                             fontFamily = KiebordTheme.fontFamily
@@ -202,13 +212,13 @@ fun LanguageSelectionDialog(
                                 modifier = Modifier
                                     .size(20.dp)
                                     .clip(CircleShape)
-                                    .background(colorScheme.accentColor.copy(alpha = 0.2f)),
+                                    .background(activeAccent.copy(alpha = 0.2f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Check,
                                     contentDescription = "Active",
-                                    tint = colorScheme.accentColor,
+                                    tint = activeAccent,
                                     modifier = Modifier.size(13.dp)
                                 )
                             }

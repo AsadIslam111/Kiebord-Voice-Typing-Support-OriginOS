@@ -2610,7 +2610,15 @@ fun SpacebarLayoutSliderOverlay(
     val idealLeftPx = anchorCenterX - (popupWidthPx / 2f)
     val clampedLeftPx = idealLeftPx.coerceIn(minLeftPx, maxLeftPx)
 
-    val isLight = colorScheme == KeyboardColorScheme.DefaultLight
+    val popupBg = colorScheme.moreKeysBackground
+    val isDarkPopup = ThemeColorUtils.isColorDark(popupBg)
+    val activeLabelColor = ThemeColorUtils.ensureContrast(
+        foreground = colorScheme.effectiveActiveOptionHighlight,
+        background = popupBg,
+        minContrast = 2.5f,
+        fallbackLight = Color(0xFF38BDF8),
+        fallbackDark = Color(0xFF0284C7)
+    )
     val pillShape = RoundedCornerShape(percent = 50)
 
     Box(
@@ -2629,10 +2637,10 @@ fun SpacebarLayoutSliderOverlay(
                     spotColor = Color(0x30000000)
                 )
                 .clip(pillShape)
-                .background(colorScheme.moreKeysBackground)
+                .background(popupBg)
                 .border(
                     width = 1.dp,
-                    color = if (isCommitted) colorScheme.accentColor else (if (isLight) Color(0x1F000000) else Color(0x33FFFFFF)),
+                    color = if (isCommitted) activeLabelColor else (if (isDarkPopup) Color(0x33FFFFFF) else Color(0x1F000000)),
                     shape = pillShape
                 )
                 .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -2642,7 +2650,7 @@ fun SpacebarLayoutSliderOverlay(
                 imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
                 contentDescription = null,
                 tint = if (swipeDeltaX <= -commitThresholdPx) {
-                    colorScheme.accentColor
+                    activeLabelColor
                 } else {
                     colorScheme.keyForeground.copy(alpha = 0.35f)
                 },
@@ -2665,7 +2673,7 @@ fun SpacebarLayoutSliderOverlay(
                 val isLeftTarget = targetIndex == leftIndex
                 Text(
                     text = leftName,
-                    color = if (isLeftTarget) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.75f),
+                    color = if (isLeftTarget) activeLabelColor else colorScheme.keyForeground.copy(alpha = 0.75f),
                     fontSize = (15.5f * scaleFactor).coerceIn(14f, 18f).sp,
                     fontWeight = if (isLeftTarget) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
@@ -2688,7 +2696,7 @@ fun SpacebarLayoutSliderOverlay(
                 val isCenterTarget = targetIndex == centerIndex
                 Text(
                     text = centerName,
-                    color = if (isCenterTarget) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.75f),
+                    color = if (isCenterTarget) activeLabelColor else colorScheme.keyForeground.copy(alpha = 0.75f),
                     fontSize = (15.5f * scaleFactor).coerceIn(14f, 18f).sp,
                     fontWeight = if (isCenterTarget) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
@@ -2711,7 +2719,7 @@ fun SpacebarLayoutSliderOverlay(
                 val isRightTarget = targetIndex == rightIndex
                 Text(
                     text = rightName,
-                    color = if (isRightTarget) colorScheme.accentColor else colorScheme.keyForeground.copy(alpha = 0.75f),
+                    color = if (isRightTarget) activeLabelColor else colorScheme.keyForeground.copy(alpha = 0.75f),
                     fontSize = (15.5f * scaleFactor).coerceIn(14f, 18f).sp,
                     fontWeight = if (isRightTarget) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = KiebordTheme.fontFamily,
@@ -2730,7 +2738,7 @@ fun SpacebarLayoutSliderOverlay(
                 imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 contentDescription = null,
                 tint = if (swipeDeltaX >= commitThresholdPx) {
-                    colorScheme.accentColor
+                    activeLabelColor
                 } else {
                     colorScheme.keyForeground.copy(alpha = 0.35f)
                 },

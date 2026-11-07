@@ -448,7 +448,8 @@
           "spaceColor": "#ffffffff",
           "stripColor": "#ffe0e0e0",
           "stripIcoColor": "#bf000000",
-          "textSize": 0
+          "textSize": 0,
+          "activeOptionHighlightColor": "#ff0284c7"
         },
         {
           "id": 15,

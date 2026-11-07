@@ -101,7 +101,8 @@ data class BornoColorTheme(
     val spaceColor: String = keyColor,
     val stripColor: String = "#00ffffff",
     val stripIcoColor: String = labelKeyColor,
-    val textSize: Int = 0
+    val textSize: Int = 0,
+    val activeOptionHighlightColor: String? = null
 )
 
 @Serializable
@@ -272,7 +273,8 @@ object ThemeColorUtils {
             suggestionBackground = stripBg,
             suggestionForeground = stripFg,
             keyPressedBackground = if (pressedKeyColor.isNotBlank()) pressedKeyColor else functionalKeyColor,
-            keyPressedForeground = labelKeyColor
+            keyPressedForeground = labelKeyColor,
+            activeOptionHighlightColor = activeOptionHighlightColor
         )
     }
 
@@ -424,7 +426,8 @@ object ThemeColorUtils {
             } else {
                 if (popupColor.isNotBlank()) popupColor else keyColor
             },
-            guidelineColor = if (guidelineColor.isNotBlank()) guidelineColor else enterColor
+            guidelineColor = if (guidelineColor.isNotBlank()) guidelineColor else enterColor,
+            activeOptionHighlightColor = activeOptionHighlightColor
         )
     }
 
