@@ -1049,23 +1049,26 @@ class PredefinedLayoutsTest {
     @Test
     fun testKhiproJsonAssetIntegrity() {
         val candidates = listOf(
-            java.io.File("../../feature/ime/src/main/assets/layouts/khipro.json"),
-            java.io.File("feature/ime/src/main/assets/layouts/khipro.json"),
-            java.io.File("../feature/ime/src/main/assets/layouts/khipro.json"),
+            java.io.File("../../feature/ime/src/main/assets/layouts/bn_khipro.json"),
+            java.io.File("feature/ime/src/main/assets/layouts/bn_khipro.json"),
+            java.io.File("../feature/ime/src/main/assets/layouts/bn_khipro.json"),
+            java.io.File("../../assets-src/layouts/bn_khipro.json"),
+            java.io.File("assets-src/layouts/bn_khipro.json"),
         )
         val jsonFile = candidates.firstOrNull { it.exists() }
-        assertNotNull("khipro.json must exist in assets/layouts/", jsonFile)
+        assertNotNull("bn_khipro.json must exist in assets/layouts/", jsonFile)
 
         val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
         val layout = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(jsonFile!!.readText())
 
-        assertEquals("khipro", layout.id)
+        assertEquals("bn_khipro", layout.id)
         assertEquals("Khipro", layout.name)
         assertEquals("Khipro", layout.displayName)
         assertEquals("bn", layout.language)
         assertEquals("LTR", layout.direction)
         assertEquals("m17n", layout.processor)
         assertEquals("bn-khipro.classic.mim", layout.rules)
+        assertEquals("bn_borno", layout.gestureMode)
         assertEquals("Compositional Layout", layout.description)
         assertEquals(listOf("NoAutoCapitalization", "NoRemoveSpaceBeforePunctuation"), layout.flags)
         assertTrue("khipro must have NoAutoCapitalization flag", layout.hasFlag("NoAutoCapitalization"))
