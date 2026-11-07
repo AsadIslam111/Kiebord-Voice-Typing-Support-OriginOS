@@ -3,6 +3,8 @@
   "name": "Türkçe (Q)",
   "displayName": "Türkçe (Q)",
   "description": "Standard 12-key Turkish Q layout with gesture typing",
+  "credit": "Standard Turkish Q keyboard layout (TS 2117 standard)",
+  "license": "Public Domain",
   "language": "tr",
   "direction": "LTR",
   "gesture_mode": "tr",

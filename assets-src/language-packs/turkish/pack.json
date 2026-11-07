@@ -5,6 +5,7 @@
   "locale": "tr-TR",
   "displayName": "Türkçe (Turkish)",
   "author": "Emon Bhuiyan",
+  "credit": "Turkish layouts based on TS 2117 standard; wordlist from AOSP LatinIME",
   "license": "MIT",
   "layouts": [
     "tr_q",
