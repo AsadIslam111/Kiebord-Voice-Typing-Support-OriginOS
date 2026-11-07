@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -49,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.data.langpack.LanguagePackMetadata
@@ -73,6 +76,7 @@ fun LanguageExtensionsScreen(
     var activeDownloadPackId by remember { mutableStateOf<String?>(null) }
     var downloadProgress by remember { mutableFloatStateOf(0f) }
     var packToDelete by remember { mutableStateOf<LanguagePackMetadata?>(null) }
+    var packForInfo by remember { mutableStateOf<LanguagePackMetadata?>(null) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
     LaunchedEffect(refreshTrigger) {
@@ -151,6 +155,102 @@ fun LanguageExtensionsScreen(
             dismissButton = {
                 TextButton(onClick = { packToDelete = null }) {
                     Text("Cancel", color = colors.textSecondary)
+                }
+            }
+        )
+    }
+
+    if (packForInfo != null) {
+        val target = packForInfo!!
+        AlertDialog(
+            onDismissRequest = { packForInfo = null },
+            containerColor = colors.dialogBackground,
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = colors.accent,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = target.displayName,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
+                        fontSize = 18.sp
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    InfoDialogSection(title = "Extension Details", colors = colors) {
+                        InfoDialogRow(label = "ID", value = target.id, colors = colors)
+                        InfoDialogRow(label = "Version", value = "v${target.version}", colors = colors)
+                        InfoDialogRow(
+                            label = "Language",
+                            value = if (target.locale.isNotEmpty() && target.locale != target.language) {
+                                "${target.language} (${target.locale})"
+                            } else {
+                                target.language
+                            },
+                            colors = colors
+                        )
+                        if (target.author.isNotBlank()) {
+                            InfoDialogRow(label = "Author", value = target.author, colors = colors)
+                        }
+                        if (target.license.isNotBlank()) {
+                            InfoDialogRow(label = "License", value = target.license, colors = colors)
+                        }
+                        val credit = target.credit
+                        if (!credit.isNullOrBlank()) {
+                            InfoDialogRow(label = "Credit", value = credit, colors = colors)
+                        }
+                    }
+
+                    if (target.layouts.isNotEmpty()) {
+                        InfoDialogSection(title = "Layouts (${target.layouts.size})", colors = colors) {
+                            Text(
+                                text = target.layouts.joinToString(", "),
+                                fontSize = 13.sp,
+                                color = colors.textSecondary
+                            )
+                        }
+                    }
+
+                    val dictCredit = target.dictionaryCredit
+                    val dictLicense = target.dictionaryLicense
+                    val dictSource = target.dictionarySource
+                    val dictFile = target.dictionaryFile
+                    if (dictFile != null || !dictCredit.isNullOrBlank()) {
+                        InfoDialogSection(title = "Dictionary & Wordlist", colors = colors) {
+                            if (!dictCredit.isNullOrBlank()) {
+                                InfoDialogRow(label = "Credit", value = dictCredit, colors = colors)
+                            }
+                            if (!dictLicense.isNullOrBlank()) {
+                                InfoDialogRow(label = "License", value = dictLicense, colors = colors)
+                            }
+                            if (!dictSource.isNullOrBlank()) {
+                                InfoDialogRow(label = "Source", value = dictSource, colors = colors)
+                            }
+                            if (!dictFile.isNullOrBlank()) {
+                                InfoDialogRow(label = "File", value = dictFile, colors = colors)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { packForInfo = null }) {
+                    Text("Close", color = colors.accent, fontWeight = FontWeight.SemiBold)
                 }
             }
         )
@@ -261,6 +361,18 @@ fun LanguageExtensionsScreen(
                                         modifier = Modifier.padding(top = 2.dp)
                                     )
                                 }
+                            }
+
+                            IconButton(
+                                onClick = { packForInfo = pack },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Info,
+                                    contentDescription = "Pack Info",
+                                    tint = colors.textSecondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
 
                             IconButton(
@@ -445,6 +557,54 @@ fun LanguageExtensionsScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun InfoDialogSection(
+    title: String,
+    colors: SettingsColors,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.accent
+        )
+        content()
+    }
+}
+
+@Composable
+private fun InfoDialogRow(
+    label: String,
+    value: String,
+    colors: SettingsColors
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = colors.textSecondary,
+            modifier = Modifier.weight(0.35f)
+        )
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            color = colors.textPrimary,
+            modifier = Modifier.weight(0.65f),
+            textAlign = TextAlign.End
+        )
     }
 }
 

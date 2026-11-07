@@ -14,7 +14,11 @@ data class LayoutItemMeta(
     val direction: String,
     val isCustom: Boolean,
     val hasExtraRows: Boolean,
-    val description: String? = null
+    val description: String? = null,
+    val author: String? = null,
+    val credit: String? = null,
+    val license: String? = null,
+    val source: String? = null
 )
 
 class LayoutRepository private constructor(private val context: Context) {
@@ -119,7 +123,11 @@ class LayoutRepository private constructor(private val context: Context) {
                         direction = layout.direction,
                         isCustom = false,
                         hasExtraRows = layout.extraRows.isNotEmpty(),
-                        description = layout.description
+                        description = layout.description,
+                        author = layout.author,
+                        credit = layout.credit,
+                        license = layout.license,
+                        source = layout.source
                     )
                 )
             }
@@ -140,7 +148,11 @@ class LayoutRepository private constructor(private val context: Context) {
                                 direction = layout.direction,
                                 isCustom = false,
                                 hasExtraRows = layout.extraRows.isNotEmpty(),
-                        description = layout.description
+                                description = layout.description,
+                                author = layout.author,
+                                credit = layout.credit,
+                                license = layout.license,
+                                source = layout.source
                             )
                         )
                     }
@@ -166,7 +178,11 @@ class LayoutRepository private constructor(private val context: Context) {
                                     direction = layout.direction,
                                     isCustom = true,
                                     hasExtraRows = layout.extraRows.isNotEmpty(),
-                        description = layout.description
+                                    description = layout.description,
+                                    author = layout.author,
+                                    credit = layout.credit,
+                                    license = layout.license,
+                                    source = layout.source
                                 )
                             )
                         }

@@ -164,5 +164,65 @@ class LanguagePackRepositoryTest {
         assertFalse(layoutFile.exists())
         assertEquals(2, invalidatedCount)
     }
+
+    @Test
+    fun testPackAndLayoutCreditAttributes() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+        val packJson = """
+            {
+              "id": "tr_ext",
+              "language": "tr",
+              "displayName": "Turkish Extension",
+              "author": "Pack Author",
+              "credit": "Turkish Community",
+              "license": "MIT",
+              "layouts": ["tr_q"],
+              "dictionaryCredit": "LibreOffice Turkish Wordlist",
+              "dictionaryLicense": "LGPLv2.1",
+              "dictionarySource": "https://example.com/dict"
+            }
+        """.trimIndent()
+
+        val meta = json.decodeFromString<LanguagePackMetadata>(packJson)
+        assertEquals("Turkish Community", meta.credit)
+        assertEquals("LibreOffice Turkish Wordlist", meta.dictionaryCredit)
+        assertEquals("LGPLv2.1", meta.dictionaryLicense)
+        assertEquals("https://example.com/dict", meta.dictionarySource)
+
+        val layoutJson = """
+            {
+              "id": "tr_q",
+              "name": "Turkish Q",
+              "language": "tr",
+              "author": "Layout Port Author",
+              "credit": "Based on XKB",
+              "license": "Apache-2.0",
+              "sourceUrl": "https://example.com/layout",
+              "rows": []
+            }
+        """.trimIndent()
+
+        val layout = json.decodeFromString<io.kiebord.common.model.KeyboardLayoutDef>(layoutJson)
+        assertEquals("Layout Port Author", layout.author)
+        assertEquals("Based on XKB", layout.credit)
+        assertEquals("Apache-2.0", layout.license)
+        assertEquals("https://example.com/layout", layout.source)
+
+        val catalogJson = """
+            {
+              "id": "tr_cat",
+              "name": "Catalog Turkish",
+              "downloadUrl": "https://example.com/tr.bornolang",
+              "sha256": "abc123",
+              "credit": "Community Acknowledgement",
+              "dictionaryCredit": "Hunspell Dict"
+            }
+        """.trimIndent()
+
+        val catalog = json.decodeFromString<PackCatalogEntry>(catalogJson)
+        assertEquals("Community Acknowledgement", catalog.credit)
+        assertEquals("Hunspell Dict", catalog.dictionaryCredit)
+    }
 }
 

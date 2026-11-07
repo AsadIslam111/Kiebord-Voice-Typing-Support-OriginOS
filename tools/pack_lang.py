@@ -206,6 +206,13 @@ def update_catalog_index(manifest: dict, pack_path: Path, sha256_hash: str, inde
         "hasDictionary": has_dict
     }
 
+    if manifest.get("credit") or manifest.get("acknowledgement"):
+        entry["credit"] = manifest.get("credit") or manifest.get("acknowledgement")
+    if manifest.get("dictionaryCredit") or manifest.get("dictionary_credit") or manifest.get("wordlistCredit"):
+        entry["dictionaryCredit"] = manifest.get("dictionaryCredit") or manifest.get("dictionary_credit") or manifest.get("wordlistCredit")
+    if manifest.get("dictionaryLicense") or manifest.get("dictionary_license") or manifest.get("wordlistLicense"):
+        entry["dictionaryLicense"] = manifest.get("dictionaryLicense") or manifest.get("dictionary_license") or manifest.get("wordlistLicense")
+
     # Upsert entry
     existing_idx = next((i for i, e in enumerate(index_entries) if e.get("id") == pack_id), None)
     if existing_idx is not None:

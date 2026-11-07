@@ -171,6 +171,12 @@ data class KeyboardLayoutDef(
     val name: String = "Symbols",
     val displayName: String? = null,
     val description: String? = null,
+    val author: String? = null,
+    @JsonNames("acknowledgement", "acknowledgments", "acknowledgements", "credits")
+    val credit: String? = null,
+    val license: String? = null,
+    @JsonNames("source_url", "sourceUrl")
+    val source: String? = null,
     val language: String = "",
     val direction: String = "LTR",
     @JsonNames("gesture_mode", "gestureMode")

@@ -33,6 +33,10 @@ Layouts are parsed with compile-time serializers and cached in memory to ensure 
 | `name` | String | Yes | Name shown in Settings (e.g., `Arabic`, `English (QWERTY)`). |
 | `displayName` | String | No | Concise display name for space bar and quick switchers (e.g., `English`). Defaults to `name`. |
 | `description` | String | No | Subtitle description displayed under the layout in Settings (e.g., `"Standard Latin layout with gesture typing"`). |
+| `author` | String | No | Author or creator of the layout or port. |
+| `credit` | String | No | Attribution / acknowledgement note (aliases: `acknowledgement`, `credits`). |
+| `license` | String | No | License governing the layout (e.g. `Apache-2.0`, `MIT`, `GPLv3`). |
+| `sourceUrl` | String | No | Link to upstream repository, port source, or standard (aliases: `source`, `source_url`). |
 | `language` | String | Yes | ISO 639-1 two-letter language code (e.g., `en`, `bn`, `ar`, `es`). |
 | `direction` | String | No | Text and keyboard flow direction: `"LTR"` (default) or `"RTL"`. |
 | `gesture_mode` | String | No | Gesture typing model identifier (e.g., `"qwerty"`). |
@@ -316,9 +320,13 @@ A `.bornolang` file is a ZIP archive containing the following layout:
 | `locale` | String | No | BCP-47 language tag (e.g. `tr-TR`) used for locale-aware uppercase/lowercase transformations. |
 | `displayName` | String | Yes | Display name shown in Settings (e.g. `Türkçe (Turkish)`). |
 | `author` | String | Yes | Name or handle of the author/contributor. |
+| `credit` | String | No | Attribution / acknowledgement note for the overall pack (aliases: `acknowledgement`, `credits`). |
 | `license` | String | No | Distribution license (e.g. `MIT`, `GPLv3`). |
 | `layouts` | Array of String | Yes | List of layout IDs included in the pack. Each must correspond to `layouts/<id>.json`. |
 | `dictionaryFile` | String | No | Path relative to pack root pointing to the binary dictionary (e.g. `dictionaries/tr.dict`). |
+| `dictionaryCredit` | String | No | Attribution for wordlist / vocabulary source (e.g. `"LibreOffice Hunspell contributors"`, aliases: `wordlistCredit`, `dictionaryAcknowledgement`). |
+| `dictionaryLicense` | String | No | Wordlist license (e.g. `LGPLv2.1`, `CC-BY-SA`, aliases: `wordlistLicense`). |
+| `dictionarySource` | String | No | URL to upstream dictionary repository or dataset (aliases: `wordlistSource`). |
 | `scriptRulesFile` | String | No | Path relative to pack root pointing to script boundary rules (e.g. `rules/script_rules.json`). |
 | `charFoldingFile` | String | No | Path relative to pack root pointing to gesture folding rules (e.g. `gesture/char_folding.json`). |
 | `currencySymbol` | String | No | Default currency symbol displayed on the keyboard (e.g. `₺`). |
