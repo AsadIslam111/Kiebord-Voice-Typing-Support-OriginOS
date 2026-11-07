@@ -2326,6 +2326,17 @@ class KiebordService : InputMethodService() {
         return layout.language == "en" || layout.id.startsWith("en") || layout.gestureMode.equals("qwerty", ignoreCase = true)
     }
 
+    private fun getGestureLanguage(layout: io.kiebord.common.model.KeyboardLayoutDef = activeLayout): String {
+        val gestureModel = layout.gestureMode?.trim()?.lowercase()?.takeIf {
+            it.isNotEmpty() && it != "qwerty" && it != "spatial" && it != "direct"
+        }
+        return gestureModel ?: when {
+            isBanglaLayout(layout) -> layout.id
+            layout.language.isNotEmpty() -> layout.language
+            else -> "en"
+        }
+    }
+
     private fun isQwertyBasedLayout(layoutId: String): Boolean {
         val layout = if (layoutId == activeLayout.id) activeLayout else layoutRepo.getCachedLayout(layoutId)
         return layout?.isQwertyBased()
@@ -2416,12 +2427,7 @@ class KiebordService : InputMethodService() {
 
         gestureCommitJob?.cancel()
         gestureCommitJob = serviceScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            val gestureModel = activeLayout.gestureMode?.ifEmpty { null }
-            val lang = gestureModel ?: when {
-                isBanglaLayout() -> activeLayout.id
-                activeLayout.language.isNotEmpty() -> activeLayout.language
-                else -> "en"
-            }
+            val lang = getGestureLanguage(activeLayout)
             val learnedWords = if (preferencesState.learnedWordsEnabled) {
                 val all = userDictionaryRepo.getLearnedGestureWords(20)
                 if (isBanglaLayout()) {
@@ -2466,12 +2472,7 @@ class KiebordService : InputMethodService() {
     ): String? {
         if (!preferencesState.gestureTypingEnabled || !activeLayout.isQwertyBased()) return null
         if (trail.size < 4 || centroids.isEmpty()) return null
-        val gestureModel = activeLayout.gestureMode?.ifEmpty { null }
-        val lang = gestureModel ?: when {
-            isBanglaLayout() -> activeLayout.id
-            activeLayout.language.isNotEmpty() -> activeLayout.language
-            else -> "en"
-        }
+        val lang = getGestureLanguage(activeLayout)
         val rawCandidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, emptyList())
         val candidates = filterCandidatesForLayout(rawCandidates)
         return candidates.firstOrNull()?.text?.trim()

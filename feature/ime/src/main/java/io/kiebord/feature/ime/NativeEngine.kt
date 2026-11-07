@@ -103,10 +103,16 @@ object NativeEngine {
             kxs[i] = keyCentroids[i].centerX
             kys[i] = keyCentroids[i].centerY
         }
+        val baseLang = when (lang.substringBefore(';').trim().lowercase()) {
+            "qwerty", "spatial", "direct" -> "en"
+            else -> lang.substringBefore(';')
+        }
         val targetLang = if (learnedWords.isNotEmpty()) {
             val encoded = learnedWords.take(50).joinToString("|")
-            "$lang;$encoded"
-        } else lang
+            "$baseLang;$encoded"
+        } else if (lang.contains(';')) {
+            "$baseLang;${lang.substringAfter(';')}"
+        } else baseLang
         return try {
             val raw = decodeGesture(xs, ys, chars.toString(), kxs, kys, keyWidth, targetLang, maxResults)
             if (raw.isEmpty()) emptyList() else raw.split("|").filter { it.isNotEmpty() }

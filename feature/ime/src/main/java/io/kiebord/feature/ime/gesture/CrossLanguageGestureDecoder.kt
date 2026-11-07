@@ -28,8 +28,12 @@ class CrossLanguageGestureDecoder {
         if (points.size < 2 || keyCentroids.isEmpty()) return emptyList()
 
         val kw = keyWidthPx.coerceAtLeast(10f)
-        val isBangla = lang.startsWith("bn")
-        val isEnglish = lang.startsWith("en")
+        val normalizedLang = when (lang.trim().lowercase()) {
+            "qwerty", "spatial", "direct" -> "en"
+            else -> lang.trim()
+        }
+        val isBangla = normalizedLang.startsWith("bn")
+        val isEnglish = normalizedLang.startsWith("en")
 
         val sanitizedLearned = learnedWords.filter { w ->
             when {
@@ -40,7 +44,7 @@ class CrossLanguageGestureDecoder {
         }
 
         val decodedWords = if (NativeEngine.isAvailable()) {
-            NativeEngine.queryGesture(points, keyCentroids, kw, lang, 8, sanitizedLearned)
+            NativeEngine.queryGesture(points, keyCentroids, kw, normalizedLang, 8, sanitizedLearned)
         } else {
             emptyList()
         }
@@ -121,14 +125,14 @@ class CrossLanguageGestureDecoder {
         if (rawWord.isBlank()) return emptyList()
 
         val isPhonetic = if (NativeEngine.isAvailable()) {
-            NativeEngine.isPhoneticLayout(lang)
+            NativeEngine.isPhoneticLayout(normalizedLang)
         } else {
-            lang == "bn_borno"
+            normalizedLang == "bn_borno"
         }
 
         if (isPhonetic) {
             val transliterated = if (NativeEngine.isAvailable()) {
-                NativeEngine.transliterate(lang, rawWord)
+                NativeEngine.transliterate(normalizedLang, rawWord)
             } else {
                 rawWord
             }

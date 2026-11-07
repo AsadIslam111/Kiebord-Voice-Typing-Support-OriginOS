@@ -164,7 +164,7 @@ class PredefinedLayoutsTest {
         val bottomRowKeys = layout.rows[2].keys
         assertEquals(9, bottomRowKeys.size)
         assertEquals(KeyType.SHIFT, bottomRowKeys[0].type)
-        assertEquals("্য", bottomRowKeys[1].label)
+        assertEquals("্র", bottomRowKeys[1].label)
         assertEquals("্য", bottomRowKeys[1].shiftedLabel)
 
         assertEquals("ো", bottomRowKeys[2].label)

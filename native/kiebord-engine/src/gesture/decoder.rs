@@ -1472,6 +1472,26 @@ fn test_decode_jayed_gesture() {
     }
 
     #[test]
+    fn test_decode_with_qwerty_mode_alias() {
+        let dict = crate::dictionary::get_binary_dict("qwerty").expect("qwerty mode should resolve to en dict");
+        let keys = vec![
+            KeyCenter { char_code: 't', x: 180.0, y: 50.0 },
+            KeyCenter { char_code: 'h', x: 240.0, y: 120.0 },
+            KeyCenter { char_code: 'e', x: 100.0, y: 50.0 },
+        ];
+        let stroke = vec![
+            GesturePoint { x: 180.0, y: 50.0, timestamp_ms: 0 },
+            GesturePoint { x: 210.0, y: 85.0, timestamp_ms: 50 },
+            GesturePoint { x: 240.0, y: 120.0, timestamp_ms: 100 },
+            GesturePoint { x: 170.0, y: 85.0, timestamp_ms: 150 },
+            GesturePoint { x: 100.0, y: 50.0, timestamp_ms: 200 },
+        ];
+        let results = GestureDecoder::decode(&stroke, &keys, 40.0, dict, 5);
+        assert!(!results.is_empty());
+        assert_eq!(results[0].word, "the");
+    }
+
+    #[test]
     fn test_decode_borno_phonetic_gesture() {
         let dict = match get_bn_binary_dict() {
             Some(d) => d,

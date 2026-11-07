@@ -222,7 +222,7 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
         Err(_) => "en".to_string(),
     };
 
-    let (lang_id, learned_words) = match raw_lang_str.split_once(';') {
+    let (raw_lang_id, learned_words) = match raw_lang_str.split_once(';') {
         Some((l, words_str)) => {
             let list: Vec<String> = words_str
                 .split('|')
@@ -232,6 +232,11 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
             (l.to_string(), list)
         }
         None => (raw_lang_str, Vec::new()),
+    };
+
+    let lang_id = match raw_lang_id.trim().to_lowercase().as_str() {
+        "qwerty" | "spatial" | "direct" => "en".to_string(),
+        _ => raw_lang_id,
     };
 
     let translit_opt = translit::get_phonetic_transliterator(&lang_id);

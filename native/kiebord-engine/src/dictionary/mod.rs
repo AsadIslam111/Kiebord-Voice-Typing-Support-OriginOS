@@ -75,7 +75,12 @@ pub fn get_binary_dict(lang: &str) -> Option<&'static BinaryDict<'static>> {
     }
     if trimmed.starts_with("bn") {
         get_bn_binary_dict()
-    } else if trimmed == "en" || trimmed.starts_with("en_") {
+    } else if trimmed == "en"
+        || trimmed.starts_with("en_")
+        || trimmed.eq_ignore_ascii_case("qwerty")
+        || trimmed.eq_ignore_ascii_case("spatial")
+        || trimmed.eq_ignore_ascii_case("direct")
+    {
         get_en_binary_dict()
     } else {
         None
