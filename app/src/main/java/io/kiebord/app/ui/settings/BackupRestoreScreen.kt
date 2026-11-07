@@ -19,6 +19,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,10 @@ import kotlinx.coroutines.withContext
 @Composable
 fun BackupRestoreScreen(
     clipboardManager: SandboxedClipboardManager,
+    pendingClipboardUri: Uri? = null,
+    onClearPendingClipboardUri: () -> Unit = {},
+    pendingDictionaryUri: Uri? = null,
+    onClearPendingDictionaryUri: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
@@ -48,6 +53,74 @@ fun BackupRestoreScreen(
     val personalDictionaryRepo = remember { PersonalDictionaryRepository.getInstance(context) }
 
     var pendingError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(pendingClipboardUri) {
+        val uri = pendingClipboardUri ?: return@LaunchedEffect
+        scope.launch(Dispatchers.IO) {
+            try {
+                val items = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    BornoClipboardBackupHelper.parseBornoBackup(stream)
+                } ?: emptyList()
+
+                withContext(Dispatchers.Main) {
+                    if (items.isEmpty()) {
+                        pendingError = "No valid clipboard items found in backup file."
+                    } else {
+                        val res = clipboardManager.importParsedClips(items, replaceExisting = false)
+                        val msg = if (res.importedCount > 0) {
+                            "Imported ${res.importedCount} items" +
+                                    if (res.updatedPinnedCount > 0) " (${res.updatedPinnedCount} pinned updated)" else ""
+                        } else if (res.updatedPinnedCount > 0) {
+                            "Updated ${res.updatedPinnedCount} pinned items"
+                        } else {
+                            "All ${res.totalFound} items already exist in clipboard"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    pendingError = "Failed to read backup file: ${e.localizedMessage ?: "Unknown error"}"
+                }
+            } finally {
+                onClearPendingClipboardUri()
+            }
+        }
+    }
+
+    LaunchedEffect(pendingDictionaryUri) {
+        val uri = pendingDictionaryUri ?: return@LaunchedEffect
+        scope.launch(Dispatchers.IO) {
+            try {
+                val result = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    personalDictionaryRepo.importFromJson(stream, replaceExisting = false)
+                }
+                withContext(Dispatchers.Main) {
+                    if (result != null && result.isSuccess) {
+                        val res = result.getOrNull()!!
+                        val msg = if (res.importedCount > 0) {
+                            "Imported ${res.importedCount} words" +
+                                    if (res.skippedDuplicates > 0) " (${res.skippedDuplicates} duplicates skipped)" else ""
+                        } else if (res.skippedDuplicates > 0) {
+                            "All ${res.totalFound} words already exist in personal dictionary"
+                        } else {
+                            "Import completed (${res.totalFound} found)"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    } else {
+                        val error = result?.exceptionOrNull()?.localizedMessage ?: "Invalid dictionary file"
+                        pendingError = "Import failed: $error"
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    pendingError = "Failed to import dictionary: ${e.localizedMessage ?: "Unknown error"}"
+                }
+            } finally {
+                onClearPendingDictionaryUri()
+            }
+        }
+    }
 
     // File picker for importing Borno or Kiebord clipboard backups
     val importClipboardLauncher = rememberLauncherForActivityResult(

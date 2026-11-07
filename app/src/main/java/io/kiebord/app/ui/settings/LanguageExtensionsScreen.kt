@@ -1,5 +1,6 @@
 package io.kiebord.app.ui.settings
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -63,6 +64,8 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun LanguageExtensionsScreen(
+    pendingImportUri: Uri? = null,
+    onClearPendingImportUri: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -82,6 +85,26 @@ fun LanguageExtensionsScreen(
     LaunchedEffect(refreshTrigger) {
         installedPacks = withContext(Dispatchers.IO) {
             repository.getInstalledPacks()
+        }
+    }
+
+    LaunchedEffect(pendingImportUri) {
+        val uri = pendingImportUri ?: return@LaunchedEffect
+        scope.launch {
+            val installResult = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        repository.installPack(stream).getOrThrow()
+                    } ?: error("Failed to open file stream")
+                }
+            }
+            installResult.onSuccess { meta ->
+                Toast.makeText(context, "${meta.displayName} installed successfully", Toast.LENGTH_SHORT).show()
+                refreshTrigger++
+            }.onFailure { err ->
+                Toast.makeText(context, "Install failed: ${err.message}", Toast.LENGTH_LONG).show()
+            }
+            onClearPendingImportUri()
         }
     }
 

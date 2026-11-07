@@ -89,6 +89,9 @@ class MainActivity : ComponentActivity() {
     private var isImeSelectedState by mutableStateOf(false)
     private var requestedNavigationTarget by mutableStateOf<String?>(null)
     private var pendingThemeImportUri by mutableStateOf<android.net.Uri?>(null)
+    private var pendingLangPackImportUri by mutableStateOf<android.net.Uri?>(null)
+    private var pendingClipboardImportUri by mutableStateOf<android.net.Uri?>(null)
+    private var pendingDictionaryImportUri by mutableStateOf<android.net.Uri?>(null)
     private lateinit var preferencesRepo: KiebordPreferencesRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -169,6 +172,12 @@ class MainActivity : ComponentActivity() {
                             onNavigationTargetConsumed = { requestedNavigationTarget = null },
                             pendingThemeImportUri = pendingThemeImportUri,
                             onClearPendingThemeImportUri = { pendingThemeImportUri = null },
+                            pendingLangPackImportUri = pendingLangPackImportUri,
+                            onClearPendingLangPackImportUri = { pendingLangPackImportUri = null },
+                            pendingClipboardImportUri = pendingClipboardImportUri,
+                            onClearPendingClipboardImportUri = { pendingClipboardImportUri = null },
+                            pendingDictionaryImportUri = pendingDictionaryImportUri,
+                            onClearPendingDictionaryImportUri = { pendingDictionaryImportUri = null },
                             onOpenSettings = {
                                 startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
                             },
@@ -189,6 +198,23 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
     }
 
+    private fun extractFileName(uri: android.net.Uri): String? {
+        if (uri.scheme == "content") {
+            try {
+                contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (idx != -1) {
+                            val name = cursor.getString(idx)
+                            if (!name.isNullOrBlank()) return name
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        return uri.lastPathSegment?.substringAfterLast('/')
+    }
+
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
         var importUri: android.net.Uri? = null
@@ -199,8 +225,28 @@ class MainActivity : ComponentActivity() {
             importUri = intent.getParcelableExtra(Intent.EXTRA_STREAM)
         }
         if (importUri != null) {
-            pendingThemeImportUri = importUri
-            requestedNavigationTarget = "themes"
+            val fileName = extractFileName(importUri)?.lowercase() ?: ""
+            when {
+                fileName.endsWith(".bornothemepack") || fileName.endsWith(".bornotheme") -> {
+                    pendingThemeImportUri = importUri
+                    requestedNavigationTarget = "themes"
+                }
+                fileName.endsWith(".bornolang") -> {
+                    pendingLangPackImportUri = importUri
+                    requestedNavigationTarget = "extensions"
+                }
+                fileName.endsWith(".bornoclip") || fileName.endsWith(".clip") -> {
+                    pendingClipboardImportUri = importUri
+                    requestedNavigationTarget = "backup_restore"
+                }
+                fileName.endsWith(".bornopdb") -> {
+                    pendingDictionaryImportUri = importUri
+                    requestedNavigationTarget = "backup_restore"
+                }
+                else -> {
+                    android.widget.Toast.makeText(this, "Unsupported file format", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
             return
         }
         val target = intent.getStringExtra("navigate_to")
@@ -235,6 +281,12 @@ fun KiebordSettingsApp(
     onNavigationTargetConsumed: () -> Unit = {},
     pendingThemeImportUri: android.net.Uri? = null,
     onClearPendingThemeImportUri: () -> Unit = {},
+    pendingLangPackImportUri: android.net.Uri? = null,
+    onClearPendingLangPackImportUri: () -> Unit = {},
+    pendingClipboardImportUri: android.net.Uri? = null,
+    onClearPendingClipboardImportUri: () -> Unit = {},
+    pendingDictionaryImportUri: android.net.Uri? = null,
+    onClearPendingDictionaryImportUri: () -> Unit = {},
     onOpenSettings: () -> Unit,
     onSwitchIme: () -> Unit
 ) {
@@ -255,6 +307,10 @@ fun KiebordSettingsApp(
             SettingsScreen.KeyboardLayouts
         } else if (target == "themes" || target == "appearance" || pendingThemeImportUri != null) {
             SettingsScreen.AppearanceThemes
+        } else if (target == "extensions" || target == "language_extensions" || target == "languages" || pendingLangPackImportUri != null) {
+            SettingsScreen.LanguageExtensions
+        } else if (target == "backup" || target == "backup_restore" || target == "restore" || pendingClipboardImportUri != null || pendingDictionaryImportUri != null) {
+            SettingsScreen.BackupRestore
         } else if (target == "clipboard") {
             SettingsScreen.Clipboard
         } else if (target == "preferences") {
@@ -317,6 +373,12 @@ fun KiebordSettingsApp(
                     if (currentScreen != SettingsScreen.LanguageExtensions) {
                         backStack = listOf(SettingsScreen.Main)
                         currentScreen = SettingsScreen.LanguageExtensions
+                    }
+                }
+                "backup", "backup_restore", "restore" -> {
+                    if (currentScreen != SettingsScreen.BackupRestore) {
+                        backStack = listOf(SettingsScreen.Main)
+                        currentScreen = SettingsScreen.BackupRestore
                     }
                 }
             }
@@ -659,6 +721,8 @@ fun KiebordSettingsApp(
 
                     is SettingsScreen.LanguageExtensions -> {
                         LanguageExtensionsScreen(
+                            pendingImportUri = pendingLangPackImportUri,
+                            onClearPendingImportUri = onClearPendingLangPackImportUri,
                             onBack = navigateBack
                         )
                     }
@@ -666,6 +730,10 @@ fun KiebordSettingsApp(
                     is SettingsScreen.BackupRestore -> {
                         BackupRestoreScreen(
                             clipboardManager = SandboxedClipboardManager.getInstance(context),
+                            pendingClipboardUri = pendingClipboardImportUri,
+                            onClearPendingClipboardUri = onClearPendingClipboardImportUri,
+                            pendingDictionaryUri = pendingDictionaryImportUri,
+                            onClearPendingDictionaryUri = onClearPendingDictionaryImportUri,
                             onBack = navigateBack
                         )
                     }

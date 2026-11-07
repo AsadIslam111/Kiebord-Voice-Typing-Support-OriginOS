@@ -380,7 +380,7 @@ fun AppearanceThemesScreen(
                                     val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                         type = "application/octet-stream"
                                         putExtra(Intent.EXTRA_STREAM, shareUri)
-                                        putExtra(Intent.EXTRA_SUBJECT, "$targetName.bornotheme")
+                                        putExtra(Intent.EXTRA_SUBJECT, "$targetName.bornothemepack")
                                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     }
                                     context.startActivity(
@@ -545,7 +545,7 @@ fun AppearanceThemesScreen(
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
-                                    text = ".bornotheme",
+                                    text = "Theme File",
                                     fontSize = 11.sp,
                                     color = colors.textSecondary,
                                     textAlign = TextAlign.Center

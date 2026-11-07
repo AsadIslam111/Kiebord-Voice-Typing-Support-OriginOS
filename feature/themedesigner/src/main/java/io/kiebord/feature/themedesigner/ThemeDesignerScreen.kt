@@ -1604,7 +1604,7 @@ internal fun ThemeDesignerScreenContent(
                         }
                         isSaving = false
                         result.onSuccess { savedId ->
-                            val savedFileName = "${state.toSpec().fileBaseName()}.bornotheme"
+                            val savedFileName = "${state.toSpec().fileBaseName()}.bornothemepack"
                             Toast.makeText(
                                 context,
                                 "Saved $savedFileName",

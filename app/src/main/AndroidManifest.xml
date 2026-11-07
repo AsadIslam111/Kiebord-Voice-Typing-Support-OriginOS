@@ -32,36 +32,85 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
 
-            <!-- Auto-open .bornotheme files (Without MIME type) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="content" />
                 <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.bornothemepack" />
+                <data android:pathPattern=".*\\..*\\.bornothemepack" />
+                <data android:pathPattern=".*\\..*\\..*\\.bornothemepack" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornothemepack" />
+                <data android:pathSuffix=".bornothemepack" />
                 <data android:pathPattern=".*\\.bornotheme" />
                 <data android:pathPattern=".*\\..*\\.bornotheme" />
                 <data android:pathPattern=".*\\..*\\..*\\.bornotheme" />
                 <data android:pathPattern=".*\\..*\\..*\\..*\\.bornotheme" />
                 <data android:pathSuffix=".bornotheme" />
+                <data android:pathPattern=".*\\.bornolang" />
+                <data android:pathPattern=".*\\..*\\.bornolang" />
+                <data android:pathPattern=".*\\..*\\..*\\.bornolang" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornolang" />
+                <data android:pathSuffix=".bornolang" />
+                <data android:pathPattern=".*\\.bornoclip" />
+                <data android:pathPattern=".*\\..*\\.bornoclip" />
+                <data android:pathPattern=".*\\..*\\..*\\.bornoclip" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornoclip" />
+                <data android:pathSuffix=".bornoclip" />
+                <data android:pathPattern=".*\\.clip" />
+                <data android:pathPattern=".*\\..*\\.clip" />
+                <data android:pathPattern=".*\\..*\\..*\\.clip" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.clip" />
+                <data android:pathSuffix=".clip" />
+                <data android:pathPattern=".*\\.bornopdb" />
+                <data android:pathPattern=".*\\..*\\.bornopdb" />
+                <data android:pathPattern=".*\\..*\\..*\\.bornopdb" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornopdb" />
+                <data android:pathSuffix=".bornopdb" />
             </intent-filter>
 
-            <!-- Auto-open .bornotheme files (MIME type */*) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="content" />
                 <data android:scheme="file" />
+                <data android:host="*" />
                 <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.bornothemepack" />
+                <data android:pathPattern=".*\\..*\\.bornothemepack" />
+                <data android:pathPattern=".*\\..*\\..*\\.bornothemepack" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornothemepack" />
+                <data android:pathSuffix=".bornothemepack" />
                 <data android:pathPattern=".*\\.bornotheme" />
                 <data android:pathPattern=".*\\..*\\.bornotheme" />
                 <data android:pathPattern=".*\\..*\\..*\\.bornotheme" />
                 <data android:pathPattern=".*\\..*\\..*\\..*\\.bornotheme" />
                 <data android:pathSuffix=".bornotheme" />
+                <data android:pathPattern=".*\\.bornolang" />
+                <data android:pathPattern=".*\\..*\\.bornolang" />
+                <data android:pathPattern=".*\\..*\\..*\\.bornolang" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornolang" />
+                <data android:pathSuffix=".bornolang" />
+                <data android:pathPattern=".*\\.bornoclip" />
+                <data android:pathPattern=".*\\..*\\.bornoclip" />
+                <data android:pathPattern=".*\\..*\\..*\\.bornoclip" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornoclip" />
+                <data android:pathSuffix=".bornoclip" />
+                <data android:pathPattern=".*\\.clip" />
+                <data android:pathPattern=".*\\..*\\.clip" />
+                <data android:pathPattern=".*\\..*\\..*\\.clip" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.clip" />
+                <data android:pathSuffix=".clip" />
+                <data android:pathPattern=".*\\.bornopdb" />
+                <data android:pathPattern=".*\\..*\\.bornopdb" />
+                <data android:pathPattern=".*\\..*\\..*\\.bornopdb" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornopdb" />
+                <data android:pathSuffix=".bornopdb" />
             </intent-filter>
 
-            <!-- Auto-open .bornotheme files (MIME type application/octet-stream) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -69,40 +118,14 @@
                 <data android:scheme="content" />
                 <data android:scheme="file" />
                 <data android:mimeType="application/octet-stream" />
-                <data android:pathPattern=".*\\.bornotheme" />
-                <data android:pathPattern=".*\\..*\\.bornotheme" />
-                <data android:pathPattern=".*\\..*\\..*\\.bornotheme" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornotheme" />
-                <data android:pathSuffix=".bornotheme" />
-            </intent-filter>
-
-            <!-- Auto-open .bornotheme files (text/*, application/json, application/x-bornotheme) -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-                <data android:mimeType="text/*" />
-                <data android:pathPattern=".*\\.bornotheme" />
-                <data android:pathPattern=".*\\..*\\.bornotheme" />
-                <data android:pathPattern=".*\\..*\\..*\\.bornotheme" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.bornotheme" />
-                <data android:pathSuffix=".bornotheme" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="content" />
-                <data android:scheme="file" />
+                <data android:mimeType="application/x-bornothemepack" />
+                <data android:mimeType="application/bornothemepack" />
                 <data android:mimeType="application/x-bornotheme" />
                 <data android:mimeType="application/bornotheme" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
+                <data android:mimeType="application/x-bornolang" />
+                <data android:mimeType="application/bornolang" />
+                <data android:mimeType="application/x-bornoclip" />
+                <data android:mimeType="application/x-bornopdb" />
             </intent-filter>
         </activity>
 

@@ -109,7 +109,7 @@ class ThemeRepository private constructor(private val context: Context) {
                         customThemes[def.id] = def
                         richThemes[def.id] = spec
                     } else if (item.isFile) {
-                        if (item.name.endsWith(".json") || item.name.endsWith(".kbtheme") || item.name.endsWith(".bornotheme")) {
+                        if (item.name.endsWith(".json") || item.name.endsWith(".kbtheme") || item.name.endsWith(".bornotheme") || item.name.endsWith(".bornothemepack")) {
                             val bytes = item.readBytes()
                             if (ThemeZipUtils.isZipBytes(bytes)) {
                                 val targetDir = File(customThemesDir, item.nameWithoutExtension)
@@ -464,7 +464,7 @@ class ThemeRepository private constructor(private val context: Context) {
         val versionedSpec = spec.copy(schemaVersion = 2)
         richThemes[versionedSpec.id] = versionedSpec
         val fileNameStem = versionedSpec.fileBaseName().ifEmpty { versionedSpec.id }
-        val file = File(customThemesDir, "$fileNameStem.bornotheme")
+        val file = File(customThemesDir, "$fileNameStem.bornothemepack")
         file.writeText(json.encodeToString(KeyboardThemeSpec.serializer(), versionedSpec), Charsets.UTF_8)
         val scheme = versionedSpec.toKeyboardColorScheme()
         val def = versionedSpec.toCustomThemeDef()
@@ -606,7 +606,7 @@ class ThemeRepository private constructor(private val context: Context) {
                 if (!exists()) mkdirs()
             }
             val safeName = richSpec.fileBaseName().ifEmpty { cid }
-            val outFile = File(shareDir, "$safeName.bornotheme")
+            val outFile = File(shareDir, "$safeName.bornothemepack")
             if (outFile.exists()) outFile.delete()
 
             val hasLocalAssets = listOfNotNull(
@@ -644,6 +644,8 @@ class ThemeRepository private constructor(private val context: Context) {
 
         val spec = richThemes[id]
         val files = listOfNotNull(
+            File(customThemesDir, "$id.bornothemepack"),
+            spec?.fileBaseName()?.takeIf { it.isNotBlank() }?.let { File(customThemesDir, "$it.bornothemepack") },
             File(customThemesDir, "$id.bornotheme"),
             spec?.fileBaseName()?.takeIf { it.isNotBlank() }?.let { File(customThemesDir, "$it.bornotheme") },
             File(customThemesDir, "$id.kbtheme"),
