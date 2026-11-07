@@ -114,7 +114,7 @@ class KiebordService : InputMethodService() {
         if (!preferencesState.autoCapitalization) return false
         if (activeLayout.noAutoCapitalization || primaryAlphaLayout.noAutoCapitalization) return false
         if (isPhoneticLayout()) return false
-        if (activeLayout.id.startsWith("bn_") || primaryAlphaLayout.id.startsWith("bn_")) return false
+        if (isBanglaLayout(activeLayout) || isBanglaLayout(primaryAlphaLayout)) return false
         if (isUrlOrCodeField()) return false
         return true
     }
@@ -133,6 +133,9 @@ class KiebordService : InputMethodService() {
     }
 
     private fun getTransliterationManager(): TransliterationManager {
+        if (isM17nLayout() && !NativeEngine.isM17nLayoutReady(activeLayout.id)) {
+            ensureLayoutProcessorInitialized(activeLayout)
+        }
         if (transliterationManager.layoutId != activeLayout.id) {
             transliterationManager = TransliterationManagerFactory.create(
                 activeLayout.id,
@@ -252,7 +255,9 @@ class KiebordService : InputMethodService() {
             activeLayout = primaryAlphaLayout
         }
 
-        val initialLang = if (activeLayout.id.startsWith("bn")) "bn" else "en"
+        ensureLayoutProcessorInitialized(primaryAlphaLayout)
+
+        val initialLang = if (isBanglaLayout(activeLayout)) "bn" else "en"
         val secondaryLang = if (initialLang == "bn") "en" else "bn"
         serviceScope.launch(Dispatchers.IO) {
             NativeEngine.ensureInitialized(this@KiebordService, initialLang)
@@ -282,6 +287,7 @@ class KiebordService : InputMethodService() {
                 val targetPrimary = layoutRepo.getLayout(targetPrimaryId)
                 if (primaryAlphaLayout.id != targetPrimary.id || !enabledIds.contains(primaryAlphaLayout.id)) {
                     primaryAlphaLayout = targetPrimary
+                    ensureLayoutProcessorInitialized(targetPrimary)
                     if (!isSymbolsMode) {
                         activeLayout = targetPrimary
                     }
@@ -561,6 +567,7 @@ class KiebordService : InputMethodService() {
         if (cachedLayoutId != null && cachedLayoutId != primaryAlphaLayout.id) {
             primaryAlphaLayout = layoutRepo.getLayout(cachedLayoutId)
         }
+        ensureLayoutProcessorInitialized(primaryAlphaLayout)
         val inputType = info?.inputType ?: 0
         val inputClass = inputType and InputType.TYPE_MASK_CLASS
         val variation = inputType and InputType.TYPE_MASK_VARIATION
@@ -1166,7 +1173,7 @@ class KiebordService : InputMethodService() {
                             !isPunctuationChar(textBefore[textBefore.length - 2])
                         ) {
                             ic.deleteSurroundingText(1, 0)
-                            val puncToInsert = if (activeLayout.id.startsWith("bn_")) "। " else ". "
+                            val puncToInsert = if (isBanglaLayout(activeLayout)) "। " else ". "
                             ic.commitText(puncToInsert, 1)
                             if (shouldAutoCapitalize() && shiftState == ShiftState.UNSHIFTED) {
                                 shiftState = ShiftState.ONE_SHOT
@@ -2285,6 +2292,7 @@ class KiebordService : InputMethodService() {
     }
 
     private fun isEnglishLayout(layout: io.kiebord.common.model.KeyboardLayoutDef = activeLayout): Boolean {
+        if (isBanglaLayout(layout)) return false
         return layout.language == "en" || layout.id.startsWith("en") || layout.gestureMode.equals("qwerty", ignoreCase = true)
     }
 
@@ -2373,7 +2381,8 @@ class KiebordService : InputMethodService() {
 
         gestureCommitJob?.cancel()
         gestureCommitJob = serviceScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            val lang = if (isBanglaLayout()) activeLayout.id else "en"
+            val gestureModel = activeLayout.gestureMode?.ifEmpty { null }
+            val lang = gestureModel ?: if (isBanglaLayout()) activeLayout.id else "en"
             val learnedWords = if (preferencesState.learnedWordsEnabled) {
                 val all = userDictionaryRepo.getLearnedGestureWords(20)
                 if (isBanglaLayout()) {
@@ -2418,7 +2427,8 @@ class KiebordService : InputMethodService() {
     ): String? {
         if (!preferencesState.gestureTypingEnabled || !activeLayout.isQwertyBased()) return null
         if (trail.size < 4 || centroids.isEmpty()) return null
-        val lang = if (isBanglaLayout()) activeLayout.id else "en"
+        val gestureModel = activeLayout.gestureMode?.ifEmpty { null }
+        val lang = gestureModel ?: if (isBanglaLayout()) activeLayout.id else "en"
         val rawCandidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, emptyList())
         val candidates = filterCandidatesForLayout(rawCandidates)
         return candidates.firstOrNull()?.text?.trim()
@@ -2585,8 +2595,9 @@ class KiebordService : InputMethodService() {
                 val learnedNext = if (preferencesState.learnedWordsEnabled && prev.isNotEmpty()) {
                     userDictionaryRepo.getNextWords(prev, 5) { !containsLatinText(it) }
                 } else emptyList()
+                val predLang = if (isBanglaLayout(activeLayout)) "bn" else activeLayout.id
                 val predictions = if (prev.isNotEmpty()) {
-                    NativeEngine.queryNextWords(prev, activeLayout.id, 10).filter { !containsLatinText(it) }
+                    NativeEngine.queryNextWords(prev, predLang, 10).filter { !containsLatinText(it) }
                 } else emptyList()
                 val merged = (learnedNext + predictions).distinct().take(12)
                 activeSuggestions = filterAndMarkCandidates(merged.mapIndexed { idx, word ->
