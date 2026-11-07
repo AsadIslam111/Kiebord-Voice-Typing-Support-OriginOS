@@ -282,16 +282,6 @@ fun KeyboardRootView(
         }
     } else currentLayoutIndex
 
-    var lastHapticIndex by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(isSpacebarSwiping, targetSwipeIndex) {
-        if (isSpacebarSwiping && lastHapticIndex != targetSwipeIndex) {
-            lastHapticIndex = targetSwipeIndex
-            performHaptic(HapticFeedbackType.TextHandleMove)
-        } else if (!isSpacebarSwiping) {
-            lastHapticIndex = null
-        }
-    }
-
     // Phase 5, 6 & 8: Toolbar, Emoji, Resizer, Number row, TextEdit, Clipboard, and Tools Drawer states
     val defaultPinned = listOf(
         ToolbarAction.EMOJI,
@@ -1627,7 +1617,6 @@ fun KeyboardRootView(
 
                                 if (targetItemIndex != null && targetItemIndex != selectedMoreKeyIndex) {
                                     selectedMoreKeyIndex = targetItemIndex
-                                    performHaptic(HapticFeedbackType.TextHandleMove)
                                 }
                                 true
                             }
@@ -1846,7 +1835,6 @@ fun KeyboardRootView(
                                         val newLayoutId = effectiveLayoutList.getOrNull(finalTarget)
                                         if (newLayoutId != null && newLayoutId != layout.id) {
                                             onSwitchToLayout(newLayoutId)
-                                            performHaptic(HapticFeedbackType.LongPress)
                                         }
                                         isSpacebarSwiping = false
                                         spacebarSwipeDeltaX = 0f
