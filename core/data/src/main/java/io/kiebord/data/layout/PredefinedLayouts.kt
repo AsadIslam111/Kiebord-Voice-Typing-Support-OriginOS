@@ -607,7 +607,7 @@ object PredefinedLayouts {
             KeyRow(
                 listOf(
                     KeyDef(type = KeyType.SHIFT, icon = "shift", widthWeight = 1.5f),
-                    KeyDef("্য", "্য"),
+                    KeyDef("্র", "্য"),
                     KeyDef("ো", "ৌ", flickUp = "ও", moreKeys = listOf("ও"), shiftedFlickUp = "ঔ", shiftedMoreKeys = listOf("ঔ")),
                     KeyDef("ে", "ৈ", flickUp = "এ", moreKeys = listOf("এ"), shiftedFlickUp = "ঐ", shiftedMoreKeys = listOf("ঐ")),
                     KeyDef("র", "ল", shiftedFlickUp = "ব়্য", shiftedMoreKeys = listOf("ব়্য")),
