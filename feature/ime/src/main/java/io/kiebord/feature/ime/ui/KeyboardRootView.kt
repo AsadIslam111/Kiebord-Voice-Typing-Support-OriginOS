@@ -2621,12 +2621,15 @@ fun SpacebarLayoutSliderOverlay(
 
     val popupBg = colorScheme.moreKeysBackground
     val isDarkPopup = ThemeColorUtils.isColorDark(popupBg)
-    val activeLabelColor = ThemeColorUtils.ensureContrast(
-        foreground = colorScheme.effectiveActiveOptionHighlight,
+    val candidateColor = when {
+        colorScheme.accentColor != Color.Unspecified -> colorScheme.accentColor
+        colorScheme.shiftActiveColor != Color.Unspecified -> colorScheme.shiftActiveColor
+        else -> colorScheme.keyForeground
+    }
+    val activeLabelColor = ThemeColorUtils.adjustContrast(
+        color = candidateColor,
         background = popupBg,
-        minContrast = 2.5f,
-        fallbackLight = Color(0xFF38BDF8),
-        fallbackDark = Color(0xFF0284C7)
+        minContrast = 2.8f
     )
     val pillShape = RoundedCornerShape(percent = 50)
 

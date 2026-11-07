@@ -74,12 +74,15 @@ fun LanguageSelectionDialog(
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val dialogBg = colorScheme.containerBackground
-    val activeAccent = ThemeColorUtils.ensureContrast(
-        foreground = colorScheme.effectiveActiveOptionHighlight,
+    val candidateColor = when {
+        colorScheme.accentColor != Color.Unspecified -> colorScheme.accentColor
+        colorScheme.shiftActiveColor != Color.Unspecified -> colorScheme.shiftActiveColor
+        else -> colorScheme.keyForeground
+    }
+    val activeAccent = ThemeColorUtils.adjustContrast(
+        color = candidateColor,
         background = dialogBg,
-        minContrast = 2.5f,
-        fallbackLight = Color(0xFF38BDF8),
-        fallbackDark = Color(0xFF0284C7)
+        minContrast = 2.8f
     )
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val contentPaddingVertical = if (isLandscape) 5.dp else 8.dp

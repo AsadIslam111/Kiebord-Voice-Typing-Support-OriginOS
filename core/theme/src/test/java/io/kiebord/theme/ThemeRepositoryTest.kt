@@ -1103,5 +1103,26 @@ class ThemeRepositoryTest {
             assertNotNull(gradScheme)
         }
     }
+
+    @Test
+    fun testAdjustContrast() {
+        val darkBg = Color(0xFF121212)
+        val highContrastColor = Color(0xFF6366F1)
+        val result1 = ThemeColorUtils.adjustContrast(highContrastColor, darkBg, minContrast = 2.8f)
+        assertEquals(highContrastColor, result1)
+
+        val lowContrastDarkColor = Color(0xFF1E1E24)
+        val result2 = ThemeColorUtils.adjustContrast(lowContrastDarkColor, darkBg, minContrast = 2.8f)
+        assertTrue(ThemeColorUtils.contrastRatio(result2, darkBg) >= 2.8f)
+
+        val lightBg = Color(0xFFFFFFFF)
+        val lowContrastLightColor = Color(0xFFFFF9C4)
+        val result3 = ThemeColorUtils.adjustContrast(lowContrastLightColor, lightBg, minContrast = 2.8f)
+        assertTrue(ThemeColorUtils.contrastRatio(result3, lightBg) >= 2.8f)
+
+        val unspecified = Color.Unspecified
+        val result4 = ThemeColorUtils.adjustContrast(unspecified, darkBg, minContrast = 2.8f)
+        assertEquals(Color.White, result4)
+    }
 }
 

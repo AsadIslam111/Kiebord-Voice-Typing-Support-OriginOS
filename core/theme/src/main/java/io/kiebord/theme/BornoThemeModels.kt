@@ -211,6 +211,38 @@ object ThemeColorUtils {
         return if (contrastWithLight >= contrastWithDark) fallbackLight else fallbackDark
     }
 
+    fun adjustContrast(
+        color: Color,
+        background: Color,
+        minContrast: Float = 2.8f,
+        fallbackLight: Color = Color.White,
+        fallbackDark: Color = Color(0xFF1B1B1F)
+    ): Color {
+        val darkBg = isColorDark(background)
+        val targetFallback = if (darkBg) fallbackLight else fallbackDark
+        if (color == Color.Unspecified || color.alpha < 0.25f) {
+            return targetFallback
+        }
+        val currentRatio = contrastRatio(color, background)
+        if (currentRatio >= minContrast) {
+            return color
+        }
+        val target = targetFallback
+        for (step in 1..10) {
+            val t = step / 10f
+            val candidate = Color(
+                red = color.red + (target.red - color.red) * t,
+                green = color.green + (target.green - color.green) * t,
+                blue = color.blue + (target.blue - color.blue) * t,
+                alpha = 1f
+            )
+            if (contrastRatio(candidate, background) >= minContrast) {
+                return candidate
+            }
+        }
+        return target
+    }
+
     fun isTransparent(hex: String): Boolean {
         val clean = hex.trim()
         if (clean.isEmpty()) return true
