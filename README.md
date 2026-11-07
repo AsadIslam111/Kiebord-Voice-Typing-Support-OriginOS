@@ -41,8 +41,9 @@ Kiebord comes with the essential features you need for everyday typing, without 
 | Bangla | Borno Phonetic, Avro Phonetic, Borno Easy, National (BSTI), Probhat, Khipro |
 | English | QWERTY, Borno Math |
 | Arabic | Arabic (with dedicated Harakat / diacritics row) |
+| Turkish *(Extension)* | Türkçe (Q), Türkçe (Compact), Türkçe (F) |
 
-*Custom layouts can also be added by placing JSON layout files in `assets/layouts/`.*
+*Additional languages, layouts, and dictionaries can be installed as `.bornolang` packs via **Settings > Language Extensions** (available through the in-app catalog or sideloaded from device storage). Custom layouts can also be added by placing JSON layout files in `assets/layouts/`.*
 
 ### Input & Editing
 * **Gesture Typing**: Swipe-to-type support across supported layouts.
