@@ -275,7 +275,7 @@ fun ReorderableToolbar(
                                     isHoveredByDrawerItem -> colorScheme.accentColor.copy(alpha = 0.35f)
                                     isDraggingThisItem -> colorScheme.keyBackground
                                     isActive -> colorScheme.effectiveActiveOptionHighlight.copy(alpha = 0.22f)
-                                    isCustomizeMode -> colorScheme.keyBackground.copy(alpha = if (colorScheme.keyBackground.alpha < 0.4f) 0.65f else colorScheme.keyBackground.alpha)
+                                    isCustomizeMode -> colorScheme.keyBackground
                                     else -> Color.Transparent
                                 }
                             )

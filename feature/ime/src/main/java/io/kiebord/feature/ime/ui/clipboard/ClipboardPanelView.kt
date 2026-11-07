@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.feature.ime.clipboard.ClipboardEntry
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.ThemeColorUtils
 
 private enum class ClipboardFilter {
     ALL,
@@ -138,13 +139,15 @@ fun ClipboardPanelView(
 
                 Spacer(modifier = Modifier.weight(1f))
 
+                val activeSegmentFg = if (ThemeColorUtils.isColorDark(colorScheme.accentColor)) Color.White else colorScheme.actionKeyForeground
+
                 // Pin / Recent toggle group button (fully rounded pill)
                 Row(
                     modifier = Modifier
                         .height(32.dp)
                         .clip(CircleShape)
-                        .background(colorScheme.keyBackground.copy(alpha = 0.7f))
-                        .border(BorderStroke(1.dp, Color(0x1AFFFFFF)), CircleShape)
+                        .background(colorScheme.keyBackground)
+                        .border(BorderStroke(1.dp, colorScheme.keyForeground.copy(alpha = 0.15f)), CircleShape)
                         .padding(2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -163,7 +166,7 @@ fun ClipboardPanelView(
                             text = "All",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (currentFilter == ClipboardFilter.ALL) Color.White else colorScheme.keyForeground.copy(alpha = 0.75f)
+                            color = if (currentFilter == ClipboardFilter.ALL) activeSegmentFg else colorScheme.keyForeground.copy(alpha = 0.75f)
                         )
                     }
 
@@ -185,14 +188,14 @@ fun ClipboardPanelView(
                             Icon(
                                 imageVector = Icons.Outlined.PushPin,
                                 contentDescription = null,
-                                tint = if (currentFilter == ClipboardFilter.PINNED) Color.White else colorScheme.keyForeground.copy(alpha = 0.75f),
+                                tint = if (currentFilter == ClipboardFilter.PINNED) activeSegmentFg else colorScheme.keyForeground.copy(alpha = 0.75f),
                                 modifier = Modifier.size(13.dp)
                             )
                             Text(
                                 text = "Pinned",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (currentFilter == ClipboardFilter.PINNED) Color.White else colorScheme.keyForeground.copy(alpha = 0.75f)
+                                color = if (currentFilter == ClipboardFilter.PINNED) activeSegmentFg else colorScheme.keyForeground.copy(alpha = 0.75f)
                             )
                         }
                     }
