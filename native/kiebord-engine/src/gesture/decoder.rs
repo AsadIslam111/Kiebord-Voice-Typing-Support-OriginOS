@@ -1,8 +1,109 @@
 use crate::dictionary::binary_dict::BinaryDict;
 use crate::translit::traits::PhoneticTransliterator;
 use parking_lot::RwLock;
+use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, OnceLock};
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct CharFolding {
+    #[serde(default)]
+    pub fold_to_base: HashMap<char, char>,
+    #[serde(default)]
+    pub confusion_groups: Vec<Vec<char>>,
+    #[serde(default)]
+    pub case_pairs: Vec<(char, char)>,
+}
+
+static CHAR_FOLDING_REGISTRY: OnceLock<RwLock<HashMap<String, CharFolding>>> = OnceLock::new();
+
+pub fn register_char_folding_json(lang: &str, json_str: &str) -> bool {
+    match serde_json::from_str::<CharFolding>(json_str) {
+        Ok(folding) => {
+            crate::dictionary::proximity::KeyProximity::register_folding_pairs(
+                lang,
+                &folding.case_pairs,
+                &folding.confusion_groups,
+            );
+            let registry = CHAR_FOLDING_REGISTRY.get_or_init(|| RwLock::new(HashMap::new()));
+            let mut map = registry.write();
+            map.insert(lang.to_string(), folding.clone());
+            map.insert(lang.to_lowercase(), folding.clone());
+            if let Some((base, _)) = lang.split_once('_') {
+                map.insert(base.to_string(), folding.clone());
+                map.insert(base.to_lowercase(), folding);
+            }
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+pub fn get_char_folding(lang: &str) -> Option<CharFolding> {
+    let registry = CHAR_FOLDING_REGISTRY.get_or_init(|| RwLock::new(HashMap::new()));
+    let map = registry.read();
+    if let Some(f) = map.get(lang) {
+        return Some(f.clone());
+    }
+    let lower = lang.to_lowercase();
+    if let Some(f) = map.get(&lower) {
+        return Some(f.clone());
+    }
+    if let Some((base, _)) = lang.split_once('_') {
+        if let Some(f) = map.get(base) {
+            return Some(f.clone());
+        }
+        if let Some(f) = map.get(&base.to_lowercase()) {
+            return Some(f.clone());
+        }
+    }
+    None
+}
+
+#[inline]
+pub fn lookup_key_pos(
+    key_map: &HashMap<char, (f32, f32)>,
+    folding: Option<&CharFolding>,
+    ch: char,
+) -> Option<(f32, f32)> {
+    let lc = ch.to_ascii_lowercase();
+    if let Some(&pos) = key_map.get(&lc) {
+        return Some(pos);
+    }
+    if let Some(&pos) = key_map.get(&ch) {
+        return Some(pos);
+    }
+    if let Some(f) = folding {
+        if let Some(&base) = f.fold_to_base.get(&ch).or_else(|| f.fold_to_base.get(&lc)) {
+            if let Some(&pos) = key_map.get(&base.to_ascii_lowercase()).or_else(|| key_map.get(&base)) {
+                return Some(pos);
+            }
+        }
+    }
+    None
+}
+
+#[inline]
+pub fn in_key_set(
+    set: &HashSet<char>,
+    _key_map: &HashMap<char, (f32, f32)>,
+    folding: Option<&CharFolding>,
+    ch: char,
+) -> bool {
+    let lc = ch.to_ascii_lowercase();
+    if set.contains(&lc) || set.contains(&ch) {
+        return true;
+    }
+    if let Some(f) = folding {
+        if let Some(&base) = f.fold_to_base.get(&ch).or_else(|| f.fold_to_base.get(&lc)) {
+            let base_lc = base.to_ascii_lowercase();
+            if set.contains(&base_lc) || set.contains(&base) {
+                return true;
+            }
+        }
+    }
+    false
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GesturePoint {
@@ -275,6 +376,18 @@ impl GestureDecoder {
         limit: usize,
         learned_words: &[String],
     ) -> Vec<GestureCandidate> {
+        Self::decode_with_learned_and_folding(points, keys, key_width, dict, limit, learned_words, None)
+    }
+
+    pub fn decode_with_learned_and_folding(
+        points: &[GesturePoint],
+        keys: &[KeyCenter],
+        key_width: f32,
+        dict: &BinaryDict,
+        limit: usize,
+        learned_words: &[String],
+        folding: Option<&CharFolding>,
+    ) -> Vec<GestureCandidate> {
         if points.len() < 2 || keys.is_empty() || key_width <= 0.0 {
             return Vec::new();
         }
@@ -339,16 +452,27 @@ impl GestureDecoder {
         let mut resampled_buf: Vec<GesturePoint> = Vec::with_capacity(sample_count);
 
         for &start_ch in &start_keys {
-            let mut start_targets = [start_ch as u16, 0];
-            let target_len = if start_ch.is_ascii_lowercase() {
-                start_targets[1] = start_ch.to_ascii_uppercase() as u16;
-                2
+            let mut start_targets: [u16; 8] = [0; 8];
+            let mut target_len = 0;
+            start_targets[target_len] = start_ch as u16;
+            target_len += 1;
+            if start_ch.is_ascii_lowercase() {
+                start_targets[target_len] = start_ch.to_ascii_uppercase() as u16;
+                target_len += 1;
             } else if start_ch.is_ascii_uppercase() {
-                start_targets[1] = start_ch.to_ascii_lowercase() as u16;
-                2
-            } else {
-                1
-            };
+                start_targets[target_len] = start_ch.to_ascii_lowercase() as u16;
+                target_len += 1;
+            }
+            if let Some(f) = folding {
+                for (&folded, &base) in &f.fold_to_base {
+                    if (base == start_ch || base.to_ascii_lowercase() == start_ch) && target_len < 7 {
+                        if !key_map.contains_key(&folded) {
+                            start_targets[target_len] = folded as u16;
+                            target_len += 1;
+                        }
+                    }
+                }
+            }
             for &st in &start_targets[..target_len] {
                 if let Some(start_node) = dict.child(0, st) {
                     word_buffer.clear();
@@ -362,6 +486,7 @@ impl GestureDecoder {
                         &key_map,
                         &user_path,
                         kw,
+                        folding,
                         &mut ideal_pts_buf,
                         &mut resampled_buf,
                         &mut candidates,
@@ -389,7 +514,7 @@ impl GestureDecoder {
                 continue;
             }
             let chars: Vec<char> = lw.chars().collect();
-            if let Some(score) = Self::evaluate_learned_candidate(&chars, &key_map, &user_path, kw) {
+            if let Some(score) = Self::evaluate_learned_candidate_with_folding(&chars, &key_map, &user_path, kw, folding) {
                 learned_matches.push(GestureCandidate {
                     word: lw.clone(),
                     score,
@@ -505,6 +630,16 @@ impl GestureDecoder {
         user_path: &[GesturePoint],
         kw: f32,
     ) -> Option<f32> {
+        Self::evaluate_learned_candidate_with_folding(ideal_chars, key_map, user_path, kw, None)
+    }
+
+    pub fn evaluate_learned_candidate_with_folding(
+        ideal_chars: &[char],
+        key_map: &HashMap<char, (f32, f32)>,
+        user_path: &[GesturePoint],
+        kw: f32,
+        folding: Option<&CharFolding>,
+    ) -> Option<f32> {
         if ideal_chars.len() < 2 || user_path.len() < 2 {
             return None;
         }
@@ -514,7 +649,7 @@ impl GestureDecoder {
             if ch == '\'' || ch == '\u{2019}' {
                 continue;
             }
-            if let Some(&pos) = key_map.get(&ch.to_ascii_lowercase()) {
+            if let Some(pos) = lookup_key_pos(key_map, folding, ch) {
                 ideal_pts.push(GesturePoint {
                     x: pos.0,
                     y: pos.1,
@@ -890,6 +1025,7 @@ impl GestureDecoder {
         key_map: &HashMap<char, (f32, f32)>,
         user_path: &[GesturePoint],
         kw: f32,
+        folding: Option<&CharFolding>,
         ideal_pts_buf: &mut Vec<GesturePoint>,
         resampled_buf: &mut Vec<GesturePoint>,
         results: &mut Vec<GestureCandidate>,
@@ -901,7 +1037,7 @@ impl GestureDecoder {
         if dict.is_word(node) && buffer.len() >= 2 {
             let last_u16 = *buffer.last().unwrap();
             if let Some(last_ch) = char::from_u32(last_u16 as u32) {
-                if end_keys.contains(&last_ch.to_ascii_lowercase()) {
+                if in_key_set(end_keys, key_map, folding, last_ch) {
                     let freq = dict.freq(node);
                     if freq >= 1 {
                         ideal_pts_buf.clear();
@@ -914,7 +1050,7 @@ impl GestureDecoder {
                                 if ch == '\'' || ch == '\u{2019}' {
                                     continue;
                                 }
-                                if let Some(&pos) = key_map.get(&ch.to_ascii_lowercase()) {
+                                if let Some(pos) = lookup_key_pos(key_map, folding, ch) {
                                     let mut min_d = f32::MAX;
                                     for u_pt in user_path {
                                         let dx = u_pt.x - pos.0;
@@ -974,7 +1110,7 @@ impl GestureDecoder {
                 Some(c) => c,
                 None => continue,
             };
-            if ch != '\'' && ch != '\u{2019}' && !valid_keys.contains(&ch.to_ascii_lowercase()) {
+            if ch != '\'' && ch != '\u{2019}' && !in_key_set(valid_keys, key_map, folding, ch) {
                 continue;
             }
             let child_node = (e + 1) as u32;
@@ -988,6 +1124,7 @@ impl GestureDecoder {
                 key_map,
                 user_path,
                 kw,
+                folding,
                 ideal_pts_buf,
                 resampled_buf,
                 results,
@@ -1655,5 +1792,36 @@ fn test_decode_jayed_gesture() {
         assert!(!results.is_empty());
         assert_eq!(results[0].word, "the");
         assert!(!results.iter().any(|c| c.word == "xyz"));
+    }
+
+    #[test]
+    fn test_dynamic_char_folding() {
+        let json = r#"{
+            "version": 1,
+            "fold_to_base": {
+                "ğ": "g",
+                "ü": "u",
+                "ş": "s",
+                "ö": "o",
+                "ç": "c",
+                "ı": "i"
+            },
+            "confusion_groups": [
+                ["i", "ı"]
+            ],
+            "case_pairs": [
+                ["i", "ı"]
+            ]
+        }"#;
+
+        assert!(register_char_folding_json("tr_test", json));
+        let folding = get_char_folding("tr_test").expect("folding registered");
+        assert_eq!(folding.fold_to_base.get(&'ş'), Some(&'s'));
+        assert_eq!(folding.fold_to_base.get(&'ü'), Some(&'u'));
+
+        let mut key_map = HashMap::new();
+        key_map.insert('s', (10.0, 20.0));
+        let pos = lookup_key_pos(&key_map, Some(&folding), 'ş');
+        assert_eq!(pos, Some((10.0, 20.0)));
     }
 }

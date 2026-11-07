@@ -1,0 +1,22 @@
+{
+  "id": "tr",
+  "version": 1,
+  "language": "tr",
+  "locale": "tr-TR",
+  "displayName": "Türkçe (Turkish)",
+  "author": "Emon Bhuiyan",
+  "credit": "Turkish layouts based on TS 2117 standard; wordlist from AOSP LatinIME",
+  "license": "MIT",
+  "layouts": [
+    "tr_q",
+    "tr_q_compact",
+    "tr_f"
+  ],
+  "dictionaryFile": "dictionaries/tr.dict",
+  "dictionaryCredit": "Android Open Source Project (AOSP LatinIME)",
+  "dictionaryLicense": "Apache-2.0",
+  "dictionarySource": "https://android.googlesource.com/platform/packages/inputmethods/LatinIME/",
+  "scriptRulesFile": "rules/script_rules.json",
+  "charFoldingFile": "gesture/char_folding.json",
+  "currencySymbol": "₺"
+}

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Palette
@@ -212,6 +213,13 @@ fun SettingsMainScreen(
                 icon = Icons.Outlined.Keyboard,
                 position = GroupPosition.MIDDLE,
                 onClick = { onNavigate(SettingsScreen.KeyboardLayouts) }
+            )
+
+            SettingsNavigationItem(
+                title = "Language Extensions",
+                icon = Icons.Outlined.Language,
+                position = GroupPosition.MIDDLE,
+                onClick = { onNavigate(SettingsScreen.LanguageExtensions) }
             )
 
             SettingsNavigationItem(

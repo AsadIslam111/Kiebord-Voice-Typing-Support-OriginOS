@@ -5,8 +5,9 @@ pub mod proximity;
 use binary_dict::BinaryDict;
 use combined_parser::CombinedParser;
 use proximity::KeyProximity;
+use std::collections::HashMap;
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::{OnceLock, RwLock};
 
 static EN_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
 static BN_PROXIMITY: OnceLock<KeyProximity> = OnceLock::new();
@@ -19,8 +20,11 @@ pub fn get_bn_proximity() -> &'static KeyProximity {
     BN_PROXIMITY.get_or_init(KeyProximity::bengali)
 }
 
-static EN_BINARY_DICT: OnceLock<BinaryDict<'static>> = OnceLock::new();
-static BN_BINARY_DICT: OnceLock<BinaryDict<'static>> = OnceLock::new();
+static DICTIONARY_REGISTRY: OnceLock<RwLock<HashMap<String, &'static BinaryDict<'static>>>> = OnceLock::new();
+
+fn get_dict_registry() -> &'static RwLock<HashMap<String, &'static BinaryDict<'static>>> {
+    DICTIONARY_REGISTRY.get_or_init(|| RwLock::new(HashMap::new()))
+}
 
 /// Loads a compiled .dict file from disk via zero-copy memory mapping.
 pub fn load_dictionary_path(lang: &str, path: &Path) -> bool {
@@ -35,24 +39,54 @@ pub fn load_dictionary_path(lang: &str, path: &Path) -> bool {
     let mmap_ref: &'static memmap2::Mmap = Box::leak(Box::new(mmap));
     let static_slice: &'static [u8] = &mmap_ref[..];
     if let Ok(dict) = BinaryDict::from_bytes(static_slice) {
-        match lang {
-            "bn" | "bn_borno" | "bn_probhat" | "bn_national" => {
-                let _ = BN_BINARY_DICT.set(dict);
-                true
-            }
-            _ => {
-                let _ = EN_BINARY_DICT.set(dict);
-                true
-            }
+        let leaked_dict: &'static BinaryDict<'static> = Box::leak(Box::new(dict));
+        let mut reg = get_dict_registry().write().unwrap();
+        reg.insert(lang.to_string(), leaked_dict);
+        reg.insert(lang.to_lowercase(), leaked_dict);
+        if let Some((base, _)) = lang.split_once('_') {
+            reg.insert(base.to_string(), leaked_dict);
+            reg.insert(base.to_lowercase(), leaked_dict);
         }
+        true
     } else {
         false
     }
 }
 
+pub fn get_binary_dict(lang: &str) -> Option<&'static BinaryDict<'static>> {
+    let trimmed = lang.trim();
+    if let Ok(reg) = get_dict_registry().read() {
+        if let Some(&d) = reg.get(trimmed) {
+            return Some(d);
+        }
+        let lower = trimmed.to_lowercase();
+        if let Some(&d) = reg.get(&lower) {
+            return Some(d);
+        }
+        if let Some((base, _)) = trimmed.split_once('_') {
+            if let Some(&d) = reg.get(base) {
+                return Some(d);
+            }
+            let base_lower = base.to_lowercase();
+            if let Some(&d) = reg.get(&base_lower) {
+                return Some(d);
+            }
+        }
+    }
+    if trimmed.starts_with("bn") {
+        get_bn_binary_dict()
+    } else if trimmed == "en" || trimmed.starts_with("en_") {
+        get_en_binary_dict()
+    } else {
+        None
+    }
+}
+
 pub fn get_en_binary_dict() -> Option<&'static BinaryDict<'static>> {
-    if let Some(d) = EN_BINARY_DICT.get() {
-        return Some(d);
+    if let Ok(reg) = get_dict_registry().read() {
+        if let Some(&d) = reg.get("en") {
+            return Some(d);
+        }
     }
     let candidates = [
         "../../feature/ime/src/main/assets/dictionaries/en.dict",
@@ -63,7 +97,7 @@ pub fn get_en_binary_dict() -> Option<&'static BinaryDict<'static>> {
         let path = Path::new(p);
         if path.exists() {
             if load_dictionary_path("en", path) {
-                return EN_BINARY_DICT.get();
+                return get_dict_registry().read().ok().and_then(|r| r.get("en").copied());
             }
         }
     }
@@ -71,8 +105,10 @@ pub fn get_en_binary_dict() -> Option<&'static BinaryDict<'static>> {
 }
 
 pub fn get_bn_binary_dict() -> Option<&'static BinaryDict<'static>> {
-    if let Some(d) = BN_BINARY_DICT.get() {
-        return Some(d);
+    if let Ok(reg) = get_dict_registry().read() {
+        if let Some(&d) = reg.get("bn") {
+            return Some(d);
+        }
     }
     let candidates = [
         "../../feature/ime/src/main/assets/dictionaries/bn.dict",
@@ -83,7 +119,7 @@ pub fn get_bn_binary_dict() -> Option<&'static BinaryDict<'static>> {
         let path = Path::new(p);
         if path.exists() {
             if load_dictionary_path("bn", path) {
-                return BN_BINARY_DICT.get();
+                return get_dict_registry().read().ok().and_then(|r| r.get("bn").copied());
             }
         }
     }
@@ -113,11 +149,7 @@ pub fn get_dictionary_metadata(lang_or_path: &str) -> String {
         return String::new();
     }
 
-    let dict_opt = if trimmed.starts_with("bn") {
-        get_bn_binary_dict()
-    } else {
-        get_en_binary_dict()
-    };
+    let dict_opt = get_binary_dict(trimmed);
 
     if let Some(dict) = dict_opt {
         format!("{}words={};", dict.metadata().to_header_string(), dict.word_count())
@@ -145,11 +177,7 @@ pub fn generate_dict_assets(combined_dir: &Path, out_dir: &Path) -> std::io::Res
 /// Returns a pipe-delimited string of suggestions, e.g. "the|that|this"
 pub fn get_suggestions(input: &str, lang_or_layout: &str, max_results: usize) -> String {
     let is_bn = lang_or_layout.starts_with("bn");
-    let dict_opt = if is_bn {
-        get_bn_binary_dict()
-    } else {
-        get_en_binary_dict()
-    };
+    let dict_opt = get_binary_dict(lang_or_layout);
     let prox = KeyProximity::for_layout(lang_or_layout);
 
     if let Some(dict) = dict_opt {
@@ -548,12 +576,7 @@ pub fn is_word(word: &str, lang_or_layout: &str) -> bool {
     if trimmed.is_empty() {
         return false;
     }
-    let is_bn = lang_or_layout.starts_with("bn");
-    let dict_opt = if is_bn {
-        get_bn_binary_dict()
-    } else {
-        get_en_binary_dict()
-    };
+    let dict_opt = get_binary_dict(lang_or_layout);
     match dict_opt {
         Some(dict) => dict.contains_word(trimmed),
         None => false,
@@ -564,11 +587,7 @@ pub fn is_word(word: &str, lang_or_layout: &str) -> bool {
 /// Returns a pipe-delimited string of predicted words, e.g. "are|is|do"
 pub fn predict_next_words(prev_word: &str, lang_or_layout: &str, max_results: usize) -> String {
     let is_bn = lang_or_layout.starts_with("bn");
-    let dict_opt = if is_bn {
-        get_bn_binary_dict()
-    } else {
-        get_en_binary_dict()
-    };
+    let dict_opt = get_binary_dict(lang_or_layout);
 
     if let Some(dict) = dict_opt {
         let mut words = dict.predict_next(prev_word, max_results);
@@ -884,5 +903,26 @@ fn test_iphone_casing() {
         assert!(en_meta_str.contains("name=Kiebord English Word Dictionary;"), "en meta: {}", en_meta_str);
         assert!(en_meta_str.contains("author=Jayed Ahsan Saad;"), "en meta: {}", en_meta_str);
         assert!(en_meta_str.contains("license=Only for Kiebord;"), "en meta: {}", en_meta_str);
+    }
+
+    #[test]
+    fn test_dynamic_dictionary_registry() {
+        let sample = "name=Test Dynamic Dict;author=Tester;version=1;date=123456789;license=MIT;\nword=merhaba,f=200\nword=dünya,f=180\n";
+        let parsed = CombinedParser::parse_str(sample);
+        let bytes = BinaryDict::compile_combined(&parsed);
+        let temp_dir = std::env::temp_dir();
+        let dict_path = temp_dir.join("test_dynamic.dict");
+        std::fs::write(&dict_path, &bytes).expect("write temp dict");
+
+        assert!(load_dictionary_path("test_lang", &dict_path));
+        let dict = get_binary_dict("test_lang").expect("test_lang dict found");
+        assert!(dict.contains_word("merhaba"));
+        assert!(dict.contains_word("dünya"));
+
+        let sugs = get_suggestions("merh", "test_lang", 5);
+        assert!(sugs.contains("merhaba"), "Suggestions were: {}", sugs);
+        assert!(is_word("merhaba", "test_lang"));
+
+        let _ = std::fs::remove_file(dict_path);
     }
 }
