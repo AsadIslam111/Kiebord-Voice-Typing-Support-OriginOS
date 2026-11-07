@@ -837,10 +837,9 @@ fun KeyboardLayoutsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        SettingsGroup {
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             SettingsNavigationItem(
-                title = "Language Extensions",
-                subtitle = "Download or sideload more languages & dictionaries",
+                title = "Language Extensions",            
                 icon = Icons.Outlined.Language,
                 position = GroupPosition.ALONE,
                 onClick = onOpenLanguageExtensions
