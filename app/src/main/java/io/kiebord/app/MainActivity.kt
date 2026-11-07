@@ -62,6 +62,7 @@ import io.kiebord.app.ui.settings.CorrectionsSuggestionsScreen
 import io.kiebord.app.ui.settings.PersonalDictionaryScreen
 import io.kiebord.app.ui.settings.DarkSettingsColors
 import io.kiebord.app.ui.settings.KeyboardLayoutsScreen
+import io.kiebord.app.ui.settings.LanguageExtensionsScreen
 import io.kiebord.app.ui.settings.LightSettingsColors
 import io.kiebord.app.ui.settings.LocalSettingsColors
 import io.kiebord.app.ui.settings.PreferencesScreen
@@ -312,6 +313,12 @@ fun KiebordSettingsApp(
                         currentScreen = SettingsScreen.PersonalDictionary
                     }
                 }
+                "extensions", "language_extensions", "languages" -> {
+                    if (currentScreen != SettingsScreen.LanguageExtensions) {
+                        backStack = listOf(SettingsScreen.Main)
+                        currentScreen = SettingsScreen.LanguageExtensions
+                    }
+                }
             }
             onNavigationTargetConsumed()
         }
@@ -483,6 +490,9 @@ fun KiebordSettingsApp(
                             onToggleExtraRow = { layoutId, rowId, enabled ->
                                 scope.launch { preferencesRepo.setLayoutExtraRowEnabled(layoutId, rowId, enabled) }
                             },
+                            onOpenLanguageExtensions = {
+                                navigateTo(SettingsScreen.LanguageExtensions)
+                            },
                             onBack = navigateBack
                         )
                     }
@@ -644,6 +654,12 @@ fun KiebordSettingsApp(
                             onUpdateVoiceTypingProvider = { provider ->
                                 scope.launch { preferencesRepo.updateVoiceTypingProvider(provider) }
                             }
+                        )
+                    }
+
+                    is SettingsScreen.LanguageExtensions -> {
+                        LanguageExtensionsScreen(
+                            onBack = navigateBack
                         )
                     }
 

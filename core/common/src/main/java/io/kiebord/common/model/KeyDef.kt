@@ -218,15 +218,20 @@ data class KeyboardLayoutDef(
     fun effectiveMoreSymbolsLayout(): KeyboardLayoutDef? = moreSymbolsLayout
     fun isSymbolsLayout(): Boolean = id.startsWith("symbols") || id.contains("_symbols") || language == "sym"
 
-    fun isQwertyBased(): Boolean {
+    fun isGestureTypingSupported(): Boolean {
         if (isSymbolsLayout() || noGesture) return false
-        if (gestureMode?.equals("qwerty", ignoreCase = true) == true) return true
+        val mode = gestureMode?.lowercase()?.trim()
+        if (mode != null && (mode == "qwerty" || mode == "spatial" || mode == "direct" || mode == language.lowercase())) {
+            return true
+        }
         if (id == "en_qwerty" || id == "bn_borno" || id == "bn_avro") return true
         return rows.any { row ->
             val charLabels = row.keys.filter { it.type == KeyType.CHARACTER }.map { it.label.lowercase() }
             charLabels.size >= 6 && charLabels.take(6) == listOf("q", "w", "e", "r", "t", "y")
         }
     }
+
+    fun isQwertyBased(): Boolean = isGestureTypingSupported()
 
     /**
      * Resolves extra rows for a symbols layout based on the active alphabet layout.

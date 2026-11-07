@@ -127,6 +127,29 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_registerLayoutPr
 }
 
 #[no_mangle]
+pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_registerCharFolding(
+    mut env: JNIEnv,
+    _class: JClass,
+    lang: JString,
+    json: JString,
+) -> jboolean {
+    let lang_str: String = match env.get_string(&lang) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    let json_str: String = match env.get_string(&json) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+
+    if gesture::decoder::register_char_folding_json(&lang_str, &json_str) {
+        1
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
     mut env: JNIEnv,
     _class: JClass,
@@ -221,11 +244,7 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
             (dict, true)
         }
         None => {
-            let dict = if lang_id.starts_with("bn") {
-                dictionary::get_bn_binary_dict()
-            } else {
-                dictionary::get_en_binary_dict()
-            };
+            let dict = dictionary::get_binary_dict(&lang_id);
             (dict, false)
         }
     };
@@ -247,7 +266,8 @@ pub extern "system" fn Java_io_kiebord_feature_ime_NativeEngine_decodeGesture(
         let t = translit_opt.unwrap();
         gesture::decoder::GestureDecoder::decode_phonetic_with_learned(&points, &keys, key_width, dict, t, limit, &sanitized_learned)
     } else {
-        gesture::decoder::GestureDecoder::decode_with_learned(&points, &keys, key_width, dict, limit, &sanitized_learned)
+        let folding = gesture::decoder::get_char_folding(&lang_id);
+        gesture::decoder::GestureDecoder::decode_with_learned_and_folding(&points, &keys, key_width, dict, limit, &sanitized_learned, folding.as_ref())
     };
     let mut words: Vec<String> = candidates.into_iter().map(|c| c.word).collect();
     if is_bn_mode {

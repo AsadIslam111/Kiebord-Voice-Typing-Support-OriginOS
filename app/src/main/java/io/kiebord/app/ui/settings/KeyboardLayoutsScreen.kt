@@ -87,10 +87,12 @@ import androidx.compose.ui.zIndex
 import io.kiebord.common.model.KeyRow
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
+import io.kiebord.data.langpack.LanguagePackRepository
 import io.kiebord.data.layout.LayoutRepository
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.data.prefs.KiebordPreferences
 import io.kiebord.theme.KeyboardColorScheme
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -101,6 +103,30 @@ private data class LayoutCardData(
     val layoutDef: KeyboardLayoutDef
 )
 
+private fun resolveLanguageTitle(langCode: String, cards: List<LayoutCardData>, repo: LanguagePackRepository): String {
+    val pack = cards.firstNotNullOfOrNull { repo.getPackForLayout(it.id) }
+    if (pack != null && pack.displayName.isNotBlank()) {
+        return pack.displayName
+    }
+    if (langCode == "custom" || langCode.isBlank()) {
+        return "Custom Layouts"
+    }
+    return try {
+        val locale = Locale.forLanguageTag(langCode)
+        val eng = locale.getDisplayLanguage(Locale.ENGLISH).replaceFirstChar { it.uppercase() }
+        val native = locale.getDisplayLanguage(locale).replaceFirstChar { it.uppercase() }
+        if (eng.isNotEmpty() && native.isNotEmpty() && !eng.equals(native, ignoreCase = true)) {
+            "$eng ($native)"
+        } else if (eng.isNotEmpty()) {
+            eng
+        } else {
+            langCode.uppercase()
+        }
+    } catch (_: Exception) {
+        langCode.uppercase()
+    }
+}
+
 @Composable
 fun KeyboardLayoutsScreen(
     preferences: KiebordPreferences,
@@ -108,10 +134,12 @@ fun KeyboardLayoutsScreen(
     onToggleLayoutEnabled: (String, Boolean) -> Unit,
     onReorderEnabledLayouts: (List<String>) -> Unit = {},
     onToggleExtraRow: (String, String, Boolean) -> Unit = { _, _, _ -> },
+    onOpenLanguageExtensions: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val layoutRepo = remember(context) { LayoutRepository.getInstance(context) }
+    val languagePackRepo = remember(context) { LanguagePackRepository.getInstance(context) }
     var reloadTrigger by remember { mutableStateOf(0) }
 
     val scrollState = rememberScrollState()
@@ -304,8 +332,10 @@ fun KeyboardLayoutsScreen(
     var isArabicExpanded by remember { mutableStateOf(false) }
     var isArabicOptionsOpen by remember { mutableStateOf(false) }
     var selectedCustomSettingsId by remember { mutableStateOf<String?>(null) }
-    var isCustomExpanded by remember { mutableStateOf(false) }
-    var pendingDeleteCard by remember { mutableStateOf<LayoutCardData?>(null) }
+    var expandedCustomLanguages by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    val customLanguageGroups = remember(customCards) {
+        customCards.groupBy { it.layoutDef.language.lowercase().ifBlank { "custom" } }
+    }
 
     val handleToggleLayout: (LayoutCardData) -> Unit = { card ->
         val currentlyEnabled = preferences.enabledLayoutIds.contains(card.id)
@@ -319,64 +349,6 @@ fun KeyboardLayoutsScreen(
         } else {
             onToggleLayoutEnabled(card.id, !currentlyEnabled)
         }
-    }
-
-
-
-    if (pendingDeleteCard != null) {
-        val target = pendingDeleteCard!!
-        AlertDialog(
-            onDismissRequest = { pendingDeleteCard = null },
-            containerColor = colors.dialogBackground,
-            title = {
-                Text(
-                    text = "Remove Custom Layout?",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary
-                )
-            },
-            text = {
-                Text(
-                    text = "Are you sure you want to delete \"${target.name}\"? You can import its .json file again anytime.",
-                    fontSize = 14.sp,
-                    color = colors.textSecondary
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val isTargetLastRemaining =
-                            preferences.enabledLayoutIds.size <= 1 && preferences.enabledLayoutIds.contains(target.id)
-                        if (isTargetLastRemaining) {
-                            onToggleLayoutEnabled(KiebordPreferences.LAYOUT_EN_QWERTY, true)
-                        }
-                        layoutRepo.deleteCustomLayout(target.id)
-                        onToggleLayoutEnabled(target.id, false)
-                        if (selectedCustomSettingsId == target.id) {
-                            selectedCustomSettingsId = null
-                        }
-                        reloadTrigger++
-                        Toast.makeText(context, "Removed ${target.name}", Toast.LENGTH_SHORT).show()
-                        pendingDeleteCard = null
-                    }
-                ) {
-                    Text(
-                        text = "Remove",
-                        color = Color(0xFFEF4444),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteCard = null }) {
-                    Text(
-                        text = "Cancel",
-                        color = colors.textSecondary
-                    )
-                }
-            }
-        )
     }
 
     Column(
@@ -743,136 +715,116 @@ fun KeyboardLayoutsScreen(
                 }
             }
 
-            // 5. Custom Imported Layouts (if present)
             if (hasCustom) {
-                val activeCustomCount = customCards.count { preferences.enabledLayoutIds.contains(it.id) }
-                SettingsItemCard(
-                    position = GroupPosition.BOTTOM,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column {
-                        LanguageSectionHeader(
-                            title = "Custom Layouts",
-                            subtitle = "${customCards.size} imported layout(s) installed",
-                            isExpanded = isCustomExpanded,
-                            onToggleExpand = { isCustomExpanded = !isCustomExpanded }
-                        )
+                val groupEntries = customLanguageGroups.entries.toList()
+                groupEntries.forEachIndexed { groupIndex, (langCode, groupCards) ->
+                    val isLastGroup = groupIndex == groupEntries.lastIndex
+                    val itemPosition = if (isLastGroup) GroupPosition.BOTTOM else GroupPosition.MIDDLE
+                    val isExpanded = expandedCustomLanguages[langCode] ?: false
+                    val title = resolveLanguageTitle(langCode, groupCards, languagePackRepo)
+                    val subtitle = groupCards.joinToString(", ") { it.name }
 
-                        AnimatedVisibility(
-                            visible = isCustomExpanded,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 18.dp, top = 4.dp)
+                    SettingsItemCard(
+                        position = itemPosition,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column {
+                            LanguageSectionHeader(
+                                title = title,
+                                subtitle = subtitle,
+                                isExpanded = isExpanded,
+                                onToggleExpand = {
+                                    expandedCustomLanguages = expandedCustomLanguages + (langCode to !isExpanded)
+                                }
+                            )
+
+                            AnimatedVisibility(
+                                visible = isExpanded,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
                             ) {
-                                LazyRow(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 18.dp, top = 4.dp)
                                 ) {
-                                    items(
-                                        items = customCards,
-                                        key = { it.id }
-                                    ) { cardData ->
-                                        val isEnabled = preferences.enabledLayoutIds.contains(cardData.id)
-                                        val hasExtraRows = cardData.layoutDef.extraRows.isNotEmpty()
-                                        val isCardSettingsOpen = selectedCustomSettingsId == cardData.id
+                                    LazyRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentPadding = PaddingValues(horizontal = 16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        items(
+                                            items = groupCards,
+                                            key = { it.id }
+                                        ) { cardData ->
+                                            val isEnabled = preferences.enabledLayoutIds.contains(cardData.id)
+                                            val hasExtraRows = cardData.layoutDef.extraRows.isNotEmpty()
+                                            val isCardSettingsOpen = selectedCustomSettingsId == cardData.id
 
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            KeyboardLayoutPreviewItem(
-                                                cardData = cardData,
-                                                preferences = preferences,
-                                                isEnabled = isEnabled,
-                                                isPrimary = preferences.primaryLayoutId == cardData.id && isEnabled,
-                                                onToggle = { handleToggleLayout(cardData) }
-                                            )
+                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                KeyboardLayoutPreviewItem(
+                                                    cardData = cardData,
+                                                    preferences = preferences,
+                                                    isEnabled = isEnabled,
+                                                    isPrimary = preferences.primaryLayoutId == cardData.id && isEnabled,
+                                                    onToggle = { handleToggleLayout(cardData) }
+                                                )
 
-                                            Spacer(modifier = Modifier.height(8.dp))
-
-                                            Row(
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                if (hasExtraRows) {
-                                                    Row(
-                                                        modifier = Modifier
-                                                            .clip(CircleShape)
-                                                            .background(
-                                                                if (isCardSettingsOpen) colors.accent.copy(alpha = 0.15f)
-                                                                else colors.iconBackground
-                                                            )
-                                                            .clickable {
-                                                                selectedCustomSettingsId =
-                                                                    if (isCardSettingsOpen) null else cardData.id
-                                                            }
-                                                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Filled.Settings,
-                                                            contentDescription = "Options",
-                                                            tint = if (isCardSettingsOpen) colors.accent else colors.textSecondary,
-                                                            modifier = Modifier.size(14.dp)
-                                                        )
-                                                        Spacer(modifier = Modifier.width(4.dp))
-                                                        Text(
-                                                            text = "Options",
-                                                            fontSize = 11.sp,
-                                                            fontWeight = FontWeight.Medium,
-                                                            color = if (isCardSettingsOpen) colors.accent else colors.textSecondary
-                                                        )
-                                                    }
-                                                }
-
+                                            if (hasExtraRows) {
+                                                Spacer(modifier = Modifier.height(8.dp))
                                                 Row(
                                                     modifier = Modifier
                                                         .clip(CircleShape)
-                                                        .background(colors.iconBackground)
-                                                        .clickable { pendingDeleteCard = cardData }
+                                                        .background(
+                                                            if (isCardSettingsOpen) colors.accent.copy(alpha = 0.15f)
+                                                            else colors.iconBackground
+                                                        )
+                                                        .clickable {
+                                                            selectedCustomSettingsId =
+                                                                if (isCardSettingsOpen) null else cardData.id
+                                                        }
                                                         .padding(horizontal = 10.dp, vertical = 6.dp),
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     Icon(
-                                                        imageVector = Icons.Outlined.Delete,
-                                                        contentDescription = "Remove layout",
-                                                        tint = Color(0xFFEF4444),
+                                                        imageVector = Icons.Filled.Settings,
+                                                        contentDescription = "Options",
+                                                        tint = if (isCardSettingsOpen) colors.accent else colors.textSecondary,
                                                         modifier = Modifier.size(14.dp)
                                                     )
                                                     Spacer(modifier = Modifier.width(4.dp))
                                                     Text(
-                                                        text = "Remove",
+                                                        text = "Options",
                                                         fontSize = 11.sp,
                                                         fontWeight = FontWeight.Medium,
-                                                        color = Color(0xFFEF4444)
+                                                        color = if (isCardSettingsOpen) colors.accent else colors.textSecondary
                                                     )
                                                 }
                                             }
+                                            }
                                         }
                                     }
-                                }
 
-                                val activeCustomSettingsCard = customCards.find { it.id == selectedCustomSettingsId }
-                                AnimatedVisibility(
-                                    visible = activeCustomSettingsCard != null && activeCustomSettingsCard.layoutDef.extraRows.isNotEmpty(),
-                                    enter = expandVertically() + fadeIn(),
-                                    exit = shrinkVertically() + fadeOut()
-                                ) {
-                                    if (activeCustomSettingsCard != null) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(start = 16.dp, end = 16.dp, top = 12.dp)
-                                        ) {
-                                            ExtraRowsOptionsSection(
-                                                cardData = activeCustomSettingsCard,
-                                                preferences = preferences,
-                                                isOpen = true,
-                                                onToggleOpen = { selectedCustomSettingsId = null },
-                                                onToggleExtraRow = onToggleExtraRow
-                                            )
+                                    val activeCustomSettingsCard = groupCards.find { it.id == selectedCustomSettingsId }
+                                    AnimatedVisibility(
+                                        visible = activeCustomSettingsCard != null && activeCustomSettingsCard.layoutDef.extraRows.isNotEmpty(),
+                                        enter = expandVertically() + fadeIn(),
+                                        exit = shrinkVertically() + fadeOut()
+                                    ) {
+                                        if (activeCustomSettingsCard != null) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(start = 16.dp, end = 16.dp, top = 12.dp)
+                                            ) {
+                                                ExtraRowsOptionsSection(
+                                                    cardData = activeCustomSettingsCard,
+                                                    preferences = preferences,
+                                                    isOpen = true,
+                                                    onToggleOpen = { selectedCustomSettingsId = null },
+                                                    onToggleExtraRow = onToggleExtraRow
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -883,7 +835,17 @@ fun KeyboardLayoutsScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
 
+        SettingsGroup {
+            SettingsNavigationItem(
+                title = "Language Extensions",
+                subtitle = "Download or sideload more languages & dictionaries",
+                icon = Icons.Outlined.Language,
+                position = GroupPosition.ALONE,
+                onClick = onOpenLanguageExtensions
+            )
+        }
     }
 }
 

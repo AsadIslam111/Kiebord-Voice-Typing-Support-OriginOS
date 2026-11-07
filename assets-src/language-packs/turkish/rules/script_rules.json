@@ -1,0 +1,6 @@
+{
+  "primary_script": "LATIN",
+  "allowed_characters": "abcçdefgğhıijklmnoöprsştuüvyzABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ'’",
+  "word_connectors": ["'", "’"]
+}
+

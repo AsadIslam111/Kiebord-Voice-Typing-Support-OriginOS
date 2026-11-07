@@ -281,3 +281,179 @@ Complete, production-tested sample layouts are provided in the repository under 
 | [`khipro.json`](../assets-src/layouts/khipro.json) | `khipro` | **Transliteration Engine Layout**: Integrates with the m17n engine (`"processor": "m17n"`, `"rules": "bn-khipro.classic.mim"`), behavioral flags (`"flags": ["NoAutoCapitalization", "NoRemoveSpaceBeforePunctuation"]`), non-breaking composition characters (`"extraCompositionChars": [",", "।"]`), and dedicated Bangla digits number row. |
 
 Developers and contributors can use these sample files as starting blueprints when designing new layouts or adapting existing ones.
+
+---
+
+## 9. Language Extension Packs (.bornolang)
+
+Language extension packs allow adding new languages, layouts, binary dictionaries, and gesture typings to Kiebord dynamically without modifying the Kotlin or Rust codebase.
+
+### Pack Archive Structure
+
+A `.bornolang` file is a ZIP archive containing the following layout:
+
+```text
+<pack_id>.bornolang (Standard ZIP)
+|-- pack.json                  (Required: Manifest metadata)
+|-- layouts/                   (Required: 1 or more layout JSON definitions)
+|   |-- <layout1>.json
+|   `-- <layout2>.json
+|-- dictionaries/              (Optional: Binary trie dictionary file)
+|   `-- <lang>.dict
+|-- rules/                     (Optional: Script boundaries & word connectors)
+|   `-- script_rules.json
+`-- gesture/                   (Optional: Diacritic fallbacks & confusion pairs)
+    `-- char_folding.json
+```
+
+### Manifest Schema (`pack.json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | String | Yes | Unique identifier for the pack (e.g. `tr`). |
+| `version` | Integer | Yes | Incremental version number (e.g. `1`). |
+| `language` | String | Yes | ISO 639-1 language code (e.g. `tr`). |
+| `locale` | String | No | BCP-47 language tag (e.g. `tr-TR`) used for locale-aware uppercase/lowercase transformations. |
+| `displayName` | String | Yes | Display name shown in Settings (e.g. `Türkçe (Turkish)`). |
+| `author` | String | Yes | Name or handle of the author/contributor. |
+| `license` | String | No | Distribution license (e.g. `MIT`, `GPLv3`). |
+| `layouts` | Array of String | Yes | List of layout IDs included in the pack. Each must correspond to `layouts/<id>.json`. |
+| `dictionaryFile` | String | No | Path relative to pack root pointing to the binary dictionary (e.g. `dictionaries/tr.dict`). |
+| `scriptRulesFile` | String | No | Path relative to pack root pointing to script boundary rules (e.g. `rules/script_rules.json`). |
+| `charFoldingFile` | String | No | Path relative to pack root pointing to gesture folding rules (e.g. `gesture/char_folding.json`). |
+| `currencySymbol` | String | No | Default currency symbol displayed on the keyboard (e.g. `₺`). |
+| `description` | String | No | Short description for catalog listings. |
+
+### Layout Definition Guidelines in Language Packs
+
+Layout files under `layouts/` follow the same schema described in Section 3 of this guide, with the following recommendations:
+- **`gesture_mode`**: For non-English layouts using spatial gesture typing, set `"gesture_mode"` to `"spatial"`, `"direct"`, or to the language code (e.g. `"tr"`). Legacy `"qwerty"` is also accepted for backward compatibility.
+- **Language tag**: Set `"language"` to match the pack's language code so candidate predictions and suggestion strip queries bind to the pack's dictionary.
+
+### Script Rules (`rules/script_rules.json`)
+
+Script rules define word boundaries and prevent characters from different writing systems from corrupting the composing buffer:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `primary_script` | String | Yes | Name of the primary script (e.g. `LATIN`, `ARABIC`, `CYRILLIC`). |
+| `allowed_characters` | String | Yes | String containing all valid alphabet characters (both lowercase and uppercase). |
+| `word_connectors` | Array of String | No | Punctuation marks that can appear inside a word without breaking composition (e.g. `["'", "’"]`). |
+
+Example:
+```json
+{
+  "primary_script": "LATIN",
+  "allowed_characters": "abcçdefgğhıijklmnoöprsştuüvyzABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ'’",
+  "word_connectors": ["'", "’"]
+}
+```
+
+### Gesture Folding Rules (`gesture/char_folding.json`)
+
+Gesture folding maps allow compact keyboard layouts (which lack dedicated keys for certain diacritics) to resolve accented characters from base key strokes:
+
+| Field | Type | Description |
+|---|---|---|
+| `version` | Integer | Schema version (currently `1`). |
+| `fold_to_base` | Object | Map of accented characters to their base unaccented key on the layout. |
+| `confusion_groups` | Array of Arrays | Groups of characters considered interchangeable during gesture matching. |
+| `case_pairs` | Array of Arrays | Case equivalence pairs for scripts with non-standard casing (e.g. dotted and dotless I in Turkish). |
+
+Example:
+```json
+{
+  "version": 1,
+  "fold_to_base": {
+    "ğ": "g",
+    "ü": "u",
+    "ş": "s",
+    "ö": "o",
+    "ç": "c",
+    "ı": "i"
+  },
+  "confusion_groups": [
+    ["i", "ı"]
+  ],
+  "case_pairs": [
+    ["i", "ı"]
+  ]
+}
+```
+
+### Packaging Packs with `tools/pack_lang.py`
+
+Language pack source assets are maintained under `assets-src/language-packs/<pack_id>/`.
+
+To package a pack:
+```bash
+# Package a single pack:
+python tools/pack_lang.py turkish
+
+# Validate without building:
+python tools/pack_lang.py turkish --validate-only
+
+# Package all packs in assets-src/language-packs/:
+python tools/pack_lang.py --all
+```
+
+The script performs the following tasks:
+1. Validates `pack.json`, layout schemas, script rules, and char folding definitions.
+2. Compiles any `.combined` dictionary source files into `.dict` if needed.
+3. Assembles the `.bornolang` ZIP archive under `language-packs/releases/<id>.bornolang`.
+4. Computes the SHA-256 checksum and file size.
+5. Updates or appends the entry in `language-packs/index.json`.
+
+---
+
+## 10. Dictionary Wordlists and Compilation (.combined)
+
+Kiebord uses a binary trie dictionary format (`.dict`) for fast on-device candidate lookup, prefix search, and next-word prediction. Raw wordlists are authored in the `.combined` text format.
+
+### File Format Specification
+
+A `.combined` file consists of three sections:
+
+1. **Header metadata**: Semicolon-delimited key-value pairs at the beginning of the file.
+   ```text
+   name=Sample English Dictionary;author=Kiebord;version=1;date=1700000000;license=GPLv3;
+   ```
+2. **Unigram entries**: Word and unigram frequency (0-255).
+   ```text
+   word=Hello,f=200
+   ```
+3. **Bigram entries**: Expected subsequent words associated with preceding words for next-word prediction.
+   ```text
+   word=Hello,f=200
+     bigram=World,f=150
+     prev_word[0]=Hello
+   ```
+
+### Reference Template
+
+A reference sample is provided in the repository at [`assets-src/dictionaries/en_sample.combined`](../assets-src/dictionaries/en_sample.combined):
+
+```text
+name=Sample English Dictionary;author=Kiebord;version=1;date=1700000000;license=GPLv3;
+word=Hello,f=200
+  bigram=World,f=150
+  prev_word[0]=Hello
+word=World,f=180
+word=I,f=220
+  bigram=use,f=190
+  prev_word[0]=I
+word=use,f=190
+  bigram=Borno,f=170
+  prev_word[0]=use
+word=Borno,f=180
+```
+
+### Compiling to Binary Dictionary (.dict)
+
+To compile a `.combined` file into a `.dict` binary:
+
+```bash
+cargo run --manifest-path native/kiebord-engine/Cargo.toml --bin compile_dict <input.combined> <output.dict>
+```
+
+When building language extension packs, `tools/pack_lang.py` automatically invokes this compiler when `.combined` source files are present in the pack directory.

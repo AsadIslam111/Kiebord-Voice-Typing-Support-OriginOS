@@ -1,0 +1,14 @@
+[
+  {
+    "id": "tr",
+    "name": "Türkçe (Turkish)",
+    "language": "tr",
+    "version": 1,
+    "author": "Emon Bhuiyan",
+    "description": "Türkçe (Turkish) (3 layout(s) and dictionary)",
+    "downloadUrl": "https://raw.githubusercontent.com/JayedAhsan/Kiebord/main/language-packs/releases/tr.bornolang",
+    "sha256": "00a480db9bc1a4c2e6ae43ca338289a3e63a40dbea32ac3b95336b65d80830f5",
+    "sizeBytes": 13240,
+    "hasDictionary": true
+  }
+]

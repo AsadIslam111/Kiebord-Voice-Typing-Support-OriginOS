@@ -248,13 +248,28 @@ impl KeyProximity {
         BORNO_PROXIMITY.get_or_init(Self::borno_phonetic)
     }
 
-    /// Registers a custom layout proximity at runtime for future layouts.
+    /// Registers a custom layout proximity at runtime.
     pub fn register_layout(layout_id: &str, prox: KeyProximity) {
         let registry = DYNAMIC_LAYOUT_PROXIMITIES.get_or_init(|| RwLock::new(HashMap::new()));
         let leaked_ref: &'static KeyProximity = Box::leak(Box::new(prox));
         if let Ok(mut map) = registry.write() {
             map.insert(layout_id.to_string(), leaked_ref);
+            if let Some((base, _)) = layout_id.split_once('_') {
+                map.insert(base.to_string(), leaked_ref);
+            }
         }
+    }
+
+    /// Registers case pairs and confusion groups from a language pack folding specification.
+    pub fn register_folding_pairs(layout_or_lang: &str, case_pairs: &[(char, char)], confusion_groups: &[Vec<char>]) {
+        let mut prox = KeyProximity::qwerty();
+        for &(a, b) in case_pairs {
+            prox.add_case_pair(a, b);
+        }
+        for group in confusion_groups {
+            prox.add_confusion_group(group);
+        }
+        Self::register_layout(layout_or_lang, prox);
     }
 
     /// Retrieves the KeyProximity tied to a given layout identifier.
@@ -270,6 +285,11 @@ impl KeyProximity {
             if let Ok(guard) = registry.read() {
                 if let Some(&custom) = guard.get(layout_id) {
                     return custom;
+                }
+                if let Some((base, _)) = layout_id.split_once('_') {
+                    if let Some(&custom) = guard.get(base) {
+                        return custom;
+                    }
                 }
             }
         }

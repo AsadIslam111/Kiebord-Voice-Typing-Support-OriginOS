@@ -22,7 +22,13 @@ assets-src/*
 !assets-src/*.bornotheme
 !assets-src/fonts/
 !assets-src/layouts/
+!assets-src/language-packs/
+!assets-src/language-packs/**
+!assets-src/dictionaries/
+assets-src/dictionaries/*
+!assets-src/dictionaries/en_sample.combined
 assets-src/layouts/*.md
 *.dict
 !feature/ime/src/main/assets/dictionaries/*.dict
+!assets-src/language-packs/**/dictionaries/*.dict
 *.so

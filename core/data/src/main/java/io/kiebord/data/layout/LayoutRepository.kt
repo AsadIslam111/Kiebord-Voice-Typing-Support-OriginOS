@@ -44,8 +44,12 @@ class LayoutRepository private constructor(private val context: Context) {
             cache[layout.id] = layout
         }
         PredefinedLayouts.customLayoutResolver = { id ->
-            cache[id]?.displayName ?: cache[id]?.name
+            cache[id]?.displayName ?: cache[id]?.name ?: runCatching { getLayout(id).displayName ?: getLayout(id).name }.getOrNull()
         }
+    }
+
+    fun invalidateCache() {
+        cachedAvailableLayouts = null
     }
 
     fun preload() {

@@ -1,0 +1,18 @@
+{
+  "id": "tr",
+  "version": 1,
+  "language": "tr",
+  "locale": "tr-TR",
+  "displayName": "Türkçe (Turkish)",
+  "author": "Emon Bhuiyan",
+  "license": "MIT",
+  "layouts": [
+    "tr_q",
+    "tr_q_compact",
+    "tr_f"
+  ],
+  "dictionaryFile": "dictionaries/tr.dict",
+  "scriptRulesFile": "rules/script_rules.json",
+  "charFoldingFile": "gesture/char_folding.json",
+  "currencySymbol": "₺"
+}

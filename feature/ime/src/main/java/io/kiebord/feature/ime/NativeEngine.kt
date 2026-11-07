@@ -69,6 +69,9 @@ object NativeEngine {
     external fun registerLayoutProximityRows(layoutId: String, rows: Array<String>): Boolean
 
     @JvmStatic
+    external fun registerCharFolding(lang: String, json: String): Boolean
+
+    @JvmStatic
     external fun decodeGesture(
         pointsX: FloatArray,
         pointsY: FloatArray,
@@ -162,6 +165,25 @@ object NativeEngine {
                 initializedLangs.add(baseLang)
             }
         } catch (_: Throwable) {}
+    }
+
+    @Synchronized
+    fun ensureInitializedFromPath(lang: String, dictPath: String): Boolean {
+        if (!isLoaded) return false
+        if (initializedLangs.contains(lang)) return true
+        return try {
+            val loaded = loadDictionary(lang, dictPath)
+            if (loaded) {
+                initializedLangs.add(lang)
+                val base = lang.substringBefore('_')
+                if (base.isNotEmpty()) {
+                    initializedLangs.add(base)
+                }
+            }
+            loaded
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     fun isM17nLayoutReady(layoutId: String): Boolean {

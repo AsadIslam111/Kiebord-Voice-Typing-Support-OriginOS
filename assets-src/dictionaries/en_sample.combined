@@ -1,0 +1,13 @@
+name=Sample English Dictionary;author=Kiebord;version=1;date=1700000000;license=GPLv3;
+word=Hello,f=200
+  bigram=World,f=150
+  prev_word[0]=Hello
+word=World,f=180
+word=I,f=220
+  bigram=use,f=190
+  prev_word[0]=I
+word=use,f=190
+  bigram=Borno,f=170
+  prev_word[0]=use
+word=Borno,f=180
+

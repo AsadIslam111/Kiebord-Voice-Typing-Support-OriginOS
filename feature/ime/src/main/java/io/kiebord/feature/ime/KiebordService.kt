@@ -39,6 +39,7 @@ import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
 import io.kiebord.data.dictionary.PersonalDictionaryRepository
 import io.kiebord.data.dictionary.UserDictionaryRepository
+import io.kiebord.data.langpack.LanguagePackRepository
 import io.kiebord.data.layout.LayoutRepository
 import io.kiebord.data.layout.PredefinedLayouts
 import io.kiebord.feature.ime.clipboard.SandboxedClipboardManager
@@ -132,6 +133,26 @@ class KiebordService : InputMethodService() {
         }
     }
 
+    private fun ensureLanguagePackActive(layout: KeyboardLayoutDef) {
+        val pack = languagePackRepo.getPackForLayout(layout.id)
+        if (pack != null) {
+            val dictFile = languagePackRepo.getDictionaryFile(pack.id)
+            if (dictFile != null && dictFile.exists()) {
+                NativeEngine.ensureInitializedFromPath(pack.language, dictFile.absolutePath)
+            }
+            val foldingJson = languagePackRepo.getCharFoldingJson(pack.id)
+            if (!foldingJson.isNullOrBlank()) {
+                NativeEngine.registerCharFolding(pack.language, foldingJson)
+            }
+        }
+        val rows = layout.rows.map { row ->
+            row.keys.mapNotNull { it.label }.filter { it.length == 1 }.joinToString("")
+        }.filter { it.isNotEmpty() }
+        if (rows.isNotEmpty()) {
+            NativeEngine.registerLayoutProximityRows(layout.id, rows.toTypedArray())
+        }
+    }
+
     private fun getTransliterationManager(): TransliterationManager {
         if (transliterationManager.layoutId != activeLayout.id) {
             transliterationManager = TransliterationManagerFactory.create(
@@ -159,6 +180,7 @@ class KiebordService : InputMethodService() {
     }
     private lateinit var userDictionaryRepo: UserDictionaryRepository
     private lateinit var personalDictionaryRepo: PersonalDictionaryRepository
+    private lateinit var languagePackRepo: LanguagePackRepository
     private lateinit var layoutRepo: LayoutRepository
     private var selectionAnchor: Int? = null
     private var selectionCursor: Int? = null
@@ -223,6 +245,7 @@ class KiebordService : InputMethodService() {
         super.onCreate()
         preferencesRepo = KiebordPreferencesRepository.getInstance(this)
         layoutRepo = LayoutRepository.getInstance(this)
+        languagePackRepo = LanguagePackRepository.getInstance(this)
         clipboardManager = SandboxedClipboardManager.getInstance(this)
         userDictionaryRepo = UserDictionaryRepository.getInstance(this)
         personalDictionaryRepo = PersonalDictionaryRepository.getInstance(this)
@@ -257,6 +280,7 @@ class KiebordService : InputMethodService() {
         serviceScope.launch(Dispatchers.IO) {
             NativeEngine.ensureInitialized(this@KiebordService, initialLang)
             ensureLayoutProcessorInitialized(primaryAlphaLayout)
+            ensureLanguagePackActive(primaryAlphaLayout)
             kotlinx.coroutines.withContext(Dispatchers.Main) {
                 updateSuggestions()
             }
@@ -362,7 +386,7 @@ class KiebordService : InputMethodService() {
             val isEmailField = remember(currentEditorInfoState) {
                 InputModeResolver.isEmailField(currentEditorInfoState)
             }
-            val availableLayoutIds = remember {
+            val availableLayoutIds = remember(preferencesState.enabledLayoutIds) {
                 layoutRepo.getAvailableLayouts().map { it.id }.toSet()
             }
 
@@ -712,6 +736,9 @@ class KiebordService : InputMethodService() {
         serviceScope.launch {
             preferencesRepo.updatePrimaryLayoutId(layoutId)
         }
+        serviceScope.launch(Dispatchers.IO) {
+            ensureLanguagePackActive(primaryAlphaLayout)
+        }
         updateSuggestions()
     }
 
@@ -899,12 +926,12 @@ class KiebordService : InputMethodService() {
                             commitCharacterWithPunctuationHandling(ic, text)
                         }
                     }
-                    // English mode
-                    isEnglishLayout() -> {
+                    // English and other alphabetic / extension layouts
+                    !isBanglaLayout() && !PredefinedLayouts.isNumberLayout(activeLayout.id) && !activeLayout.isSymbolsLayout() -> {
                         if (InputModeResolver.isDirectCommit(currentInputEditorInfo)) {
                             finishComposing()
                             commitCharacterWithPunctuationHandling(ic, text)
-                        } else if (isEnglishLetter(text)) {
+                        } else if (isComposingLetter(text, activeLayout)) {
                             composingBuffer.append(text)
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
@@ -1462,10 +1489,13 @@ class KiebordService : InputMethodService() {
         return (c in 'a'..'z') || (c in 'A'..'Z')
     }
 
-    private fun isEnglishLetter(text: String): Boolean {
-        if (text.length != 1) return false
-        val c = text[0]
-        return (c in 'a'..'z') || (c in 'A'..'Z') || c == '\''
+    private fun isComposingLetter(text: String, layout: KeyboardLayoutDef = activeLayout): Boolean {
+        if (text.isEmpty()) return false
+        val rules = languagePackRepo.getScriptRules(layout.language.ifEmpty { layout.id })
+        if (rules != null) {
+            return text.all { rules.allowedCharacters.contains(it) || rules.wordConnectors.contains(it) }
+        }
+        return text.all { it.isLetter() || it == '\'' || it == '’' }
     }
 
     private fun isUrlOrCodeField(): Boolean {
@@ -2285,7 +2315,7 @@ class KiebordService : InputMethodService() {
     }
 
     private fun isEnglishLayout(layout: io.kiebord.common.model.KeyboardLayoutDef = activeLayout): Boolean {
-        return layout.language == "en" || layout.id.startsWith("en") || layout.gestureMode.equals("qwerty", ignoreCase = true)
+        return (layout.language == "en" || layout.id.startsWith("en")) && !isBanglaLayout(layout)
     }
 
     private fun isQwertyBasedLayout(layoutId: String): Boolean {
@@ -2303,10 +2333,15 @@ class KiebordService : InputMethodService() {
     private fun resolveSuggestionConfig(layout: io.kiebord.common.model.KeyboardLayoutDef): LanguageSuggestionConfig {
         val lang = when {
             isBanglaLayout(layout) -> "bn"
-            isEnglishLayout(layout) -> "en"
             layout.language.isNotEmpty() -> layout.language.lowercase()
             layout.id.startsWith("bn") -> "bn"
+            layout.id.startsWith("en") -> "en"
             else -> "en"
+        }
+        val pack = languagePackRepo.getPackForLayout(layout.id)
+        val dictFile = pack?.let { languagePackRepo.getDictionaryFile(it.id) }
+        if (dictFile != null && dictFile.exists()) {
+            NativeEngine.ensureInitializedFromPath(pack.language, dictFile.absolutePath)
         }
         return when (lang) {
             "bn" -> LanguageSuggestionConfig(
@@ -2373,7 +2408,11 @@ class KiebordService : InputMethodService() {
 
         gestureCommitJob?.cancel()
         gestureCommitJob = serviceScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            val lang = if (isBanglaLayout()) activeLayout.id else "en"
+            val lang = when {
+                isBanglaLayout() -> activeLayout.id
+                activeLayout.language.isNotEmpty() -> activeLayout.language
+                else -> "en"
+            }
             val learnedWords = if (preferencesState.learnedWordsEnabled) {
                 val all = userDictionaryRepo.getLearnedGestureWords(20)
                 if (isBanglaLayout()) {
@@ -2418,7 +2457,11 @@ class KiebordService : InputMethodService() {
     ): String? {
         if (!preferencesState.gestureTypingEnabled || !activeLayout.isQwertyBased()) return null
         if (trail.size < 4 || centroids.isEmpty()) return null
-        val lang = if (isBanglaLayout()) activeLayout.id else "en"
+        val lang = when {
+            isBanglaLayout() -> activeLayout.id
+            activeLayout.language.isNotEmpty() -> activeLayout.language
+            else -> "en"
+        }
         val rawCandidates = gestureDecoder.decodeGesture(trail, centroids, keyWidthPx, lang, emptyList())
         val candidates = filterCandidatesForLayout(rawCandidates)
         return candidates.firstOrNull()?.text?.trim()
