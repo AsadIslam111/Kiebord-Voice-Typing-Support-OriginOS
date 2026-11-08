@@ -24,13 +24,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -77,7 +83,33 @@ fun LiveResizerOverlay(
     val rectStartInset = 6.dp + dragHorizontalMargin + oneHandedStart
     val rectEndInset = 6.dp + dragHorizontalMargin + oneHandedEnd
 
-    Box(modifier = modifier) {
+    var overlayCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
+    var topHandleCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var gestureStartYTop by remember { mutableStateOf(0f) }
+    var gestureStartHeight by remember { mutableStateOf(0.dp) }
+
+    var leftHandleCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var gestureStartXLeft by remember { mutableStateOf(0f) }
+    var gestureStartMarginLeft by remember { mutableStateOf(0.dp) }
+
+    var rightHandleCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var gestureStartXRight by remember { mutableStateOf(0f) }
+    var gestureStartMarginRight by remember { mutableStateOf(0.dp) }
+
+    var bottomHandleCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var gestureStartYBottom by remember { mutableStateOf(0f) }
+    var gestureStartChin by remember { mutableStateOf(0.dp) }
+
+    var centerHandleCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var gestureStartCenterChin by remember { mutableStateOf(0.dp) }
+    var gestureStartCenterMargin by remember { mutableStateOf(0.dp) }
+    var gestureStartCenterX by remember { mutableStateOf(0f) }
+    var gestureStartCenterY by remember { mutableStateOf(0f) }
+
+    Box(
+        modifier = modifier.onGloballyPositioned { overlayCoordinates = it }
+    ) {
         // Bounding wireframe outline with touch-safe handles
         Box(
             modifier = Modifier
@@ -116,15 +148,30 @@ fun LiveResizerOverlay(
                     .align(Alignment.TopCenter)
                     .fillMaxWidth(0.6f)
                     .height(48.dp)
+                    .onGloballyPositioned { topHandleCoords = it }
                     .pointerInput(Unit) {
                         detectDragGestures(
-                            onDrag = { change, dragAmount ->
+                            onDragStart = { offset ->
+                                val oCoords = overlayCoordinates
+                                val hCoords = topHandleCoords
+                                if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                    gestureStartYTop = oCoords.localPositionOf(hCoords, offset).y
+                                    gestureStartHeight = currentHeightState.value
+                                }
+                            },
+                            onDrag = { change, _ ->
                                 change.consume()
-                                val deltaRowDp = with(density) { (-dragAmount.y / 4.8f).toDp() }
-                                val minAllowedHeight = (baseRowHeight * 0.65f).coerceAtLeast(22.dp)
-                                val maxAllowedHeight = (baseRowHeight * 1.45f).coerceAtMost(90.dp)
-                                val newHeight = (currentHeightState.value + deltaRowDp).coerceIn(minAllowedHeight, maxAllowedHeight)
-                                onHeightChangeState.value(newHeight)
+                                val oCoords = overlayCoordinates
+                                val hCoords = topHandleCoords
+                                if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                    val currentY = oCoords.localPositionOf(hCoords, change.position).y
+                                    val deltaY = gestureStartYTop - currentY
+                                    val deltaRowDp = with(density) { (deltaY / 4.8f).toDp() }
+                                    val minAllowedHeight = (baseRowHeight * 0.65f).coerceAtLeast(22.dp)
+                                    val maxAllowedHeight = (baseRowHeight * 1.45f).coerceAtMost(90.dp)
+                                    val newHeight = (gestureStartHeight + deltaRowDp).coerceIn(minAllowedHeight, maxAllowedHeight)
+                                    onHeightChangeState.value(newHeight)
+                                }
                             },
                             onDragEnd = { onCommitState.value() },
                             onDragCancel = { onCommitState.value() }
@@ -157,13 +204,28 @@ fun LiveResizerOverlay(
                     .align(Alignment.CenterStart)
                     .width(48.dp)
                     .height(110.dp)
+                    .onGloballyPositioned { leftHandleCoords = it }
                     .pointerInput(Unit) {
                         detectDragGestures(
-                            onDrag = { change, dragAmount ->
+                            onDragStart = { offset ->
+                                val oCoords = overlayCoordinates
+                                val hCoords = leftHandleCoords
+                                if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                    gestureStartXLeft = oCoords.localPositionOf(hCoords, offset).x
+                                    gestureStartMarginLeft = currentMarginState.value
+                                }
+                            },
+                            onDrag = { change, _ ->
                                 change.consume()
-                                val deltaMarginDp = with(density) { (dragAmount.x / 2f).toDp() }
-                                val newMargin = (currentMarginState.value + deltaMarginDp).coerceIn(0.dp, 48.dp)
-                                onMarginChangeState.value(newMargin)
+                                val oCoords = overlayCoordinates
+                                val hCoords = leftHandleCoords
+                                if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                    val currentX = oCoords.localPositionOf(hCoords, change.position).x
+                                    val deltaX = currentX - gestureStartXLeft
+                                    val deltaMarginDp = with(density) { (deltaX / 2f).toDp() }
+                                    val newMargin = (gestureStartMarginLeft + deltaMarginDp).coerceIn(0.dp, 48.dp)
+                                    onMarginChangeState.value(newMargin)
+                                }
                             },
                             onDragEnd = { onCommitState.value() },
                             onDragCancel = { onCommitState.value() }
@@ -196,13 +258,28 @@ fun LiveResizerOverlay(
                     .align(Alignment.CenterEnd)
                     .width(48.dp)
                     .height(110.dp)
+                    .onGloballyPositioned { rightHandleCoords = it }
                     .pointerInput(Unit) {
                         detectDragGestures(
-                            onDrag = { change, dragAmount ->
+                            onDragStart = { offset ->
+                                val oCoords = overlayCoordinates
+                                val hCoords = rightHandleCoords
+                                if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                    gestureStartXRight = oCoords.localPositionOf(hCoords, offset).x
+                                    gestureStartMarginRight = currentMarginState.value
+                                }
+                            },
+                            onDrag = { change, _ ->
                                 change.consume()
-                                val deltaMarginDp = with(density) { (-dragAmount.x / 2f).toDp() }
-                                val newMargin = (currentMarginState.value + deltaMarginDp).coerceIn(0.dp, 48.dp)
-                                onMarginChangeState.value(newMargin)
+                                val oCoords = overlayCoordinates
+                                val hCoords = rightHandleCoords
+                                if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                    val currentX = oCoords.localPositionOf(hCoords, change.position).x
+                                    val deltaX = gestureStartXRight - currentX
+                                    val deltaMarginDp = with(density) { (deltaX / 2f).toDp() }
+                                    val newMargin = (gestureStartMarginRight + deltaMarginDp).coerceIn(0.dp, 48.dp)
+                                    onMarginChangeState.value(newMargin)
+                                }
                             },
                             onDragEnd = { onCommitState.value() },
                             onDragCancel = { onCommitState.value() }
@@ -235,14 +312,29 @@ fun LiveResizerOverlay(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth(0.6f)
                     .height(48.dp)
+                    .onGloballyPositioned { bottomHandleCoords = it }
                     .pointerInput(Unit) {
                         detectDragGestures(
-                            onDrag = { change, dragAmount ->
+                            onDragStart = { offset ->
+                                val oCoords = overlayCoordinates
+                                val hCoords = bottomHandleCoords
+                                if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                    gestureStartYBottom = oCoords.localPositionOf(hCoords, offset).y
+                                    gestureStartChin = currentChinState.value
+                                }
+                            },
+                            onDrag = { change, _ ->
                                 change.consume()
-                                val deltaChin = with(density) { (-dragAmount.y).toDp() }
-                                val minChin = -effectiveNavBarBottomState.value
-                                val newChin = (currentChinState.value + deltaChin).coerceIn(minChin, 64.dp)
-                                onChinChangeState.value(newChin)
+                                val oCoords = overlayCoordinates
+                                val hCoords = bottomHandleCoords
+                                if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                    val currentY = oCoords.localPositionOf(hCoords, change.position).y
+                                    val deltaY = gestureStartYBottom - currentY
+                                    val deltaChin = with(density) { deltaY.toDp() }
+                                    val minChin = -effectiveNavBarBottomState.value
+                                    val newChin = (gestureStartChin + deltaChin).coerceIn(minChin, 64.dp)
+                                    onChinChangeState.value(newChin)
+                                }
                             },
                             onDragEnd = { onCommitState.value() },
                             onDragCancel = { onCommitState.value() }
@@ -289,18 +381,37 @@ fun LiveResizerOverlay(
                             .clip(RoundedCornerShape(8.dp))
                             .background(colorScheme.keyForeground.copy(alpha = 0.08f))
                             .padding(horizontal = 6.dp, vertical = 6.dp)
+                            .onGloballyPositioned { centerHandleCoords = it }
                             .pointerInput(Unit) {
                                 detectDragGestures(
-                                    onDrag = { change, dragAmount ->
+                                    onDragStart = { offset ->
+                                        val oCoords = overlayCoordinates
+                                        val hCoords = centerHandleCoords
+                                        if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                            val startPos = oCoords.localPositionOf(hCoords, offset)
+                                            gestureStartCenterX = startPos.x
+                                            gestureStartCenterY = startPos.y
+                                            gestureStartCenterChin = currentChinState.value
+                                            gestureStartCenterMargin = currentMarginState.value
+                                        }
+                                    },
+                                    onDrag = { change, _ ->
                                         change.consume()
-                                        val deltaChin = with(density) { (-dragAmount.y).toDp() }
-                                        val minChin = -effectiveNavBarBottomState.value
-                                        val newChin = (currentChinState.value + deltaChin).coerceIn(minChin, 64.dp)
-                                        onChinChangeState.value(newChin)
+                                        val oCoords = overlayCoordinates
+                                        val hCoords = centerHandleCoords
+                                        if (oCoords != null && hCoords != null && oCoords.isAttached && hCoords.isAttached) {
+                                            val currentPos = oCoords.localPositionOf(hCoords, change.position)
+                                            val deltaY = gestureStartCenterY - currentPos.y
+                                            val deltaChin = with(density) { deltaY.toDp() }
+                                            val minChin = -effectiveNavBarBottomState.value
+                                            val newChin = (gestureStartCenterChin + deltaChin).coerceIn(minChin, 64.dp)
+                                            onChinChangeState.value(newChin)
 
-                                        val deltaMargin = with(density) { (dragAmount.x / 2f).toDp() }
-                                        val newMargin = (currentMarginState.value + deltaMargin).coerceIn(0.dp, 48.dp)
-                                        onMarginChangeState.value(newMargin)
+                                            val deltaX = currentPos.x - gestureStartCenterX
+                                            val deltaMargin = with(density) { (deltaX / 2f).toDp() }
+                                            val newMargin = (gestureStartCenterMargin + deltaMargin).coerceIn(0.dp, 48.dp)
+                                            onMarginChangeState.value(newMargin)
+                                        }
                                     },
                                     onDragEnd = { onCommitState.value() },
                                     onDragCancel = { onCommitState.value() }

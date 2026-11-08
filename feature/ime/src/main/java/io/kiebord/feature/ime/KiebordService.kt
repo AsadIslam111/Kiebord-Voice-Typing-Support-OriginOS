@@ -414,12 +414,6 @@ class KiebordService : InputMethodService() {
     override fun onCreateInputView(): View {
         window?.window?.decorView?.let { decorView ->
             lifecycleOwner.attachToView(decorView)
-            ViewCompat.getRootWindowInsets(decorView)?.let { insets ->
-                val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-                if (nav.bottom > 0) {
-                    navBarInsetBottomPx = nav.bottom
-                }
-            }
         }
 
         val composeView = ComposeView(this).apply {
@@ -617,6 +611,7 @@ class KiebordService : InputMethodService() {
     override fun onWindowHidden() {
         finishComposing()
         super.onWindowHidden()
+        navBarInsetBottomPx = 0
         try {
             (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                 ?.removePrimaryClipChangedListener(clipboardListener)
@@ -643,12 +638,6 @@ class KiebordService : InputMethodService() {
         }
         window?.window?.decorView?.let { decorView ->
             lifecycleOwner.attachToView(decorView)
-            ViewCompat.getRootWindowInsets(decorView)?.let { insets ->
-                val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-                if (nav.bottom > 0) {
-                    navBarInsetBottomPx = nav.bottom
-                }
-            }
         }
         lifecycleOwner.onStart()
         inputSessionId++

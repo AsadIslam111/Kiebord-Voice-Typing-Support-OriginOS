@@ -605,7 +605,7 @@ fun KeyboardRootView(
     } else {
         0.dp
     }
-    val effectiveNavBarBottom = maxOf(navBarBottomInset, composeNavBottom)
+    val effectiveNavBarBottom = if (applySystemInsets) maxOf(navBarBottomInset, composeNavBottom) else 0.dp
     // Total bottom padding combines navigation bar clearance with user chin preference,
     // allowing chinPadding to reduce down to -effectiveNavBarBottom so users can reach 0.dp total padding.
     val totalBottomPadding = (effectiveNavBarBottom + chinPadding).coerceAtLeast(0.dp)
@@ -799,7 +799,15 @@ fun KeyboardRootView(
     val dragKeyboardHeight = calculateTotalKeyboardHeight(dragRowHeight)
     val dragBottomPadding = (effectiveNavBarBottom + dragChinPadding).coerceAtLeast(0.dp)
     val dragTotalHeight = popupHeadroomDp + dragKeyboardHeight + dragBottomPadding
-    val activeRootHeight = if (isResizerOpen) maxOf(committedTotalHeight, dragTotalHeight) else committedTotalHeight
+
+    // Stable envelope height for the resizer window to eliminate GPU buffer recreation & relayout flicker on lower Android versions
+    val resizerEnvelopeHeight = remember(isLandscape, activeBaseRowHeight, effectiveNavBarBottom) {
+        val maxAllowedRowHeight = (activeBaseRowHeight * 1.45f).coerceAtMost(90.dp)
+        val maxKbHeight = calculateTotalKeyboardHeight(maxAllowedRowHeight)
+        val maxBottom = (effectiveNavBarBottom + 64.dp).coerceAtLeast(0.dp)
+        popupHeadroomDp + maxKbHeight + maxBottom
+    }
+    val activeRootHeight = if (isResizerOpen) maxOf(committedTotalHeight, resizerEnvelopeHeight) else committedTotalHeight
 
     val handleToolbarAction: (ToolbarAction) -> Unit = { action ->
         when (action) {
