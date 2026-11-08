@@ -17,6 +17,7 @@ data class KiebordPreferences(
     val showKeyShadows: Boolean = true,
     val showKeyPopups: Boolean = true,
     val showSecondaryKeys: Boolean = true,
+    val showGlobeKey: Boolean = true,
     val showEmojiKey: Boolean = false,
 
     // Preferences & Haptics

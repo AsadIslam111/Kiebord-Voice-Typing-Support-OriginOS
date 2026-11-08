@@ -185,6 +185,7 @@ fun KeyboardRootView(
     onSecondaryKeysToggle: ((Boolean) -> Unit)? = null,
     defaultShowKeyPopups: Boolean = true,
     onKeyPopupsToggle: ((Boolean) -> Unit)? = null,
+    showGlobeKey: Boolean = true,
     showEmojiKey: Boolean = false,
     defaultTraditionalMode: Boolean = false,
     onTraditionalModeToggle: ((Boolean) -> Unit)? = null,
@@ -624,7 +625,7 @@ fun KeyboardRootView(
     val isSymbolLayout = displayLayout.isSymbolsLayout()
     val baseAlphaLayout = if (isSymbolLayout) (if (isSlidingSymbolMode) layout else primaryAlphaLayout) else displayLayout
 
-    val keyboardRows: List<KeyRow> = remember(displayLayout, baseAlphaLayout, showNumberRow, extraRowOverrides, isShiftActive, isBornoEasyKarMode, bornoEasyTypedCluster) {
+    val keyboardRows: List<KeyRow> = remember(displayLayout, baseAlphaLayout, showNumberRow, extraRowOverrides, isShiftActive, isBornoEasyKarMode, bornoEasyTypedCluster, showGlobeKey) {
         val numberRow: List<KeyRow> = if (showNumberRow && !isNumberLayout) {
             val baseRow = if (isShiftActive && displayLayout.shiftedNumberRow != null) {
                 displayLayout.shiftedNumberRow!!
@@ -656,7 +657,28 @@ fun KeyboardRootView(
         } else {
             displayLayout.rows
         }
-        numberRow + extraRowsToRender + coreRowsToRender
+        val allRows = numberRow + extraRowsToRender + coreRowsToRender
+        if (!showGlobeKey) {
+            allRows.map { row ->
+                if (row.keys.any { it.type == KeyType.SWITCH_LANGUAGE }) {
+                    val removedWeight = row.keys.filter { it.type == KeyType.SWITCH_LANGUAGE }.sumOf { it.widthWeight.toDouble() }.toFloat()
+                    val hasSpace = row.keys.any { it.type == KeyType.SPACE }
+                    row.copy(
+                        keys = row.keys.filter { it.type != KeyType.SWITCH_LANGUAGE }.map { key ->
+                            if (hasSpace && key.type == KeyType.SPACE) {
+                                key.copy(widthWeight = key.widthWeight + removedWeight)
+                            } else {
+                                key
+                            }
+                        }
+                    )
+                } else {
+                    row
+                }
+            }
+        } else {
+            allRows
+        }
     }
 
     val isQwertyBasedLayout = displayLayout.isQwertyBased()

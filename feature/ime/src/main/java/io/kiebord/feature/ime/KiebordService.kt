@@ -548,6 +548,7 @@ class KiebordService : InputMethodService() {
                     onKeyPopupsToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateShowKeyPopups(enabled) }
                     },
+                    showGlobeKey = preferencesState.showGlobeKey,
                     showEmojiKey = preferencesState.showEmojiKey,
                     defaultTraditionalMode = preferencesState.traditionalMode,
                     onTraditionalModeToggle = { enabled ->

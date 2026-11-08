@@ -44,6 +44,15 @@ class KiebordPreferencesTest {
     }
 
     @Test
+    fun testShowGlobeKeyDefaultAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(true, prefs.showGlobeKey)
+
+        val disabledPrefs = prefs.copy(showGlobeKey = false)
+        assertEquals(false, disabledPrefs.showGlobeKey)
+    }
+
+    @Test
     fun testShowEmojiKeyDefaultAndMutation() {
         val prefs = KiebordPreferences()
         assertEquals(false, prefs.showEmojiKey)

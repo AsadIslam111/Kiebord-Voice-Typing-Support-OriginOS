@@ -1,5 +1,10 @@
 package io.kiebord.app.ui.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,6 +47,7 @@ fun PreferencesScreen(
     onUpdateShowNumberRow: (Boolean) -> Unit,
     onUpdateShowKeyPopups: (Boolean) -> Unit,
     onUpdateShowSecondaryKeys: (Boolean) -> Unit = {},
+    onUpdateShowGlobeKey: (Boolean) -> Unit = {},
     onUpdateShowEmojiKey: (Boolean) -> Unit = {},
     onUpdateCursorTrackpad: (Boolean) -> Unit = {},
     onUpdateOneHandedMode: (String) -> Unit,
@@ -193,12 +199,25 @@ fun PreferencesScreen(
             )
 
             SettingsToggleItem(
-                title = "Show Emoji Key",
-                subtitle = "Show emoji key instead of globe key",
-                checked = preferences.showEmojiKey,
+                title = "Show Globe Key",
+                subtitle = "Show language switch key beside Space bar",
+                checked = preferences.showGlobeKey,
                 position = GroupPosition.MIDDLE,
-                onCheckedChange = onUpdateShowEmojiKey
+                onCheckedChange = onUpdateShowGlobeKey
             )
+
+            AnimatedVisibility(
+                visible = preferences.showGlobeKey,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                SettingsToggleItem(
+                    title = "Replace with Emoji Key",
+                    checked = preferences.showEmojiKey,
+                    position = GroupPosition.MIDDLE,
+                    onCheckedChange = onUpdateShowEmojiKey
+                )
+            }
 
             SettingsToggleItem(
                 title = "Secondary Key Hints",

@@ -938,6 +938,8 @@ private fun ThemePreviewBottomSheetContent(
                         showKeyBorders = showKeyBorders,
                         showKeyShadows = showKeyShadows,
                         defaultShowNumberRow = preferences.showNumberRow,
+                        showGlobeKey = preferences.showGlobeKey,
+                        showEmojiKey = preferences.showEmojiKey,
                         defaultShowSecondaryKeys = false,
                         defaultShowKeyPopups = false,
                         enablePopupHeadroom = false,

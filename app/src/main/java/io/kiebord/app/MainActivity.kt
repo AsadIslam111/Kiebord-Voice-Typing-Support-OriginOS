@@ -587,6 +587,9 @@ fun KiebordSettingsApp(
                             onUpdateShowSecondaryKeys = { enabled ->
                                 scope.launch { preferencesRepo.updateShowSecondaryKeys(enabled) }
                             },
+                            onUpdateShowGlobeKey = { enabled ->
+                                scope.launch { preferencesRepo.updateShowGlobeKey(enabled) }
+                            },
                             onUpdateShowEmojiKey = { enabled ->
                                 scope.launch { preferencesRepo.updateShowEmojiKey(enabled) }
                             },

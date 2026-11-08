@@ -44,6 +44,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val SHOW_KEY_SHADOWS = booleanPreferencesKey("pref_show_key_shadows")
         val SHOW_KEY_POPUPS = booleanPreferencesKey("pref_show_key_popups")
         val SHOW_SECONDARY_KEYS = booleanPreferencesKey("pref_show_secondary_keys")
+        val SHOW_GLOBE_KEY = booleanPreferencesKey("pref_show_globe_key")
         val SHOW_EMOJI_KEY = booleanPreferencesKey("pref_show_emoji_key")
 
         val VIBRATE_ON_KEYPRESS = booleanPreferencesKey("pref_vibrate_on_keypress")
@@ -114,6 +115,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 showKeyShadows = prefs[PreferencesKeys.SHOW_KEY_SHADOWS] ?: true,
                 showKeyPopups = prefs[PreferencesKeys.SHOW_KEY_POPUPS] ?: true,
                 showSecondaryKeys = prefs[PreferencesKeys.SHOW_SECONDARY_KEYS] ?: true,
+                showGlobeKey = prefs[PreferencesKeys.SHOW_GLOBE_KEY] ?: true,
                 showEmojiKey = prefs[PreferencesKeys.SHOW_EMOJI_KEY] ?: false,
 
                 vibrateOnKeypress = prefs[PreferencesKeys.VIBRATE_ON_KEYPRESS] ?: true,
@@ -266,6 +268,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateShowSecondaryKeys(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.SHOW_SECONDARY_KEYS] = enabled }
+    }
+
+    suspend fun updateShowGlobeKey(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SHOW_GLOBE_KEY] = enabled }
     }
 
     suspend fun updateShowEmojiKey(enabled: Boolean) {
