@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.ThemeColorUtils
 
 @Composable
 fun TextEditPanelView(
@@ -51,7 +52,27 @@ fun TextEditPanelView(
     val buttonShape = RoundedCornerShape(12.dp)
     val navKeyBg = colorScheme.keyBackground
     val actionKeyBg = colorScheme.actionKeyBackground
-    val buttonFg = colorScheme.keyForeground
+
+    val navKeyFg = ThemeColorUtils.ensureContrast(
+        foreground = colorScheme.keyForeground,
+        background = navKeyBg,
+        minContrast = 4.0f
+    )
+    val actionKeyFg = ThemeColorUtils.ensureContrast(
+        foreground = colorScheme.actionKeyForeground,
+        background = actionKeyBg,
+        minContrast = 4.0f
+    )
+    val activeSelectFg = ThemeColorUtils.ensureContrast(
+        foreground = if (colorScheme.accentForeground != Color.Unspecified) colorScheme.accentForeground else colorScheme.actionKeyForeground,
+        background = accentColor,
+        minContrast = 4.0f
+    )
+    val headerFg = ThemeColorUtils.ensureContrast(
+        foreground = colorScheme.keyForeground,
+        background = colorScheme.containerBackground,
+        minContrast = 3.5f
+    )
 
     val hasBackdrop = colorScheme.themeSpec?.background?.image != null || colorScheme.themeSpec?.background?.gradient != null
     val panelBg = if (hasBackdrop) Color.Transparent else colorScheme.containerBackground
@@ -83,14 +104,14 @@ fun TextEditPanelView(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Back",
-                    tint = buttonFg,
+                    tint = headerFg,
                     modifier = Modifier.size(20.dp)
                 )
             }
 
             Text(
                 text = "Text editing",
-                color = buttonFg,
+                color = headerFg,
                 fontWeight = FontWeight.Normal,
                 fontSize = 18.sp
             )
@@ -116,7 +137,7 @@ fun TextEditPanelView(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
                     contentDescription = "Left",
-                    tint = buttonFg,
+                    tint = navKeyFg,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -141,7 +162,7 @@ fun TextEditPanelView(
                     Icon(
                         imageVector = Icons.Outlined.KeyboardArrowUp,
                         contentDescription = "Up",
-                        tint = buttonFg,
+                        tint = navKeyFg,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -161,7 +182,7 @@ fun TextEditPanelView(
                 ) {
                     Text(
                         text = "Select",
-                        color = if (isSelecting) Color.White else buttonFg,
+                        color = if (isSelecting) activeSelectFg else navKeyFg,
                         fontSize = 14.sp,
                         fontWeight = if (isSelecting) FontWeight.SemiBold else FontWeight.Normal
                     )
@@ -180,7 +201,7 @@ fun TextEditPanelView(
                     Icon(
                         imageVector = Icons.Outlined.KeyboardArrowDown,
                         contentDescription = "Down",
-                        tint = buttonFg,
+                        tint = navKeyFg,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -199,7 +220,7 @@ fun TextEditPanelView(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                     contentDescription = "Right",
-                    tint = buttonFg,
+                    tint = navKeyFg,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -226,7 +247,7 @@ fun TextEditPanelView(
                 ) {
                     Text(
                         text = "Select all",
-                        color = buttonFg,
+                        color = actionKeyFg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Normal
                     )
@@ -244,7 +265,7 @@ fun TextEditPanelView(
                 ) {
                     Text(
                         text = "Copy",
-                        color = buttonFg,
+                        color = actionKeyFg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Normal
                     )
@@ -262,7 +283,7 @@ fun TextEditPanelView(
                 ) {
                     Text(
                         text = "Paste",
-                        color = buttonFg,
+                        color = actionKeyFg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Normal
                     )
@@ -289,7 +310,7 @@ fun TextEditPanelView(
             ) {
                 Text(
                     text = "|<",
-                    color = buttonFg,
+                    color = navKeyFg,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -307,7 +328,7 @@ fun TextEditPanelView(
             ) {
                 Text(
                     text = ">|",
-                    color = buttonFg,
+                    color = navKeyFg,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -326,7 +347,7 @@ fun TextEditPanelView(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.Backspace,
                     contentDescription = "Backspace",
-                    tint = buttonFg,
+                    tint = actionKeyFg,
                     modifier = Modifier.size(22.dp)
                 )
             }

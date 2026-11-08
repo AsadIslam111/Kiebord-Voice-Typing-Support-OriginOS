@@ -51,6 +51,7 @@ import androidx.emoji2.emojipicker.EmojiPickerView
 import io.kiebord.feature.ime.R
 import io.kiebord.theme.KeyboardColorScheme
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.ThemeColorUtils
 
 /**
  * Attaches Back-to-Keyboard and Emoji Search buttons to the category tab row
@@ -89,10 +90,16 @@ private fun attachHeaderControls(
         context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true)
         val selectableBackgroundRes = outValue.resourceId
 
+        val navIconColor = ThemeColorUtils.ensureContrast(
+            foreground = colorScheme.keyForeground,
+            background = colorScheme.containerBackground,
+            minContrast = 3.5f
+        ).toArgb()
+
         // 1. Back to keyboard button
         val backBtn = ImageView(context).apply {
             setImageResource(R.drawable.ic_emoji_arrow_back)
-            imageTintList = ColorStateList.valueOf(colorScheme.keyForeground.toArgb())
+            imageTintList = ColorStateList.valueOf(navIconColor)
             contentDescription = "Back to keyboard"
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(iconPadPx, iconPadPx, iconPadPx, iconPadPx)
@@ -107,7 +114,7 @@ private fun attachHeaderControls(
         // 2. Search icon button
         val searchBtn = ImageView(context).apply {
             setImageResource(R.drawable.ic_emoji_search)
-            imageTintList = ColorStateList.valueOf(colorScheme.keyForeground.toArgb())
+            imageTintList = ColorStateList.valueOf(navIconColor)
             contentDescription = "Search emojis"
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(iconPadPx, iconPadPx, iconPadPx, iconPadPx)
@@ -263,6 +270,19 @@ fun EmojiPanelView(
         }
 
         // 2. Bottom Action Bar: [ABC], [Spacebar], [Delete] following keyboard key colors and shapes
+        val actionKeyBg = colorScheme.actionKeyBackground
+        val actionKeyFg = ThemeColorUtils.ensureContrast(
+            foreground = colorScheme.actionKeyForeground,
+            background = actionKeyBg,
+            minContrast = 4.0f
+        )
+        val flatDeleteFg = ThemeColorUtils.ensureContrast(
+            foreground = colorScheme.keyForeground,
+            background = colorScheme.containerBackground,
+            minContrast = 4.0f
+        )
+        val deleteFg = if (showKeyBorders) actionKeyFg else flatDeleteFg
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -274,7 +294,7 @@ fun EmojiPanelView(
             val abcShape = RoundedCornerShape(percent = 50)
             EmojiBottomKey(
                 onClick = onClose,
-                baseBackground = colorScheme.actionKeyBackground,
+                baseBackground = actionKeyBg,
                 keyShape = abcShape,
                 verticalPadding = if (showKeyBorders) 3.dp else 6.dp,
                 showShadow = showKeyBorders,
@@ -283,7 +303,7 @@ fun EmojiPanelView(
             ) {
                 Text(
                     text = "ABC",
-                    color = colorScheme.keyForeground,
+                    color = actionKeyFg,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -305,7 +325,7 @@ fun EmojiPanelView(
             val deleteShape = RoundedCornerShape(8.dp)
             EmojiBottomKey(
                 onClick = onDelete,
-                baseBackground = if (showKeyBorders) colorScheme.actionKeyBackground else colorScheme.containerBackground,
+                baseBackground = if (showKeyBorders) actionKeyBg else colorScheme.containerBackground,
                 keyShape = deleteShape,
                 verticalPadding = 3.dp,
                 showShadow = showKeyBorders,
@@ -315,7 +335,7 @@ fun EmojiPanelView(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.Backspace,
                     contentDescription = "Backspace",
-                    tint = colorScheme.keyForeground,
+                    tint = deleteFg,
                     modifier = Modifier.size(22.dp)
                 )
             }

@@ -37,12 +37,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.kiebord.theme.KiebordTheme
+import io.kiebord.theme.ThemeColorUtils
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
@@ -75,6 +77,24 @@ fun ExpandedSuggestionsPanelView(
 
     val scrollStepPx = with(density) { (54 * effectiveScale).dp.toPx() }
     val dividerColor = colorScheme.keyForeground.copy(alpha = 0.12f)
+
+    val actionKeyFg = ThemeColorUtils.ensureContrast(
+        foreground = colorScheme.actionKeyForeground,
+        background = colorScheme.actionKeyBackground,
+        minContrast = 4.0f
+    )
+    val enterKeyBg = if (colorScheme.isAdaptive) colorScheme.actionKeyBackground else colorScheme.accentColor
+    val enterKeyFg = ThemeColorUtils.ensureContrast(
+        foreground = if (colorScheme.isAdaptive) {
+            colorScheme.actionKeyForeground
+        } else if (colorScheme.accentForeground != Color.Unspecified) {
+            colorScheme.accentForeground
+        } else {
+            colorScheme.actionKeyForeground
+        },
+        background = enterKeyBg,
+        minContrast = 4.0f
+    )
 
     val panelBg = colorScheme.containerBackground.copy(alpha = 1f)
 
@@ -190,7 +210,7 @@ fun ExpandedSuggestionsPanelView(
                     Icon(
                         imageVector = Icons.Outlined.KeyboardArrowUp,
                         contentDescription = "Scroll Up",
-                        tint = colorScheme.keyForeground.copy(alpha = if (canScrollUp) 0.85f else 0.3f),
+                        tint = actionKeyFg.copy(alpha = if (canScrollUp) 0.95f else 0.35f),
                         modifier = Modifier.size(actionIconSize)
                     )
                 }
@@ -215,7 +235,7 @@ fun ExpandedSuggestionsPanelView(
                     Icon(
                         imageVector = Icons.Outlined.KeyboardArrowDown,
                         contentDescription = "Scroll Down",
-                        tint = colorScheme.keyForeground.copy(alpha = if (canScrollDown) 0.85f else 0.3f),
+                        tint = actionKeyFg.copy(alpha = if (canScrollDown) 0.95f else 0.35f),
                         modifier = Modifier.size(actionIconSize)
                     )
                 }
@@ -234,7 +254,7 @@ fun ExpandedSuggestionsPanelView(
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.Backspace,
                         contentDescription = "Delete",
-                        tint = colorScheme.keyForeground,
+                        tint = actionKeyFg,
                         modifier = Modifier.size(actionIconSize)
                     )
                 }
@@ -246,14 +266,14 @@ fun ExpandedSuggestionsPanelView(
                         .fillMaxWidth()
                         .padding(vertical = 2.dp)
                         .clip(RoundedCornerShape(percent = 50))
-                        .background(colorScheme.accentColor)
+                        .background(enterKeyBg)
                         .clickable { onEnter() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
                         contentDescription = "Enter",
-                        tint = colorScheme.actionKeyForeground,
+                        tint = enterKeyFg,
                         modifier = Modifier.size(actionIconSize)
                     )
                 }

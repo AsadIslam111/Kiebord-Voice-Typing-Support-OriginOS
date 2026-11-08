@@ -1409,6 +1409,11 @@ fun KeyboardRootView(
                                         }
                                     }
                                     is UndoRedoPillState.CanRedo -> {
+                                        val redoFg = ThemeColorUtils.ensureContrast(
+                                            foreground = colorScheme.actionKeyForeground,
+                                            background = colorScheme.actionKeyBackground,
+                                            minContrast = 4.0f
+                                        )
                                         Row(
                                             modifier = Modifier
                                                 .height(pillHeight)
@@ -1433,12 +1438,12 @@ fun KeyboardRootView(
                                             Icon(
                                                 painter = painterResource(id = R.drawable.ic_redo),
                                                 contentDescription = "Redo",
-                                                tint = colorScheme.keyForeground,
+                                                tint = redoFg,
                                                 modifier = Modifier.size(undoIconSize)
                                             )
                                             Text(
                                                 text = "Redo",
-                                                color = colorScheme.keyForeground,
+                                                color = redoFg,
                                                 fontSize = pillFontSize,
                                                 fontWeight = FontWeight.SemiBold
                                             )
@@ -3264,6 +3269,11 @@ fun UnlearnWordConfirmationDialog(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
+                val removeBtnFg = ThemeColorUtils.ensureContrast(
+                    foreground = colorScheme.actionKeyForeground,
+                    background = colorScheme.accentColor,
+                    minContrast = 4.0f
+                )
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
@@ -3274,7 +3284,7 @@ fun UnlearnWordConfirmationDialog(
                 ) {
                     Text(
                         text = "Remove",
-                        color = colorScheme.actionKeyForeground,
+                        color = removeBtnFg,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         fontFamily = KiebordTheme.fontFamily

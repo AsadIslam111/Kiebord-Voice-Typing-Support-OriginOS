@@ -1231,5 +1231,63 @@ class ThemeRepositoryTest {
         assertEquals(Color(0xFF001D36), actionVisual.foregroundColor)
 
     }
+
+    @Test
+    fun testDynamicDarkModeActionKeyMatchesModifierKey() {
+        val modBg = Color(0xFF383A40)
+        val modFg = Color(0xFFE2E2E6)
+        val dynamicDarkScheme = KeyboardColorScheme.DefaultDark.copy(
+            containerBackground = Color(0xFF1E1F22),
+            keyBackground = Color(0xFF2B2D30),
+            keyForeground = Color(0xFFE2E2E6),
+            modifierKeyBackground = modBg,
+            modifierKeyForeground = modFg,
+            actionKeyBackground = modBg,
+            actionKeyForeground = modFg,
+            accentColor = Color(0xFFA8C7FA),
+            accentForeground = Color(0xFF003258),
+            isAdaptive = true
+        )
+
+        val actionKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.ACTION)
+        val deleteKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.DELETE)
+        val actionVisual = dynamicDarkScheme.resolveKeycapVisual(key = actionKey, showKeyBorders = true)
+        val deleteVisual = dynamicDarkScheme.resolveKeycapVisual(key = deleteKey, showKeyBorders = true)
+
+        assertEquals(modBg, actionVisual.backgroundColor)
+        assertEquals(deleteVisual.backgroundColor, actionVisual.backgroundColor)
+        assertEquals(modFg, actionVisual.foregroundColor)
+
+        val contrast = ThemeColorUtils.contrastRatio(actionVisual.foregroundColor, actionVisual.backgroundColor)
+        assertTrue("Action key contrast must be >= 4.0, was $contrast", contrast >= 4.0f)
+    }
+
+    @Test
+    fun testDynamicDarkModeActionKeyContrast() {
+        val dynamicDarkScheme = KeyboardColorScheme.DefaultDark.copy(
+            containerBackground = Color(0xFF1E1F22),
+            keyBackground = Color(0xFF2B2D30),
+            keyForeground = Color(0xFFE2E2E6),
+            actionKeyBackground = Color(0xFFD0E4FF),
+            actionKeyForeground = Color(0xFF001D36),
+            accentColor = Color(0xFFD0E4FF),
+            accentForeground = Color(0xFF001D36),
+            isAdaptive = true
+        )
+
+        val actionContrast = ThemeColorUtils.contrastRatio(
+            dynamicDarkScheme.actionKeyForeground,
+            dynamicDarkScheme.actionKeyBackground
+        )
+        assertTrue("Action key contrast must be >= 4.0, was $actionContrast", actionContrast >= 4.0f)
+
+        val resolvedActionFg = ThemeColorUtils.ensureContrast(
+            foreground = dynamicDarkScheme.actionKeyForeground,
+            background = dynamicDarkScheme.actionKeyBackground,
+            minContrast = 4.0f
+        )
+        val resolvedContrast = ThemeColorUtils.contrastRatio(resolvedActionFg, dynamicDarkScheme.actionKeyBackground)
+        assertTrue("Resolved action key contrast must be >= 4.0", resolvedContrast >= 4.0f)
+    }
 }
 

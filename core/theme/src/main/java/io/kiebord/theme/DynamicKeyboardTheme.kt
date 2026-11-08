@@ -50,14 +50,26 @@ object DynamicKeyboardTheme {
         val keyFg = m3Scheme.onSurface
         val modBg = if (isDark) m3Scheme.surfaceBright else m3Scheme.surfaceContainerHighest
         val modFg = if (isDark) m3Scheme.onSurface else m3Scheme.onSurfaceVariant
-        val actionBg = if (isDark) m3Scheme.onPrimaryContainer else m3Scheme.primaryContainer
-        val actionFg = if (isDark) {
+        val actionBg = if (isDark) modBg else m3Scheme.primaryContainer
+        val actionFgCandidate = if (isDark) {
             if (ThemeColorUtils.isColorDark(actionBg)) m3Scheme.onSurface else m3Scheme.onPrimary
         } else {
             m3Scheme.onPrimaryContainer
         }
-        val accent = if (isDark) actionBg else m3Scheme.primary
+        val actionFg = ThemeColorUtils.ensureContrast(
+            foreground = actionFgCandidate,
+            background = actionBg,
+            minContrast = 4.0f
+        )
+        val accent = m3Scheme.primary
+        val accentFgCandidate = m3Scheme.onPrimary
+        val accentFg = ThemeColorUtils.ensureContrast(
+            foreground = accentFgCandidate,
+            background = accent,
+            minContrast = 4.0f
+        )
         val pressedBg = if (isDark) m3Scheme.primary else m3Scheme.surfaceContainerHigh
+        val keyPressedFg = if (isDark) accentFg else actionFg
         val popBg = m3Scheme.surfaceContainerHighest
         val shadow = if (isDark) Color(0x33000000) else Color(0x1F000000)
 
@@ -73,13 +85,13 @@ object DynamicKeyboardTheme {
             modifierKeyForeground = modFg,
             shiftActiveColor = accent,
             accentColor = accent,
-            accentForeground = actionFg,
+            accentForeground = accentFg,
             moreKeysBackground = popBg,
             guidelineColor = accent,
             suggestionBackground = containerBg,
             suggestionForeground = keyFg,
             keyPressedBackground = pressedBg,
-            keyPressedForeground = actionFg,
+            keyPressedForeground = keyPressedFg,
             flatKeyForeground = keyFg,
             activeOptionHighlightColor = accent,
             isAdaptive = true
