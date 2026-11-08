@@ -51,6 +51,7 @@ data class KiebordPreferences(
     val phoneticAutoCorrect: Boolean = true,
     val bengaliSmartPhonetic: Boolean = true,
     val bengaliShowRawInputCandidate: Boolean = true,
+    val bornoRememberSuggestionChoice: Boolean = false,
     val learnedWordsEnabled: Boolean = true,
     val gestureTypingEnabled: Boolean = true,
     val showGestureTrail: Boolean = true,

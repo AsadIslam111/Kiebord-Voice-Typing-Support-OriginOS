@@ -27,6 +27,7 @@ open class GenericTransliterationManager(
     private val inputConnectionProvider: () -> InputConnection?,
     var isAutoCorrectEnabled: Boolean = true
 ) : TransliterationManager {
+    var suggestionChoiceProvider: ((raw: String) -> String?)? = null
     protected val buffer = StringBuilder()
     private var cachedTransliteration: String = ""
     private var isTransliterationDirty: Boolean = false
@@ -40,6 +41,10 @@ open class GenericTransliterationManager(
 
     protected fun resolveTransliteration(raw: String): String {
         if (raw.isEmpty()) return ""
+        val customChoice = suggestionChoiceProvider?.invoke(raw)
+        if (!customChoice.isNullOrEmpty()) {
+            return customChoice
+        }
         if (!NativeEngine.isAvailable()) return raw
         val target = if (isAutoCorrectEnabled && (layoutId == "bn_borno" || layoutId == "bn_avro")) {
             PhoneticAutoCorrect.lookup(raw) ?: raw
@@ -123,6 +128,15 @@ open class GenericTransliterationManager(
         buffer.clear()
         cachedTransliteration = ""
         isTransliterationDirty = false
+    }
+
+    fun refreshComposing() {
+        if (!isComposing) return
+        val ic = inputConnectionProvider() ?: return
+        val transliterated = resolveTransliteration(buffer.toString())
+        cachedTransliteration = transliterated
+        isTransliterationDirty = false
+        ic.setComposingText(transliterated, 1)
     }
 
     override fun reset() {

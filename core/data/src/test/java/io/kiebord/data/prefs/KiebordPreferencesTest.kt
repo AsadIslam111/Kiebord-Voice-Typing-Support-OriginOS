@@ -26,6 +26,15 @@ class KiebordPreferencesTest {
     }
 
     @Test
+    fun testBornoRememberSuggestionChoiceDefaultAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(false, prefs.bornoRememberSuggestionChoice)
+
+        val enabledPrefs = prefs.copy(bornoRememberSuggestionChoice = true)
+        assertEquals(true, enabledPrefs.bornoRememberSuggestionChoice)
+    }
+
+    @Test
     fun testFastDeleteEnabledDefaultAndMutation() {
         val prefs = KiebordPreferences()
         assertEquals(false, prefs.fastDeleteEnabled)

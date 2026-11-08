@@ -53,6 +53,7 @@ fun CorrectionsSuggestionsScreen(
     onUpdatePhoneticAutoCorrect: (Boolean) -> Unit = {},
     onUpdateBengaliSmartPhonetic: (Boolean) -> Unit,
     onUpdateBengaliShowRawInputCandidate: (Boolean) -> Unit = {},
+    onUpdateBornoRememberSuggestionChoice: (Boolean) -> Unit = {},
     onUpdateLearnedWordsEnabled: (Boolean) -> Unit = {},
     onDeleteLearnedWords: () -> Unit = {},
     onUpdateGestureTyping: (Boolean) -> Unit,
@@ -152,7 +153,7 @@ fun CorrectionsSuggestionsScreen(
             .verticalScroll(scrollState)
             .padding(bottom = 32.dp)
     ) {
-        SettingsCategoryHeader(title = "Suggestion Strip & Intelligence")
+        SettingsCategoryHeader(title = "Suggestion Strip")
 
         SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
             val stripPosition = if (preferences.suggestionsEnabled) GroupPosition.TOP else GroupPosition.ALONE
@@ -177,24 +178,8 @@ fun CorrectionsSuggestionsScreen(
                     title = "Phonetic Auto Correct",
                     subtitle = "Automatically correct common phonetic misspellings",
                     checked = preferences.phoneticAutoCorrect,
-                    position = GroupPosition.MIDDLE,
-                    onCheckedChange = onUpdatePhoneticAutoCorrect
-                )
-
-                SettingsToggleItem(
-                    title = "Show Proximity Suggestions in Borno Phonetic Layout",
-                    subtitle = "Suggest dictionary words and proximity corrections while typing in Borno Phonetic",
-                    checked = preferences.bengaliSmartPhonetic,
-                    position = GroupPosition.MIDDLE,
-                    onCheckedChange = onUpdateBengaliSmartPhonetic
-                )
-
-                SettingsToggleItem(
-                    title = "Show English Input Candidate",
-                    subtitle = "Display raw typed English word as first candidate in Borno Phonetic layout",
-                    checked = preferences.bengaliShowRawInputCandidate,
                     position = GroupPosition.BOTTOM,
-                    onCheckedChange = onUpdateBengaliShowRawInputCandidate
+                    onCheckedChange = onUpdatePhoneticAutoCorrect
                 )
             }
         }
@@ -220,6 +205,35 @@ fun CorrectionsSuggestionsScreen(
                     onSelect = { onUpdateSuggestionBarMode(KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE) }
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingsCategoryHeader(title = "Borno Phonetic")
+
+        SettingsGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SettingsToggleItem(
+                title = "Show Proximity Suggestions in Borno Phonetic Layout",
+                subtitle = "Suggest dictionary words and proximity corrections while typing in Borno Phonetic",
+                checked = preferences.bengaliSmartPhonetic,
+                position = GroupPosition.TOP,
+                onCheckedChange = onUpdateBengaliSmartPhonetic
+            )
+
+            SettingsToggleItem(
+                title = "Show English Input Candidate",
+                subtitle = "Display raw typed English word as first candidate in Borno Phonetic layout",
+                checked = preferences.bengaliShowRawInputCandidate,
+                position = GroupPosition.MIDDLE,
+                onCheckedChange = onUpdateBengaliShowRawInputCandidate
+            )
+
+            SettingsToggleItem(
+                title = "Remember Suggestion Choice",
+                subtitle = "Remember chosen suggestions and commit directly next time",
+                checked = preferences.bornoRememberSuggestionChoice,
+                position = GroupPosition.BOTTOM,
+                onCheckedChange = onUpdateBornoRememberSuggestionChoice
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))

@@ -37,6 +37,7 @@ import io.kiebord.common.model.KeyDef
 import io.kiebord.common.model.KeyType
 import io.kiebord.common.model.KeyboardLayoutDef
 import io.kiebord.common.model.ShiftState
+import io.kiebord.data.dictionary.BornoSuggestionChoiceRepository
 import io.kiebord.data.dictionary.PersonalDictionaryRepository
 import io.kiebord.data.dictionary.UserDictionaryRepository
 import io.kiebord.data.langpack.LanguagePackRepository
@@ -214,6 +215,16 @@ class KiebordService : InputMethodService() {
         } else {
             (transliterationManager as? GenericTransliterationManager)?.isAutoCorrectEnabled = preferencesState.phoneticAutoCorrect
         }
+        (transliterationManager as? GenericTransliterationManager)?.let { mgr ->
+            mgr.suggestionChoiceProvider = { raw ->
+                if (::bornoSuggestionChoiceRepo.isInitialized &&
+                    preferencesState.bornoRememberSuggestionChoice &&
+                    activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO
+                ) {
+                    bornoSuggestionChoiceRepo.getChoice(raw)
+                } else null
+            }
+        }
         return transliterationManager
     }
 
@@ -231,6 +242,7 @@ class KiebordService : InputMethodService() {
         clipboardManager.syncFromSystemClipboard(this, forceNotify = true)
     }
     private lateinit var userDictionaryRepo: UserDictionaryRepository
+    private lateinit var bornoSuggestionChoiceRepo: BornoSuggestionChoiceRepository
     private lateinit var personalDictionaryRepo: PersonalDictionaryRepository
     private lateinit var languagePackRepo: LanguagePackRepository
     private lateinit var layoutRepo: LayoutRepository
@@ -300,6 +312,7 @@ class KiebordService : InputMethodService() {
         languagePackRepo = LanguagePackRepository.getInstance(this)
         clipboardManager = SandboxedClipboardManager.getInstance(this)
         userDictionaryRepo = UserDictionaryRepository.getInstance(this)
+        bornoSuggestionChoiceRepo = BornoSuggestionChoiceRepository.getInstance(this)
         personalDictionaryRepo = PersonalDictionaryRepository.getInstance(this)
         voiceInputManager = VoiceInputManager(this).apply {
             onPartialResult = { text ->
@@ -482,6 +495,11 @@ class KiebordService : InputMethodService() {
                     onCandidateSelect = ::handleCandidateSelect,
                     onUnlearnWord = { word ->
                         userDictionaryRepo.unlearnWord(word)
+                        val removedChoice = bornoSuggestionChoiceRepo.unlearnWord(word)
+                        if (removedChoice) {
+                            val translitMgr = getTransliterationManager()
+                            (translitMgr as? GenericTransliterationManager)?.refreshComposing()
+                        }
                         updateSuggestions()
                     },
                     clipboardManager = clipboardManager,
@@ -2384,6 +2402,15 @@ class KiebordService : InputMethodService() {
             userDictionaryRepo.recordWord(candidateText, prevWord)
         }
         val translitMgr = getTransliterationManager()
+        if (preferencesState.bornoRememberSuggestionChoice &&
+            activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO &&
+            translitMgr.isComposing
+        ) {
+            val raw = translitMgr.currentRawInput.trim()
+            if (raw.length > BornoSuggestionChoiceRepository.MIN_RAW_LENGTH && candidateText.isNotEmpty() && candidateText != raw) {
+                bornoSuggestionChoiceRepo.recordChoice(raw, candidateText)
+            }
+        }
         if (translitMgr.isComposing) {
             if (shouldAutoSpace) {
                 translitMgr.commitCustom(textToCommit)
@@ -2593,9 +2620,16 @@ class KiebordService : InputMethodService() {
     }
 
     private fun markLearnedCandidates(candidates: List<SuggestionCandidate>): List<SuggestionCandidate> {
-        if (!preferencesState.learnedWordsEnabled) return candidates
+        val checkLearnedWords = preferencesState.learnedWordsEnabled
+        val checkBornoChoices = preferencesState.bornoRememberSuggestionChoice && activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO
+        if (!checkLearnedWords && !checkBornoChoices) return candidates
+
         return candidates.map { cand ->
-            if (cand.isLearned) cand else cand.copy(isLearned = userDictionaryRepo.isLearned(cand.text))
+            if (cand.isLearned) cand else {
+                val isLearnedInDict = checkLearnedWords && userDictionaryRepo.isLearned(cand.text)
+                val isLearnedInChoice = checkBornoChoices && bornoSuggestionChoiceRepo.isChoiceWord(cand.text)
+                cand.copy(isLearned = isLearnedInDict || isLearnedInChoice)
+            }
         }
     }
 
@@ -2657,8 +2691,26 @@ class KiebordService : InputMethodService() {
                     }
                 }
 
+                val isBornoRememberedChoice = preferencesState.bornoRememberSuggestionChoice &&
+                        activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO &&
+                        bornoSuggestionChoiceRepo.hasChoice(raw)
+
                 if (primaryWord.isNotEmpty() && list.none { it.text == primaryWord }) {
-                    list.add(SuggestionCandidate(text = primaryWord, isPrimary = list.none { it.isPrimary }, rawInput = raw))
+                    list.add(
+                        SuggestionCandidate(
+                            text = primaryWord,
+                            isPrimary = list.none { it.isPrimary },
+                            rawInput = raw,
+                            isLearned = isBornoRememberedChoice
+                        )
+                    )
+                }
+
+                if (isBornoRememberedChoice && NativeEngine.isAvailable()) {
+                    val defaultTranslit = NativeEngine.transliterate(activeLayout.id, raw)
+                    if (defaultTranslit.isNotEmpty() && defaultTranslit != primaryWord && !containsLatinText(defaultTranslit) && list.none { it.text == defaultTranslit }) {
+                        list.add(SuggestionCandidate(text = defaultTranslit, isPrimary = false, rawInput = raw))
+                    }
                 }
 
                 val personalPrefixes = (if (raw.isNotBlank()) personalDictionaryRepo.getPrefixMatches(raw, "bn", 3) else emptyList()) +
