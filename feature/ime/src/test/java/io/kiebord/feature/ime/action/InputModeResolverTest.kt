@@ -129,74 +129,97 @@ class InputModeResolverTest {
     }
 
     @Test
-    fun testIsUrlOrCodeField() {
+    fun testIsGeneralTextInputAndUrlOrCodeField() {
         val uriInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
         }
         assertTrue(InputModeResolver.isUrlOrCodeField(uriInfo))
+        assertFalse(InputModeResolver.isGeneralTextInput(uriInfo))
 
         val emailInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
         }
         assertTrue(InputModeResolver.isUrlOrCodeField(emailInfo))
+        assertFalse(InputModeResolver.isGeneralTextInput(emailInfo))
         assertTrue(InputModeResolver.isEmailField(emailInfo))
 
         val webEmailInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
         }
         assertTrue(InputModeResolver.isEmailField(webEmailInfo))
-        assertFalse(InputModeResolver.isEmailField(uriInfo))
+        assertFalse(InputModeResolver.isGeneralTextInput(webEmailInfo))
 
         val passwordInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
         assertTrue(InputModeResolver.isUrlOrCodeField(passwordInfo))
-
-        val noSuggestionsInfo = EditorInfo().apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        }
-        assertTrue(InputModeResolver.isUrlOrCodeField(noSuggestionsInfo))
-
-        val searchWithNoSuggestions = EditorInfo().apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            imeOptions = EditorInfo.IME_ACTION_SEARCH
-        }
-        assertTrue(InputModeResolver.isUrlOrCodeField(searchWithNoSuggestions))
-        assertFalse(InputModeResolver.shouldSuppressSuggestions(searchWithNoSuggestions))
-
-        val searchViewInfo = EditorInfo().apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            imeOptions = EditorInfo.IME_ACTION_SEARCH
-        }
-        assertTrue(InputModeResolver.isUrlOrCodeField(searchViewInfo))
-        assertFalse(InputModeResolver.shouldSuppressSuggestions(searchViewInfo))
-
-        val googleSearchWidget = EditorInfo().apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE
-            imeOptions = EditorInfo.IME_ACTION_SEARCH
-            packageName = "com.google.android.googlequicksearchbox"
-        }
-        assertTrue(InputModeResolver.isSearchField(googleSearchWidget))
-        assertTrue(InputModeResolver.isUrlOrCodeField(googleSearchWidget))
-        assertFalse(InputModeResolver.shouldSuppressSuggestions(googleSearchWidget))
+        assertFalse(InputModeResolver.isGeneralTextInput(passwordInfo))
 
         val termuxInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT
             packageName = "com.termux"
         }
         assertTrue(InputModeResolver.isUrlOrCodeField(termuxInfo))
+        assertFalse(InputModeResolver.isGeneralTextInput(termuxInfo))
+        assertFalse(InputModeResolver.isAutoSpaceFriendly(termuxInfo))
+
+        val acodeInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            packageName = "com.foxdebug.acode"
+        }
+        assertTrue(InputModeResolver.isUrlOrCodeField(acodeInfo))
+        assertFalse(InputModeResolver.isGeneralTextInput(acodeInfo))
+        assertFalse(InputModeResolver.isAutoSpaceFriendly(acodeInfo))
 
         val regularTextInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT
             packageName = "com.example.chat"
         }
         assertFalse(InputModeResolver.isUrlOrCodeField(regularTextInfo))
+        assertTrue(InputModeResolver.isGeneralTextInput(regularTextInfo))
+        assertTrue(InputModeResolver.isAutoSpaceFriendly(regularTextInfo))
+
+        // AI Chatbot app: ChatGPT with NO_SUGGESTIONS
+        val chatGptInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            packageName = "com.openai.chatgpt"
+        }
+        assertFalse(InputModeResolver.isUrlOrCodeField(chatGptInfo))
+        assertTrue(InputModeResolver.isGeneralTextInput(chatGptInfo))
+        assertTrue(InputModeResolver.isAutoSpaceFriendly(chatGptInfo))
+
+        // AI Chatbot app: Gemini in googlequicksearchbox
+        val geminiPromptInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            imeOptions = EditorInfo.IME_ACTION_SEND
+            packageName = "com.google.android.googlequicksearchbox"
+        }
+        assertFalse(InputModeResolver.isUrlOrCodeField(geminiPromptInfo))
+        assertTrue(InputModeResolver.isGeneralTextInput(geminiPromptInfo))
+
+        // AI Chatbot app: Claude with WEB_EDIT_TEXT
+        val claudeWebInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT
+            packageName = "com.anthropic.claude"
+        }
+        assertFalse(InputModeResolver.isUrlOrCodeField(claudeWebInfo))
+        assertTrue(InputModeResolver.isGeneralTextInput(claudeWebInfo))
+
+        // AI Search app: Perplexity with IME_ACTION_SEARCH
+        val perplexityInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+            packageName = "ai.perplexity.app.android"
+        }
+        assertFalse(InputModeResolver.isUrlOrCodeField(perplexityInfo))
+        assertTrue(InputModeResolver.isGeneralTextInput(perplexityInfo))
 
         val keepInfo = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             packageName = "com.google.android.keep"
         }
         assertFalse(InputModeResolver.isUrlOrCodeField(keepInfo))
+        assertTrue(InputModeResolver.isGeneralTextInput(keepInfo))
         assertFalse(InputModeResolver.shouldSuppressSuggestions(keepInfo))
 
         val braveOmnibox = EditorInfo().apply {
@@ -205,28 +228,55 @@ class InputModeResolverTest {
             packageName = "com.brave.browser"
         }
         assertTrue(InputModeResolver.isUrlOrCodeField(braveOmnibox))
+        assertFalse(InputModeResolver.isGeneralTextInput(braveOmnibox))
         assertFalse(InputModeResolver.shouldSuppressSuggestions(braveOmnibox))
-
-        val braveWebSearch = EditorInfo().apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            packageName = "com.brave.browser"
-        }
-        assertTrue(InputModeResolver.isUrlOrCodeField(braveWebSearch))
-        assertFalse(InputModeResolver.shouldSuppressSuggestions(braveWebSearch))
 
         val standaloneUri = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             packageName = "com.example.app"
         }
         assertTrue(InputModeResolver.isUrlOrCodeField(standaloneUri))
+        assertFalse(InputModeResolver.isGeneralTextInput(standaloneUri))
         assertTrue(InputModeResolver.shouldSuppressSuggestions(standaloneUri))
 
-        val multiLineWithCaps = EditorInfo().apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or
-                    InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            packageName = "com.some.notes"
+        // Google Search Widget (single-line search in googlequicksearchbox)
+        val googleSearchWidget = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+            packageName = "com.google.android.googlequicksearchbox"
         }
-        assertFalse(InputModeResolver.isUrlOrCodeField(multiLineWithCaps))
-        assertFalse(InputModeResolver.shouldSuppressSuggestions(multiLineWithCaps))
+        assertTrue(InputModeResolver.isSearchOrWebAddressField(googleSearchWidget))
+        assertTrue(InputModeResolver.isUrlOrCodeField(googleSearchWidget))
+        assertFalse(InputModeResolver.isAutoSpaceFriendly(googleSearchWidget))
+
+        // Chrome omnibox / URL search bar (single-line)
+        val chromeOmnibox = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            imeOptions = EditorInfo.IME_ACTION_GO
+            packageName = "com.android.chrome"
+        }
+        assertTrue(InputModeResolver.isSearchOrWebAddressField(chromeOmnibox))
+        assertTrue(InputModeResolver.isUrlOrCodeField(chromeOmnibox))
+        assertFalse(InputModeResolver.isAutoSpaceFriendly(chromeOmnibox))
+
+        // Firefox / Fenix search bar (single-line)
+        val firefoxSearch = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+            packageName = "org.mozilla.firefox"
+        }
+        assertTrue(InputModeResolver.isSearchOrWebAddressField(firefoxSearch))
+        assertTrue(InputModeResolver.isUrlOrCodeField(firefoxSearch))
+        assertFalse(InputModeResolver.isAutoSpaceFriendly(firefoxSearch))
+
+        // Multiline web text area / comment inside Chrome (e.g. GitHub, forum, web ChatGPT)
+        val chromeWebTextArea = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            packageName = "com.android.chrome"
+        }
+        assertFalse(InputModeResolver.isSearchOrWebAddressField(chromeWebTextArea))
+        assertFalse(InputModeResolver.isUrlOrCodeField(chromeWebTextArea))
+        assertTrue(InputModeResolver.isGeneralTextInput(chromeWebTextArea))
+        assertTrue(InputModeResolver.isAutoSpaceFriendly(chromeWebTextArea))
     }
 }

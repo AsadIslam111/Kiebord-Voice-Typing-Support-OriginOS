@@ -61,6 +61,19 @@ object InputModeResolver {
                 pkg.contains("shell")
     }
 
+    /**
+     * Checks if the target application is a code editor or IDE (e.g. Acode, Replit, QuickEdit).
+     */
+    fun isCodeEditorApp(info: EditorInfo?): Boolean {
+        if (info == null) return false
+        val pkg = (info.packageName ?: "").lowercase()
+        return pkg.contains("acode") ||
+                pkg.contains("replit") ||
+                pkg.contains("droidedit") ||
+                pkg.contains("quickedit") ||
+                pkg.contains("aode")
+    }
+
     fun isEmailField(info: EditorInfo?): Boolean {
         if (info == null) return false
         val inputType = info.inputType
@@ -98,75 +111,84 @@ object InputModeResolver {
         return action == EditorInfo.IME_ACTION_SEARCH ||
                 action == EditorInfo.IME_ACTION_GO ||
                 variation == InputType.TYPE_TEXT_VARIATION_FILTER ||
-                variation == InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT ||
                 (flags and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE) != 0 ||
-                pkg.contains("googlequicksearchbox") ||
                 pkg.contains("search") ||
                 isWebBrowserApp(info)
     }
 
     /**
-     * Checks if the field is a URL, email, password, code, or terminal field where
-     * auto-capitalization, double-space period, and predictive word suggestions should be suppressed.
+     * Determines whether the field is a general natural text input, eligible for
+     * auto-capitalization, punctuation handling, and text suggestions.
+     * Follows Borno Keyboard's mIsGeneralTextInput protocol-based classification.
      */
-    fun isUrlOrCodeField(info: EditorInfo?): Boolean {
+    fun isGeneralTextInput(info: EditorInfo?): Boolean {
         if (info == null) return false
         val inputType = info.inputType
         val inputClass = inputType and InputType.TYPE_MASK_CLASS
+        if (inputClass != InputType.TYPE_CLASS_TEXT) return false
+
         val variation = inputType and InputType.TYPE_MASK_VARIATION
+        return variation != InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS &&
+                variation != InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS &&
+                variation != InputType.TYPE_TEXT_VARIATION_PASSWORD &&
+                variation != InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD &&
+                variation != InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD &&
+                variation != InputType.TYPE_TEXT_VARIATION_URI &&
+                variation != InputType.TYPE_TEXT_VARIATION_FILTER &&
+                variation != InputType.TYPE_TEXT_VARIATION_PHONETIC &&
+                !isTerminalOrConsoleApp(info) &&
+                !isCodeEditorApp(info)
+    }
+
+
+    fun isAutoSpaceFriendly(info: EditorInfo?): Boolean {
+        return isGeneralTextInput(info) && !isSearchOrWebAddressField(info)
+    }
+
+
+    fun isSearchOrWebAddressField(info: EditorInfo?): Boolean {
+        if (info == null) return false
+        val inputType = info.inputType
+        val inputClass = inputType and InputType.TYPE_MASK_CLASS
+        if (inputClass != InputType.TYPE_CLASS_TEXT) return false
+
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        if (variation == InputType.TYPE_TEXT_VARIATION_URI ||
+            variation == InputType.TYPE_TEXT_VARIATION_FILTER
+        ) {
+            return true
+        }
+
         val flags = inputType and InputType.TYPE_MASK_FLAGS
+        val isMultiline = (flags and InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0
+        val action = info.imeOptions and EditorInfo.IME_MASK_ACTION
 
-        // Non-text fields or TYPE_NULL
-        if (inputClass != InputType.TYPE_CLASS_TEXT) {
-            return true
-        }
-
-        // URI / URL fields
-        if (variation == InputType.TYPE_TEXT_VARIATION_URI) {
-            return true
-        }
-
-        // Email address fields
-        if (variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
-            variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
-        ) {
-            return true
-        }
-
-        // Password fields
-        if (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
-        ) {
-            return true
-        }
-
-        // Known terminal / console apps
-        if (isTerminalOrConsoleApp(info)) {
-            return true
-        }
-
-        val pkg = (info.packageName ?: "").lowercase()
-        if (pkg.contains("keep") || pkg.contains("note")) {
-            return false
-        }
-
-        if (isSearchField(info)) {
-            return true
-        }
-
-        if ((flags and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0 ||
-            (flags and InputType.TYPE_TEXT_FLAG_CAP_WORDS) != 0
-        ) {
-            return false
-        }
-
-        // Code / Terminal fields: typically have TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        if ((flags and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
-            return true
+        // Single-line fields with search/go action, autocomplete flag, or inside search widgets/browser bars
+        if (!isMultiline) {
+            if (action == EditorInfo.IME_ACTION_SEARCH || action == EditorInfo.IME_ACTION_GO) {
+                return true
+            }
+            if ((flags and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE) != 0) {
+                return true
+            }
+            if (isWebBrowserApp(info)) {
+                return true
+            }
+            val pkg = (info.packageName ?: "").lowercase()
+            if (pkg.contains("googlequicksearchbox") || pkg.contains("search")) {
+                return true
+            }
         }
 
         return false
+    }
+
+    /**
+     * Checks if the field is a URL, search, email, password, code, or terminal field where
+     * auto-capitalization, punctuation auto-spacing, and double-space period should be suppressed.
+     */
+    fun isUrlOrCodeField(info: EditorInfo?): Boolean {
+        return !isGeneralTextInput(info) || isSearchOrWebAddressField(info)
     }
 
     fun shouldSuppressSuggestions(info: EditorInfo?): Boolean {
@@ -186,7 +208,7 @@ object InputModeResolver {
             return true
         }
 
-        if (isTerminalOrConsoleApp(info)) {
+        if (isTerminalOrConsoleApp(info) || isCodeEditorApp(info)) {
             return true
         }
 
@@ -204,24 +226,8 @@ object InputModeResolver {
             return !isWebBrowserApp(info)
         }
 
-        val pkg = (info.packageName ?: "").lowercase()
-        if (pkg.contains("keep") || pkg.contains("note")) {
-            return false
-        }
-
         if (isWebBrowserApp(info) || variation == InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT) {
             return false
-        }
-
-        val flags = inputType and InputType.TYPE_MASK_FLAGS
-        if ((flags and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0 ||
-            (flags and InputType.TYPE_TEXT_FLAG_CAP_WORDS) != 0
-        ) {
-            return false
-        }
-
-        if ((flags and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
-            return true
         }
 
         return false

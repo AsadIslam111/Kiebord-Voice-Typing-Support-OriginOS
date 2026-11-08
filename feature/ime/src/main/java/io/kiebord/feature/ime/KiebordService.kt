@@ -57,6 +57,7 @@ import io.kiebord.data.prefs.KiebordPreferencesRepository
 import io.kiebord.feature.ime.translit.TransliterationManagerFactory
 import io.kiebord.feature.ime.action.ActionKeyResolver
 import io.kiebord.feature.ime.action.ActionKeyVisual
+import io.kiebord.feature.ime.action.CapsModeUtils
 import io.kiebord.feature.ime.action.InputModeResolver
 import io.kiebord.feature.ime.ui.KeyboardRootView
 import io.kiebord.feature.ime.ui.suggestion.SuggestionCandidate
@@ -104,20 +105,68 @@ class KiebordService : InputMethodService() {
         return TransliterationManagerFactory.isTransliterationLayout(activeLayout.id)
     }
 
-    private fun isPhoneticLayout(): Boolean {
-        return activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO ||
-                activeLayout.id == KiebordPreferences.LAYOUT_BN_AVRO ||
-                primaryAlphaLayout.id == KiebordPreferences.LAYOUT_BN_BORNO ||
-                primaryAlphaLayout.id == KiebordPreferences.LAYOUT_BN_AVRO
+    private fun isPhoneticLayout(layout: KeyboardLayoutDef = activeLayout): Boolean {
+        return layout.id == KiebordPreferences.LAYOUT_BN_BORNO ||
+                layout.id == KiebordPreferences.LAYOUT_BN_AVRO
     }
 
     private fun shouldAutoCapitalize(): Boolean {
         if (!preferencesState.autoCapitalization) return false
-        if (activeLayout.noAutoCapitalization || primaryAlphaLayout.noAutoCapitalization) return false
-        if (isPhoneticLayout()) return false
-        if (isBanglaLayout(activeLayout) || isBanglaLayout(primaryAlphaLayout)) return false
-        if (isUrlOrCodeField()) return false
+        val layoutToCheck = if (activeLayout.isSymbolsLayout() || PredefinedLayouts.isNumberLayout(activeLayout.id)) {
+            primaryAlphaLayout
+        } else {
+            activeLayout
+        }
+        if (layoutToCheck.noAutoCapitalization) return false
+        if (isBanglaLayout(layoutToCheck)) return false
+        if (isPhoneticLayout(layoutToCheck)) return false
+        val info = currentEditorInfoState ?: currentInputEditorInfo
+        if (!InputModeResolver.isGeneralTextInput(info)) return false
+        if (InputModeResolver.isSearchOrWebAddressField(info)) return false
         return true
+    }
+
+    private fun updateAutoCapitalizationState(
+        ic: InputConnection? = currentInputConnection,
+        info: EditorInfo? = currentEditorInfoState ?: currentInputEditorInfo
+    ) {
+        if (shiftState == ShiftState.CAPS_LOCK) return
+        if (!shouldAutoCapitalize()) {
+            shiftState = ShiftState.UNSHIFTED
+            return
+        }
+
+        val inputType = info?.inputType ?: InputType.TYPE_CLASS_TEXT
+        var reqModes = 0
+        if ((inputType and InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS) != 0) {
+            reqModes = reqModes or android.text.TextUtils.CAP_MODE_CHARACTERS
+        }
+        if ((inputType and InputType.TYPE_TEXT_FLAG_CAP_WORDS) != 0) {
+            reqModes = reqModes or android.text.TextUtils.CAP_MODE_WORDS
+        }
+        if ((inputType and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0) {
+            reqModes = reqModes or android.text.TextUtils.CAP_MODE_SENTENCES
+        }
+
+        // For general natural language fields (such as multiline AI chat prompts) where explicit
+        // cap flags might not be declared in XML, default to sentence capitalization.
+        if (reqModes == 0) {
+            reqModes = android.text.TextUtils.CAP_MODE_SENTENCES
+        }
+
+        var capsMode = 0
+        try {
+            capsMode = ic?.getCursorCapsMode(reqModes) ?: 0
+        } catch (_: Exception) {}
+
+        if (capsMode == 0 && ic != null) {
+            try {
+                val textBefore = ic.getTextBeforeCursor(128, 0)?.toString() ?: ""
+                capsMode = CapsModeUtils.getCapsMode(textBefore, reqModes)
+            } catch (_: Exception) {}
+        }
+
+        shiftState = if (capsMode != 0) ShiftState.ONE_SHOT else ShiftState.UNSHIFTED
     }
 
     private fun isExtraCompositionChar(text: String): Boolean {
@@ -597,10 +646,7 @@ class KiebordService : InputMethodService() {
         val variation = inputType and InputType.TYPE_MASK_VARIATION
         val numberLayout = PredefinedLayouts.resolveNumberLayout(inputClass, variation)
         activeLayout = numberLayout ?: primaryAlphaLayout
-        val initialCaps = if (shouldAutoCapitalize() && info != null) {
-            info.initialCapsMode
-        } else 0
-        shiftState = if (initialCaps != 0) ShiftState.ONE_SHOT else ShiftState.UNSHIFTED
+        updateAutoCapitalizationState(currentInputConnection, info)
         getTransliterationManager().reset()
         composingBuffer.clear()
         lastGestureCommittedWord = ""
@@ -674,6 +720,9 @@ class KiebordService : InputMethodService() {
         }
         if (!translitMgr.isComposing && composingBuffer.isEmpty()) {
             updateSuggestions()
+            if (shiftState != ShiftState.CAPS_LOCK) {
+                updateAutoCapitalizationState()
+            }
         }
     }
 
@@ -731,9 +780,7 @@ class KiebordService : InputMethodService() {
         } else {
             PredefinedLayouts.resolveSymbolsLayout(primaryAlphaLayout)
         }
-        if (!shouldAutoCapitalize()) {
-            shiftState = ShiftState.UNSHIFTED
-        }
+        updateAutoCapitalizationState()
         try {
             getSharedPreferences("kiebord_runtime", Context.MODE_PRIVATE)
                 .edit()
@@ -1031,14 +1078,14 @@ class KiebordService : InputMethodService() {
                     }
                 }
 
-                updateSuggestions()
-
                 // If in one-shot shift mode, revert to unshifted after one character (unless a sentence terminator just set ONE_SHOT)
                 if (initialShiftState == ShiftState.ONE_SHOT && shiftState == ShiftState.ONE_SHOT) {
                     if (!shouldAutoCapitalize() || !isSentenceTerminator(text)) {
                         shiftState = ShiftState.UNSHIFTED
                     }
                 }
+
+                updateSuggestions()
             }
             KeyType.SHIFT -> {
                 val now = SystemClock.uptimeMillis()
@@ -1111,6 +1158,9 @@ class KiebordService : InputMethodService() {
                     updateBornoEasyStateFromText(before)
                 }
                 updateSuggestions()
+                if (shiftState != ShiftState.CAPS_LOCK) {
+                    updateAutoCapitalizationState()
+                }
             }
             KeyType.ACTION -> {
                 finishComposing()
@@ -1241,9 +1291,7 @@ class KiebordService : InputMethodService() {
                     "ABC" -> {
                         isSymbolsMode = false
                         activeLayout = primaryAlphaLayout
-                        if (!shouldAutoCapitalize()) {
-                            shiftState = ShiftState.UNSHIFTED
-                        }
+                        updateAutoCapitalizationState()
                     }
                     "*#" -> {
                         if (!isSymbolsMode) {
@@ -1256,9 +1304,7 @@ class KiebordService : InputMethodService() {
                         if (isSymbolsMode || PredefinedLayouts.isNumberLayout(activeLayout.id)) {
                             isSymbolsMode = false
                             activeLayout = primaryAlphaLayout
-                            if (!shouldAutoCapitalize()) {
-                                shiftState = ShiftState.UNSHIFTED
-                            }
+                            updateAutoCapitalizationState()
                         } else {
                             primaryAlphaLayout = activeLayout
                             isSymbolsMode = true
@@ -2300,10 +2346,10 @@ class KiebordService : InputMethodService() {
                 ic.setComposingText(composingBuffer.toString(), 1)
             }
         }
+        if (shiftState == ShiftState.ONE_SHOT) {
+            shiftState = ShiftState.UNSHIFTED
+        }
         if (shouldAutoSpace) {
-            if (!shouldAutoCapitalize() && shiftState == ShiftState.ONE_SHOT) {
-                shiftState = ShiftState.UNSHIFTED
-            }
             lastSpaceTapTime = SystemClock.uptimeMillis()
         }
         updateSuggestions()
@@ -2342,6 +2388,12 @@ class KiebordService : InputMethodService() {
         return layout?.isQwertyBased()
             ?: (layoutId == "en_qwerty" || layoutId == "bn_borno" || layoutId == "bn_avro")
     }
+
+    internal fun formatSuggestionCandidateCase(
+        word: String,
+        typedPrefix: String,
+        currentShiftState: ShiftState = shiftState
+    ): String = io.kiebord.feature.ime.action.SuggestionCasingUtils.formatCandidate(word, typedPrefix, currentShiftState)
 
     private data class LanguageSuggestionConfig(
         val dictLang: String,
@@ -2654,6 +2706,7 @@ class KiebordService : InputMethodService() {
         val config = resolveSuggestionConfig(activeLayout)
         val prefix = config.cleanPrefix(composingBuffer.toString())
         if (prefix.isNotEmpty()) {
+            val queryPrefix = if (containsLatinText(prefix)) prefix.lowercase() else prefix
             val personalShortcuts = personalDictionaryRepo.getShortcutMatches(prefix, config.dictLang)
             val shortcutWords = personalShortcuts.map { it.word }.distinct()
             val personalPrefixes = personalDictionaryRepo.getPrefixMatches(prefix, config.dictLang, 4)
@@ -2662,20 +2715,26 @@ class KiebordService : InputMethodService() {
             val personalWords = (personalShortcuts + personalPrefixes).distinctBy { it.id }.map { it.word }
 
             val learned = if (preferencesState.learnedWordsEnabled) {
-                userDictionaryRepo.getCompletions(prefix, 4, config.isValidCandidate)
+                val direct = userDictionaryRepo.getCompletions(prefix, 4, config.isValidCandidate)
+                val lower = if (containsLatinText(prefix) && prefix != prefix.lowercase()) {
+                    userDictionaryRepo.getCompletions(prefix.lowercase(), 4, config.isValidCandidate)
+                } else emptyList()
+                (direct + lower).distinct()
             } else emptyList()
-            val matches = NativeEngine.querySuggestions(prefix, config.dictLang, 12)
+            val matches = NativeEngine.querySuggestions(queryPrefix, config.dictLang, 12)
                 .filter(config.isValidCandidate)
 
-            val mergedWords = if (shortcutWords.isNotEmpty()) {
+            val rawMergedWords = if (shortcutWords.isNotEmpty()) {
                 (shortcutWords + listOf(prefix) + otherPersonalWords + learned + matches).distinct().take(12)
             } else {
                 (personalWords + learned + matches).distinct().take(12)
             }
 
+            val mergedWords = rawMergedWords.map { formatSuggestionCandidateCase(it, prefix) }.distinct()
+
             activeSuggestions = filterAndMarkCandidates(if (mergedWords.isNotEmpty()) {
                 mergedWords.mapIndexed { i, w ->
-                    val isPersonal = personalWords.contains(w)
+                    val isPersonal = personalWords.any { it.equals(w, ignoreCase = true) }
                     SuggestionCandidate(
                         text = w,
                         isPrimary = i == 0,
@@ -2684,8 +2743,9 @@ class KiebordService : InputMethodService() {
                     )
                 }
             } else {
-                if (config.isValidCandidate(prefix)) {
-                    listOf(SuggestionCandidate(text = prefix, isPrimary = true))
+                val formattedPrefix = formatSuggestionCandidateCase(prefix, prefix)
+                if (config.isValidCandidate(formattedPrefix)) {
+                    listOf(SuggestionCandidate(text = formattedPrefix, isPrimary = true))
                 } else emptyList()
             })
         } else {
@@ -2701,7 +2761,12 @@ class KiebordService : InputMethodService() {
                 NativeEngine.queryNextWords(prev, config.dictLang, 10).filter(config.isValidCandidate)
             } else emptyList()
             val merged = (learnedNext + predictions).distinct().take(12)
-            activeSuggestions = filterAndMarkCandidates(merged.mapIndexed { idx, word ->
+            val formattedMerged = if (shiftState == ShiftState.ONE_SHOT || shiftState == ShiftState.CAPS_LOCK) {
+                merged.map { formatSuggestionCandidateCase(it, "") }.distinct()
+            } else {
+                merged
+            }
+            activeSuggestions = filterAndMarkCandidates(formattedMerged.mapIndexed { idx, word ->
                 SuggestionCandidate(text = word, isPrimary = idx == 0)
             })
         }
