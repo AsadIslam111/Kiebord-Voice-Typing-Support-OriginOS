@@ -13,6 +13,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -106,7 +107,8 @@ fun AppearanceThemesScreen(
     val context = LocalContext.current
     val themeRepo = remember(context) { ThemeRepository.getInstance(context) }
     var reloadTrigger by remember { mutableStateOf(0) }
-    val allThemes = remember(reloadTrigger) { themeRepo.getAvailableThemes() }
+    val isSystemDark = isSystemInDarkTheme()
+    val allThemes = remember(reloadTrigger, isSystemDark) { themeRepo.getAvailableThemes(context, isDark = isSystemDark) }
 
     val scrollState = rememberScrollState()
     var previewThemeOption by remember { mutableStateOf<ThemeOptionItem?>(null) }
@@ -283,6 +285,46 @@ fun AppearanceThemesScreen(
             }
         }
 
+        val adaptiveThemes = allThemes.filter { it.category == ThemeCategory.ADAPTIVE }
+        if (adaptiveThemes.isNotEmpty()) {
+            Text(
+                text = "Adaptive",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary,
+                modifier = Modifier.padding(start = 18.dp, top = 22.dp, bottom = 14.dp)
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                adaptiveThemes.chunked(3).forEach { rowThemes ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        rowThemes.forEach { themeOption ->
+                            val isSelected = preferences.theme == themeOption.id
+                            AbstractThemeCard(
+                                themeOption = themeOption,
+                                isSelected = isSelected,
+                                showKeyBorders = preferences.showKeyBorders,
+                                showKeyShadows = preferences.showKeyShadows,
+                                modifier = Modifier.weight(1f),
+                                onSelect = { previewThemeOption = themeOption }
+                            )
+                        }
+                        repeat(3 - rowThemes.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+
         // 3. Other Categories: Gradients, Colors
         for (category in otherCategories) {
             val categoryThemes = allThemes.filter { it.category == category }
@@ -342,8 +384,18 @@ fun AppearanceThemesScreen(
             containerColor = colors.cardBackground,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
         ) {
+            val isAdaptive = KiebordPreferences.isAdaptiveTheme(currentPreview.id)
+            val resolvedPreview = if (isAdaptive) {
+                val freshScheme = themeRepo.getColorScheme(currentPreview.id, context, isDark = isSystemDark)
+                remember(currentPreview.id, freshScheme, isSystemDark) {
+                    currentPreview.copy(scheme = freshScheme)
+                }
+            } else {
+                currentPreview
+            }
+
             ThemePreviewBottomSheetContent(
-                themeOption = currentPreview,
+                themeOption = resolvedPreview,
                 preferences = preferences,
                 showKeyBorders = previewShowKeyBorders,
                 showKeyShadows = previewShowKeyShadows,
@@ -728,7 +780,11 @@ private fun AbstractThemeCard(
         val spaceColor = if (spaceHex != null) ThemeColorUtils.parseHexColor(spaceHex, scheme.keyBackground) else scheme.keyBackground
 
         val enterHex = scheme.themeSpec?.actionKey?.background
-        val enterColor = if (enterHex != null) ThemeColorUtils.parseHexColor(enterHex, scheme.accentColor) else scheme.accentColor
+        val enterColor = when {
+            enterHex != null -> ThemeColorUtils.parseHexColor(enterHex, scheme.accentColor)
+            scheme.isAdaptive -> scheme.actionKeyBackground
+            else -> scheme.accentColor
+        }
 
         Row(
             modifier = Modifier

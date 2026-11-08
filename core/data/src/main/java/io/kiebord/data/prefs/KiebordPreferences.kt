@@ -107,6 +107,12 @@ data class KiebordPreferences(
         const val THEME_TOKYO_NIGHT = "tokyo_night"
         const val THEME_NORD = "nord"
         const val THEME_DEFAULT_LIGHT = "default_light"
+        const val THEME_ADAPTIVE = "dynamic_adaptive"
+        const val THEME_ADAPTIVE_STROKED = "dynamic_adaptive_stroked"
+
+        fun isAdaptiveTheme(themeId: String): Boolean {
+            return themeId == THEME_ADAPTIVE || themeId == THEME_ADAPTIVE_STROKED || themeId == "dynamic_adaptive_light_keys"
+        }
 
         const val ONE_HANDED_OFF = "off"
         const val ONE_HANDED_LEFT = "left"

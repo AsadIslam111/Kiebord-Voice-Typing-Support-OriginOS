@@ -1288,18 +1288,27 @@ private fun KeyboardMiniPreview(
                     (key.widthWeight / totalWeight) * availableKeySpace
                 } else 0f
 
-                val isComma = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،")
-                val isPill = key.type == KeyType.ACTION || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
+                val isPunctuationModifier = key.type == KeyType.CHARACTER && (key.label == "," || key.label == "،" || key.label == "." || key.label == "।")
+                val isModifierKey = key.type == KeyType.SHIFT || key.type == KeyType.DELETE || key.type == KeyType.SYMBOLS || isPunctuationModifier
+                val isActionKey = key.type == KeyType.ACTION
+                val effectiveModifierBg = if (colorScheme.modifierKeyBackground != Color.Unspecified) colorScheme.modifierKeyBackground else colorScheme.actionKeyBackground
+                val effectiveModifierFg = if (colorScheme.modifierKeyForeground != Color.Unspecified) colorScheme.modifierKeyForeground else colorScheme.keyForeground
+
+                val isPill = isActionKey || (showKeyBorders && key.type == KeyType.SYMBOLS) || (!showKeyBorders && key.type == KeyType.SPACE)
                 val bg = when {
-                    key.type == KeyType.ACTION -> colorScheme.accentColor
-                    key.type == KeyType.SYMBOLS -> colorScheme.actionKeyBackground
+                    isActionKey -> if (colorScheme.isAdaptive) colorScheme.actionKeyBackground else colorScheme.accentColor
                     key.type == KeyType.SPACE -> colorScheme.keyBackground
-                    showKeyBorders && (key.type == KeyType.SHIFT || key.type == KeyType.DELETE || isComma) -> colorScheme.actionKeyBackground
+                    showKeyBorders && isModifierKey -> effectiveModifierBg
                     showKeyBorders -> colorScheme.keyBackground
+                    !colorScheme.isAdaptive && key.type == KeyType.SYMBOLS -> colorScheme.actionKeyBackground
                     else -> colorScheme.containerBackground
                 }
                 val fg = when {
-                    key.type == KeyType.ACTION -> colorScheme.actionKeyForeground
+                    isActionKey -> colorScheme.actionKeyForeground
+                    key.type == KeyType.SPACE -> colorScheme.keyForeground
+                    !showKeyBorders && colorScheme.flatKeyForeground != Color.Unspecified -> colorScheme.flatKeyForeground
+                    !showKeyBorders -> colorScheme.keyForeground
+                    isModifierKey -> effectiveModifierFg
                     else -> colorScheme.keyForeground
                 }
 

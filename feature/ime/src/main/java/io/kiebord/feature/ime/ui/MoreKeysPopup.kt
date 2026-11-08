@@ -323,8 +323,13 @@ private fun MoreKeyCell(
     colorScheme: KeyboardColorScheme
 ) {
     val contentColor = if (isSelected) {
+        val preferredFg = if (colorScheme.accentForeground != Color.Unspecified) {
+            colorScheme.accentForeground
+        } else {
+            colorScheme.actionKeyForeground
+        }
         io.kiebord.theme.ThemeColorUtils.ensureContrast(
-            foreground = colorScheme.actionKeyForeground,
+            foreground = preferredFg,
             background = colorScheme.accentColor,
             minContrast = 3.0f
         )

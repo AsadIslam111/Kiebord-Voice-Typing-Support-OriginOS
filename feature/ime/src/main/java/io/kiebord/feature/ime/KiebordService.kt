@@ -358,7 +358,8 @@ class KiebordService : InputMethodService() {
             preferencesRepo.preferencesFlow.collect { prefs ->
                 preferencesState = prefs
                 (transliterationManager as? GenericTransliterationManager)?.isAutoCorrectEnabled = prefs.phoneticAutoCorrect
-                colorScheme = io.kiebord.theme.ThemeRepository.getInstance(this@KiebordService).getColorScheme(prefs.theme)
+                val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                colorScheme = io.kiebord.theme.ThemeRepository.getInstance(this@KiebordService).getColorScheme(prefs.theme, this@KiebordService, isDark = isDark)
                 val availableMeta = layoutRepo.getAvailableLayouts().map { it.id }.toSet()
                 val enabledIds = prefs.enabledLayoutIds.toList().filter { id ->
                     id in availableMeta || id == KiebordPreferences.LAYOUT_AR_ARABIC
@@ -386,6 +387,14 @@ class KiebordService : InputMethodService() {
                 } catch (_: Exception) {}
                 updateSuggestions()
             }
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (KiebordPreferences.isAdaptiveTheme(preferencesState.theme)) {
+            val isDark = (newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            colorScheme = io.kiebord.theme.ThemeRepository.getInstance(this).getColorScheme(preferencesState.theme, this, isDark = isDark)
         }
     }
 
@@ -630,6 +639,10 @@ class KiebordService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        if (KiebordPreferences.isAdaptiveTheme(preferencesState.theme)) {
+            val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            colorScheme = io.kiebord.theme.ThemeRepository.getInstance(this).getColorScheme(preferencesState.theme, this, isDark = isDark)
+        }
         currentEditorInfoState = info
         clipboardManager.syncFromSystemClipboard(this)
         if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {

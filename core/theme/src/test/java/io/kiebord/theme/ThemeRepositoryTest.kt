@@ -1124,5 +1124,112 @@ class ThemeRepositoryTest {
         val result4 = ThemeColorUtils.adjustContrast(unspecified, darkBg, minContrast = 2.8f)
         assertEquals(Color.White, result4)
     }
+
+    @Test
+    fun testAdaptiveThemeCategoryAndConstants() {
+        assertEquals("Adaptive", ThemeCategory.ADAPTIVE.title)
+        assertEquals("dynamic_adaptive", DynamicKeyboardTheme.THEME_ADAPTIVE_ID)
+        assertEquals("dynamic_adaptive_stroked", DynamicKeyboardTheme.THEME_ADAPTIVE_STROKED_ID)
+        assertTrue(DynamicKeyboardTheme.isAdaptiveTheme("dynamic_adaptive"))
+        assertTrue(DynamicKeyboardTheme.isAdaptiveTheme("dynamic_adaptive_light_keys"))
+        assertTrue(DynamicKeyboardTheme.isAdaptiveTheme("dynamic_adaptive_stroked"))
+        assertFalse(DynamicKeyboardTheme.isAdaptiveTheme("default_dark"))
+    }
+
+    @Test
+    fun testModifierKeyForegroundResolution() {
+        val scheme = KeyboardColorScheme.DefaultDark.copy(
+            modifierKeyForeground = Color(0xFF123456)
+        )
+        val shiftKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.SHIFT)
+        val shiftVisual = scheme.resolveKeycapVisual(key = shiftKey, showKeyBorders = true)
+        assertEquals(Color(0xFF123456), shiftVisual.foregroundColor)
+
+        val commaKey = io.kiebord.common.model.KeyDef(label = ",", type = io.kiebord.common.model.KeyType.CHARACTER)
+        val commaVisual = scheme.resolveKeycapVisual(key = commaKey, showKeyBorders = true)
+        assertEquals(Color(0xFF123456), commaVisual.foregroundColor)
+
+        val periodKey = io.kiebord.common.model.KeyDef(label = ".", type = io.kiebord.common.model.KeyType.CHARACTER)
+        val periodVisual = scheme.resolveKeycapVisual(key = periodKey, showKeyBorders = true)
+        assertEquals(Color(0xFF123456), periodVisual.foregroundColor)
+
+        val letterKey = io.kiebord.common.model.KeyDef(label = "a", type = io.kiebord.common.model.KeyType.CHARACTER)
+        val letterVisual = scheme.resolveKeycapVisual(key = letterKey, showKeyBorders = true)
+        assertEquals(scheme.keyForeground, letterVisual.foregroundColor)
+    }
+
+    @Test
+    fun testAdaptiveActionKeyResolution() {
+        val adaptiveScheme = KeyboardColorScheme.DefaultDark.copy(
+            actionKeyBackground = Color(0xFF333333),
+            accentColor = Color(0xFF0000FF),
+            isAdaptive = true
+        )
+        val actionKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.ACTION)
+        val actionVisual = adaptiveScheme.resolveKeycapVisual(key = actionKey, showKeyBorders = true)
+        assertEquals(Color(0xFF333333), actionVisual.backgroundColor)
+
+        val nonAdaptiveScheme = KeyboardColorScheme.DefaultDark.copy(
+            actionKeyBackground = Color(0xFF333333),
+            accentColor = Color(0xFF0000FF),
+            isAdaptive = false
+        )
+        val nonAdaptiveVisual = nonAdaptiveScheme.resolveKeycapVisual(key = actionKey, showKeyBorders = true)
+        assertEquals(Color(0xFF0000FF), nonAdaptiveVisual.backgroundColor)
+    }
+
+    @Test
+    fun testAdaptiveModifierAndKeySeparation() {
+        val adaptiveScheme = KeyboardColorScheme.DefaultLight.copy(
+            keyBackground = Color(0xFFFFFFFF),
+            keyForeground = Color(0xFF272729),
+            modifierKeyBackground = Color(0xFFE2E1E6),
+            modifierKeyForeground = Color(0xFF444348),
+            actionKeyBackground = Color(0xFFD0E4FF),
+            actionKeyForeground = Color(0xFF001D36),
+            isAdaptive = true
+        )
+
+        val letterKey = io.kiebord.common.model.KeyDef(label = "q", type = io.kiebord.common.model.KeyType.CHARACTER)
+        val letterVisual = adaptiveScheme.resolveKeycapVisual(key = letterKey, showKeyBorders = true)
+        assertEquals(Color(0xFFFFFFFF), letterVisual.backgroundColor)
+        assertEquals(Color(0xFF272729), letterVisual.foregroundColor)
+
+        val spaceKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.SPACE)
+        val spaceVisual = adaptiveScheme.resolveKeycapVisual(key = spaceKey, showKeyBorders = true)
+        assertEquals(Color(0xFFFFFFFF), spaceVisual.backgroundColor)
+        assertEquals(Color(0xFF272729), spaceVisual.foregroundColor)
+
+        val shiftKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.SHIFT)
+        val shiftVisual = adaptiveScheme.resolveKeycapVisual(key = shiftKey, showKeyBorders = true)
+        assertEquals(Color(0xFFE2E1E6), shiftVisual.backgroundColor)
+        assertEquals(Color(0xFF444348), shiftVisual.foregroundColor)
+
+        val deleteKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.DELETE)
+        val deleteVisual = adaptiveScheme.resolveKeycapVisual(key = deleteKey, showKeyBorders = true)
+        assertEquals(Color(0xFFE2E1E6), deleteVisual.backgroundColor)
+        assertEquals(Color(0xFF444348), deleteVisual.foregroundColor)
+
+        val commaKey = io.kiebord.common.model.KeyDef(label = ",", type = io.kiebord.common.model.KeyType.CHARACTER)
+        val commaVisual = adaptiveScheme.resolveKeycapVisual(key = commaKey, showKeyBorders = true)
+        assertEquals(Color(0xFFE2E1E6), commaVisual.backgroundColor)
+        assertEquals(Color(0xFF444348), commaVisual.foregroundColor)
+
+        val periodKey = io.kiebord.common.model.KeyDef(label = ".", type = io.kiebord.common.model.KeyType.CHARACTER)
+        val periodVisual = adaptiveScheme.resolveKeycapVisual(key = periodKey, showKeyBorders = true)
+        assertEquals(Color(0xFFE2E1E6), periodVisual.backgroundColor)
+        assertEquals(Color(0xFF444348), periodVisual.foregroundColor)
+
+        val symbolsKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.SYMBOLS)
+        val symbolsVisual = adaptiveScheme.resolveKeycapVisual(key = symbolsKey, showKeyBorders = true)
+        assertEquals(Color(0xFFE2E1E6), symbolsVisual.backgroundColor)
+        assertEquals(Color(0xFF444348), symbolsVisual.foregroundColor)
+
+        val actionKey = io.kiebord.common.model.KeyDef(type = io.kiebord.common.model.KeyType.ACTION)
+        val actionVisual = adaptiveScheme.resolveKeycapVisual(key = actionKey, showKeyBorders = true)
+        assertEquals(Color(0xFFD0E4FF), actionVisual.backgroundColor)
+        assertEquals(Color(0xFF001D36), actionVisual.foregroundColor)
+
+    }
 }
 

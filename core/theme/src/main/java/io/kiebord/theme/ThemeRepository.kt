@@ -16,6 +16,7 @@ import java.io.FileOutputStream
 import java.util.concurrent.ConcurrentHashMap
 
 enum class ThemeCategory(val title: String) {
+    ADAPTIVE("Adaptive"),
     ORIGINALS("Originals"),
     BORNO_GRADIENT("Gradients"),
     BORNO_AMOLED("Dark & AMOLED"),
@@ -78,6 +79,7 @@ class ThemeRepository private constructor(private val context: Context) {
     }
 
     private fun canonicalId(id: String): String {
+        if (id == "dynamic_adaptive_light_keys") return DynamicKeyboardTheme.THEME_ADAPTIVE_ID
         return if (id.isNotEmpty() && id.all { it.isDigit() }) "borno_$id" else id
     }
 
@@ -133,8 +135,20 @@ class ThemeRepository private constructor(private val context: Context) {
         } catch (_: Exception) {}
     }
 
-    fun getColorScheme(id: String): KeyboardColorScheme {
+    fun isAdaptiveSupported(): Boolean = DynamicKeyboardTheme.isSupported()
+
+    fun getColorScheme(id: String, context: Context? = null, isDark: Boolean? = null): KeyboardColorScheme {
         val cid = canonicalId(id)
+        if (cid == DynamicKeyboardTheme.THEME_ADAPTIVE_ID) {
+            val targetContext = context ?: this.context
+            val dark = isDark ?: DynamicKeyboardTheme.isSystemDarkTheme(targetContext)
+            return DynamicKeyboardTheme.createColorScheme(targetContext, dark, isStroked = false)
+        }
+        if (cid == DynamicKeyboardTheme.THEME_ADAPTIVE_STROKED_ID) {
+            val targetContext = context ?: this.context
+            val dark = isDark ?: DynamicKeyboardTheme.isSystemDarkTheme(targetContext)
+            return DynamicKeyboardTheme.createColorScheme(targetContext, dark, isStroked = true)
+        }
         originalThemes[cid]?.let { return it.scheme }
         schemeCache[cid]?.let { return it }
         val resolved = richThemes[cid]?.toKeyboardColorScheme()
@@ -155,8 +169,30 @@ class ThemeRepository private constructor(private val context: Context) {
         return null
     }
 
-    fun getThemeOption(id: String): ThemeOptionItem {
+    fun getThemeOption(id: String, context: Context? = null, isDark: Boolean? = null): ThemeOptionItem {
         val cid = canonicalId(id)
+        if (cid == DynamicKeyboardTheme.THEME_ADAPTIVE_ID) {
+            val targetContext = context ?: this.context
+            return ThemeOptionItem(
+                id = DynamicKeyboardTheme.THEME_ADAPTIVE_ID,
+                name = "Dynamic Color",
+                description = "Adapts to device wallpaper and system light/dark theme",
+                scheme = getColorScheme(cid, targetContext, isDark),
+                isCustom = false,
+                category = ThemeCategory.ADAPTIVE
+            )
+        }
+        if (cid == DynamicKeyboardTheme.THEME_ADAPTIVE_STROKED_ID) {
+            val targetContext = context ?: this.context
+            return ThemeOptionItem(
+                id = DynamicKeyboardTheme.THEME_ADAPTIVE_STROKED_ID,
+                name = "Dynamic Color (Stroked)",
+                description = "Adaptive theme with keycap borders",
+                scheme = getColorScheme(cid, targetContext, isDark),
+                isCustom = false,
+                category = ThemeCategory.ADAPTIVE
+            )
+        }
         originalThemes[cid]?.let { return it }
         richThemes[cid]?.let { spec ->
             val isCustomTheme = customThemes.containsKey(spec.id) || !spec.id.startsWith("borno_")
@@ -170,7 +206,7 @@ class ThemeRepository private constructor(private val context: Context) {
                 id = spec.id,
                 name = spec.name,
                 description = desc,
-                scheme = getColorScheme(cid),
+                scheme = getColorScheme(cid, context),
                 isCustom = isCustomTheme,
                 category = if (isCustomTheme) ThemeCategory.CUSTOM else categorizeBornoTheme(spec.id)
             )
@@ -180,7 +216,7 @@ class ThemeRepository private constructor(private val context: Context) {
                 id = def.id,
                 name = def.name,
                 description = "Imported custom theme",
-                scheme = getColorScheme(cid),
+                scheme = getColorScheme(cid, context),
                 isCustom = true,
                 category = ThemeCategory.CUSTOM
             )
@@ -191,7 +227,7 @@ class ThemeRepository private constructor(private val context: Context) {
                 id = def.id,
                 name = def.name,
                 description = "Borno color theme",
-                scheme = getColorScheme(cid),
+                scheme = getColorScheme(cid, context),
                 isCustom = false,
                 category = cat
             )
@@ -199,9 +235,37 @@ class ThemeRepository private constructor(private val context: Context) {
         return originalThemes["default_dark"]!!
     }
 
-    fun getAvailableThemes(): List<ThemeOptionItem> {
+    fun getAvailableThemes(context: Context? = null, isDark: Boolean? = null): List<ThemeOptionItem> {
         val result = mutableListOf<ThemeOptionItem>()
         val seenIds = mutableSetOf<String>()
+
+        val targetContext = context ?: this.context
+        if (DynamicKeyboardTheme.isSupported()) {
+            if (seenIds.add(DynamicKeyboardTheme.THEME_ADAPTIVE_ID)) {
+                result.add(
+                    ThemeOptionItem(
+                        id = DynamicKeyboardTheme.THEME_ADAPTIVE_ID,
+                        name = "Dynamic Color",
+                        description = "Adapts to device wallpaper and system light/dark theme",
+                        scheme = getColorScheme(DynamicKeyboardTheme.THEME_ADAPTIVE_ID, targetContext, isDark),
+                        isCustom = false,
+                        category = ThemeCategory.ADAPTIVE
+                    )
+                )
+            }
+            if (seenIds.add(DynamicKeyboardTheme.THEME_ADAPTIVE_STROKED_ID)) {
+                result.add(
+                    ThemeOptionItem(
+                        id = DynamicKeyboardTheme.THEME_ADAPTIVE_STROKED_ID,
+                        name = "Dynamic Color (Stroked)",
+                        description = "Adaptive theme with keycap borders",
+                        scheme = getColorScheme(DynamicKeyboardTheme.THEME_ADAPTIVE_STROKED_ID, targetContext, isDark),
+                        isCustom = false,
+                        category = ThemeCategory.ADAPTIVE
+                    )
+                )
+            }
+        }
 
         for (item in originalThemes.values) {
             if (seenIds.add(item.id)) {
