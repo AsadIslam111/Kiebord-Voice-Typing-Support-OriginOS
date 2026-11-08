@@ -26,10 +26,14 @@ data class KiebordPreferences(
     val soundOnKeypress: Boolean = false,
     val longPressDelayMs: Int = 300, // 150 - 600 ms
     val cursorTrackpadEnabled: Boolean = true,
+    val spacebarSwipeMode: String = SPACEBAR_MODE_SWIPE_LAYOUT_HOLD_CURSOR,
     val oneHandedMode: String = ONE_HANDED_OFF,
     val longPressDeleteEnabled: Boolean = true,
+    val selectiveDeleteEnabled: Boolean = true,
     val selectiveDeleteMode: String = DELETE_MODE_WORD,
     val fastDeleteEnabled: Boolean = false,
+    val volumeKeyGesturesEnabled: Boolean = false,
+    val volumeKeyGestureAction: String = VOLUME_ACTION_MOVE_CURSOR,
 
     // Keyboard Layouts
     val primaryLayoutId: String = LAYOUT_EN_QWERTY,
@@ -109,6 +113,12 @@ data class KiebordPreferences(
 
         const val DELETE_MODE_WORD = "word"
         const val DELETE_MODE_CHARACTER = "character"
+
+        const val SPACEBAR_MODE_SWIPE_LAYOUT_HOLD_CURSOR = "swipe_layout_hold_cursor"
+        const val SPACEBAR_MODE_SWIPE_CURSOR_HOLD_LAYOUT = "swipe_cursor_hold_layout"
+
+        const val VOLUME_ACTION_MOVE_CURSOR = "move_cursor"
+        const val VOLUME_ACTION_SWITCH_LAYOUT = "switch_layout"
 
         const val VIBRATION_TYPE_HAPTIC = "haptic"
         const val VIBRATION_TYPE_VIBRATION = "vibration"

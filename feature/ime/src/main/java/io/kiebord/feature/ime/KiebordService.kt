@@ -551,6 +551,8 @@ class KiebordService : InputMethodService() {
                     onDeleteSwipeEnd = ::handleDeleteSwipeEnd,
                     onDeleteSwipeCancel = ::handleDeleteSwipeCancel,
                     fastDeleteEnabled = preferencesState.fastDeleteEnabled,
+                    selectiveDeleteEnabled = preferencesState.selectiveDeleteEnabled,
+                    spacebarSwipeMode = preferencesState.spacebarSwipeMode,
                     onFastDelete = ::handleFastDelete,
                     enabledLayoutIds = preferencesState.enabledLayoutIds.toList().filter { id ->
                         id in availableLayoutIds || id == KiebordPreferences.LAYOUT_AR_ARABIC
@@ -767,6 +769,66 @@ class KiebordService : InputMethodService() {
     override fun onLowMemory() {
         super.onLowMemory()
         userDictionaryRepo.trimMemory(ComponentCallbacks2.TRIM_MEMORY_COMPLETE)
+    }
+
+    private fun switchLayoutRelative(forward: Boolean) {
+        val available = layoutRepo.getAvailableLayouts().map { it.id }.toSet()
+        val enabledList = preferencesState.enabledLayoutIds.toList().filter { id ->
+            id in available || id == KiebordPreferences.LAYOUT_AR_ARABIC
+        }.ifEmpty { listOf(KiebordPreferences.LAYOUT_EN_QWERTY) }
+        if (enabledList.size <= 1) return
+        val currentIndex = enabledList.indexOf(primaryAlphaLayout.id).let { if (it >= 0) it else 0 }
+        val nextIndex = if (forward) {
+            (currentIndex + 1) % enabledList.size
+        } else {
+            (currentIndex - 1 + enabledList.size) % enabledList.size
+        }
+        switchToLayout(enabledList[nextIndex])
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (isInputViewShown && preferencesState.volumeKeyGesturesEnabled) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    when (preferencesState.volumeKeyGestureAction) {
+                        KiebordPreferences.VOLUME_ACTION_MOVE_CURSOR -> {
+                            handleTextAction(TextAction.MOVE_LEFT, isSelecting = false)
+                            return true
+                        }
+                        KiebordPreferences.VOLUME_ACTION_SWITCH_LAYOUT -> {
+                            if (event?.repeatCount == 0) {
+                                switchLayoutRelative(forward = false)
+                            }
+                            return true
+                        }
+                    }
+                }
+                KeyEvent.KEYCODE_VOLUME_UP -> {
+                    when (preferencesState.volumeKeyGestureAction) {
+                        KiebordPreferences.VOLUME_ACTION_MOVE_CURSOR -> {
+                            handleTextAction(TextAction.MOVE_RIGHT, isSelecting = false)
+                            return true
+                        }
+                        KiebordPreferences.VOLUME_ACTION_SWITCH_LAYOUT -> {
+                            if (event?.repeatCount == 0) {
+                                switchLayoutRelative(forward = true)
+                            }
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (isInputViewShown && preferencesState.volumeKeyGesturesEnabled) {
+            if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                return true
+            }
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     fun switchToLayout(layoutId: String) {

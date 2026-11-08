@@ -74,4 +74,36 @@ class KiebordPreferencesTest {
         assertEquals(true, masterDisabled.isAutoSpaceAfterSuggestionLanguageEnabled("en"))
         assertEquals(false, masterDisabled.isAutoSpaceAfterSuggestionLanguageEnabled("bn"))
     }
+
+    @Test
+    fun testSelectiveDeleteEnabledDefaultAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(true, prefs.selectiveDeleteEnabled)
+
+        val disabledPrefs = prefs.copy(selectiveDeleteEnabled = false)
+        assertEquals(false, disabledPrefs.selectiveDeleteEnabled)
+    }
+
+    @Test
+    fun testSpacebarSwipeModeDefaultsAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(KiebordPreferences.SPACEBAR_MODE_SWIPE_LAYOUT_HOLD_CURSOR, prefs.spacebarSwipeMode)
+
+        val updated = prefs.copy(spacebarSwipeMode = KiebordPreferences.SPACEBAR_MODE_SWIPE_CURSOR_HOLD_LAYOUT)
+        assertEquals(KiebordPreferences.SPACEBAR_MODE_SWIPE_CURSOR_HOLD_LAYOUT, updated.spacebarSwipeMode)
+    }
+
+    @Test
+    fun testVolumeKeyGesturesDefaultsAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(false, prefs.volumeKeyGesturesEnabled)
+        assertEquals(KiebordPreferences.VOLUME_ACTION_MOVE_CURSOR, prefs.volumeKeyGestureAction)
+
+        val enabled = prefs.copy(
+            volumeKeyGesturesEnabled = true,
+            volumeKeyGestureAction = KiebordPreferences.VOLUME_ACTION_SWITCH_LAYOUT
+        )
+        assertEquals(true, enabled.volumeKeyGesturesEnabled)
+        assertEquals(KiebordPreferences.VOLUME_ACTION_SWITCH_LAYOUT, enabled.volumeKeyGestureAction)
+    }
 }

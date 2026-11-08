@@ -193,6 +193,8 @@ fun KeyboardRootView(
     onDeleteSwipeEnd: () -> Unit = {},
     onDeleteSwipeCancel: () -> Unit = {},
     fastDeleteEnabled: Boolean = false,
+    selectiveDeleteEnabled: Boolean = true,
+    spacebarSwipeMode: String = KiebordPreferences.SPACEBAR_MODE_SWIPE_LAYOUT_HOLD_CURSOR,
     onFastDelete: () -> Unit = {},
     navBarBottomInset: Dp = 0.dp,
     applySystemInsets: Boolean = true,
@@ -1728,6 +1730,7 @@ fun KeyboardRootView(
                             onDeleteSwipeEnd = onDeleteSwipeEnd,
                             onDeleteSwipeCancel = onDeleteSwipeCancel,
                             fastDeleteEnabled = fastDeleteEnabled,
+                            selectiveDeleteEnabled = selectiveDeleteEnabled,
                             onFastDelete = onFastDelete,
                             handleShowMoreKeys = handleShowMoreKeys
                         )
@@ -1818,6 +1821,9 @@ fun KeyboardRootView(
                                 onDeleteSwipeEnd = onDeleteSwipeEnd,
                                 onDeleteSwipeCancel = onDeleteSwipeCancel,
                                 fastDeleteEnabled = fastDeleteEnabled,
+                                selectiveDeleteEnabled = selectiveDeleteEnabled,
+                                spacebarSwipeMode = spacebarSwipeMode,
+                                cursorTrackpadEnabled = cursorTrackpadEnabled,
                                 onFastDelete = onFastDelete,
                                 onSpacebarSwipeMove = { deltaX ->
                                     isSpacebarSwiping = true
@@ -3045,6 +3051,7 @@ private fun NumberPadExtendedLayout(
     onDeleteSwipeEnd: () -> Unit,
     onDeleteSwipeCancel: () -> Unit,
     fastDeleteEnabled: Boolean = false,
+    selectiveDeleteEnabled: Boolean = true,
     onFastDelete: () -> Unit = {},
     handleShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit
 ) {
@@ -3259,6 +3266,7 @@ private fun NumberPadExtendedLayout(
                                 onDeleteSwipeEnd = onDeleteSwipeEnd,
                                 onDeleteSwipeCancel = onDeleteSwipeCancel,
                                 fastDeleteEnabled = fastDeleteEnabled,
+                                selectiveDeleteEnabled = selectiveDeleteEnabled,
                                 onFastDelete = onFastDelete,
                                 onShowMoreKeys = handleShowMoreKeys
                             )

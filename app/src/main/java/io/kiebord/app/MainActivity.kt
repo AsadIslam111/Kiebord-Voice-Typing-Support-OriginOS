@@ -611,11 +611,23 @@ fun KiebordSettingsApp(
                             onUpdateFastDeleteEnabled = { enabled ->
                                 scope.launch { preferencesRepo.updateFastDeleteEnabled(enabled) }
                             },
+                            onUpdateSelectiveDeleteEnabled = { enabled ->
+                                scope.launch { preferencesRepo.updateSelectiveDeleteEnabled(enabled) }
+                            },
                             onUpdateSelectiveDeleteMode = { mode ->
                                 scope.launch { preferencesRepo.updateSelectiveDeleteMode(mode) }
                             },
                             onUpdateCursorTrackpad = { enabled ->
                                 scope.launch { preferencesRepo.updateCursorTrackpadEnabled(enabled) }
+                            },
+                            onUpdateSpacebarSwipeMode = { mode ->
+                                scope.launch { preferencesRepo.updateSpacebarSwipeMode(mode) }
+                            },
+                            onUpdateVolumeKeyGesturesEnabled = { enabled ->
+                                scope.launch { preferencesRepo.updateVolumeKeyGesturesEnabled(enabled) }
+                            },
+                            onUpdateVolumeKeyGestureAction = { action ->
+                                scope.launch { preferencesRepo.updateVolumeKeyGestureAction(action) }
                             },
                             onBack = navigateBack
                         )

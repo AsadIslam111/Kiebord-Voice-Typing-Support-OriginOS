@@ -52,10 +52,14 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val SOUND_ON_KEYPRESS = booleanPreferencesKey("pref_sound_on_keypress")
         val LONG_PRESS_DELAY_MS = intPreferencesKey("pref_long_press_delay_ms")
         val CURSOR_TRACKPAD_ENABLED = booleanPreferencesKey("pref_cursor_trackpad_enabled")
+        val SPACEBAR_SWIPE_MODE = stringPreferencesKey("pref_spacebar_swipe_mode")
         val ONE_HANDED_MODE = stringPreferencesKey("pref_one_handed_mode")
         val LONG_PRESS_DELETE_ENABLED = booleanPreferencesKey("pref_long_press_delete_enabled")
+        val SELECTIVE_DELETE_ENABLED = booleanPreferencesKey("pref_selective_delete_enabled")
         val SELECTIVE_DELETE_MODE = stringPreferencesKey("pref_selective_delete_mode")
         val FAST_DELETE_ENABLED = booleanPreferencesKey("pref_fast_delete_enabled")
+        val VOLUME_KEY_GESTURES_ENABLED = booleanPreferencesKey("pref_volume_key_gestures_enabled")
+        val VOLUME_KEY_GESTURE_ACTION = stringPreferencesKey("pref_volume_key_gesture_action")
 
         val PRIMARY_LAYOUT_ID = stringPreferencesKey("pref_primary_layout_id")
         val ENABLED_LAYOUT_IDS = stringSetPreferencesKey("pref_enabled_layout_ids")
@@ -117,10 +121,14 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 soundOnKeypress = prefs[PreferencesKeys.SOUND_ON_KEYPRESS] ?: false,
                 longPressDelayMs = prefs[PreferencesKeys.LONG_PRESS_DELAY_MS] ?: 300,
                 cursorTrackpadEnabled = prefs[PreferencesKeys.CURSOR_TRACKPAD_ENABLED] ?: true,
+                spacebarSwipeMode = prefs[PreferencesKeys.SPACEBAR_SWIPE_MODE] ?: KiebordPreferences.SPACEBAR_MODE_SWIPE_LAYOUT_HOLD_CURSOR,
                 oneHandedMode = prefs[PreferencesKeys.ONE_HANDED_MODE] ?: KiebordPreferences.ONE_HANDED_OFF,
                 longPressDeleteEnabled = prefs[PreferencesKeys.LONG_PRESS_DELETE_ENABLED] ?: true,
+                selectiveDeleteEnabled = prefs[PreferencesKeys.SELECTIVE_DELETE_ENABLED] ?: true,
                 selectiveDeleteMode = prefs[PreferencesKeys.SELECTIVE_DELETE_MODE] ?: KiebordPreferences.DELETE_MODE_WORD,
                 fastDeleteEnabled = prefs[PreferencesKeys.FAST_DELETE_ENABLED] ?: false,
+                volumeKeyGesturesEnabled = prefs[PreferencesKeys.VOLUME_KEY_GESTURES_ENABLED] ?: false,
+                volumeKeyGestureAction = prefs[PreferencesKeys.VOLUME_KEY_GESTURE_ACTION] ?: KiebordPreferences.VOLUME_ACTION_MOVE_CURSOR,
 
                 primaryLayoutId = prefs[PreferencesKeys.PRIMARY_LAYOUT_ID] ?: KiebordPreferences.LAYOUT_EN_QWERTY,
                 enabledLayoutIds = run {
@@ -295,12 +303,28 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         context.kiebordDataStore.edit { it[PreferencesKeys.LONG_PRESS_DELETE_ENABLED] = enabled }
     }
 
+    suspend fun updateSelectiveDeleteEnabled(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SELECTIVE_DELETE_ENABLED] = enabled }
+    }
+
     suspend fun updateSelectiveDeleteMode(mode: String) {
         context.kiebordDataStore.edit { it[PreferencesKeys.SELECTIVE_DELETE_MODE] = mode }
     }
 
     suspend fun updateFastDeleteEnabled(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.FAST_DELETE_ENABLED] = enabled }
+    }
+
+    suspend fun updateSpacebarSwipeMode(mode: String) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SPACEBAR_SWIPE_MODE] = mode }
+    }
+
+    suspend fun updateVolumeKeyGesturesEnabled(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.VOLUME_KEY_GESTURES_ENABLED] = enabled }
+    }
+
+    suspend fun updateVolumeKeyGestureAction(action: String) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.VOLUME_KEY_GESTURE_ACTION] = action }
     }
 
     // Layout mutators
