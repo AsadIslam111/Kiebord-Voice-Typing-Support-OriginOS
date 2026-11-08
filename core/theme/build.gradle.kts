@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "io.kiebord.core.theme"
+    namespace = "com.codepotro.borno.theme"
     compileSdk = 36
 
     defaultConfig {

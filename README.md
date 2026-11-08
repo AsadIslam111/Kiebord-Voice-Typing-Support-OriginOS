@@ -26,7 +26,7 @@ A free, open-source input method editor (IME) for Android built with Jetpack Com
 
 Kiebord is the result of over 6 years of development on Borno Keyboard, heavily relying on its foundational transliteration architecture while introducing improved gesture typing, spatial touch modeling, and optimized runtime performance.
 
-The codebase represents an extensive modernization from legacy Java and C++ into modern Kotlin, Jetpack Compose, and a pure Rust core (`kiebord-engine`), with every migration step manually audited, refined, and verified.
+The codebase represents an extensive modernization from legacy Java and C++ into modern Kotlin, Jetpack Compose, and a pure Rust core (`borno-engine`), with every migration step manually audited, refined, and verified.
 
 ---
 
@@ -72,7 +72,7 @@ kiebord/
 ├── feature/
 │   └── ime/              # InputMethodService implementation, Compose canvas, and JNI bindings
 ├── native/
-│   └── kiebord-engine/   # Rust native library (spatial model, trie dictionaries, BornoTSF)
+│   └── borno-engine/     # Rust native library (spatial model, trie dictionaries, BornoTSF)
 └── docs/                 # Layout and theme development specifications
 ```
 
@@ -110,10 +110,10 @@ Build the release Android App Bundle (for Google Play):
 ./gradlew bundleRelease
 ```
 
-Binary dictionary assets (`.dict`) are tracked in the repository. To compile the native Rust engine (`kiebord-engine`) into `libborno_engine.so`:
+Binary dictionary assets (`.dict`) are tracked in the repository. To compile the native Rust engine (`borno-engine`) into `libborno_engine.so`:
 
 ```bash
-cd native/kiebord-engine
+cd native/borno-engine
 cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ../../feature/ime/src/main/jniLibs build --release
 ```
 

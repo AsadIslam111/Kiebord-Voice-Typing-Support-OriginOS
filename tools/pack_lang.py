@@ -19,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SRC_DIR = REPO_ROOT / "assets-src" / "language-packs"
 DEFAULT_OUT_DIR = REPO_ROOT / "language-packs" / "releases"
 DEFAULT_INDEX_PATH = REPO_ROOT / "language-packs" / "index.json"
-NATIVE_CARGO_TOML = REPO_ROOT / "native" / "kiebord-engine" / "Cargo.toml"
+NATIVE_CARGO_TOML = REPO_ROOT / "native" / "borno-engine" / "Cargo.toml"
 
 
 def compute_sha256(filepath: Path) -> str:

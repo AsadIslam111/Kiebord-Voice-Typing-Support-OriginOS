@@ -11,6 +11,7 @@ release/
 .externalNativeBuild
 .cxx
 native/kiebord-engine/target/
+native/borno-engine/target/
 *.apk
 *.aab
 *.keystore

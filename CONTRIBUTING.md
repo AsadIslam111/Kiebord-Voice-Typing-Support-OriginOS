@@ -39,7 +39,7 @@ To ensure the safety, integrity, and legality of both Kiebord and Borno:
 - **Android Studio** (Ladybug / Koala or newer recommended)
 - **JDK 17**
 - **Android SDK & NDK** (NDK configured for native engine builds)
-- **Rust Toolchain** (with `cargo-ndk` if compiling native dictionary/gesture engines under `native/kiebord-engine`)
+- **Rust Toolchain** (with `cargo-ndk` if compiling native dictionary/gesture engines under `native/borno-engine`)
 
 ### Building the Project
 Clone the repository:

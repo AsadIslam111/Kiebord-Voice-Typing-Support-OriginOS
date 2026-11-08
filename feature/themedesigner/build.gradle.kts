@@ -9,7 +9,7 @@ plugins {
  * Theme Designer (Theme Studio) — optional feature module.
  *
  * This module is intentionally self-contained: the host app never references its classes
- * directly. It is discovered at runtime through `io.kiebord.theme.designer.ThemeDesignerRegistry`.
+ * directly. It is discovered at runtime through `com.codepotro.borno.theme.designer.ThemeDesignerRegistry`.
  *
  * To ship a "lite" build without the designer, depend on this module only from the
  * full/regular flavor, e.g. in app/build.gradle.kts:
@@ -19,7 +19,7 @@ plugins {
  * Nothing else needs to change: the "Create" entry point hides itself when the module is absent.
  */
 android {
-    namespace = "io.kiebord.feature.themedesigner"
+    namespace = "com.codepotro.borno.feature.themedesigner"
     compileSdk = 36
 
     defaultConfig {

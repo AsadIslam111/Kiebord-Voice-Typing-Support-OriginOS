@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "io.kiebord.core.data"
+    namespace = "com.codepotro.borno.data"
     compileSdk = 36
 
     defaultConfig {

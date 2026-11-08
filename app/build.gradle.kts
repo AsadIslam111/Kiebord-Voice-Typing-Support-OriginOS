@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "io.kiebord.app"
+    namespace = "com.codepotro.borno.kiebord"
     compileSdk = 36
     ndkVersion = "26.2.11394342"
 

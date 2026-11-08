@@ -461,7 +461,7 @@ word=Borno,f=180
 To compile a `.combined` file into a `.dict` binary:
 
 ```bash
-cargo run --manifest-path native/kiebord-engine/Cargo.toml --bin compile_dict <input.combined> <output.dict>
+cargo run --manifest-path native/borno-engine/Cargo.toml --bin compile_dict <input.combined> <output.dict>
 ```
 
 When building language extension packs, `tools/pack_lang.py` automatically invokes this compiler when `.combined` source files are present in the pack directory.

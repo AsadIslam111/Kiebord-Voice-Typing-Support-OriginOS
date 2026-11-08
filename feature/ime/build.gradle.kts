@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "io.kiebord.feature.ime"
+    namespace = "com.codepotro.borno.feature.ime"
     compileSdk = 36
     ndkVersion = "26.2.11394342"
 
@@ -36,7 +36,7 @@ android {
 
 // Automated cargo-ndk bridge task to build Rust core into jniLibs
 val buildRustCore = tasks.register<Exec>("buildRustCore") {
-    val rustProjectDir = file("${rootDir}/native/kiebord-engine")
+    val rustProjectDir = file("${rootDir}/native/borno-engine")
     val jniLibsDir = file("${projectDir}/src/main/jniLibs")
     val cargoExecutable = run {
         val userHome = System.getProperty("user.home")
@@ -72,7 +72,7 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders"
 
 // Compile .combined dictionaries into binary .dict assets
 val compileDictionaries = tasks.register<Exec>("compileDictionaries") {
-    val rustProjectDir = file("${rootDir}/native/kiebord-engine")
+    val rustProjectDir = file("${rootDir}/native/borno-engine")
     val cargoExecutable = run {
         val userHome = System.getProperty("user.home")
         val winCargo = file("$userHome/.cargo/bin/cargo.exe")
