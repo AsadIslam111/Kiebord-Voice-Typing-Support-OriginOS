@@ -58,6 +58,8 @@ fun SuggestionStripView(
     onCandidateLongClick: ((SuggestionCandidate) -> Unit)? = null,
     mode: String = KiebordPreferences.SUGGESTION_BAR_MODE_NORMAL,
     isExpanded: Boolean = false,
+    scaleFactor: Float = 1.0f,
+    isFloating: Boolean = false,
     onExpandToggle: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -70,23 +72,50 @@ fun SuggestionStripView(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
-            .padding(vertical = 2.dp)
+            .padding(vertical = (2 * scaleFactor).coerceIn(1f, 3f).dp)
     ) {
         val totalWidthPx = constraints.maxWidth.toFloat()
         val density = LocalDensity.current
         val textMeasurer = rememberTextMeasurer()
 
-        val expandBtnWidthPx = with(density) { 38.dp.toPx() }
+        val effectiveScale = if (isFloating) {
+            (scaleFactor * 0.94f).coerceIn(0.82f, 1.15f)
+        } else {
+            scaleFactor.coerceIn(0.85f, 1.25f)
+        }
+
+        val primaryFontSize = (18.5f * effectiveScale).coerceIn(15f, 20f).sp
+        val secondaryFontSize = (17.5f * effectiveScale).coerceIn(14f, 19f).sp
+
+        val expandBtnSize = (36 * effectiveScale).coerceIn(28f, 38f).dp
+        val expandBtnIconSize = (22 * effectiveScale).coerceIn(18f, 22f).dp
+        val expandBtnWidthPx = with(density) { expandBtnSize.toPx() }
+
+        val dividerHeight = (18 * effectiveScale).coerceIn(14f, 20f).dp
         val dividerWidthPx = with(density) { 1.dp.toPx() }
-        val chipPaddingPx = with(density) { 12.dp.toPx() }
+
+        val chipPaddingDp = (8 * effectiveScale).coerceIn(6f, 10f).dp
+        val chipPaddingPx = with(density) { chipPaddingDp.toPx() }
+        val cornerRadius = (8 * effectiveScale).coerceIn(6f, 10f).dp
 
         // Dynamically determine visible candidates:
         // Try 3 candidates -> if they do not fit, try 2 -> if they do not fit, show 1.
         // Never truncate any candidate.
-        val visibleCandidates = remember(candidates, totalWidthPx, isScrollableMode, isExpanded, onExpandToggle != null, fontFamily) {
+        val visibleCandidates = remember(
+            candidates,
+            totalWidthPx,
+            isScrollableMode,
+            isExpanded,
+            onExpandToggle != null,
+            fontFamily,
+            primaryFontSize,
+            secondaryFontSize,
+            chipPaddingPx,
+            expandBtnWidthPx
+        ) {
             fun requiredWidth(candidate: SuggestionCandidate): Float {
                 val isPrimary = candidate.isPrimary
-                val fontSize = if (isPrimary) 18.5.sp else 17.5.sp
+                val fontSize = if (isPrimary) primaryFontSize else secondaryFontSize
                 val fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal
                 val textLayoutResult = textMeasurer.measure(
                     text = AnnotatedString(candidate.text),
@@ -183,7 +212,7 @@ fun SuggestionStripView(
                             if (index > 0) {
                                 Box(
                                     modifier = Modifier
-                                        .height(18.dp)
+                                        .height(dividerHeight)
                                         .width(1.dp)
                                         .background(colorScheme.effectiveToolbarForeground.copy(alpha = 0.15f))
                                 )
@@ -201,9 +230,9 @@ fun SuggestionStripView(
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(cornerRadius))
                                     .then(chipClickModifier)
-                                    .padding(horizontal = 14.dp),
+                                    .padding(horizontal = (12 * effectiveScale).coerceIn(6f, 16f).dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -213,7 +242,7 @@ fun SuggestionStripView(
                                         isRaw -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.88f)
                                         else -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.72f)
                                     },
-                                    fontSize = if (isPrimary) 18.5.sp else 17.5.sp,
+                                    fontSize = if (isPrimary) primaryFontSize else secondaryFontSize,
                                     fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
                                     fontFamily = fontFamily,
                                     textAlign = TextAlign.Center,
@@ -244,7 +273,7 @@ fun SuggestionStripView(
                             if (index > 0) {
                                 Box(
                                     modifier = Modifier
-                                        .height(18.dp)
+                                        .height(dividerHeight)
                                         .width(1.dp)
                                         .background(colorScheme.keyForeground.copy(alpha = 0.15f))
                                 )
@@ -263,9 +292,9 @@ fun SuggestionStripView(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(cornerRadius))
                                     .then(chipClickModifier)
-                                    .padding(horizontal = 4.dp),
+                                    .padding(horizontal = (4 * effectiveScale).coerceIn(2f, 6f).dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -275,7 +304,7 @@ fun SuggestionStripView(
                                         isRaw -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.88f)
                                         else -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.72f)
                                     },
-                                    fontSize = if (isPrimary) 18.5.sp else 17.5.sp,
+                                    fontSize = if (isPrimary) primaryFontSize else secondaryFontSize,
                                     fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
                                     fontFamily = fontFamily,
                                     textAlign = TextAlign.Center,
@@ -293,7 +322,7 @@ fun SuggestionStripView(
             if (showExpandBtn) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(expandBtnSize)
                         .clip(CircleShape)
                         .clickable { onExpandToggle?.invoke() },
                     contentAlignment = Alignment.Center
@@ -302,7 +331,7 @@ fun SuggestionStripView(
                         imageVector = if (isExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
                         contentDescription = if (isExpanded) "Collapse suggestions" else "Expand suggestions",
                         tint = if (isExpanded) colorScheme.accentColor else colorScheme.effectiveToolbarForeground.copy(alpha = 0.75f),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(expandBtnIconSize)
                     )
                 }
             }

@@ -95,6 +95,10 @@ fun ToolsDrawerView(
     isOverDrawerBlankSpace: Boolean,
     hoveredToolbarAction: ToolbarAction?,
     modifier: Modifier = Modifier,
+    scaleFactor: Float = 1.0f,
+    isLandscape: Boolean = false,
+    isFloating: Boolean = false,
+    isToolEnabled: (ToolbarAction) -> Boolean = { true },
     isActionActive: (ToolbarAction) -> Boolean = { false },
     onDraggingStateChange: (draggingAction: ToolbarAction?, fingerPosInRoot: Offset?) -> Unit = { _, _ -> }
 ) {
@@ -115,6 +119,7 @@ fun ToolsDrawerView(
             ToolbarAction.CLIPBOARD to DrawerTool(ToolbarAction.CLIPBOARD, icon = Icons.AutoMirrored.Outlined.Assignment, label = "Clipboard"),
             ToolbarAction.THEME_TOGGLE to DrawerTool(ToolbarAction.THEME_TOGGLE, icon = Icons.Outlined.Palette, label = "Theme"),
             ToolbarAction.RESIZER to DrawerTool(ToolbarAction.RESIZER, iconResId = R.drawable.ic_resize, label = "Resize"),
+            ToolbarAction.FLOATING to DrawerTool(ToolbarAction.FLOATING, iconResId = R.drawable.ic_floating_keyboard, label = "Floating"),
             ToolbarAction.NUMBER_ROW_TOGGLE to DrawerTool(ToolbarAction.NUMBER_ROW_TOGGLE, icon = Icons.Filled.Pin, label = "Number row"),
             ToolbarAction.SECONDARY_KEYS_TOGGLE to DrawerTool(ToolbarAction.SECONDARY_KEYS_TOGGLE, iconResId = R.drawable.ic_key_hints, label = "Key hints"),
             ToolbarAction.KEY_POPUP_TOGGLE to DrawerTool(ToolbarAction.KEY_POPUP_TOGGLE, iconResId = R.drawable.ic_key_popup, label = "Key popup"),
@@ -140,13 +145,16 @@ fun ToolsDrawerView(
 
     val drawerBg = colorScheme.containerBackground.copy(alpha = 1f)
 
+    val hPadding = (12 * scaleFactor).coerceIn(6f, 16f).dp
+    val vPadding = (4 * scaleFactor).coerceIn(2f, 6f).dp
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
             .background(drawerBg)
             .verticalScroll(scrollState)
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = hPadding, vertical = vPadding)
             .onGloballyPositioned { coords ->
                 rootCoordinates?.let { root ->
                     if (coords.isAttached && root.isAttached) {
@@ -154,34 +162,41 @@ fun ToolsDrawerView(
                     }
                 }
             },
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy((8 * scaleFactor).coerceIn(4f, 10f).dp)
     ) {
-        // Clean static subtitle - no jumping banners or layout flickering
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
+                .padding(vertical = (3 * scaleFactor).coerceIn(1f, 4f).dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "Hold and drag to customize",
                 color = colorScheme.keyForeground.copy(alpha = 0.6f),
-                fontSize = 12.sp,
+                fontSize = (11.5f * scaleFactor).coerceIn(9f, 12f).sp,
                 fontWeight = FontWeight.Normal
             )
         }
 
-        // Dynamic N-column grid according to available width
         BoxWithConstraints(
             modifier = Modifier.fillMaxWidth()
         ) {
             val totalWidth = maxWidth
-            val numColumns = (totalWidth / 86.dp).toInt().coerceAtLeast(3)
+            val maxCols = if (!isFloating && !isLandscape) 4 else 6
+            val targetColWidth = (78 * scaleFactor).coerceIn(52f, 86f).dp
+            val numColumns = (totalWidth / targetColWidth).toInt().coerceIn(2, maxCols)
             val chunkedTools = drawerTools.chunked(numColumns)
+            val colWidth = totalWidth / numColumns
+            val tileWidth = (colWidth - (6 * scaleFactor).dp).coerceIn(
+                (42 * scaleFactor).coerceAtLeast(34f).dp,
+                (78 * scaleFactor).coerceAtLeast(48f).dp
+            )
+            val tileHeight = (42 * scaleFactor).coerceIn(28f, 48f).dp
+            val tileRadius = (12 * scaleFactor).coerceIn(6f, 14f).dp
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy((8 * scaleFactor).coerceIn(4f, 12f).dp)
             ) {
             chunkedTools.forEachIndexed { rowIndex, rowActions ->
                 Row(
@@ -282,11 +297,18 @@ fun ToolsDrawerView(
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
+                                    val isEnabled = isToolEnabled(action)
+
                                     ToolGridItem(
                                         tool = tool,
                                         isActive = isActionActive(tool.action),
+                                        isEnabled = isEnabled,
                                         isDragging = isDraggingThisItem,
                                         isHovered = isHovered,
+                                        tileWidth = tileWidth,
+                                        tileHeight = tileHeight,
+                                        tileRadius = tileRadius,
+                                        scaleFactor = scaleFactor,
                                         rootCoordinates = rootCoordinates,
                                         onReportBounds = { bounds ->
                                             onReportItemBounds(action, bounds)
@@ -295,7 +317,7 @@ fun ToolsDrawerView(
                                             itemCoordinates = coords
                                         },
                                         onClick = {
-                                            if (draggingAction == null) {
+                                            if (draggingAction == null && isEnabled) {
                                                 onToolClick(tool.action)
                                             }
                                         }
@@ -316,7 +338,7 @@ fun ToolsDrawerView(
         }
 
         // Generous bottom spacer so items at the bottom are fully and easily scrollable
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height((20 * scaleFactor).coerceIn(12f, 28f).dp))
     }
 }
 
@@ -324,8 +346,13 @@ fun ToolsDrawerView(
 private fun ToolGridItem(
     tool: DrawerTool,
     isActive: Boolean,
+    isEnabled: Boolean = true,
     isDragging: Boolean,
     isHovered: Boolean,
+    tileWidth: Dp,
+    tileHeight: Dp,
+    tileRadius: Dp,
+    scaleFactor: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     rootCoordinates: LayoutCoordinates? = null,
@@ -334,6 +361,7 @@ private fun ToolGridItem(
 ) {
     val colorScheme = KiebordTheme.colorScheme
     val optionLabelColor = when {
+        !isEnabled -> colorScheme.keyForeground.copy(alpha = 0.32f)
         isHovered -> colorScheme.accentColor
         isActive -> colorScheme.effectiveActiveOptionHighlight
         else -> ThemeColorUtils.ensureContrast(colorScheme.keyForeground, colorScheme.containerBackground)
@@ -344,13 +372,13 @@ private fun ToolGridItem(
         modifier = modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
+            enabled = isEnabled,
             onClick = onClick
         )
     ) {
-        // Tile container: Wide 78dp x 48dp button with keyBackground
         Box(
             modifier = Modifier
-                .size(width = 78.dp, height = 48.dp)
+                .size(width = tileWidth, height = tileHeight)
                 .onGloballyPositioned { tileCoords ->
                     onCoordinatesPositioned?.invoke(tileCoords)
                     rootCoordinates?.let { root ->
@@ -359,9 +387,10 @@ private fun ToolGridItem(
                         }
                     }
                 }
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(tileRadius))
                 .background(
                     when {
+                        !isEnabled -> colorScheme.keyBackground.copy(alpha = 0.38f)
                         isHovered -> colorScheme.accentColor.copy(alpha = 0.25f)
                         isActive -> colorScheme.effectiveActiveOptionHighlight.copy(alpha = 0.20f)
                         else -> colorScheme.keyBackground
@@ -370,50 +399,55 @@ private fun ToolGridItem(
                 .border(
                     width = if (isDragging || isHovered || isActive) 1.5.dp else 1.dp,
                     color = when {
+                        !isEnabled -> colorScheme.keyForeground.copy(alpha = 0.08f)
                         isHovered || isDragging -> colorScheme.accentColor
                         isActive -> colorScheme.effectiveActiveOptionHighlight
                         else -> colorScheme.keyForeground.copy(alpha = 0.12f)
                     },
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(tileRadius)
                 ),
             contentAlignment = Alignment.Center
         ) {
             val iconTint = when {
+                !isEnabled -> colorScheme.keyForeground.copy(alpha = 0.32f)
                 isDragging || isHovered -> colorScheme.accentColor
                 isActive -> colorScheme.effectiveActiveOptionHighlight
                 else -> colorScheme.keyForeground
             }
+            val maxIconInTile = (tileHeight - 6.dp).value.coerceAtLeast(14f)
+            val iconSize = ((if (tool.iconResId != null) 25.5f else 22f) * scaleFactor).coerceIn(14f, maxIconInTile).dp
             if (isHovered) {
                 Icon(
                     imageVector = Icons.Outlined.SwapHoriz,
                     contentDescription = tool.label,
                     tint = iconTint,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(iconSize)
                 )
             } else if (tool.iconResId != null) {
                 Icon(
                     painter = painterResource(tool.iconResId),
                     contentDescription = tool.label,
                     tint = iconTint,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(iconSize)
                 )
             } else if (tool.icon != null) {
                 Icon(
                     imageVector = tool.icon,
                     contentDescription = tool.label,
                     tint = iconTint,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(iconSize)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height((4 * scaleFactor).coerceIn(2f, 6f).dp))
 
         // Label below the tile
         Text(
             text = if (isHovered) "Swap" else tool.label,
             color = optionLabelColor,
-            fontSize = 12.sp,
+            fontSize = (11 * scaleFactor).coerceIn(8.5f, 12f).sp,
+            lineHeight = (13 * scaleFactor).coerceIn(10f, 14f).sp,
             fontWeight = if (isHovered || isActive) FontWeight.SemiBold else FontWeight.Normal,
             textAlign = TextAlign.Center,
             maxLines = 1,

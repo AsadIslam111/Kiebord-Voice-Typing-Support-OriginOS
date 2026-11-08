@@ -400,16 +400,52 @@ class KiebordService : InputMethodService() {
 
     override fun onEvaluateFullscreenMode(): Boolean = false
 
+    private var floatingTouchableRegionInWindow by mutableStateOf<android.graphics.Region?>(null)
+
+    private fun updateWindowLayoutForFloating(isFloating: Boolean) {
+        try {
+            val win = window?.window ?: return
+            val layoutParams = win.attributes
+            if (isFloating) {
+                win.setLayout(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                layoutParams.gravity = android.view.Gravity.FILL
+            } else {
+                win.setLayout(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                layoutParams.gravity = android.view.Gravity.BOTTOM
+            }
+            win.attributes = layoutParams
+        } catch (_: Exception) {}
+    }
+
     override fun onConfigureWindow(win: Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, false, isCandidatesOnly)
         lifecycleOwner.attachToView(win.decorView)
+        updateWindowLayoutForFloating(preferencesState.isFloatingMode)
     }
 
     override fun onComputeInsets(outInsets: Insets) {
         super.onComputeInsets(outInsets)
         val decorView = window?.window?.decorView ?: return
         val decorHeight = decorView.height
-        if (decorHeight > 0) {
+        if (decorHeight <= 0) return
+
+        if (preferencesState.isFloatingMode) {
+            outInsets.contentTopInsets = decorHeight
+            outInsets.visibleTopInsets = decorHeight
+            outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_REGION
+            val region = floatingTouchableRegionInWindow
+            if (region != null && !region.isEmpty) {
+                outInsets.touchableRegion.set(region)
+            } else {
+                outInsets.touchableRegion.setEmpty()
+            }
+        } else {
             val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             val headroomDp = if (isLandscape) 28f else 56f
             val headroomPx = (headroomDp * resources.displayMetrics.density).roundToInt()
@@ -437,6 +473,11 @@ class KiebordService : InputMethodService() {
         }
 
         composeView.setContent {
+            androidx.compose.runtime.LaunchedEffect(preferencesState.isFloatingMode) {
+                updateWindowLayoutForFloating(preferencesState.isFloatingMode)
+                window?.window?.decorView?.requestLayout()
+            }
+
             val density = LocalDensity.current
             val navBarBottomDp = with(density) { navBarInsetBottomPx.toDp() }
 
@@ -589,14 +630,47 @@ class KiebordService : InputMethodService() {
                         else -> "OFF"
                     },
                     onOneHandedModeChange = { mode ->
-                        serviceScope.launch {
-                            val prefMode = when (mode) {
-                                "LEFT" -> KiebordPreferences.ONE_HANDED_LEFT
-                                "RIGHT" -> KiebordPreferences.ONE_HANDED_RIGHT
-                                else -> KiebordPreferences.ONE_HANDED_OFF
+                        if (!preferencesState.isFloatingMode) {
+                            serviceScope.launch {
+                                val prefMode = when (mode) {
+                                    "LEFT" -> KiebordPreferences.ONE_HANDED_LEFT
+                                    "RIGHT" -> KiebordPreferences.ONE_HANDED_RIGHT
+                                    else -> KiebordPreferences.ONE_HANDED_OFF
+                                }
+                                preferencesRepo.updateOneHandedMode(prefMode)
                             }
-                            preferencesRepo.updateOneHandedMode(prefMode)
                         }
+                    },
+                    isFloatingMode = preferencesState.isFloatingMode,
+                    floatingWidthPortraitDp = preferencesState.floatingWidthPortraitDp,
+                    floatingWidthLandscapeDp = preferencesState.floatingWidthLandscapeDp,
+                    floatingHeightScalePortrait = preferencesState.floatingHeightScalePortrait,
+                    floatingHeightScaleLandscape = preferencesState.floatingHeightScaleLandscape,
+                    floatingOffsetRatioXPortrait = preferencesState.floatingOffsetRatioXPortrait,
+                    floatingOffsetRatioYPortrait = preferencesState.floatingOffsetRatioYPortrait,
+                    floatingOffsetRatioXLandscape = preferencesState.floatingOffsetRatioXLandscape,
+                    floatingOffsetRatioYLandscape = preferencesState.floatingOffsetRatioYLandscape,
+                    onFloatingModeChange = { enabled ->
+                        serviceScope.launch {
+                            if (enabled && preferencesState.oneHandedMode != KiebordPreferences.ONE_HANDED_OFF) {
+                                preferencesRepo.updateOneHandedMode(KiebordPreferences.ONE_HANDED_OFF)
+                            }
+                            preferencesRepo.updateFloatingMode(enabled)
+                        }
+                    },
+                    onFloatingSizeChange = { isLandscape, widthDp, heightScale ->
+                        serviceScope.launch {
+                            preferencesRepo.updateFloatingSize(isLandscape, widthDp, heightScale)
+                        }
+                    },
+                    onFloatingPositionChange = { isLandscape, ratioX, ratioY ->
+                        serviceScope.launch {
+                            preferencesRepo.updateFloatingPosition(isLandscape, ratioX, ratioY)
+                        }
+                    },
+                    onFloatingTouchableRegionChanged = { region ->
+                        floatingTouchableRegionInWindow = region
+                        window?.window?.decorView?.requestLayout()
                     },
                     onThemeToggle = ::openThemeSettings
                 )

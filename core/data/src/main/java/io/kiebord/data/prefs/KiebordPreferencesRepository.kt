@@ -91,6 +91,16 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val AUTO_DELETE_RECENT_CLIPS = booleanPreferencesKey("pref_auto_delete_recent_clips")
         val AUTO_DELETE_RECENT_CLIPS_DURATION_HOURS = intPreferencesKey("pref_auto_delete_recent_clips_duration_hours")
         val SETUP_COMPLETED = booleanPreferencesKey("pref_setup_completed")
+
+        val IS_FLOATING_MODE = booleanPreferencesKey("pref_is_floating_mode")
+        val FLOATING_WIDTH_PORTRAIT = floatPreferencesKey("pref_floating_width_portrait")
+        val FLOATING_WIDTH_LANDSCAPE = floatPreferencesKey("pref_floating_width_landscape")
+        val FLOATING_HEIGHT_SCALE_PORTRAIT = floatPreferencesKey("pref_floating_height_scale_portrait")
+        val FLOATING_HEIGHT_SCALE_LANDSCAPE = floatPreferencesKey("pref_floating_height_scale_landscape")
+        val FLOATING_OFFSET_X_PORTRAIT = floatPreferencesKey("pref_floating_offset_x_portrait")
+        val FLOATING_OFFSET_Y_PORTRAIT = floatPreferencesKey("pref_floating_offset_y_portrait")
+        val FLOATING_OFFSET_X_LANDSCAPE = floatPreferencesKey("pref_floating_offset_x_landscape")
+        val FLOATING_OFFSET_Y_LANDSCAPE = floatPreferencesKey("pref_floating_offset_y_landscape")
     }
 
     val preferencesFlow: Flow<KiebordPreferences> = context.kiebordDataStore.data
@@ -126,6 +136,15 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 cursorTrackpadEnabled = prefs[PreferencesKeys.CURSOR_TRACKPAD_ENABLED] ?: true,
                 spacebarSwipeMode = prefs[PreferencesKeys.SPACEBAR_SWIPE_MODE] ?: KiebordPreferences.SPACEBAR_MODE_SWIPE_LAYOUT_HOLD_CURSOR,
                 oneHandedMode = prefs[PreferencesKeys.ONE_HANDED_MODE] ?: KiebordPreferences.ONE_HANDED_OFF,
+                isFloatingMode = prefs[PreferencesKeys.IS_FLOATING_MODE] ?: false,
+                floatingWidthPortraitDp = prefs[PreferencesKeys.FLOATING_WIDTH_PORTRAIT] ?: 320.0f,
+                floatingWidthLandscapeDp = prefs[PreferencesKeys.FLOATING_WIDTH_LANDSCAPE] ?: 420.0f,
+                floatingHeightScalePortrait = prefs[PreferencesKeys.FLOATING_HEIGHT_SCALE_PORTRAIT] ?: 1.0f,
+                floatingHeightScaleLandscape = prefs[PreferencesKeys.FLOATING_HEIGHT_SCALE_LANDSCAPE] ?: 0.95f,
+                floatingOffsetRatioXPortrait = prefs[PreferencesKeys.FLOATING_OFFSET_X_PORTRAIT] ?: 0.5f,
+                floatingOffsetRatioYPortrait = prefs[PreferencesKeys.FLOATING_OFFSET_Y_PORTRAIT] ?: 0.7f,
+                floatingOffsetRatioXLandscape = prefs[PreferencesKeys.FLOATING_OFFSET_X_LANDSCAPE] ?: 0.5f,
+                floatingOffsetRatioYLandscape = prefs[PreferencesKeys.FLOATING_OFFSET_Y_LANDSCAPE] ?: 0.7f,
                 longPressDeleteEnabled = prefs[PreferencesKeys.LONG_PRESS_DELETE_ENABLED] ?: true,
                 selectiveDeleteEnabled = prefs[PreferencesKeys.SELECTIVE_DELETE_ENABLED] ?: true,
                 selectiveDeleteMode = prefs[PreferencesKeys.SELECTIVE_DELETE_MODE] ?: KiebordPreferences.DELETE_MODE_WORD,
@@ -173,7 +192,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 pinnedTools = run {
                     val defaultPinned = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE")
                     val allActionNames = listOf(
-                        "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
+                        "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER", "FLOATING",
                         "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
                         "UNDO", "REDO"
                     )
@@ -183,9 +202,9 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 },
                 drawerTools = run {
                     val defaultPinned = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE")
-                    val defaultDrawer = listOf("RESIZER", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO")
+                    val defaultDrawer = listOf("RESIZER", "FLOATING", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO")
                     val allActionNames = listOf(
-                        "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
+                        "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER", "FLOATING",
                         "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
                         "UNDO", "REDO"
                     )
@@ -305,6 +324,34 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateOneHandedMode(mode: String) {
         context.kiebordDataStore.edit { it[PreferencesKeys.ONE_HANDED_MODE] = mode }
+    }
+
+    suspend fun updateFloatingMode(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.IS_FLOATING_MODE] = enabled }
+    }
+
+    suspend fun updateFloatingSize(isLandscape: Boolean, widthDp: Float, heightScale: Float) {
+        context.kiebordDataStore.edit { prefs ->
+            if (isLandscape) {
+                prefs[PreferencesKeys.FLOATING_WIDTH_LANDSCAPE] = widthDp
+                prefs[PreferencesKeys.FLOATING_HEIGHT_SCALE_LANDSCAPE] = heightScale
+            } else {
+                prefs[PreferencesKeys.FLOATING_WIDTH_PORTRAIT] = widthDp
+                prefs[PreferencesKeys.FLOATING_HEIGHT_SCALE_PORTRAIT] = heightScale
+            }
+        }
+    }
+
+    suspend fun updateFloatingPosition(isLandscape: Boolean, ratioX: Float, ratioY: Float) {
+        context.kiebordDataStore.edit { prefs ->
+            if (isLandscape) {
+                prefs[PreferencesKeys.FLOATING_OFFSET_X_LANDSCAPE] = ratioX
+                prefs[PreferencesKeys.FLOATING_OFFSET_Y_LANDSCAPE] = ratioY
+            } else {
+                prefs[PreferencesKeys.FLOATING_OFFSET_X_PORTRAIT] = ratioX
+                prefs[PreferencesKeys.FLOATING_OFFSET_Y_PORTRAIT] = ratioY
+            }
+        }
     }
 
     suspend fun updateLongPressDeleteEnabled(enabled: Boolean) {

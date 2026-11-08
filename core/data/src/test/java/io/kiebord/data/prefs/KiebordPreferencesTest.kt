@@ -124,4 +124,29 @@ class KiebordPreferencesTest {
         assertEquals(true, enabled.volumeKeyGesturesEnabled)
         assertEquals(KiebordPreferences.VOLUME_ACTION_SWITCH_LAYOUT, enabled.volumeKeyGestureAction)
     }
+
+    @Test
+    fun testFloatingKeyboardPreferencesDefaultsAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(false, prefs.isFloatingMode)
+        assertEquals(320.0f, prefs.floatingWidthPortraitDp, 0.01f)
+        assertEquals(420.0f, prefs.floatingWidthLandscapeDp, 0.01f)
+        assertEquals(1.0f, prefs.floatingHeightScalePortrait, 0.01f)
+        assertEquals(0.95f, prefs.floatingHeightScaleLandscape, 0.01f)
+        assertEquals(0.5f, prefs.floatingOffsetRatioXPortrait, 0.01f)
+        assertEquals(0.7f, prefs.floatingOffsetRatioYPortrait, 0.01f)
+
+        val updated = prefs.copy(
+            isFloatingMode = true,
+            floatingWidthPortraitDp = 300.0f,
+            floatingHeightScalePortrait = 0.85f,
+            floatingOffsetRatioXPortrait = 0.4f,
+            floatingOffsetRatioYPortrait = 0.6f
+        )
+        assertEquals(true, updated.isFloatingMode)
+        assertEquals(300.0f, updated.floatingWidthPortraitDp, 0.01f)
+        assertEquals(0.85f, updated.floatingHeightScalePortrait, 0.01f)
+        assertEquals(0.4f, updated.floatingOffsetRatioXPortrait, 0.01f)
+        assertEquals(0.6f, updated.floatingOffsetRatioYPortrait, 0.01f)
+    }
 }

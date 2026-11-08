@@ -67,6 +67,7 @@ enum class ToolbarAction {
     CLIPBOARD,
     THEME_TOGGLE,
     RESIZER,
+    FLOATING,
     NUMBER_ROW_TOGGLE,
     SECONDARY_KEYS_TOGGLE,
     KEY_POPUP_TOGGLE,
@@ -102,6 +103,7 @@ fun ReorderableToolbar(
     isActionActive: ((ToolbarAction) -> Boolean)? = null,
     isEmojiActive: Boolean = false,
     isResizerActive: Boolean = false,
+    isFloatingActive: Boolean = false,
     isNumberRowActive: Boolean = false,
     isSecondaryKeysActive: Boolean = false,
     isOneHandedActive: Boolean = false,
@@ -111,6 +113,7 @@ fun ReorderableToolbar(
     isNumberPadActive: Boolean = false,
     isCustomizeMode: Boolean = false,
     scaleFactor: Float = 1.0f,
+    isToolEnabled: (ToolbarAction) -> Boolean = { true },
     onDraggingStateChange: (draggingAction: ToolbarAction?, fingerPosInRoot: Offset?) -> Unit = { _, _ -> }
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -149,6 +152,7 @@ fun ReorderableToolbar(
             ToolbarAction.CLIPBOARD to ToolbarItem(ToolbarAction.CLIPBOARD, icon = Icons.AutoMirrored.Outlined.Assignment, description = "Clipboard"),
             ToolbarAction.THEME_TOGGLE to ToolbarItem(ToolbarAction.THEME_TOGGLE, icon = Icons.Outlined.Palette, description = "Themes"),
             ToolbarAction.RESIZER to ToolbarItem(ToolbarAction.RESIZER, iconResId = R.drawable.ic_resize, description = "Resize Keyboard"),
+            ToolbarAction.FLOATING to ToolbarItem(ToolbarAction.FLOATING, iconResId = R.drawable.ic_floating_keyboard, description = "Floating Keyboard"),
             ToolbarAction.NUMBER_ROW_TOGGLE to ToolbarItem(ToolbarAction.NUMBER_ROW_TOGGLE, icon = Icons.Filled.Pin, description = "Number Row"),
             ToolbarAction.SECONDARY_KEYS_TOGGLE to ToolbarItem(ToolbarAction.SECONDARY_KEYS_TOGGLE, iconResId = R.drawable.ic_key_hints, description = "Key Hints"),
             ToolbarAction.KEY_POPUP_TOGGLE to ToolbarItem(ToolbarAction.KEY_POPUP_TOGGLE, iconResId = R.drawable.ic_key_popup, description = "Key Popup"),
@@ -202,6 +206,7 @@ fun ReorderableToolbar(
                     val isActive = isActionActive?.invoke(action) ?: when (action) {
                         ToolbarAction.EMOJI -> isEmojiActive
                         ToolbarAction.RESIZER -> isResizerActive
+                        ToolbarAction.FLOATING -> isFloatingActive
                         ToolbarAction.NUMBER_ROW_TOGGLE -> isNumberRowActive
                         ToolbarAction.SECONDARY_KEYS_TOGGLE -> isSecondaryKeysActive
                         ToolbarAction.ONE_HANDED -> isOneHandedActive
@@ -243,12 +248,13 @@ fun ReorderableToolbar(
                         .fillMaxHeight(),
                     contentAlignment = Alignment.Center
                 ) {
+                    val isEnabled = isToolEnabled(action)
                     val slotWidthDp = with(density) { slotWidthPx.toDp() }
-                    val maxSlotWidth = (slotWidthDp - (6 * scaleFactor).dp).coerceAtLeast(36.dp)
-                    val desiredWidth = (if (isCustomizeMode) 58.dp else 52.dp) * scaleFactor
-                    val tileWidth = minOf(maxSlotWidth, desiredWidth)
-                    val tileHeight = (34 * scaleFactor).dp
-                    val tileShape = RoundedCornerShape((10 * scaleFactor).coerceAtLeast(4f).dp)
+                    val maxSlotWidth = (slotWidthDp - (4 * scaleFactor).dp).coerceAtLeast((20 * scaleFactor).coerceIn(16f, 28f).dp)
+                    val desiredWidth = (if (isCustomizeMode) 56.dp else 48.dp) * scaleFactor
+                    val tileWidth = minOf(maxSlotWidth, desiredWidth).coerceAtLeast(18.dp)
+                    val tileHeight = (32 * scaleFactor).coerceIn(22f, 40f).dp
+                    val tileShape = RoundedCornerShape((8 * scaleFactor).coerceIn(4f, 10f).dp)
 
                     // The Tool Tile
                     Box(
@@ -272,6 +278,7 @@ fun ReorderableToolbar(
                             .clip(tileShape)
                             .background(
                                 when {
+                                    !isEnabled -> if (isCustomizeMode) colorScheme.keyBackground.copy(alpha = 0.35f) else Color.Transparent
                                     isHoveredByDrawerItem -> colorScheme.accentColor.copy(alpha = 0.35f)
                                     isDraggingThisItem -> colorScheme.keyBackground
                                     isActive -> colorScheme.effectiveActiveOptionHighlight.copy(alpha = 0.22f)
@@ -282,6 +289,7 @@ fun ReorderableToolbar(
                             .border(
                                 width = if (isDraggingThisItem || isHoveredByDrawerItem || isActive || isCustomizeMode) (1.5f * scaleFactor).coerceAtLeast(1f).dp else 0.dp,
                                 color = when {
+                                    !isEnabled -> if (isCustomizeMode) colorScheme.keyForeground.copy(alpha = 0.08f) else Color.Transparent
                                     isHoveredByDrawerItem || isDraggingThisItem -> colorScheme.accentColor
                                     isActive -> colorScheme.effectiveActiveOptionHighlight
                                     isCustomizeMode -> colorScheme.keyForeground.copy(alpha = 0.22f)
@@ -355,20 +363,22 @@ fun ReorderableToolbar(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                                enabled = draggingAction == null
+                                enabled = isEnabled && draggingAction == null
                             ) {
                                 onActionClick(item.action)
                             },
                         contentAlignment = Alignment.Center
                     ) {
                         val isCustomIcon = item.iconResId != null
+                        val maxIconInTile = (tileWidth - 4.dp).value.coerceAtLeast(12f)
                         val iconSizeDp = if (isCustomIcon) {
-                            (25.5f * scaleFactor).coerceAtLeast(18f)
+                            (24f * scaleFactor).coerceIn(14f, maxIconInTile)
                         } else {
-                            (22f * scaleFactor).coerceAtLeast(15f)
+                            (20f * scaleFactor).coerceIn(12f, maxIconInTile)
                         }
                         val iconModifier = Modifier.size(iconSizeDp.dp)
                         val iconTint = when {
+                            !isEnabled -> colorScheme.effectiveToolbarForeground.copy(alpha = 0.32f)
                             isDraggingThisItem || isHoveredByDrawerItem -> colorScheme.accentColor
                             isActive -> colorScheme.effectiveActiveOptionHighlight
                             isCustomizeMode -> colorScheme.keyForeground

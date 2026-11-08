@@ -52,6 +52,10 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.ui.text.style.TextOverflow
 import io.kiebord.feature.ime.ui.onehanded.OneHandedSideBar
+import io.kiebord.feature.ime.ui.floating.FloatingCornerResizers
+import io.kiebord.feature.ime.ui.floating.FloatingLandingHintRect
+import io.kiebord.feature.ime.ui.floating.FloatingMoveHandleBar
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.ui.res.painterResource
 import io.kiebord.feature.ime.R
@@ -222,6 +226,19 @@ fun KeyboardRootView(
     isNumberPadActive: Boolean = false,
     onToggleNumberPad: () -> Unit = {},
     enablePopupHeadroom: Boolean = isInteractive,
+    isFloatingMode: Boolean = false,
+    floatingWidthPortraitDp: Float = 320.0f,
+    floatingWidthLandscapeDp: Float = 420.0f,
+    floatingHeightScalePortrait: Float = 1.0f,
+    floatingHeightScaleLandscape: Float = 0.95f,
+    floatingOffsetRatioXPortrait: Float = 0.5f,
+    floatingOffsetRatioYPortrait: Float = 0.7f,
+    floatingOffsetRatioXLandscape: Float = 0.5f,
+    floatingOffsetRatioYLandscape: Float = 0.7f,
+    onFloatingModeChange: ((Boolean) -> Unit)? = null,
+    onFloatingSizeChange: ((isLandscape: Boolean, widthDp: Float, heightScale: Float) -> Unit)? = null,
+    onFloatingPositionChange: ((isLandscape: Boolean, ratioX: Float, ratioY: Float) -> Unit)? = null,
+    onFloatingTouchableRegionChanged: ((android.graphics.Region?) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -403,7 +420,8 @@ fun KeyboardRootView(
     }
 
     var isToolbarOptionsVisible by remember { mutableStateOf(false) }
-    var oneHandedSide by remember(defaultOneHandedMode) { mutableStateOf(defaultOneHandedMode) } // "OFF", "RIGHT", "LEFT"
+    var isFloating by remember(isFloatingMode) { mutableStateOf(isFloatingMode) }
+    var oneHandedSide by remember(defaultOneHandedMode, isFloating) { mutableStateOf(if (isFloating) "OFF" else defaultOneHandedMode) } // "OFF", "RIGHT", "LEFT"
     var oneHandedSideWidth by remember { mutableFloatStateOf(64f) }
     var isEmojiOpen by remember { mutableStateOf(false) }
     var isEmojiSearchOpen by remember { mutableStateOf(false) }
@@ -475,7 +493,31 @@ fun KeyboardRootView(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val screenHeightDp = configuration.screenHeightDp.dp
-    val popupHeadroomDp = if (!enablePopupHeadroom) 0.dp else if (isLandscape) 28.dp else 56.dp
+    val popupHeadroomDp = if (!enablePopupHeadroom || isFloating) 0.dp else if (isLandscape) 28.dp else 56.dp
+
+    val activeInitialFloatingWidth = if (isLandscape) floatingWidthLandscapeDp.dp else floatingWidthPortraitDp.dp
+    val activeInitialFloatingHeightScale = if (isLandscape) floatingHeightScaleLandscape else floatingHeightScalePortrait
+    val activeInitialFloatingRatioX = if (isLandscape) floatingOffsetRatioXLandscape else floatingOffsetRatioXPortrait
+    val activeInitialFloatingRatioY = if (isLandscape) floatingOffsetRatioYLandscape else floatingOffsetRatioYPortrait
+
+    var currentFloatingWidth by remember(isLandscape, activeInitialFloatingWidth) {
+        mutableStateOf(activeInitialFloatingWidth)
+    }
+    var currentFloatingHeightScale by remember(isLandscape, activeInitialFloatingHeightScale) {
+        mutableFloatStateOf(activeInitialFloatingHeightScale)
+    }
+    var currentFloatingRatioX by remember(isLandscape, activeInitialFloatingRatioX) {
+        mutableFloatStateOf(activeInitialFloatingRatioX)
+    }
+    var currentFloatingRatioY by remember(isLandscape, activeInitialFloatingRatioY) {
+        mutableFloatStateOf(activeInitialFloatingRatioY)
+    }
+
+    var isDraggingFloating by remember { mutableStateOf(false) }
+    var floatingDragOffset by remember { mutableStateOf(Offset.Zero) }
+    var landingHintBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
+    var floatingKeyboardBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
+    var isOverLandingZone by remember { mutableStateOf(false) }
 
     // When in sliding symbol mode from ?123, seamlessly switch display to Symbols layout
     val displayLayout = if (isSlidingSymbolMode) PredefinedLayouts.resolveSymbolsLayout(layout) else layout
@@ -506,13 +548,23 @@ fun KeyboardRootView(
     val baseLandscapeRowHeight = if (isDisplayBornoEasy) baseLandscapeBornoEasyRowHeight else baseLandscapeBottomRowHeight
 
     val activeBaseRowHeight = if (isLandscape) baseLandscapeRowHeight else basePortraitRowHeight
-    val activeHeightScale = if (isLandscape) heightScaleLandscape else heightScalePortrait
-    val activeTargetRowHeight = if (initialRowHeight != null && !isLandscape) initialRowHeight else activeBaseRowHeight * activeHeightScale
+    val activeHeightScale = if (isFloating) {
+        currentFloatingHeightScale
+    } else if (isLandscape) {
+        heightScaleLandscape
+    } else {
+        heightScalePortrait
+    }
+    val activeTargetRowHeight = if (initialRowHeight != null && !isLandscape && !isFloating) {
+        initialRowHeight
+    } else {
+        activeBaseRowHeight * activeHeightScale
+    }
 
     val activeChinPadding = if (isLandscape) chinPaddingLandscapeDp.dp else chinPaddingPortraitDp.dp
     val activeHorizontalMargin = if (isLandscape) horizontalMarginLandscapeDp.dp else horizontalMarginPortraitDp.dp
 
-    var keyRowHeight by remember(isLandscape, activeTargetRowHeight) { mutableStateOf(activeTargetRowHeight) }
+    var keyRowHeight by remember(isLandscape, isFloating, activeTargetRowHeight) { mutableStateOf(activeTargetRowHeight) }
     val scaleFactor = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.4f, 1.6f)
     val toolbarHeight = if (isLandscape) (38 * scaleFactor).coerceIn(32f, 44f).dp else (48 * scaleFactor).dp
 
@@ -609,7 +661,41 @@ fun KeyboardRootView(
     val effectiveNavBarBottom = if (applySystemInsets) maxOf(navBarBottomInset, composeNavBottom) else 0.dp
     // Total bottom padding combines navigation bar clearance with user chin preference,
     // allowing chinPadding to reduce down to -effectiveNavBarBottom so users can reach 0.dp total padding.
-    val totalBottomPadding = (effectiveNavBarBottom + chinPadding).coerceAtLeast(0.dp)
+    val totalBottomPadding = if (isFloating) 2.dp else (effectiveNavBarBottom + chinPadding).coerceAtLeast(0.dp)
+
+    LaunchedEffect(isFloating, floatingKeyboardBoundsInRoot, isDraggingFloating, landingHintBoundsInRoot) {
+        if (isFloating) {
+            val kb = floatingKeyboardBoundsInRoot
+            if (kb != null && !kb.isEmpty) {
+                val headroomPx = with(density) { 48.dp.toPx() }
+                val resizerMarginPx = with(density) { 24.dp.toPx() }
+                val region = android.graphics.Region(
+                    (kb.left - resizerMarginPx).roundToInt().coerceAtLeast(0),
+                    (kb.top - maxOf(headroomPx, resizerMarginPx)).roundToInt().coerceAtLeast(0),
+                    (kb.right + resizerMarginPx).roundToInt(),
+                    (kb.bottom + resizerMarginPx).roundToInt()
+                )
+                if (isDraggingFloating) {
+                    landingHintBoundsInRoot?.let { dock ->
+                        if (!dock.isEmpty) {
+                            region.op(
+                                dock.left.roundToInt(),
+                                dock.top.roundToInt(),
+                                dock.right.roundToInt(),
+                                dock.bottom.roundToInt(),
+                                android.graphics.Region.Op.UNION
+                            )
+                        }
+                    }
+                }
+                onFloatingTouchableRegionChanged?.invoke(region)
+            } else {
+                onFloatingTouchableRegionChanged?.invoke(null)
+            }
+        } else {
+            onFloatingTouchableRegionChanged?.invoke(null)
+        }
+    }
 
     // Reset toolbar options & expanded suggestions visibility when suggestions clear
     LaunchedEffect(suggestions.isEmpty()) {
@@ -855,18 +941,22 @@ fun KeyboardRootView(
                 }
             }
             ToolbarAction.RESIZER -> {
-                if (!isResizerOpen) {
-                    savedRowHeight = keyRowHeight
-                    savedChinPadding = chinPadding
-                    savedHorizontalMargin = horizontalMargin
-                    dragRowHeight = keyRowHeight
-                    dragChinPadding = chinPadding
-                    dragHorizontalMargin = horizontalMargin
-                    isEmojiOpen = false
-                    isToolsDrawerOpen = false
-                    isSuggestionsExpanded = false
+                if (isFloating) {
+                    performHaptic(HapticFeedbackType.LongPress)
+                } else {
+                    if (!isResizerOpen) {
+                        savedRowHeight = keyRowHeight
+                        savedChinPadding = chinPadding
+                        savedHorizontalMargin = horizontalMargin
+                        dragRowHeight = keyRowHeight
+                        dragChinPadding = chinPadding
+                        dragHorizontalMargin = horizontalMargin
+                        isEmojiOpen = false
+                        isToolsDrawerOpen = false
+                        isSuggestionsExpanded = false
+                    }
+                    isResizerOpen = !isResizerOpen
                 }
-                isResizerOpen = !isResizerOpen
             }
             ToolbarAction.NUMBER_ROW_TOGGLE -> {
                 showNumberRow = !showNumberRow
@@ -901,13 +991,34 @@ fun KeyboardRootView(
                     clipboardManager?.syncFromSystemClipboard(context)
                 }
             }
-            ToolbarAction.ONE_HANDED -> {
-                oneHandedSide = when (oneHandedSide) {
-                    "OFF" -> "RIGHT"
-                    "RIGHT" -> "LEFT"
-                    else -> "OFF"
+            ToolbarAction.FLOATING -> {
+                isToolsDrawerOpen = false
+                isToolbarOptionsVisible = false
+                isEmojiOpen = false
+                isTextEditOpen = false
+                isClipboardOpen = false
+                isResizerOpen = false
+                isSuggestionsExpanded = false
+                isLanguagePickerOpen = false
+                val nextFloating = !isFloating
+                isFloating = nextFloating
+                if (nextFloating) {
+                    oneHandedSide = "OFF"
+                    onOneHandedModeChange?.invoke("OFF")
                 }
-                onOneHandedModeChange?.invoke(oneHandedSide)
+                onFloatingModeChange?.invoke(nextFloating)
+            }
+            ToolbarAction.ONE_HANDED -> {
+                if (isFloating) {
+                    performHaptic(HapticFeedbackType.LongPress)
+                } else {
+                    oneHandedSide = when (oneHandedSide) {
+                        "OFF" -> "RIGHT"
+                        "RIGHT" -> "LEFT"
+                        else -> "OFF"
+                    }
+                    onOneHandedModeChange?.invoke(oneHandedSide)
+                }
             }
             ToolbarAction.SETTINGS -> {
                 isToolsDrawerOpen = false
@@ -953,9 +1064,10 @@ fun KeyboardRootView(
             ToolbarAction.SECONDARY_KEYS_TOGGLE -> showSecondaryKeys
             ToolbarAction.KEY_POPUP_TOGGLE -> showKeyPopups
             ToolbarAction.TRADITIONAL_MODE -> traditionalMode
-            ToolbarAction.ONE_HANDED -> oneHandedSide != "OFF"
+            ToolbarAction.FLOATING -> isFloating
+            ToolbarAction.ONE_HANDED -> !isFloating && oneHandedSide != "OFF"
             ToolbarAction.EMOJI -> isEmojiOpen
-            ToolbarAction.RESIZER -> isResizerOpen
+            ToolbarAction.RESIZER -> !isFloating && isResizerOpen
             ToolbarAction.CLIPBOARD -> isClipboardOpen
             ToolbarAction.TEXT_EDIT -> isTextEditOpen
             ToolbarAction.NUMBER_PAD -> isNumberPadActive
@@ -963,14 +1075,48 @@ fun KeyboardRootView(
         }
     }
 
-    val oneHandedStart = if (oneHandedSide == "RIGHT") oneHandedSideWidth.dp else 0.dp
-    val oneHandedEnd = if (oneHandedSide == "LEFT") oneHandedSideWidth.dp else 0.dp
+    val isToolEnabled: (ToolbarAction) -> Boolean = { action ->
+        if (isFloating) {
+            action != ToolbarAction.RESIZER && action != ToolbarAction.ONE_HANDED
+        } else {
+            true
+        }
+    }
 
-    val keyboardStartInset = 6.dp + horizontalMargin + oneHandedStart
-    val keyboardEndInset = 6.dp + horizontalMargin + oneHandedEnd
+    val oneHandedStart = if (!isFloating && oneHandedSide == "RIGHT") oneHandedSideWidth.dp else 0.dp
+    val oneHandedEnd = if (!isFloating && oneHandedSide == "LEFT") oneHandedSideWidth.dp else 0.dp
 
-    val keyboardLeftPx = with(density) { keyboardStartInset.toPx() }
-    val keyboardRightPx = if (rootWidthPx > 0f) {
+    val keyboardStartInset = if (isFloating) 8.dp else (6.dp + horizontalMargin + oneHandedStart)
+    val keyboardEndInset = if (isFloating) 8.dp else (6.dp + horizontalMargin + oneHandedEnd)
+
+    val floatingWidthPx = with(density) { currentFloatingWidth.toPx() }
+    val rootHeightPx = rootCoordinates?.size?.height?.toFloat() ?: with(density) { screenHeightDp.toPx() }
+    val keyboardSurfaceHeightPx = with(density) { (toolbarHeight + keyboardContentHeight + totalBottomPadding + 26.dp).toPx() }
+
+    val floatingScreenMarginPx = with(density) { 16.dp.toPx() }
+    val maxFloatingX = (rootWidthPx - floatingWidthPx - floatingScreenMarginPx * 2).coerceAtLeast(0f)
+    val maxFloatingY = (rootHeightPx - keyboardSurfaceHeightPx - floatingScreenMarginPx * 2).coerceAtLeast(0f)
+
+    val baseFloatingX = floatingScreenMarginPx + maxFloatingX * currentFloatingRatioX.coerceIn(0f, 1f)
+    val baseFloatingY = floatingScreenMarginPx + maxFloatingY * currentFloatingRatioY.coerceIn(0f, 1f)
+
+    val activeFloatingX = (baseFloatingX + floatingDragOffset.x).coerceIn(
+        floatingScreenMarginPx,
+        floatingScreenMarginPx + maxFloatingX
+    )
+    val activeFloatingY = (baseFloatingY + floatingDragOffset.y).coerceIn(
+        floatingScreenMarginPx,
+        floatingScreenMarginPx + maxFloatingY
+    )
+
+    val keyboardLeftPx = if (isFloating) {
+        activeFloatingX + with(density) { keyboardStartInset.toPx() }
+    } else {
+        with(density) { keyboardStartInset.toPx() }
+    }
+    val keyboardRightPx = if (isFloating) {
+        activeFloatingX + with(density) { (currentFloatingWidth - keyboardEndInset).toPx() }
+    } else if (rootWidthPx > 0f) {
         (rootWidthPx - with(density) { keyboardEndInset.toPx() }).coerceAtLeast(keyboardLeftPx + 100f)
     } else {
         1080f
@@ -982,70 +1128,14 @@ fun KeyboardRootView(
     }
     val bgImageSpec = colorScheme.themeSpec?.background?.image
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .onGloballyPositioned { coords ->
-                rootCoordinates = coords
-                rootWidthPx = coords.size.width.toFloat()
-            }
-    ) {
-        if (popupHeadroomDp > 0.dp) {
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(popupHeadroomDp)
-            )
-        }
-        if (isResizerOpen) {
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(activeRootHeight)
-            )
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(top = popupHeadroomDp)
-                .then(
-                    if (containerBgBrush != null) {
-                        Modifier.background(containerBgBrush)
-                    } else {
-                        Modifier.background(colorScheme.containerBackground)
-                    }
-                )
-        ) {
-        if (bgImageSpec != null) {
-            io.kiebord.theme.ThemeImageBackgroundView(
-                spec = bgImageSpec,
-                modifier = Modifier.matchParentSize()
-            )
-        }
-        val isSolidOverlayActive = isToolsDrawerOpen || (isSuggestionsExpanded && suggestions.isNotEmpty())
-        if (isSolidOverlayActive) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = if (isToolsDrawerOpen) 0.dp else toolbarHeight)
-                    .matchParentSize()
-                    .background(colorScheme.containerBackground.copy(alpha = 1f))
-            )
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(
-                    start = keyboardStartInset,
-                    end = keyboardEndInset,
-                    top = 0.dp,
-                    bottom = totalBottomPadding
-                )
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-            if (isTextEditOpen) {
+    val moreKeysOverlayAlpha by animateFloatAsState(
+        targetValue = if (moreKeysState != null) 1f else 0f,
+        animationSpec = tween(durationMillis = 150),
+        label = "moreKeysOverlayAlpha"
+    )
+
+    val KeyboardInnerContent: @Composable () -> Unit = {
+        if (isTextEditOpen) {
                 // Text Editing panel covers the toolbar and replaces the expand icon with back icon (matching Borno Keyboard)
                 TextEditPanelView(
                     onTextAction = { action, isSelecting -> onTextAction(action, isSelecting) },
@@ -1215,6 +1305,8 @@ fun KeyboardRootView(
                             },
                             mode = suggestionBarMode,
                             isExpanded = isSuggestionsExpanded,
+                            scaleFactor = scaleFactor,
+                            isFloating = isFloating,
                             onExpandToggle = if (suggestionBarMode == KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE) null else {
                                 {
                                     performHaptic(HapticFeedbackType.TextHandleMove)
@@ -1232,13 +1324,18 @@ fun KeyboardRootView(
                                 .fillMaxHeight()
                         )
                     } else if (!isGesturing && !isToolbarOptionsVisible && !isToolsDrawerOpen && (quickPasteClip != null || undoActionPillState != null)) {
+                        val pillHeight = (35 * scaleFactor).coerceIn(24f, 40f).dp
+                        val pillFontSize = (14 * scaleFactor).coerceIn(10f, 15f).sp
+                        val pillIconSize = (18 * scaleFactor).coerceIn(12f, 20f).dp
+                        val undoIconSize = (24 * scaleFactor).coerceIn(16f, 26f).dp
+                        val pillPaddingH = (14 * scaleFactor).coerceIn(8f, 16f).dp
                         Row(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
+                            horizontalArrangement = Arrangement.spacedBy((10 * scaleFactor).coerceIn(6f, 12f).dp, Alignment.CenterHorizontally)
                         ) {
                             // SHOW ONLY ONE PILL AT A TIME (never beside each other)
                             if (quickPasteClip != null) {
@@ -1246,7 +1343,7 @@ fun KeyboardRootView(
                                 val ellipsized = if (textToPaste.length > 20) textToPaste.take(20) + "…" else textToPaste
                                 Row(
                                     modifier = Modifier
-                                        .height(35.dp)
+                                        .height(pillHeight)
                                         .clip(CircleShape)
                                         .background(colorScheme.keyBackground)
                                         .clickable {
@@ -1254,7 +1351,7 @@ fun KeyboardRootView(
                                             clipboardManager?.clearQuickPaste()
                                             undoActionPillState = UndoRedoPillState.CanUndo(text = textToPaste, isPaste = true)
                                         }
-                                        .padding(horizontal = 14.dp),
+                                        .padding(horizontal = pillPaddingH),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(7.dp)
                                 ) {
@@ -1262,12 +1359,12 @@ fun KeyboardRootView(
                                         imageVector = Icons.AutoMirrored.Outlined.Assignment,
                                         contentDescription = "Quick paste",
                                         tint = colorScheme.effectiveToolbarForeground,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(pillIconSize)
                                     )
                                     Text(
                                         text = ellipsized,
                                         color = colorScheme.effectiveToolbarForeground,
-                                        fontSize = 14.sp,
+                                        fontSize = pillFontSize,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -1278,7 +1375,7 @@ fun KeyboardRootView(
                                     is UndoRedoPillState.CanUndo -> {
                                         Row(
                                             modifier = Modifier
-                                                .height(35.dp)
+                                                .height(pillHeight)
                                                 .clip(CircleShape)
                                                 .background(colorScheme.keyBackground)
                                                 .clickable {
@@ -1293,7 +1390,7 @@ fun KeyboardRootView(
                                                         isBatchDelete = state.isBatchDelete
                                                     )
                                                 }
-                                                .padding(horizontal = 14.dp),
+                                                .padding(horizontal = pillPaddingH),
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(7.dp)
                                         ) {
@@ -1301,12 +1398,12 @@ fun KeyboardRootView(
                                                 painter = painterResource(id = R.drawable.ic_undo),
                                                 contentDescription = "Undo",
                                                 tint = colorScheme.keyForeground,
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier.size(undoIconSize)
                                             )
                                             Text(
                                                 text = "Undo",
                                                 color = colorScheme.keyForeground,
-                                                fontSize = 14.sp,
+                                                fontSize = pillFontSize,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         }
@@ -1314,7 +1411,7 @@ fun KeyboardRootView(
                                     is UndoRedoPillState.CanRedo -> {
                                         Row(
                                             modifier = Modifier
-                                                .height(35.dp)
+                                                .height(pillHeight)
                                                 .clip(CircleShape)
                                                 .background(colorScheme.actionKeyBackground)
                                                 .clickable {
@@ -1329,7 +1426,7 @@ fun KeyboardRootView(
                                                         isBatchDelete = state.isBatchDelete
                                                     )
                                                 }
-                                                .padding(horizontal = 14.dp),
+                                                .padding(horizontal = pillPaddingH),
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(7.dp)
                                         ) {
@@ -1337,12 +1434,12 @@ fun KeyboardRootView(
                                                 painter = painterResource(id = R.drawable.ic_redo),
                                                 contentDescription = "Redo",
                                                 tint = colorScheme.keyForeground,
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier.size(undoIconSize)
                                             )
                                             Text(
                                                 text = "Redo",
                                                 color = colorScheme.keyForeground,
-                                                fontSize = 14.sp,
+                                                fontSize = pillFontSize,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         }
@@ -1370,6 +1467,7 @@ fun KeyboardRootView(
                             isOverDrawerBlankSpace = isOverDrawerBlankSpace,
                             hoveredByDrawerAction = hoveredToolbarAction,
                             isActionActive = isActionActive,
+                            isToolEnabled = isToolEnabled,
                             isEmojiActive = isEmojiOpen,
                             isResizerActive = isResizerOpen,
                             isNumberRowActive = showNumberRow,
@@ -2215,6 +2313,10 @@ fun KeyboardRootView(
                     isOverDrawerBlankSpace = isOverDrawerBlankSpace,
                     hoveredToolbarAction = hoveredToolbarAction,
                     isActionActive = isActionActive,
+                    scaleFactor = scaleFactor,
+                    isLandscape = isLandscape,
+                    isFloating = isFloating,
+                    isToolEnabled = isToolEnabled,
                     onDraggingStateChange = { action, fingerPos ->
                         activeDraggingFromDrawer = action
                         currentFingerInRoot = fingerPos
@@ -2241,6 +2343,8 @@ fun KeyboardRootView(
                         onKeyTap(KeyDef(type = KeyType.ACTION))
                     },
                     height = keyboardContentHeight,
+                    scaleFactor = scaleFactor,
+                    isFloating = isFloating,
                     modifier = Modifier
                         .fillMaxSize()
                         .zIndex(10f)
@@ -2248,30 +2352,240 @@ fun KeyboardRootView(
             }
         }
     }
-}
-}
+    }
 
-        // Soft fading light overlay over keyboard background when morekeys panel is shown
-        val moreKeysOverlayAlpha by animateFloatAsState(
-            targetValue = if (moreKeysState != null) 1f else 0f,
-            animationSpec = tween(durationMillis = 150),
-            label = "moreKeysOverlayAlpha"
-        )
-        if (moreKeysOverlayAlpha > 0.005f) {
-            val isLight = colorScheme == KeyboardColorScheme.DefaultLight
-            val overlayColor = if (isLight) {
-                Color.White.copy(alpha = 0.38f)
-            } else {
-                colorScheme.containerBackground.copy(alpha = 0.45f)
+    Box(
+        modifier = modifier
+            .then(if (isFloating) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
+            .onGloballyPositioned { coords ->
+                rootCoordinates = coords
+                rootWidthPx = coords.size.width.toFloat()
             }
-            Box(
+    ) {
+        if (!isFloating && popupHeadroomDp > 0.dp) {
+            Spacer(
                 modifier = Modifier
-                    .matchParentSize()
-                    .zIndex(85f)
-                    .graphicsLayer { alpha = moreKeysOverlayAlpha }
-                    .background(overlayColor)
+                    .fillMaxWidth()
+                    .height(popupHeadroomDp)
             )
         }
+        if (!isFloating && isResizerOpen) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(activeRootHeight)
+            )
+        }
+
+        if (!isFloating) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(top = popupHeadroomDp)
+                    .then(
+                        if (containerBgBrush != null) {
+                            Modifier.background(containerBgBrush)
+                        } else {
+                            Modifier.background(colorScheme.containerBackground)
+                        }
+                    )
+            ) {
+                if (bgImageSpec != null) {
+                    io.kiebord.theme.ThemeImageBackgroundView(
+                        spec = bgImageSpec,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
+                val isSolidOverlayActive = isToolsDrawerOpen || (isSuggestionsExpanded && suggestions.isNotEmpty())
+                if (isSolidOverlayActive) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = if (isToolsDrawerOpen) 0.dp else toolbarHeight)
+                            .matchParentSize()
+                            .background(colorScheme.containerBackground.copy(alpha = 1f))
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(
+                            start = keyboardStartInset,
+                            end = keyboardEndInset,
+                            top = 0.dp,
+                            bottom = totalBottomPadding
+                        )
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        KeyboardInnerContent()
+                    }
+                }
+
+                if (moreKeysOverlayAlpha > 0.005f) {
+                    val isLight = colorScheme == KeyboardColorScheme.DefaultLight
+                    val overlayColor = if (isLight) {
+                        Color.White.copy(alpha = 0.38f)
+                    } else {
+                        colorScheme.containerBackground.copy(alpha = 0.45f)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .zIndex(85f)
+                            .graphicsLayer { alpha = moreKeysOverlayAlpha }
+                            .background(overlayColor)
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(activeFloatingX.roundToInt(), activeFloatingY.roundToInt()) }
+                    .width(currentFloatingWidth)
+                    .onGloballyPositioned { coords ->
+                        if (coords.isAttached) {
+                            floatingKeyboardBoundsInRoot = coords.boundsInRoot()
+                        }
+                    }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(elevation = 12.dp, shape = RoundedCornerShape(18.dp))
+                        .border(1.2.dp, colorScheme.accentColor.copy(alpha = 0.40f), RoundedCornerShape(18.dp))
+                        .clip(RoundedCornerShape(18.dp))
+                        .then(
+                            if (containerBgBrush != null) {
+                                Modifier.background(containerBgBrush)
+                            } else {
+                                Modifier.background(colorScheme.containerBackground)
+                            }
+                        )
+                ) {
+                    if (bgImageSpec != null) {
+                        io.kiebord.theme.ThemeImageBackgroundView(
+                            spec = bgImageSpec,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    }
+                    val isSolidOverlayActive = isToolsDrawerOpen || (isSuggestionsExpanded && suggestions.isNotEmpty())
+                    if (isSolidOverlayActive) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = if (isToolsDrawerOpen) 0.dp else toolbarHeight)
+                                .matchParentSize()
+                                .background(colorScheme.containerBackground.copy(alpha = 1f))
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = keyboardStartInset,
+                                end = keyboardEndInset,
+                                bottom = totalBottomPadding
+                            )
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            KeyboardInnerContent()
+
+                            FloatingMoveHandleBar(
+                                isDragging = isDraggingFloating,
+                                handleColor = colorScheme.keyForeground,
+                                accentColor = colorScheme.accentColor,
+                                onDragStart = {
+                                    isDraggingFloating = true
+                                },
+                                onDrag = { dx, dy ->
+                                    floatingDragOffset += Offset(dx, dy)
+                                    val curKbRect = Rect(
+                                        activeFloatingX,
+                                        activeFloatingY,
+                                        activeFloatingX + floatingWidthPx,
+                                        activeFloatingY + keyboardSurfaceHeightPx
+                                    )
+                                    val hovering = landingHintBoundsInRoot?.let { dock ->
+                                        dock.overlaps(curKbRect) || (curKbRect.center.y > dock.top && curKbRect.center.x in dock.left..dock.right)
+                                    } ?: false
+                                    if (hovering != isOverLandingZone) {
+                                        if (hovering) {
+                                            performHaptic(HapticFeedbackType.LongPress)
+                                        }
+                                        isOverLandingZone = hovering
+                                    }
+                                },
+                                onDragEnd = {
+                                    if (isOverLandingZone) {
+                                        isOverLandingZone = false
+                                        isDraggingFloating = false
+                                        floatingDragOffset = Offset.Zero
+                                        isFloating = false
+                                        onFloatingModeChange?.invoke(false)
+                                    } else {
+                                        isDraggingFloating = false
+                                        val newRatioX = if (maxFloatingX > 0f) ((activeFloatingX - floatingScreenMarginPx) / maxFloatingX).coerceIn(0f, 1f) else 0.5f
+                                        val newRatioY = if (maxFloatingY > 0f) ((activeFloatingY - floatingScreenMarginPx) / maxFloatingY).coerceIn(0f, 1f) else 0.7f
+                                        currentFloatingRatioX = newRatioX
+                                        currentFloatingRatioY = newRatioY
+                                        floatingDragOffset = Offset.Zero
+                                        onFloatingPositionChange?.invoke(isLandscape, newRatioX, newRatioY)
+                                    }
+                                },
+                                onDragCancel = {
+                                    isDraggingFloating = false
+                                    floatingDragOffset = Offset.Zero
+                                    isOverLandingZone = false
+                                }
+                            )
+                        }
+                    }
+
+                    if (moreKeysOverlayAlpha > 0.005f) {
+                        val isLight = colorScheme == KeyboardColorScheme.DefaultLight
+                        val overlayColor = if (isLight) {
+                            Color.White.copy(alpha = 0.38f)
+                        } else {
+                            colorScheme.containerBackground.copy(alpha = 0.45f)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .zIndex(85f)
+                                .graphicsLayer { alpha = moreKeysOverlayAlpha }
+                                .background(overlayColor)
+                        )
+                    }
+                }
+
+                FloatingCornerResizers(
+                    currentWidth = currentFloatingWidth,
+                    currentHeightScale = currentFloatingHeightScale,
+                    minWidth = 240.dp,
+                    maxWidth = with(density) { (rootWidthPx - (floatingScreenMarginPx * 2)).coerceAtLeast(240f).toDp() },
+                    accentColor = colorScheme.accentColor,
+                    onSizeChange = { newW, newHScale ->
+                        currentFloatingWidth = newW
+                        currentFloatingHeightScale = newHScale
+                    },
+                    onCommitSize = { newW, newHScale ->
+                        currentFloatingWidth = newW
+                        currentFloatingHeightScale = newHScale
+                        onFloatingSizeChange?.invoke(isLandscape, newW.value, newHScale)
+                    },
+                    modifier = Modifier.matchParentSize()
+                )
+            }
+
+            FloatingLandingHintRect(
+                isVisible = isFloating && isDraggingFloating,
+                isHovered = isOverLandingZone,
+                accentColor = colorScheme.accentColor,
+                onBoundsChanged = { landingHintBoundsInRoot = it },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
 
         // 1. Guideline overlay for sliding symbol input (in outer Box matching rootCoordinates)
@@ -2297,7 +2611,7 @@ fun KeyboardRootView(
         )
 
         // 3. Live Keyboard Resizer Overlay (Borno Keyboard 4-way drag handles)
-        if (isResizerOpen) {
+        if (!isFloating && isResizerOpen) {
             LiveResizerOverlay(
                 dragRowHeight = dragRowHeight,
                 dragChinPadding = dragChinPadding,
@@ -2511,7 +2825,7 @@ fun KeyboardRootView(
         }
 
         // 8. One-Handed Mode Side Control Bar (Padding Adjuster '=', Expand, and Direction '<' / '>')
-        if (oneHandedSide != "OFF") {
+        if (!isFloating && oneHandedSide != "OFF") {
             OneHandedSideBar(
                 oneHandedSide = oneHandedSide,
                 sideWidth = oneHandedSideWidth.dp,

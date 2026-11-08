@@ -54,6 +54,8 @@ fun ExpandedSuggestionsPanelView(
     onDelete: () -> Unit,
     onEnter: () -> Unit,
     height: Dp,
+    scaleFactor: Float = 1.0f,
+    isFloating: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = KiebordTheme.colorScheme
@@ -62,7 +64,16 @@ fun ExpandedSuggestionsPanelView(
     val density = LocalDensity.current
     val panelInteractionSource = remember { MutableInteractionSource() }
 
-    val scrollStepPx = with(density) { 54.dp.toPx() }
+    val effectiveScale = if (isFloating) scaleFactor.coerceIn(0.85f, 1.15f) else scaleFactor.coerceIn(0.85f, 1.25f)
+    val primaryFontSize = (20f * effectiveScale).coerceIn(16f, 22f).sp
+    val secondaryFontSize = (19f * effectiveScale).coerceIn(15f, 21f).sp
+    val chipPaddingH = (14 * effectiveScale).coerceIn(10f, 16f).dp
+    val chipPaddingV = (10 * effectiveScale).coerceIn(8f, 12f).dp
+    val dividerHeight = (18 * effectiveScale).coerceIn(14f, 20f).dp
+    val actionColWidth = (52 * effectiveScale).coerceIn(44f, 56f).dp
+    val actionIconSize = (20 * effectiveScale).coerceIn(18f, 22f).dp
+
+    val scrollStepPx = with(density) { (54 * effectiveScale).dp.toPx() }
     val dividerColor = colorScheme.keyForeground.copy(alpha = 0.12f)
 
     val panelBg = colorScheme.containerBackground.copy(alpha = 1f)
@@ -111,7 +122,7 @@ fun ExpandedSuggestionsPanelView(
                                 modifier = Modifier
                                     .drawBehind {
                                         // Clean vertical divider centered vertically, matching suggestion bar aesthetic
-                                        val dividerHeightPx = 18.dp.toPx()
+                                        val dividerHeightPx = dividerHeight.toPx()
                                         val startY = (size.height - dividerHeightPx) / 2f
                                         drawLine(
                                             color = dividerColor,
@@ -121,7 +132,7 @@ fun ExpandedSuggestionsPanelView(
                                         )
                                     }
                                     .then(chipClickModifier)
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    .padding(horizontal = chipPaddingH, vertical = chipPaddingV),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -131,7 +142,7 @@ fun ExpandedSuggestionsPanelView(
                                         isRaw -> colorScheme.keyForeground.copy(alpha = 0.9f)
                                         else -> colorScheme.keyForeground.copy(alpha = 0.78f)
                                     },
-                                    fontSize = if (isPrimary) 20.sp else 19.sp,
+                                    fontSize = if (isPrimary) primaryFontSize else secondaryFontSize,
                                     fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Normal,
                                     fontFamily = KiebordTheme.fontFamily,
                                     textAlign = TextAlign.Center
@@ -153,9 +164,9 @@ fun ExpandedSuggestionsPanelView(
             // 2. Right action keys column (Up, Down, Delete, Enter)
             Column(
                 modifier = Modifier
-                    .width(56.dp)
+                    .width(actionColWidth)
                     .fillMaxHeight()
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                    .padding(horizontal = (4 * effectiveScale).coerceIn(2f, 4f).dp, vertical = 2.dp),
                 verticalArrangement = Arrangement.SpaceEvenly,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -180,7 +191,7 @@ fun ExpandedSuggestionsPanelView(
                         imageVector = Icons.Outlined.KeyboardArrowUp,
                         contentDescription = "Scroll Up",
                         tint = colorScheme.keyForeground.copy(alpha = if (canScrollUp) 0.85f else 0.3f),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(actionIconSize)
                     )
                 }
 
@@ -205,7 +216,7 @@ fun ExpandedSuggestionsPanelView(
                         imageVector = Icons.Outlined.KeyboardArrowDown,
                         contentDescription = "Scroll Down",
                         tint = colorScheme.keyForeground.copy(alpha = if (canScrollDown) 0.85f else 0.3f),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(actionIconSize)
                     )
                 }
 
@@ -224,7 +235,7 @@ fun ExpandedSuggestionsPanelView(
                         imageVector = Icons.AutoMirrored.Outlined.Backspace,
                         contentDescription = "Delete",
                         tint = colorScheme.keyForeground,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(actionIconSize)
                     )
                 }
 
@@ -243,7 +254,7 @@ fun ExpandedSuggestionsPanelView(
                         imageVector = Icons.AutoMirrored.Outlined.KeyboardReturn,
                         contentDescription = "Enter",
                         tint = colorScheme.actionKeyForeground,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(actionIconSize)
                     )
                 }
             }

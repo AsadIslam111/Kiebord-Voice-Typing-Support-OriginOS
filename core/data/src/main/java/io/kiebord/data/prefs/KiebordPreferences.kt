@@ -29,6 +29,15 @@ data class KiebordPreferences(
     val cursorTrackpadEnabled: Boolean = true,
     val spacebarSwipeMode: String = SPACEBAR_MODE_SWIPE_LAYOUT_HOLD_CURSOR,
     val oneHandedMode: String = ONE_HANDED_OFF,
+    val isFloatingMode: Boolean = false,
+    val floatingWidthPortraitDp: Float = 320.0f,
+    val floatingWidthLandscapeDp: Float = 420.0f,
+    val floatingHeightScalePortrait: Float = 1.0f,
+    val floatingHeightScaleLandscape: Float = 0.95f,
+    val floatingOffsetRatioXPortrait: Float = 0.5f,
+    val floatingOffsetRatioYPortrait: Float = 0.7f,
+    val floatingOffsetRatioXLandscape: Float = 0.5f,
+    val floatingOffsetRatioYLandscape: Float = 0.7f,
     val longPressDeleteEnabled: Boolean = true,
     val selectiveDeleteEnabled: Boolean = true,
     val selectiveDeleteMode: String = DELETE_MODE_WORD,
@@ -67,7 +76,7 @@ data class KiebordPreferences(
 
     // Toolbar rearrangement persistence
     val pinnedTools: List<String> = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE"),
-    val drawerTools: List<String> = listOf("RESIZER", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO"),
+    val drawerTools: List<String> = listOf("RESIZER", "FLOATING", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO"),
 
     // Voice Typing
     val voiceTypingEnabled: Boolean = true,
