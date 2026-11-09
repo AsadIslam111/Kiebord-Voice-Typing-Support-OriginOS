@@ -720,13 +720,9 @@ fun KeyboardRootView(
 
     val keyboardRows: List<KeyRow> = remember(displayLayout, baseAlphaLayout, showNumberRow, extraRowOverrides, isShiftActive, isBornoEasyKarMode, bornoEasyTypedCluster, showGlobeKey) {
         val numberRow: List<KeyRow> = if (showNumberRow && !isNumberLayout) {
-            val baseRow = if (isShiftActive && displayLayout.shiftedNumberRow != null) {
-                displayLayout.shiftedNumberRow!!
-            } else {
-                displayLayout.numberRow
-                    ?: (if (isSymbolLayout) (if (isShiftActive && baseAlphaLayout.shiftedNumberRow != null) baseAlphaLayout.shiftedNumberRow else baseAlphaLayout.numberRow) else null)
-                    ?: PredefinedLayouts.createNumberRow(if (isSymbolLayout) baseAlphaLayout.language else displayLayout.language)
-            }
+            val baseRow = displayLayout.numberRow
+                ?: (if (isSymbolLayout) baseAlphaLayout.numberRow else null)
+                ?: PredefinedLayouts.createNumberRow(if (isSymbolLayout) baseAlphaLayout.language else displayLayout.language)
             listOf(baseRow)
         } else {
             emptyList()
@@ -1922,10 +1918,12 @@ fun KeyboardRootView(
                                 key
                             }
 
+                            val cellShiftState = if (isTopNumberRow) ShiftState.UNSHIFTED else effectiveShiftState
+
                             key("cell_${rowIndex}_$keyIndex") {
                                 KeycapView(
                                 key = effectiveKey,
-                                shiftState = effectiveShiftState,
+                                shiftState = cellShiftState,
                                 actionKeyVisual = actionKeyVisual,
                                 rowIndex = rowIndex,
                                 keyIndex = keyIndex,

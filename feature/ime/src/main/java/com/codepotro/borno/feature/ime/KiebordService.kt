@@ -128,6 +128,16 @@ class KiebordService : InputMethodService() {
         return true
     }
 
+    private fun isDedicatedNumberKey(key: KeyDef): Boolean {
+        if (key.type != KeyType.CHARACTER) return false
+        val label = key.label
+        if (label.length == 1 && (label[0].isDigit())) {
+            return true
+        }
+        return activeLayout.numberRow?.keys?.any { it.label == label } == true ||
+                PredefinedLayouts.createNumberRow(activeLayout.language).keys.any { it.label == label }
+    }
+
     private fun updateAutoCapitalizationState(
         ic: InputConnection? = currentInputConnection,
         info: EditorInfo? = currentEditorInfoState ?: currentInputEditorInfo
@@ -1120,7 +1130,10 @@ class KiebordService : InputMethodService() {
 
         when (key.type) {
             KeyType.CHARACTER -> {
-                val effectiveShift = if (!activeLayout.hasShiftKey()) ShiftState.UNSHIFTED else shiftState
+                val effectiveShift = when {
+                    !activeLayout.hasShiftKey() || isDedicatedNumberKey(key) -> ShiftState.UNSHIFTED
+                    else -> shiftState
+                }
                 val initialShiftState = shiftState
                 val text = key.textToCommit(effectiveShift)
 
@@ -1522,7 +1535,7 @@ class KiebordService : InputMethodService() {
             return
         }
         val ic = currentInputConnection ?: return
-        val currentShiftState = if (!activeLayout.hasShiftKey()) ShiftState.UNSHIFTED else shiftState
+        val currentShiftState = if (!activeLayout.hasShiftKey() || isDedicatedNumberKey(key)) ShiftState.UNSHIFTED else shiftState
         val currentMoreKeys = key.moreKeys(currentShiftState)
         val currentFlickUp = key.flickUp(currentShiftState)
         val charToInsert = when {

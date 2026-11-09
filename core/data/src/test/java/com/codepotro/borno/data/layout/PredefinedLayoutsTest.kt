@@ -1354,4 +1354,23 @@ class PredefinedLayoutsTest {
         assertFalse(PredefinedLayouts.SymbolsMore.hasShiftKey())
         assertFalse(PredefinedLayouts.NumberPadExtended.hasShiftKey())
     }
+
+    @Test
+    fun testDedicatedNumberRowNormalState() {
+        val numberRowEn = PredefinedLayouts.NumberRowEn
+        assertEquals(listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"), numberRowEn.keys.map { it.label })
+
+        // In mobile standard, dedicated number row keys are always evaluated in UNSHIFTED state, committing digits
+        numberRowEn.keys.forEach { key ->
+            assertEquals(key.label, key.displayLabel(com.codepotro.borno.common.model.ShiftState.UNSHIFTED))
+            assertEquals(key.commitText ?: key.label, key.textToCommit(com.codepotro.borno.common.model.ShiftState.UNSHIFTED))
+        }
+
+        val numberRowBn = PredefinedLayouts.NumberRowBn
+        assertEquals(listOf("১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "০"), numberRowBn.keys.map { it.label })
+        numberRowBn.keys.forEach { key ->
+            assertEquals(key.label, key.displayLabel(com.codepotro.borno.common.model.ShiftState.UNSHIFTED))
+            assertEquals(key.commitText ?: key.label, key.textToCommit(com.codepotro.borno.common.model.ShiftState.UNSHIFTED))
+        }
+    }
 }
