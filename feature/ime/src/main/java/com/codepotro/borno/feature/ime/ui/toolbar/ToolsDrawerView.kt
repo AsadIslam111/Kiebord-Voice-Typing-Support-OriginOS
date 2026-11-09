@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.ui.toolbar
+package com.codepotro.borno.feature.ime.ui.toolbar
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -129,7 +129,8 @@ fun ToolsDrawerView(
             ToolbarAction.TRADITIONAL_MODE to DrawerTool(ToolbarAction.TRADITIONAL_MODE, iconResId = R.drawable.ic_traditional, label = "Traditional"),
             ToolbarAction.UNDO to DrawerTool(ToolbarAction.UNDO, iconResId = R.drawable.ic_undo, label = "Undo"),
             ToolbarAction.REDO to DrawerTool(ToolbarAction.REDO, iconResId = R.drawable.ic_redo, label = "Redo"),
-            ToolbarAction.NUMBER_PAD to DrawerTool(ToolbarAction.NUMBER_PAD, icon = Icons.Outlined.Dialpad, label = "Number Pad")
+            ToolbarAction.NUMBER_PAD to DrawerTool(ToolbarAction.NUMBER_PAD, icon = Icons.Outlined.Dialpad, label = "Number Pad"),
+            ToolbarAction.EMOJI_ROW_TOGGLE to DrawerTool(ToolbarAction.EMOJI_ROW_TOGGLE, icon = Icons.Outlined.Mood, label = "Emoji row")
         )
     }
 

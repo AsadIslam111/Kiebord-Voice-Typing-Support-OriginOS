@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.data.prefs
+package com.codepotro.borno.data.prefs
 
 import android.content.Context
 import android.os.Build
@@ -46,6 +46,8 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val SHOW_SECONDARY_KEYS = booleanPreferencesKey("pref_show_secondary_keys")
         val SHOW_GLOBE_KEY = booleanPreferencesKey("pref_show_globe_key")
         val SHOW_EMOJI_KEY = booleanPreferencesKey("pref_show_emoji_key")
+        val SHOW_EMOJI_ROW = booleanPreferencesKey("pref_show_emoji_row")
+        val RECENT_EMOJIS = stringPreferencesKey("pref_recent_emojis")
 
         val VIBRATE_ON_KEYPRESS = booleanPreferencesKey("pref_vibrate_on_keypress")
         val VIBRATION_TYPE = stringPreferencesKey("pref_vibration_type")
@@ -127,6 +129,8 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 showSecondaryKeys = prefs[PreferencesKeys.SHOW_SECONDARY_KEYS] ?: true,
                 showGlobeKey = prefs[PreferencesKeys.SHOW_GLOBE_KEY] ?: true,
                 showEmojiKey = prefs[PreferencesKeys.SHOW_EMOJI_KEY] ?: false,
+                showEmojiRow = prefs[PreferencesKeys.SHOW_EMOJI_ROW] ?: false,
+                recentEmojis = prefs[PreferencesKeys.RECENT_EMOJIS]?.split(",")?.filter { it.isNotEmpty() } ?: emptyList(),
 
                 vibrateOnKeypress = prefs[PreferencesKeys.VIBRATE_ON_KEYPRESS] ?: true,
                 vibrationType = prefs[PreferencesKeys.VIBRATION_TYPE] ?: KiebordPreferences.VIBRATION_TYPE_HAPTIC,
@@ -194,7 +198,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                     val allActionNames = listOf(
                         "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER", "FLOATING",
                         "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
-                        "UNDO", "REDO"
+                        "UNDO", "REDO", "EMOJI_ROW_TOGGLE"
                     )
                     prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
                         raw.split(",").filter { it in allActionNames }.distinct()
@@ -202,11 +206,11 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 },
                 drawerTools = run {
                     val defaultPinned = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE")
-                    val defaultDrawer = listOf("RESIZER", "FLOATING", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO")
+                    val defaultDrawer = listOf("RESIZER", "FLOATING", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO", "EMOJI_ROW_TOGGLE")
                     val allActionNames = listOf(
                         "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER", "FLOATING",
                         "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
-                        "UNDO", "REDO"
+                        "UNDO", "REDO", "EMOJI_ROW_TOGGLE"
                     )
                     val pinnedList = prefs[PreferencesKeys.PINNED_TOOLS]?.let { raw ->
                         raw.split(",").filter { it in allActionNames }.distinct()
@@ -295,6 +299,19 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateShowEmojiKey(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.SHOW_EMOJI_KEY] = enabled }
+    }
+
+    suspend fun updateShowEmojiRow(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SHOW_EMOJI_ROW] = enabled }
+    }
+
+    suspend fun recordRecentEmoji(emoji: String) {
+        if (emoji.isBlank()) return
+        context.kiebordDataStore.edit { prefs ->
+            val current = prefs[PreferencesKeys.RECENT_EMOJIS]?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
+            val updated = (listOf(emoji) + current.filter { it != emoji }).take(30)
+            prefs[PreferencesKeys.RECENT_EMOJIS] = updated.joinToString(",")
+        }
     }
 
     // Preferences & Haptics mutators
@@ -531,9 +548,9 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
     suspend fun updateToolbarTools(pinned: List<String>, drawer: List<String>) {
         val defaultPinned = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE")
         val allActionNames = listOf(
-            "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER",
+            "EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE", "RESIZER", "FLOATING",
             "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE",
-            "UNDO", "REDO"
+            "UNDO", "REDO", "EMOJI_ROW_TOGGLE"
         )
         val sanitizedPinned = pinned.filter { it in allActionNames }.distinct()
         val pinnedSet = sanitizedPinned.toSet()

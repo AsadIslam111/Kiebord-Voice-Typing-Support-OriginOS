@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.ui.toolbar
+package com.codepotro.borno.feature.ime.ui.toolbar
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -77,7 +77,8 @@ enum class ToolbarAction {
     TRADITIONAL_MODE,
     UNDO,
     REDO,
-    NUMBER_PAD
+    NUMBER_PAD,
+    EMOJI_ROW_TOGGLE
 }
 
 data class ToolbarItem(
@@ -111,6 +112,7 @@ fun ReorderableToolbar(
     isClipboardActive: Boolean = false,
     isTraditionalModeActive: Boolean = false,
     isNumberPadActive: Boolean = false,
+    isEmojiRowActive: Boolean = false,
     isCustomizeMode: Boolean = false,
     scaleFactor: Float = 1.0f,
     isToolEnabled: (ToolbarAction) -> Boolean = { true },
@@ -162,7 +164,8 @@ fun ReorderableToolbar(
             ToolbarAction.TRADITIONAL_MODE to ToolbarItem(ToolbarAction.TRADITIONAL_MODE, iconResId = R.drawable.ic_traditional, description = "Traditional Mode"),
             ToolbarAction.UNDO to ToolbarItem(ToolbarAction.UNDO, iconResId = R.drawable.ic_undo, description = "Undo"),
             ToolbarAction.REDO to ToolbarItem(ToolbarAction.REDO, iconResId = R.drawable.ic_redo, description = "Redo"),
-            ToolbarAction.NUMBER_PAD to ToolbarItem(ToolbarAction.NUMBER_PAD, icon = Icons.Outlined.Dialpad, description = "Number Pad")
+            ToolbarAction.NUMBER_PAD to ToolbarItem(ToolbarAction.NUMBER_PAD, icon = Icons.Outlined.Dialpad, description = "Number Pad"),
+            ToolbarAction.EMOJI_ROW_TOGGLE to ToolbarItem(ToolbarAction.EMOJI_ROW_TOGGLE, icon = Icons.Outlined.Mood, description = "Emoji Row")
         )
     }
 
@@ -214,6 +217,7 @@ fun ReorderableToolbar(
                         ToolbarAction.CLIPBOARD -> isClipboardActive
                         ToolbarAction.TRADITIONAL_MODE -> isTraditionalModeActive
                         ToolbarAction.NUMBER_PAD -> isNumberPadActive
+                        ToolbarAction.EMOJI_ROW_TOGGLE -> isEmojiRowActive
                         else -> false
                     }
                     val isDraggingThisItem = draggingAction == action

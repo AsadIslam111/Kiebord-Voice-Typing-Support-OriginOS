@@ -114,6 +114,7 @@ import com.codepotro.borno.feature.ime.clipboard.SandboxedClipboardManager
 import com.codepotro.borno.feature.ime.gesture.KeyCentroid
 import com.codepotro.borno.feature.ime.ui.clipboard.ClipboardPanelView
 import com.codepotro.borno.feature.ime.ui.emoji.EmojiPanelView
+import com.codepotro.borno.feature.ime.ui.emoji.EmojiRowBar
 import com.codepotro.borno.feature.ime.ui.emoji.EmojiSearchCardView
 import com.codepotro.borno.feature.ime.ui.emoji.EmojiSearchBarRow
 import com.codepotro.borno.feature.ime.ui.emoji.EmojiSearchResultsGrid
@@ -191,6 +192,10 @@ fun KeyboardRootView(
     onKeyPopupsToggle: ((Boolean) -> Unit)? = null,
     showGlobeKey: Boolean = true,
     showEmojiKey: Boolean = false,
+    defaultShowEmojiRow: Boolean = false,
+    recentEmojis: List<String> = emptyList(),
+    onEmojiRowToggle: ((Boolean) -> Unit)? = null,
+    onRecordRecentEmoji: ((String) -> Unit)? = null,
     defaultTraditionalMode: Boolean = false,
     onTraditionalModeToggle: ((Boolean) -> Unit)? = null,
     onKeyPress: (KeyDef) -> Unit = {},
@@ -486,6 +491,7 @@ fun KeyboardRootView(
     var isToolsDrawerOpen by remember { mutableStateOf(false) }
     var isSuggestionsExpanded by remember { mutableStateOf(false) }
     var showNumberRow by remember(defaultShowNumberRow) { mutableStateOf(defaultShowNumberRow) }
+    var showEmojiRow by remember(defaultShowEmojiRow) { mutableStateOf(defaultShowEmojiRow) }
     var showSecondaryKeys by remember(defaultShowSecondaryKeys) { mutableStateOf(defaultShowSecondaryKeys) }
     var showKeyPopups by remember(defaultShowKeyPopups) { mutableStateOf(defaultShowKeyPopups) }
     var traditionalMode by remember(defaultTraditionalMode) { mutableStateOf(defaultTraditionalMode) }
@@ -873,9 +879,15 @@ fun KeyboardRootView(
         }
     }
 
+    val emojiRowHeight = if (isLandscape) (37 * scaleFactor).coerceIn(30f, 44f).dp else (43 * scaleFactor).coerceIn(36f, 50f).dp
+    val isEmojiRowVisible = showEmojiRow && !isEmojiSearchOpen && !isToolsDrawerOpen &&
+        !isSuggestionsExpanded && !isTextEditOpen && !isClipboardOpen && !isEmojiOpen
+    val effectiveEmojiRowHeight = if (isEmojiRowVisible) emojiRowHeight else 0.dp
+
     fun calculateTotalKeyboardHeight(rowHeightDp: Dp): Dp {
         val s = (rowHeightDp.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.4f, 1.6f)
         val tbHeight = if (isLandscape) (38 * s).coerceIn(32f, 44f).dp else (48 * s).dp
+        val eRowHeight = if (showEmojiRow) (if (isLandscape) (37 * s).coerceIn(30f, 44f).dp else (43 * s).dp) else 0.dp
         val bRow = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * s
         val content = if (isNumberLayout) {
             val topNum = if (showNumberRow) (50 * s).dp else 0.dp
@@ -902,10 +914,10 @@ fun KeyboardRootView(
             }
             total
         }
-        return tbHeight + content
+        return tbHeight + content + eRowHeight
     }
 
-    val committedKeyboardHeight = toolbarHeight + keyboardContentHeight
+    val committedKeyboardHeight = toolbarHeight + keyboardContentHeight + effectiveEmojiRowHeight
     val committedTotalHeight = popupHeadroomDp + committedKeyboardHeight + totalBottomPadding
     val dragKeyboardHeight = calculateTotalKeyboardHeight(dragRowHeight)
     val dragBottomPadding = (effectiveNavBarBottom + dragChinPadding).coerceAtLeast(0.dp)
@@ -1058,12 +1070,17 @@ fun KeyboardRootView(
                 isSuggestionsExpanded = false
                 onToggleNumberPad()
             }
+            ToolbarAction.EMOJI_ROW_TOGGLE -> {
+                showEmojiRow = !showEmojiRow
+                onEmojiRowToggle?.invoke(showEmojiRow)
+            }
         }
     }
 
     val isActionActive: (ToolbarAction) -> Boolean = { action ->
         when (action) {
             ToolbarAction.NUMBER_ROW_TOGGLE -> showNumberRow
+            ToolbarAction.EMOJI_ROW_TOGGLE -> showEmojiRow
             ToolbarAction.SECONDARY_KEYS_TOGGLE -> showSecondaryKeys
             ToolbarAction.KEY_POPUP_TOGGLE -> showKeyPopups
             ToolbarAction.TRADITIONAL_MODE -> traditionalMode
@@ -1168,6 +1185,7 @@ fun KeyboardRootView(
                 EmojiPanelView(
                     onEmojiSelected = { emoji ->
                         onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                        onRecordRecentEmoji?.invoke(emoji)
                     },
                     onDelete = {
                         onKeyTap(KeyDef(type = KeyType.DELETE))
@@ -1192,6 +1210,7 @@ fun KeyboardRootView(
                         onQueryChange = { emojiSearchQuery = it },
                         onEmojiSelected = { emoji ->
                             onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                            onRecordRecentEmoji?.invoke(emoji)
                         },
                         onClose = {
                             isEmojiSearchOpen = false
@@ -1199,6 +1218,22 @@ fun KeyboardRootView(
                             isEmojiOpen = true
                         },
                         colorScheme = colorScheme
+                    )
+                } else if (showEmojiRow) {
+                    EmojiRowBar(
+                        recentEmojis = recentEmojis,
+                        onEmojiClick = { emoji ->
+                            onKeyTap(KeyDef(label = emoji, commitText = emoji, type = KeyType.CHARACTER))
+                        },
+                        onRecordRecentEmoji = onRecordRecentEmoji,
+                        onHideClick = {
+                            showEmojiRow = false
+                            onEmojiRowToggle?.invoke(false)
+                        },
+                        height = emojiRowHeight,
+                        scaleFactor = scaleFactor,
+                        colorScheme = colorScheme,
+                        vibrationEnabled = vibrationEnabled
                     )
                 }
 
@@ -1485,6 +1520,7 @@ fun KeyboardRootView(
                             isClipboardActive = isClipboardOpen,
                             isTraditionalModeActive = traditionalMode,
                             isNumberPadActive = isNumberPadActive,
+                            isEmojiRowActive = showEmojiRow,
                             isCustomizeMode = isToolsDrawerOpen,
                             scaleFactor = scaleFactor,
                             onDraggingStateChange = { action, fingerPos ->
@@ -2741,8 +2777,8 @@ fun KeyboardRootView(
                 null
             }
 
-            val keyboardSurfaceHeightDp = remember(toolbarHeight, keyboardContentHeight, totalBottomPadding) {
-                toolbarHeight + keyboardContentHeight + totalBottomPadding
+            val keyboardSurfaceHeightDp = remember(committedKeyboardHeight, totalBottomPadding) {
+                committedKeyboardHeight + totalBottomPadding
             }
 
             val (globeBottomOffsetDp, horizontalOffsetDp, maxDialogHeightDp) = remember(
@@ -2864,7 +2900,7 @@ fun KeyboardRootView(
                 },
                 modifier = Modifier
                     .padding(top = popupHeadroomDp)
-                    .height(toolbarHeight + keyboardContentHeight)
+                    .height(committedKeyboardHeight)
                     .align(if (oneHandedSide == "LEFT") Alignment.TopEnd else Alignment.TopStart)
             )
         }

@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.data.prefs
+package com.codepotro.borno.data.prefs
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -148,5 +148,23 @@ class KiebordPreferencesTest {
         assertEquals(0.85f, updated.floatingHeightScalePortrait, 0.01f)
         assertEquals(0.4f, updated.floatingOffsetRatioXPortrait, 0.01f)
         assertEquals(0.6f, updated.floatingOffsetRatioYPortrait, 0.01f)
+    }
+
+    @Test
+    fun testShowEmojiRowDefaultAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(false, prefs.showEmojiRow)
+        assertEquals(emptyList<String>(), prefs.recentEmojis)
+        org.junit.Assert.assertTrue(
+            "drawerTools must contain EMOJI_ROW_TOGGLE by default",
+            prefs.drawerTools.contains("EMOJI_ROW_TOGGLE")
+        )
+
+        val updated = prefs.copy(
+            showEmojiRow = true,
+            recentEmojis = listOf("😊", "🔥")
+        )
+        assertEquals(true, updated.showEmojiRow)
+        assertEquals(listOf("😊", "🔥"), updated.recentEmojis)
     }
 }

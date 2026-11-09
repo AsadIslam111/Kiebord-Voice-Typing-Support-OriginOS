@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.data.prefs
+package com.codepotro.borno.data.prefs
 
 /**
  * Immutable snapshot of all user-configurable settings and preferences for Kiebord.
@@ -19,6 +19,8 @@ data class KiebordPreferences(
     val showSecondaryKeys: Boolean = true,
     val showGlobeKey: Boolean = true,
     val showEmojiKey: Boolean = false,
+    val showEmojiRow: Boolean = false,
+    val recentEmojis: List<String> = emptyList(),
 
     // Preferences & Haptics
     val vibrateOnKeypress: Boolean = true,
@@ -76,7 +78,7 @@ data class KiebordPreferences(
 
     // Toolbar rearrangement persistence
     val pinnedTools: List<String> = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE"),
-    val drawerTools: List<String> = listOf("RESIZER", "FLOATING", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO"),
+    val drawerTools: List<String> = listOf("RESIZER", "FLOATING", "NUMBER_ROW_TOGGLE", "SECONDARY_KEYS_TOGGLE", "KEY_POPUP_TOGGLE", "ONE_HANDED", "SETTINGS", "TRADITIONAL_MODE", "UNDO", "REDO", "EMOJI_ROW_TOGGLE"),
 
     // Voice Typing
     val voiceTypingEnabled: Boolean = true,

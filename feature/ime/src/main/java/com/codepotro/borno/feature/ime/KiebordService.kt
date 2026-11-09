@@ -605,6 +605,14 @@ class KiebordService : InputMethodService() {
                     },
                     showGlobeKey = preferencesState.showGlobeKey,
                     showEmojiKey = preferencesState.showEmojiKey,
+                    defaultShowEmojiRow = preferencesState.showEmojiRow,
+                    recentEmojis = preferencesState.recentEmojis,
+                    onEmojiRowToggle = { enabled ->
+                        serviceScope.launch { preferencesRepo.updateShowEmojiRow(enabled) }
+                    },
+                    onRecordRecentEmoji = { emoji ->
+                        serviceScope.launch { preferencesRepo.recordRecentEmoji(emoji) }
+                    },
                     defaultTraditionalMode = preferencesState.traditionalMode,
                     onTraditionalModeToggle = { enabled ->
                         serviceScope.launch { preferencesRepo.updateTraditionalMode(enabled) }
