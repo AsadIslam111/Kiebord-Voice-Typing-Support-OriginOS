@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.ui
+package com.codepotro.borno.feature.ime.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -706,7 +706,14 @@ fun KeyboardRootView(
     }
 
 
-    val effectiveShiftState = if (isSlidingShiftMode) ShiftState.ONE_SHOT else shiftState
+    val layoutSupportsShift = remember(displayLayout) { displayLayout.hasShiftKey() }
+    val effectiveShiftState = if (!layoutSupportsShift) {
+        ShiftState.UNSHIFTED
+    } else if (isSlidingShiftMode) {
+        ShiftState.ONE_SHOT
+    } else {
+        shiftState
+    }
     val isShiftActive = effectiveShiftState != ShiftState.UNSHIFTED
     val isSymbolLayout = displayLayout.isSymbolsLayout()
     val baseAlphaLayout = if (isSymbolLayout) (if (isSlidingSymbolMode) layout else primaryAlphaLayout) else displayLayout
@@ -1914,8 +1921,6 @@ fun KeyboardRootView(
                             } else {
                                 key
                             }
-
-                            val effectiveShiftState = if (isSlidingShiftMode) ShiftState.ONE_SHOT else shiftState
 
                             key("cell_${rowIndex}_$keyIndex") {
                                 KeycapView(

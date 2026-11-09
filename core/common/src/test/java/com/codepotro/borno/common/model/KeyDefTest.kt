@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.common.model
+package com.codepotro.borno.common.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -53,6 +53,27 @@ class KeyDefTest {
         assertEquals("খ", key.flickUp(ShiftState.UNSHIFTED))
         assertEquals("ক", key.flickUp(ShiftState.ONE_SHOT))
         assertEquals("ক", key.flickUp(ShiftState.CAPS_LOCK))
+    }
+
+    @Test
+    fun hasShiftKey_detectsPresenceOfShiftKey() {
+        val layoutWithShift = KeyboardLayoutDef(
+            id = "with_shift",
+            rows = listOf(
+                KeyRow(listOf(KeyDef(label = "a"))),
+                KeyRow(listOf(KeyDef(type = KeyType.SHIFT), KeyDef(label = "z")))
+            )
+        )
+        val layoutWithoutShift = KeyboardLayoutDef(
+            id = "without_shift",
+            rows = listOf(
+                KeyRow(listOf(KeyDef(label = "q"))),
+                KeyRow(listOf(KeyDef(label = "a"), KeyDef(label = "z")))
+            )
+        )
+
+        org.junit.Assert.assertTrue(layoutWithShift.hasShiftKey())
+        org.junit.Assert.assertFalse(layoutWithoutShift.hasShiftKey())
     }
 }
 

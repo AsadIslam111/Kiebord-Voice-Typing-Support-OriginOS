@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime
+package com.codepotro.borno.feature.ime
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -121,6 +121,7 @@ class KiebordService : InputMethodService() {
         if (layoutToCheck.noAutoCapitalization) return false
         if (isBanglaLayout(layoutToCheck)) return false
         if (isPhoneticLayout(layoutToCheck)) return false
+        if (!layoutToCheck.hasShiftKey()) return false
         val info = currentEditorInfoState ?: currentInputEditorInfo
         if (!InputModeResolver.isGeneralTextInput(info)) return false
         if (InputModeResolver.isSearchOrWebAddressField(info)) return false
@@ -131,11 +132,11 @@ class KiebordService : InputMethodService() {
         ic: InputConnection? = currentInputConnection,
         info: EditorInfo? = currentEditorInfoState ?: currentInputEditorInfo
     ) {
-        if (shiftState == ShiftState.CAPS_LOCK) return
         if (!shouldAutoCapitalize()) {
             shiftState = ShiftState.UNSHIFTED
             return
         }
+        if (shiftState == ShiftState.CAPS_LOCK) return
 
         val inputType = info?.inputType ?: InputType.TYPE_CLASS_TEXT
         var reqModes = 0
@@ -373,11 +374,14 @@ class KiebordService : InputMethodService() {
 
                 val targetPrimary = layoutRepo.getLayout(targetPrimaryId)
                 if (primaryAlphaLayout.id != targetPrimary.id || !enabledIds.contains(primaryAlphaLayout.id)) {
+                    shiftState = ShiftState.UNSHIFTED
+                    lastShiftTapTime = 0L
                     primaryAlphaLayout = targetPrimary
                     ensureLayoutProcessorInitialized(targetPrimary)
                     if (!isSymbolsMode) {
                         activeLayout = targetPrimary
                     }
+                    updateAutoCapitalizationState()
                 }
                 try {
                     getSharedPreferences("kiebord_runtime", Context.MODE_PRIVATE)
@@ -730,6 +734,10 @@ class KiebordService : InputMethodService() {
         lifecycleOwner.onStart()
         inputSessionId++
         isSymbolsMode = false
+        if (!restarting) {
+            shiftState = ShiftState.UNSHIFTED
+            lastShiftTapTime = 0L
+        }
         val cachedLayoutId = try {
             getSharedPreferences("kiebord_runtime", Context.MODE_PRIVATE)
                 .getString("last_active_layout_id", null)
@@ -930,6 +938,8 @@ class KiebordService : InputMethodService() {
         finishComposing()
         isBornoEasyKarMode = false
         bornoEasyTypedCluster = ""
+        shiftState = ShiftState.UNSHIFTED
+        lastShiftTapTime = 0L
         primaryAlphaLayout = layoutRepo.getLayout(layoutId)
         ensureLayoutProcessorInitialized(primaryAlphaLayout)
         activeLayout = if (!isSymbolsMode) {
@@ -1110,8 +1120,9 @@ class KiebordService : InputMethodService() {
 
         when (key.type) {
             KeyType.CHARACTER -> {
+                val effectiveShift = if (!activeLayout.hasShiftKey()) ShiftState.UNSHIFTED else shiftState
                 val initialShiftState = shiftState
-                val text = key.textToCommit(shiftState)
+                val text = key.textToCommit(effectiveShift)
 
                 when {
                     isTransliterationLayout() -> {
@@ -1511,7 +1522,7 @@ class KiebordService : InputMethodService() {
             return
         }
         val ic = currentInputConnection ?: return
-        val currentShiftState = shiftState
+        val currentShiftState = if (!activeLayout.hasShiftKey()) ShiftState.UNSHIFTED else shiftState
         val currentMoreKeys = key.moreKeys(currentShiftState)
         val currentFlickUp = key.flickUp(currentShiftState)
         val charToInsert = when {

@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.data.layout
+package com.codepotro.borno.data.layout
 
 import com.codepotro.borno.common.model.KeyType
 import org.junit.Assert.assertEquals
@@ -1094,6 +1094,7 @@ class PredefinedLayoutsTest {
         val slashKey = layout.rows[2].keys[0]
         assertEquals("/", slashKey.label)
         assertTrue(layout.rows[2].keys.none { it.type == com.codepotro.borno.common.model.KeyType.SHIFT })
+        assertFalse("khipro must not have shift key", layout.hasShiftKey())
         val row3Chars = layout.rows[2].keys.filter { it.type == com.codepotro.borno.common.model.KeyType.CHARACTER }.map { it.label }
         assertEquals(listOf("/", "z", "x", "c", "v", "b", "n", "m"), row3Chars)
 
@@ -1339,5 +1340,18 @@ class PredefinedLayoutsTest {
         assertEquals(expectedBnDigits, unijoySym!!.rows[0].keys.map { it.label })
         val unijoyTakaKey = unijoySym.rows[1].keys[2]
         assertEquals("৳", unijoyTakaKey.label)
+    }
+
+    @Test
+    fun testLayoutShiftKeySupport() {
+        assertTrue(PredefinedLayouts.EnglishQwerty.hasShiftKey())
+        assertTrue(PredefinedLayouts.BengaliBorno.hasShiftKey())
+        assertTrue(PredefinedLayouts.BengaliAvro.hasShiftKey())
+        assertTrue(PredefinedLayouts.BengaliProbhat.hasShiftKey())
+        assertTrue(PredefinedLayouts.BengaliNational.hasShiftKey())
+        assertFalse(PredefinedLayouts.BengaliBornoEasy.hasShiftKey())
+        assertFalse(PredefinedLayouts.Symbols.hasShiftKey())
+        assertFalse(PredefinedLayouts.SymbolsMore.hasShiftKey())
+        assertFalse(PredefinedLayouts.NumberPadExtended.hasShiftKey())
     }
 }

@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.common.model
+package com.codepotro.borno.common.model
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -203,6 +203,8 @@ data class KeyboardLayoutDef(
         }
         return flags.any { it.equals(flagName, ignoreCase = true) }
     }
+
+    fun hasShiftKey(): Boolean = rows.any { row -> row.keys.any { it.type == KeyType.SHIFT } }
 
     val noAutoCapitalization: Boolean get() = hasFlag(LayoutFlags.NO_AUTO_CAPITALIZATION)
     val noAutoSpace: Boolean get() = hasFlag(LayoutFlags.NO_AUTO_SPACE)

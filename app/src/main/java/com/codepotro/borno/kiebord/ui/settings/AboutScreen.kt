@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.kiebord.ui.settings
+package com.codepotro.borno.kiebord.ui.settings
 
 import android.content.Context
 import android.content.Intent
