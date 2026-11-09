@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.ui.clipboard
+package com.codepotro.borno.feature.ime.ui.clipboard
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -102,7 +102,8 @@ fun ClipboardPanelView(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .padding(horizontal = 8.dp)
+                .padding(bottom = 4.dp)
         ) {
             // 1. Header: Back button | "Clipboard" | Pin/Recent toggle group btn | Edit btn
             Row(
@@ -114,7 +115,7 @@ fun ClipboardPanelView(
                 // Back button
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
                         .background(Color(0x22FFFFFF))
                         .clickable(onClick = onClose),

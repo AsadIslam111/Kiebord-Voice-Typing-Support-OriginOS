@@ -257,7 +257,7 @@ fun ReorderableToolbar(
                     val maxSlotWidth = (slotWidthDp - (4 * scaleFactor).dp).coerceAtLeast((20 * scaleFactor).coerceIn(16f, 28f).dp)
                     val desiredWidth = (if (isCustomizeMode) 56.dp else 48.dp) * scaleFactor
                     val tileWidth = minOf(maxSlotWidth, desiredWidth).coerceAtLeast(18.dp)
-                    val tileHeight = (32 * scaleFactor).coerceIn(22f, 40f).dp
+                    val tileHeight = (34 * scaleFactor).coerceIn(24f, 40f).dp
                     val tileShape = RoundedCornerShape((8 * scaleFactor).coerceIn(4f, 10f).dp)
 
                     // The Tool Tile
@@ -374,11 +374,11 @@ fun ReorderableToolbar(
                         contentAlignment = Alignment.Center
                     ) {
                         val isCustomIcon = item.iconResId != null
-                        val maxIconInTile = (tileWidth - 4.dp).value.coerceAtLeast(12f)
+                        val maxIconInTile = (tileWidth - 2.dp).value.coerceAtLeast(14f)
                         val iconSizeDp = if (isCustomIcon) {
-                            (24f * scaleFactor).coerceIn(14f, maxIconInTile)
+                            (26f * scaleFactor).coerceIn(16f, maxIconInTile)
                         } else {
-                            (20f * scaleFactor).coerceIn(12f, maxIconInTile)
+                            (23f * scaleFactor).coerceIn(14f, maxIconInTile)
                         }
                         val iconModifier = Modifier.size(iconSizeDp.dp)
                         val iconTint = when {

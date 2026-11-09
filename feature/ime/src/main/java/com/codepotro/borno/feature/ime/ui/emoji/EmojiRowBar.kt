@@ -151,7 +151,7 @@ fun EmojiRowBar(
                     strokeWidth = strokeWidth
                 )
             },
-        contentPadding = PaddingValues(start = 6.dp, end = 10.dp, top = 2.dp, bottom = 2.dp),
+        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
         horizontalArrangement = Arrangement.spacedBy((5 * scaleFactor).coerceAtLeast(3f).dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

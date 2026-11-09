@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.ui.textedit
+package com.codepotro.borno.feature.ime.ui.textedit
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -82,20 +82,21 @@ fun TextEditPanelView(
             .fillMaxWidth()
             .height(height)
             .background(panelBg)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp)
+            .padding(bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         // 1. Header with back arrow circle and "Text editing" title
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(42.dp),
+                .height(44.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .background(Color(0x22FFFFFF))
                     .clickable(onClick = onClose),

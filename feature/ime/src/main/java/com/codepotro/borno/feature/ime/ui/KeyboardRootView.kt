@@ -572,7 +572,7 @@ fun KeyboardRootView(
 
     var keyRowHeight by remember(isLandscape, isFloating, activeTargetRowHeight) { mutableStateOf(activeTargetRowHeight) }
     val scaleFactor = (keyRowHeight.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.4f, 1.6f)
-    val toolbarHeight = if (isLandscape) (38 * scaleFactor).coerceIn(32f, 44f).dp else (48 * scaleFactor).dp
+    val toolbarHeight = if (isLandscape) (38 * scaleFactor).coerceIn(32f, 44f).dp else (44 * scaleFactor).dp
 
     // Unified bottom row height across ALL layouts using scaleFactor
     val bottomRowHeight = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * scaleFactor
@@ -886,7 +886,7 @@ fun KeyboardRootView(
 
     fun calculateTotalKeyboardHeight(rowHeightDp: Dp): Dp {
         val s = (rowHeightDp.value / (if (activeBaseRowHeight.value > 0f) activeBaseRowHeight.value else 61f)).coerceIn(0.4f, 1.6f)
-        val tbHeight = if (isLandscape) (38 * s).coerceIn(32f, 44f).dp else (48 * s).dp
+        val tbHeight = if (isLandscape) (38 * s).coerceIn(32f, 44f).dp else (44 * s).dp
         val eRowHeight = if (showEmojiRow) (if (isLandscape) (37 * s).coerceIn(30f, 44f).dp else (43 * s).dp) else 0.dp
         val bRow = (if (isLandscape) baseLandscapeBottomRowHeight else baseStandardPortraitRowHeight) * s
         val content = if (isNumberLayout) {
@@ -1155,103 +1155,110 @@ fun KeyboardRootView(
     )
 
     val KeyboardInnerContent: @Composable () -> Unit = {
+        val topBarStartInset = if (isFloating) 0.dp else oneHandedStart
+        val topBarEndInset = if (isFloating) 0.dp else oneHandedEnd
+
         if (isTextEditOpen) {
-                // Text Editing panel covers the toolbar and replaces the expand icon with back icon (matching Borno Keyboard)
-                TextEditPanelView(
-                    onTextAction = { action, isSelecting -> onTextAction(action, isSelecting) },
-                    onClose = { isTextEditOpen = false },
-                    height = toolbarHeight + keyboardContentHeight
-                )
-            } else if (isClipboardOpen) {
-                ClipboardPanelView(
-                    clips = clipboardManager?.clips ?: emptyList(),
-                    onClipClick = { clip ->
-                        onPasteClip(clip.text)
-                        clipboardManager?.clearQuickPaste()
-                        undoActionPillState = UndoRedoPillState.CanUndo(text = clip.text, isPaste = true)
-                    },
-                    onTogglePin = { clip -> clipboardManager?.togglePin(clip) },
-                    onDeleteClip = { clip -> clipboardManager?.deleteClip(clip) },
-                    onClearAll = { clipboardManager?.clearAllUnpinned() },
-                    onOpenSettings = {
-                        isClipboardOpen = false
-                        onOpenClipboardSettings()
-                    },
-                    onClose = { isClipboardOpen = false },
-                    height = toolbarHeight + keyboardContentHeight,
-                    onSyncRequest = { clipboardManager?.syncFromSystemClipboard(context) }
-                )
-            } else if (isEmojiOpen) {
-                EmojiPanelView(
+            TextEditPanelView(
+                onTextAction = { action, isSelecting -> onTextAction(action, isSelecting) },
+                onClose = { isTextEditOpen = false },
+                height = toolbarHeight + keyboardContentHeight
+            )
+        } else if (isClipboardOpen) {
+            ClipboardPanelView(
+                clips = clipboardManager?.clips ?: emptyList(),
+                onClipClick = { clip ->
+                    onPasteClip(clip.text)
+                    clipboardManager?.clearQuickPaste()
+                    undoActionPillState = UndoRedoPillState.CanUndo(text = clip.text, isPaste = true)
+                },
+                onTogglePin = { clip -> clipboardManager?.togglePin(clip) },
+                onDeleteClip = { clip -> clipboardManager?.deleteClip(clip) },
+                onClearAll = { clipboardManager?.clearAllUnpinned() },
+                onOpenSettings = {
+                    isClipboardOpen = false
+                    onOpenClipboardSettings()
+                },
+                onClose = { isClipboardOpen = false },
+                height = toolbarHeight + keyboardContentHeight,
+                onSyncRequest = { clipboardManager?.syncFromSystemClipboard(context) }
+            )
+        } else if (isEmojiOpen) {
+            EmojiPanelView(
+                onEmojiSelected = { emoji ->
+                    onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                    onRecordRecentEmoji?.invoke(emoji)
+                },
+                onDelete = {
+                    onKeyTap(KeyDef(type = KeyType.DELETE))
+                },
+                onSpace = {
+                    onKeyTap(KeyDef(label = " ", type = KeyType.CHARACTER))
+                },
+                onClose = { isEmojiOpen = false },
+                onOpenSearch = {
+                    isEmojiOpen = false
+                    isEmojiSearchOpen = true
+                    emojiSearchQuery = ""
+                },
+                height = toolbarHeight + keyboardContentHeight,
+                showKeyBorders = showKeyBorders
+            )
+        } else {
+            if (isEmojiSearchOpen) {
+                EmojiSearchCardView(
+                    query = emojiSearchQuery,
+                    onQueryChange = { emojiSearchQuery = it },
                     onEmojiSelected = { emoji ->
                         onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
                         onRecordRecentEmoji?.invoke(emoji)
                     },
-                    onDelete = {
-                        onKeyTap(KeyDef(type = KeyType.DELETE))
-                    },
-                    onSpace = {
-                        onKeyTap(KeyDef(label = " ", type = KeyType.CHARACTER))
-                    },
-                    onClose = { isEmojiOpen = false },
-                    onOpenSearch = {
-                        isEmojiOpen = false
-                        isEmojiSearchOpen = true
+                    onClose = {
+                        isEmojiSearchOpen = false
                         emojiSearchQuery = ""
+                        isEmojiOpen = true
                     },
-                    height = toolbarHeight + keyboardContentHeight,
-                    showKeyBorders = showKeyBorders
-                )
-            } else {
-                if (isEmojiSearchOpen) {
-                    // Emoji search results in a CardView with search input stacked bottom inside
-                    EmojiSearchCardView(
-                        query = emojiSearchQuery,
-                        onQueryChange = { emojiSearchQuery = it },
-                        onEmojiSelected = { emoji ->
-                            onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
-                            onRecordRecentEmoji?.invoke(emoji)
-                        },
-                        onClose = {
-                            isEmojiSearchOpen = false
-                            emojiSearchQuery = ""
-                            isEmojiOpen = true
-                        },
-                        colorScheme = colorScheme
-                    )
-                } else if (showEmojiRow) {
-                    EmojiRowBar(
-                        recentEmojis = recentEmojis,
-                        onEmojiClick = { emoji ->
-                            onKeyTap(KeyDef(label = emoji, commitText = emoji, type = KeyType.CHARACTER))
-                        },
-                        onRecordRecentEmoji = onRecordRecentEmoji,
-                        onHideClick = {
-                            showEmojiRow = false
-                            onEmojiRowToggle?.invoke(false)
-                        },
-                        height = emojiRowHeight,
-                        scaleFactor = scaleFactor,
-                        colorScheme = colorScheme,
-                        vibrationEnabled = vibrationEnabled
-                    )
-                }
-
-                // Single unified Top Bar row (46dp height)
-                Row(
+                    colorScheme = colorScheme,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(toolbarHeight)
-                        .background(
-                            if (isToolsDrawerOpen) colorScheme.containerBackground.copy(alpha = 1f)
-                            else colorScheme.effectiveToolbarBackground
-                        )
-                        .padding(horizontal = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                        .padding(start = topBarStartInset, end = topBarEndInset)
+                )
+            } else if (showEmojiRow) {
+                EmojiRowBar(
+                    recentEmojis = recentEmojis,
+                    onEmojiClick = { emoji ->
+                        onKeyTap(KeyDef(label = emoji, commitText = emoji, type = KeyType.CHARACTER))
+                    },
+                    onRecordRecentEmoji = onRecordRecentEmoji,
+                    onHideClick = {
+                        showEmojiRow = false
+                        onEmojiRowToggle?.invoke(false)
+                    },
+                    height = emojiRowHeight,
+                    scaleFactor = scaleFactor,
+                    colorScheme = colorScheme,
+                    vibrationEnabled = vibrationEnabled,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = topBarStartInset, end = topBarEndInset)
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(toolbarHeight)
+                    .padding(start = topBarStartInset, end = topBarEndInset)
+                    .background(
+                        if (isToolsDrawerOpen) colorScheme.containerBackground.copy(alpha = 1f)
+                        else colorScheme.effectiveToolbarBackground
+                    )
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                     val isToolsExpanded = isToolsDrawerOpen || isToolbarOptionsVisible || isSuggestionsExpanded
-                    val leadingButtonSize = (36 * scaleFactor).coerceAtLeast(26f).dp
-                    val micButtonSize = (32 * scaleFactor).coerceAtLeast(24f).dp
+                    val leadingButtonSize = (34 * scaleFactor).coerceAtLeast(25f).dp
+                    val micButtonSize = (34 * scaleFactor).coerceAtLeast(25f).dp
                     val trailingBalanceWidth = if (voiceTypingEnabled) {
                         (leadingButtonSize - micButtonSize).coerceAtLeast(0.dp)
                     } else {
@@ -1294,14 +1301,14 @@ fun KeyboardRootView(
                                     else -> "All Tools"
                                 },
                                 tint = colorScheme.effectiveToolbarForeground,
-                                modifier = Modifier.size((22 * scaleFactor).coerceAtLeast(16f).dp)
+                                modifier = Modifier.size((20 * scaleFactor).coerceAtLeast(16f).dp)
                             )
                         } else {
                             Icon(
                                 painter = painterResource(R.drawable.ic_kiebord_top),
                                 contentDescription = "All Tools",
                                 tint = colorScheme.effectiveToolbarForeground,
-                                modifier = Modifier.size((29 * scaleFactor).coerceAtLeast(21f).dp)
+                                modifier = Modifier.size((26 * scaleFactor).coerceAtLeast(18f).dp)
                             )
                         }
                     }
@@ -1536,7 +1543,7 @@ fun KeyboardRootView(
                     // 3. Right edge key: Voice key with filled mic icon
                     if (voiceTypingEnabled) {
                         val isVoiceActive = voiceInputState is VoiceInputState.Listening
-                        val micIconSize = (22 * scaleFactor).coerceAtLeast(17f).dp
+                        val micIconSize = (22.5f * scaleFactor).coerceAtLeast(17f).dp
 
                         val activeAlpha = if (isVoiceActive) {
                             val infiniteTransition = rememberInfiniteTransition(label = "VoicePulse")
@@ -1588,6 +1595,7 @@ fun KeyboardRootView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(keyboardContentHeight)
+                        .padding(start = keyboardStartInset, end = keyboardEndInset)
                 ) {
                     val isAnyPanelOpen = (isSuggestionsExpanded && suggestions.isNotEmpty()) || isToolsDrawerOpen || isClipboardOpen || isEmojiOpen
                     val areKeysInteractive = isKeysInteractive && !isAnyPanelOpen
@@ -2446,7 +2454,7 @@ fun KeyboardRootView(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = if (isToolsDrawerOpen) 0.dp else toolbarHeight)
+                            .padding(top = if (isToolsDrawerOpen) 0.dp else (toolbarHeight + effectiveEmojiRowHeight))
                             .matchParentSize()
                             .background(colorScheme.containerBackground.copy(alpha = 1f))
                     )
@@ -2455,12 +2463,7 @@ fun KeyboardRootView(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .padding(
-                            start = keyboardStartInset,
-                            end = keyboardEndInset,
-                            top = 0.dp,
-                            bottom = totalBottomPadding
-                        )
+                        .padding(bottom = totalBottomPadding)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         KeyboardInnerContent()
@@ -2519,7 +2522,7 @@ fun KeyboardRootView(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = if (isToolsDrawerOpen) 0.dp else toolbarHeight)
+                                .padding(top = if (isToolsDrawerOpen) 0.dp else (toolbarHeight + effectiveEmojiRowHeight))
                                 .matchParentSize()
                                 .background(colorScheme.containerBackground.copy(alpha = 1f))
                         )
@@ -2528,8 +2531,6 @@ fun KeyboardRootView(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(
-                                start = keyboardStartInset,
-                                end = keyboardEndInset,
                                 bottom = totalBottomPadding
                             )
                     ) {
