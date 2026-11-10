@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Box
@@ -1912,7 +1913,9 @@ fun KeyboardRootView(
                             fastDeleteEnabled = fastDeleteEnabled,
                             selectiveDeleteEnabled = selectiveDeleteEnabled,
                             onFastDelete = onFastDelete,
-                            handleShowMoreKeys = handleShowMoreKeys
+                            handleShowMoreKeys = handleShowMoreKeys,
+                            handleMoreKeysHover = handleMoreKeysHover,
+                            handleMoreKeysCommit = handleMoreKeysCommit
                         )
                     } else {
                         keyboardRows.forEachIndexed { rowIndex, row ->
@@ -3447,7 +3450,9 @@ private fun NumberPadExtendedLayout(
     fastDeleteEnabled: Boolean = false,
     selectiveDeleteEnabled: Boolean = true,
     onFastDelete: () -> Unit = {},
-    handleShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit
+    handleShowMoreKeys: (KeyDef, LayoutCoordinates) -> Unit,
+    handleMoreKeysHover: (LayoutCoordinates, Offset) -> Unit = { _, _ -> },
+    handleMoreKeysCommit: () -> Unit = {}
 ) {
     val extendedOperators = remember { listOf("+", "-", "*", "/", "(", ")", "#") }
     val opScrollState = rememberScrollState()
@@ -3609,6 +3614,11 @@ private fun NumberPadExtendedLayout(
                                 val keyDef = KeyDef(label = op, commitText = op)
                                 handleKeyPress(keyDef)
                                 handleKeyTapUnified(keyDef)
+                            },
+                            onLongClick = {
+                                val keyDef = KeyDef(label = op, commitText = op)
+                                handleKeyPress(keyDef)
+                                handleKeyTapUnified(keyDef)
                             }
                         )
                     }
@@ -3662,7 +3672,9 @@ private fun NumberPadExtendedLayout(
                                 fastDeleteEnabled = fastDeleteEnabled,
                                 selectiveDeleteEnabled = selectiveDeleteEnabled,
                                 onFastDelete = onFastDelete,
-                                onShowMoreKeys = handleShowMoreKeys
+                                onShowMoreKeys = handleShowMoreKeys,
+                                onMoreKeysHover = handleMoreKeysHover,
+                                onMoreKeysCommit = handleMoreKeysCommit
                             )
                         }
                     }
@@ -3713,9 +3725,11 @@ private fun NumberPadExtendedLayout(
                     onDeleteSwipeMove = onDeleteSwipeMove,
                     onDeleteSwipeEnd = onDeleteSwipeEnd,
                     onDeleteSwipeCancel = onDeleteSwipeCancel,
-                                fastDeleteEnabled = fastDeleteEnabled,
-                                onFastDelete = onFastDelete,
-                                onShowMoreKeys = handleShowMoreKeys
+                    fastDeleteEnabled = fastDeleteEnabled,
+                    onFastDelete = onFastDelete,
+                    onShowMoreKeys = handleShowMoreKeys,
+                    onMoreKeysHover = handleMoreKeysHover,
+                    onMoreKeysCommit = handleMoreKeysCommit
                 )
             }
         }
@@ -3732,13 +3746,15 @@ private fun ScrollableOperatorKey(
     pressedVisual: ResolvedKeyVisual,
     showDivider: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    var isPressed by remember { mutableStateOf(false) }
     val fontScaleFactor = scaleFactor.coerceAtMost(1.0f)
     val backgroundBrush = visual.backgroundBrush
     val pressedBrush = pressedVisual.backgroundBrush
+    val currentOnClick = rememberUpdatedState(onClick)
+    val currentOnLongClick = rememberUpdatedState(onLongClick)
 
     Box(
         modifier = modifier
@@ -3759,12 +3775,25 @@ private fun ScrollableOperatorKey(
                     }
                 }
             )
-            .clickable(
-                enabled = isInteractive,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            ),
+            .pointerInput(isInteractive) {
+                if (!isInteractive) return@pointerInput
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { currentOnClick.value() },
+                    onLongPress = {
+                        val onLong = currentOnLongClick.value
+                        if (onLong != null) {
+                            onLong()
+                        } else {
+                            currentOnClick.value()
+                        }
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Text(

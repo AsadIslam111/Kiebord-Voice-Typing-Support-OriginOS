@@ -1549,6 +1549,7 @@ class KiebordService : InputMethodService() {
         val charToInsert = when {
             currentMoreKeys.isNotEmpty() -> currentMoreKeys.first()
             !currentFlickUp.isNullOrEmpty() -> currentFlickUp
+            key.type == KeyType.CHARACTER -> key.textToCommit(currentShiftState)
             else -> ""
         }
         if (charToInsert.isEmpty()) return
