@@ -897,32 +897,56 @@ object PredefinedLayouts {
             BengaliBornoEasyVowelRow,
             KeyRow(
                 listOf(
-                    KeyDef("ক"), KeyDef("খ"), KeyDef("গ"), KeyDef("ঘ"), KeyDef("ঙ"),
-                    KeyDef("চ"), KeyDef("ছ"), KeyDef("জ"), KeyDef("ঝ"), KeyDef("ঞ")
+                    KeyDef("ক", moreKeys = listOf("ক্ষ", "ক্ত", "ক্ক", "ক্ল", "ক্স")),
+                    KeyDef("খ"),
+                    KeyDef("গ", moreKeys = listOf("গ্ধ", "গ্ন", "গ্ল", "গ্ম", "গ্ব")),
+                    KeyDef("ঘ", moreKeys = listOf("ঘ্ন")),
+                    KeyDef("ঙ", moreKeys = listOf("ঙ্ক", "ঙ্গ", "ঙ্খ", "ঙ্ঘ", "ঙ্ক্ষ")),
+                    KeyDef("চ", moreKeys = listOf("চ্ছ", "চ্চ", "চ্ঞ")),
+                    KeyDef("ছ"),
+                    KeyDef("জ", moreKeys = listOf("জ্ঞ", "জ্ব", "জ্জ", "জ্ঝ")),
+                    KeyDef("ঝ"),
+                    KeyDef("ঞ", moreKeys = listOf("ঞ্চ", "ঞ্জ", "ঞ্ছ", "ঞ্ঝ"))
                 )
             ),
             KeyRow(
                 listOf(
-                    KeyDef("ট"), KeyDef("ঠ"), KeyDef("ড"), KeyDef("ঢ"), KeyDef("ণ"),
-                    KeyDef("ত"), KeyDef("থ"), KeyDef("দ"), KeyDef("ধ"), KeyDef("ন")
+                    KeyDef("ট", moreKeys = listOf("ট্ট")),
+                    KeyDef("ঠ"),
+                    KeyDef("ড", moreKeys = listOf("ড্ড")),
+                    KeyDef("ঢ"),
+                    KeyDef("ণ", moreKeys = listOf("ণ্ট", "ণ্ঠ", "ণ্ড", "ণ্ণ", "ণ্ম")),
+                    KeyDef("ত", moreKeys = listOf("ত্ত", "ত্ব", "ত্ম", "ত্ন", "ত্থ")),
+                    KeyDef("থ", moreKeys = listOf("থ্ব")),
+                    KeyDef("দ", moreKeys = listOf("দ্ধ", "দ্ব", "দ্ভ", "দ্দ", "দ্ম", "দ্ঘ", "দ্গ")),
+                    KeyDef("ধ", moreKeys = listOf("ধ্ব", "ধ্ন")),
+                    KeyDef("ন", moreKeys = listOf("ন্ত", "ন্দ", "ন্ধ", "ন্ন", "ন্ম", "ন্থ", "ন্ব", "ন্ট", "ন্স"))
                 )
             ),
             KeyRow(
                 listOf(
-                    KeyDef("প"), KeyDef("ফ"), KeyDef("ব"), KeyDef("ভ"), KeyDef("ম"),
-                    KeyDef("য"), KeyDef("র"), KeyDef("ল"), KeyDef("শ"), KeyDef("ষ")
+                    KeyDef("প", moreKeys = listOf("প্ত", "প্ল", "প্ন", "প্প", "প্স")),
+                    KeyDef("ফ", moreKeys = listOf("ফ্ল", "ফ্ট")),
+                    KeyDef("ব", moreKeys = listOf("ব্ধ", "ব্দ", "ব্ল", "ব্ব", "ব্জ")),
+                    KeyDef("ভ"),
+                    KeyDef("ম", moreKeys = listOf("ম্প", "ম্ব", "ম্ভ", "ম্ম", "ম্ল", "ম্ন", "ম্ফ")),
+                    KeyDef("য", moreKeys = listOf("্য")),
+                    KeyDef("র", moreKeys = listOf("্র", "র্")),
+                    KeyDef("ল", moreKeys = listOf("ল্প", "ল্ল", "ল্ট", "ল্ক", "ল্ড", "ল্ম", "ল্ফ", "ল্গ")),
+                    KeyDef("শ", moreKeys = listOf("শ্ব", "শ্চ", "শ্ন", "শ্ম", "শ্ল", "শ্ছ")),
+                    KeyDef("ষ", moreKeys = listOf("ষ্ট", "ষ্ঠ", "ষ্ণ", "ষ্প", "ষ্ক", "ষ্ম", "ষ্ফ", "ক্ষ"))
                 )
             ),
             KeyRow(
                 listOf(
-                    KeyDef("স", moreKeys = listOf("ACTION_SELECT_ALL")),
-                    KeyDef("হ", moreKeys = listOf("ACTION_CUT")),
-                    KeyDef("ড়", moreKeys = listOf("ACTION_COPY")),
+                    KeyDef("স", moreKeys = listOf("স্ত", "স্থ", "স্প", "স্ব", "স্ম", "স্ক", "স্ট", "স্ন", "স্ল", "স্ফ", "স্খ", "ACTION_SELECT_ALL")),
+                    KeyDef("হ", moreKeys = listOf("হ্ম", "হ্ন", "হ্ব", "হ্ণ", "হ্ল", "হৃ", "ACTION_CUT")),
+                    KeyDef("ড়", moreKeys = listOf("ড়্গ", "ACTION_COPY")),
                     KeyDef("ঢ়", moreKeys = listOf("ACTION_PASTE")),
                     KeyDef("য়"),
                     KeyDef("ৎ"),
-                    KeyDef("ং"),
-                    KeyDef("ঃ"),
+                    KeyDef("ং", moreKeys = listOf("ঃ")),
+                    KeyDef("ঃ", moreKeys = listOf("ং")),
                     KeyDef("ঁ"),
                     KeyDef("্", moreKeys = listOf("্য", "্র", "়")),
                     KeyDef(type = KeyType.DELETE, icon = "backspace", widthWeight = 1.25f)
