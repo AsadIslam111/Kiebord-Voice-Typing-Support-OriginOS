@@ -225,10 +225,10 @@ fun KeyboardLayoutsScreen(
 
     LaunchedEffect(availableMeta, reloadTrigger) {
         val extraEn = withContext(Dispatchers.IO) {
-            availableMeta.filter { !it.isCustom && it.language == "en" && it.id != defaultEnglishCard.id && !it.id.contains("symbols") }
+            availableMeta.filter { it.language.equals("en", ignoreCase = true) && it.id != defaultEnglishCard.id && !it.id.contains("symbols") }
                 .map { meta ->
                     val def = layoutRepo.getLayout(meta.id)
-                    val desc = def.description ?: meta.description ?: "Bundled ${meta.displayName ?: meta.name} layout"
+                    val desc = def.description ?: meta.description ?: "${meta.displayName ?: meta.name} layout"
                     LayoutCardData(
                         id = meta.id,
                         name = meta.displayName ?: meta.name,
@@ -238,10 +238,10 @@ fun KeyboardLayoutsScreen(
                 }
         }
         val extraBn = withContext(Dispatchers.IO) {
-            availableMeta.filter { !it.isCustom && it.language == "bn" && it.id !in defaultBanglaIds && !it.id.contains("symbols") }
+            availableMeta.filter { it.language.equals("bn", ignoreCase = true) && it.id !in defaultBanglaIds && !it.id.contains("symbols") }
                 .map { meta ->
                     val def = layoutRepo.getLayout(meta.id)
-                    val desc = def.description ?: meta.description ?: "Bundled ${meta.displayName ?: meta.name} layout"
+                    val desc = def.description ?: meta.description ?: "${meta.displayName ?: meta.name} layout"
                     LayoutCardData(
                         id = meta.id,
                         name = meta.displayName ?: meta.name,
@@ -273,7 +273,7 @@ fun KeyboardLayoutsScreen(
         val cards = withContext(Dispatchers.IO) {
             otherBundledMeta.map { meta ->
                 val def = layoutRepo.getLayout(meta.id)
-                val desc = def.description ?: meta.description ?: "Bundled ${meta.displayName ?: meta.name} layout"
+                val desc = def.description ?: meta.description ?: "${meta.displayName ?: meta.name} layout"
                 LayoutCardData(
                     id = meta.id,
                     name = meta.displayName ?: meta.name,
@@ -285,7 +285,9 @@ fun KeyboardLayoutsScreen(
         otherBundledCards = cards
     }
 
-    val customMeta = remember(availableMeta) { availableMeta.filter { it.isCustom } }
+    val customMeta = remember(availableMeta, curatedIds) {
+        availableMeta.filter { it.isCustom && it.id !in curatedIds && !it.id.contains("symbols") }
+    }
     var customCards by remember { mutableStateOf<List<LayoutCardData>>(emptyList()) }
 
     LaunchedEffect(customMeta, reloadTrigger) {

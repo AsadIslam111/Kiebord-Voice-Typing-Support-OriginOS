@@ -155,6 +155,14 @@ def package_bornolang(pack_dir: Path, manifest: dict, out_dir: Path) -> Path:
         if rules_file.is_file():
             files_to_pack.append((rules_file, "rules/script_rules.json"))
 
+    rules_dir = pack_dir / "rules"
+    if rules_dir.is_dir():
+        for rule_file in rules_dir.iterdir():
+            if rule_file.is_file():
+                arcname = f"rules/{rule_file.name}"
+                if not any(a == arcname for _, a in files_to_pack):
+                    files_to_pack.append((rule_file, arcname))
+
     # 5. char folding
     if manifest.get("charFoldingFile"):
         folding_file = pack_dir / manifest["charFoldingFile"]

@@ -7,6 +7,7 @@ use super::ast::*;
 struct Snapshot {
     state: String,
     vars: HashMap<String, i32>,
+    markers: HashMap<String, usize>,
     preedit: Vec<char>,
     cursor: usize,
     committed: String,
@@ -17,6 +18,7 @@ pub struct M17nEngine {
     im: Arc<InputMethod>,
     state: String,
     vars: HashMap<String, i32>,
+    markers: HashMap<String, usize>,
     preedit: Vec<char>,
     cursor: usize,
     committed: String,
@@ -31,6 +33,7 @@ impl M17nEngine {
             im,
             state: initial_state,
             vars: HashMap::new(),
+            markers: HashMap::new(),
             preedit: Vec::new(),
             cursor: 0,
             committed: String::new(),
@@ -44,6 +47,7 @@ impl M17nEngine {
     pub fn reset(&mut self) {
         self.state = self.im.initial_state.clone();
         self.vars.clear();
+        self.markers.clear();
         self.preedit.clear();
         self.cursor = 0;
         self.committed.clear();
@@ -56,6 +60,7 @@ impl M17nEngine {
         self.undo_stack.push(Snapshot {
             state: self.state.clone(),
             vars: self.vars.clone(),
+            markers: self.markers.clone(),
             preedit: self.preedit.clone(),
             cursor: self.cursor,
             committed: self.committed.clone(),
@@ -69,6 +74,7 @@ impl M17nEngine {
         if let Some(snap) = self.undo_stack.pop() {
             self.state = snap.state;
             self.vars = snap.vars;
+            self.markers = snap.markers;
             self.preedit = snap.preedit;
             self.cursor = snap.cursor;
             self.committed = snap.committed;
@@ -77,8 +83,8 @@ impl M17nEngine {
         }
 
         if self.cursor > 0 && !self.preedit.is_empty() {
-            self.preedit.remove(self.cursor - 1);
-            self.cursor -= 1;
+            let removed_idx = self.cursor - 1;
+            self.delete_range(removed_idx, removed_idx + 1);
             return true;
         }
         false
@@ -158,7 +164,10 @@ impl M17nEngine {
     }
 
     fn step_longest_match(&mut self, rem: &str) -> Option<usize> {
-        let state_def = self.im.states.get(&self.state)?.clone();
+        let state_def = match self.im.states.get(&self.state) {
+            Some(s) => s.clone(),
+            None => return None,
+        };
 
         struct MatchCandidate {
             rule_len: usize,
@@ -171,29 +180,22 @@ impl M17nEngine {
 
         for branch in &state_def.branches {
             match &branch.target {
-                BranchTarget::Transient => {}
+                BranchTarget::Transient => continue,
                 BranchTarget::Map(map_name) => {
                     if let Some(map_def) = self.im.maps.get(map_name) {
                         for rule in &map_def.rules {
-                            match &rule.key_seq {
-                                KeySeq::Chars(seq) => {
-                                    if rem.starts_with(seq) {
-                                        let seq_len = seq.chars().count();
-                                        let is_better = match &best {
-                                            None => true,
-                                            Some(cur) => seq_len > cur.rule_len,
-                                        };
-                                        if is_better {
-                                            best = Some(MatchCandidate {
-                                                rule_len: seq_len,
-                                                rule_actions: rule.actions.clone(),
-                                                rule_insert: rule.insert_text.clone(),
-                                                branch_actions: branch.actions.clone(),
-                                            });
-                                        }
+                            if let KeySeq::Chars(seq) = &rule.key_seq {
+                                if rem.starts_with(seq) {
+                                    let seq_len = seq.chars().count();
+                                    if best.as_ref().map_or(true, |b| seq_len > b.rule_len) {
+                                        best = Some(MatchCandidate {
+                                            rule_len: seq_len,
+                                            rule_actions: rule.actions.clone(),
+                                            rule_insert: rule.insert_text.clone(),
+                                            branch_actions: branch.actions.clone(),
+                                        });
                                     }
                                 }
-                                KeySeq::Keysym(_) => {}
                             }
                         }
                     }
@@ -222,10 +224,7 @@ impl M17nEngine {
 
         // 2. Insert map text
         if let Some(text) = &m.rule_insert {
-            for ch in text.chars() {
-                self.preedit.insert(self.cursor, ch);
-                self.cursor += 1;
-            }
+            self.insert_chars(self.cursor, text);
         }
 
         // 3. Execute branch actions
@@ -236,13 +235,53 @@ impl M17nEngine {
         Some(matched_len)
     }
 
+    fn insert_chars(&mut self, at: usize, s: &str) {
+        let count = s.chars().count();
+        if count == 0 {
+            return;
+        }
+        let pos = at.min(self.preedit.len());
+        for (offset, c) in s.chars().enumerate() {
+            self.preedit.insert(pos + offset, c);
+        }
+        if self.cursor >= pos {
+            self.cursor += count;
+        }
+        for m_pos in self.markers.values_mut() {
+            if *m_pos > pos {
+                *m_pos += count;
+            }
+        }
+    }
+
+    fn delete_range(&mut self, start: usize, end: usize) {
+        let start = start.min(self.preedit.len());
+        let end = end.min(self.preedit.len());
+        if start >= end {
+            return;
+        }
+        let count = end - start;
+        self.preedit.drain(start..end);
+
+        if self.cursor >= end {
+            self.cursor -= count;
+        } else if self.cursor > start {
+            self.cursor = start;
+        }
+
+        for m_pos in self.markers.values_mut() {
+            if *m_pos >= end {
+                *m_pos -= count;
+            } else if *m_pos > start {
+                *m_pos = start;
+            }
+        }
+    }
+
     fn execute_action(&mut self, action: &Action) {
         match action {
             Action::Insert(s) => {
-                for c in s.chars() {
-                    self.preedit.insert(self.cursor, c);
-                    self.cursor += 1;
-                }
+                self.insert_chars(self.cursor, s);
             }
             Action::Delete(pos) => {
                 match pos {
@@ -250,28 +289,31 @@ impl M17nEngine {
                         if *offset < 0 {
                             let count = (-offset) as usize;
                             let start = self.cursor.saturating_sub(count);
-                            self.preedit.drain(start..self.cursor);
-                            self.cursor = start;
+                            self.delete_range(start, self.cursor);
                         } else if *offset > 0 {
                             let count = *offset as usize;
                             let end = (self.cursor + count).min(self.preedit.len());
-                            self.preedit.drain(self.cursor..end);
+                            self.delete_range(self.cursor, end);
                         }
                     }
                     Pos::Begin => {
-                        self.preedit.drain(0..self.cursor);
-                        self.cursor = 0;
+                        self.delete_range(0, self.cursor);
                     }
                     Pos::End => {
-                        self.preedit.drain(self.cursor..);
+                        let len = self.preedit.len();
+                        self.delete_range(self.cursor, len);
                     }
                     Pos::Absolute(idx) => {
-                        if *idx < self.preedit.len() {
-                            self.preedit.remove(*idx);
-                            if self.cursor > *idx {
-                                self.cursor -= 1;
-                            }
-                        }
+                        self.delete_range(*idx, *idx + 1);
+                    }
+                    Pos::Mark(name) => {
+                        let mark_pos = self.markers.get(name).copied().unwrap_or(self.cursor).min(self.preedit.len());
+                        let (start, end) = if self.cursor <= mark_pos {
+                            (self.cursor, mark_pos)
+                        } else {
+                            (mark_pos, self.cursor)
+                        };
+                        self.delete_range(start, end);
                     }
                 }
             }
@@ -293,13 +335,28 @@ impl M17nEngine {
                     Pos::Absolute(idx) => {
                         self.cursor = (*idx).min(self.preedit.len());
                     }
+                    Pos::Mark(name) => {
+                        if let Some(&m_pos) = self.markers.get(name) {
+                            self.cursor = m_pos.min(self.preedit.len());
+                        }
+                    }
                 }
             }
+            Action::Mark(name) => {
+                self.markers.insert(name.clone(), self.cursor);
+            }
             Action::Set(var, val) => {
-                let v = match val {
-                    VarVal::Const(c) => *c,
-                    VarVal::Var(other) => self.vars.get(other).copied().unwrap_or(0),
-                };
+                let v = self.eval_var_val(val);
+                self.vars.insert(var.clone(), v);
+            }
+            Action::Add(var, val) => {
+                let current = self.get_var(var);
+                let v = current + self.eval_var_val(val);
+                self.vars.insert(var.clone(), v);
+            }
+            Action::Sub(var, val) => {
+                let current = self.get_var(var);
+                let v = current - self.eval_var_val(val);
                 self.vars.insert(var.clone(), v);
             }
             Action::Shift(target) => {
@@ -322,20 +379,60 @@ impl M17nEngine {
                     }
                 }
             }
+            Action::MacroCall(name) => {
+                if let Some(acts) = self.im.macros.get(name).cloned() {
+                    for a in &acts {
+                        self.execute_action(a);
+                    }
+                }
+            }
+        }
+    }
+
+    fn get_var(&self, var: &str) -> i32 {
+        if var == "@-" || var == "@-1" {
+            if self.cursor > 0 && self.cursor <= self.preedit.len() {
+                self.preedit[self.cursor - 1] as i32
+            } else {
+                0
+            }
+        } else if var.starts_with("@-") {
+            if let Ok(n) = var[2..].parse::<usize>() {
+                if self.cursor >= n && self.cursor <= self.preedit.len() {
+                    self.preedit[self.cursor - n] as i32
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        } else if var == "@+" || var == "@+1" {
+            if self.cursor < self.preedit.len() {
+                self.preedit[self.cursor] as i32
+            } else {
+                0
+            }
+        } else {
+            self.vars.get(var).copied().unwrap_or(0)
+        }
+    }
+
+    fn eval_var_val(&self, val: &VarVal) -> i32 {
+        match val {
+            VarVal::Const(c) => *c,
+            VarVal::Var(v) => self.get_var(v),
         }
     }
 
     fn eval_cond(&self, expr: &CondExpr) -> bool {
         match expr {
             CondExpr::AlwaysTrue => true,
-            CondExpr::Eq(var, val) => {
-                let actual = self.vars.get(var).copied().unwrap_or(0);
-                let expected = match val {
-                    VarVal::Const(c) => *c,
-                    VarVal::Var(v) => self.vars.get(v).copied().unwrap_or(0),
-                };
-                actual == expected
-            }
+            CondExpr::Eq(var, val) => self.get_var(var) == self.eval_var_val(val),
+            CondExpr::Ne(var, val) => self.get_var(var) != self.eval_var_val(val),
+            CondExpr::Lt(var, val) => self.get_var(var) < self.eval_var_val(val),
+            CondExpr::Le(var, val) => self.get_var(var) <= self.eval_var_val(val),
+            CondExpr::Gt(var, val) => self.get_var(var) > self.eval_var_val(val),
+            CondExpr::Ge(var, val) => self.get_var(var) >= self.eval_var_val(val),
             CondExpr::And(subs) => subs.iter().all(|s| self.eval_cond(s)),
             CondExpr::Or(subs) => subs.iter().any(|s| self.eval_cond(s)),
             CondExpr::Not(sub) => !self.eval_cond(sub),
@@ -372,6 +469,7 @@ impl M17nEngine {
     pub fn commit(&mut self) {
         self.committed.extend(self.preedit.drain(..));
         self.cursor = 0;
+        self.markers.clear();
     }
 
     pub fn current_preedit(&self) -> String {

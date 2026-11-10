@@ -1,7 +1,7 @@
 {
-  "id": "bn_khipro",
-  "name": "Khipro",
-  "displayName": "Khipro",
+  "id": "bn_khipro_classic",
+  "name": "Khipro Classic",
+  "displayName": "Khipro Classic",
   "language": "bn",
   "direction": "LTR",
   "processor": "m17n",

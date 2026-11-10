@@ -6,6 +6,7 @@ pub enum Pos {
     Begin,
     End,
     Absolute(usize),
+    Mark(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -23,6 +24,11 @@ pub enum VarVal {
 #[derive(Debug, Clone, PartialEq)]
 pub enum CondExpr {
     Eq(String, VarVal),
+    Ne(String, VarVal),
+    Lt(String, VarVal),
+    Le(String, VarVal),
+    Gt(String, VarVal),
+    Ge(String, VarVal),
     And(Vec<CondExpr>),
     Or(Vec<CondExpr>),
     Not(Box<CondExpr>),
@@ -34,11 +40,15 @@ pub enum Action {
     Insert(String),
     Delete(Pos),
     Move(Pos),
+    Mark(String),
     Set(String, VarVal),
+    Add(String, VarVal),
+    Sub(String, VarVal),
     Shift(String),
     Commit,
     Undo,
     Cond(Vec<(CondExpr, Vec<Action>)>),
+    MacroCall(String),
 }
 
 #[derive(Debug, Clone)]
@@ -80,5 +90,6 @@ pub struct InputMethod {
     pub title: Option<String>,
     pub maps: HashMap<String, MapDef>,
     pub states: HashMap<String, StateDef>,
+    pub macros: HashMap<String, Vec<Action>>,
     pub initial_state: String,
 }

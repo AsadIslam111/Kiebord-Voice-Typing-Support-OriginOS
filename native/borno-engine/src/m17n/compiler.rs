@@ -9,8 +9,29 @@ pub fn compile(exprs: &[SExpr]) -> Result<InputMethod, String> {
     let mut title = None;
     let mut maps = HashMap::new();
     let mut states = HashMap::new();
+    let mut macros = HashMap::new();
     let mut initial_state = String::from("init");
 
+    // First pass: collect macro definitions
+    for expr in exprs {
+        let list = match expr {
+            SExpr::List(l) => l,
+            _ => continue,
+        };
+
+        if list.is_empty() {
+            continue;
+        }
+
+        if list[0].as_symbol() == Some("macro") {
+            for item in &list[1..] {
+                let (m_name, m_actions) = parse_macro_def(item)?;
+                macros.insert(m_name, m_actions);
+            }
+        }
+    }
+
+    // Second pass: compile input-method header, title, maps, and states
     for expr in exprs {
         let list = match expr {
             SExpr::List(l) => l,
@@ -60,7 +81,7 @@ pub fn compile(exprs: &[SExpr]) -> Result<InputMethod, String> {
                 }
             }
             _ => {
-                // Other sections (e.g. description, macro) are ignored
+                // Other sections (e.g. description, already parsed macro)
             }
         }
     }
@@ -71,8 +92,30 @@ pub fn compile(exprs: &[SExpr]) -> Result<InputMethod, String> {
         title,
         maps,
         states,
+        macros,
         initial_state,
     })
+}
+
+fn parse_macro_def(expr: &SExpr) -> Result<(String, Vec<Action>), String> {
+    let list = expr
+        .as_list()
+        .ok_or_else(|| "Macro definition must be a list".to_string())?;
+    if list.is_empty() {
+        return Err("Empty macro definition".to_string());
+    }
+
+    let macro_name = list[0]
+        .as_symbol()
+        .ok_or_else(|| "Macro name must be a symbol".to_string())?
+        .to_string();
+
+    let mut actions = Vec::new();
+    for action_expr in &list[1..] {
+        actions.push(parse_action(action_expr)?);
+    }
+
+    Ok((macro_name, actions))
 }
 
 fn parse_map_def(expr: &SExpr) -> Result<MapDef, String> {
@@ -108,6 +151,9 @@ fn parse_map_def(expr: &SExpr) -> Result<MapDef, String> {
                 }
                 SExpr::Char(c) => {
                     insert_text = Some(c.to_string());
+                }
+                SExpr::Symbol(s) => {
+                    actions.push(Action::MacroCall(s.clone()));
                 }
                 _ => {
                     actions.push(parse_action(action_expr)?);
@@ -208,6 +254,11 @@ fn parse_action(expr: &SExpr) -> Result<Action, String> {
     match expr {
         SExpr::String(s) => Ok(Action::Insert(s.clone())),
         SExpr::Char(c) => Ok(Action::Insert(c.to_string())),
+        SExpr::Symbol(s) => match s.as_str() {
+            "commit" => Ok(Action::Commit),
+            "undo" | "backspace" => Ok(Action::Undo),
+            _ => Ok(Action::MacroCall(s.clone())),
+        },
         SExpr::List(list) => {
             if list.is_empty() {
                 return Err("Empty action list".to_string());
@@ -228,6 +279,28 @@ fn parse_action(expr: &SExpr) -> Result<Action, String> {
                         .to_string();
                     let val = parse_var_val(&list[2])?;
                     Ok(Action::Set(var, val))
+                }
+                "add" => {
+                    if list.len() < 3 {
+                        return Err(format!("Invalid 'add' action: {:?}", list));
+                    }
+                    let var = list[1]
+                        .as_symbol()
+                        .ok_or_else(|| format!("Expected variable name in 'add', got {:?}", list[1]))?
+                        .to_string();
+                    let val = parse_var_val(&list[2])?;
+                    Ok(Action::Add(var, val))
+                }
+                "sub" => {
+                    if list.len() < 3 {
+                        return Err(format!("Invalid 'sub' action: {:?}", list));
+                    }
+                    let var = list[1]
+                        .as_symbol()
+                        .ok_or_else(|| format!("Expected variable name in 'sub', got {:?}", list[1]))?
+                        .to_string();
+                    let val = parse_var_val(&list[2])?;
+                    Ok(Action::Sub(var, val))
                 }
                 "shift" => {
                     if list.len() < 2 {
@@ -254,6 +327,16 @@ fn parse_action(expr: &SExpr) -> Result<Action, String> {
                     let pos = parse_pos(&list[1])?;
                     Ok(Action::Move(pos))
                 }
+                "mark" => {
+                    if list.len() < 2 {
+                        return Err(format!("Invalid 'mark' action: {:?}", list));
+                    }
+                    let name = list[1]
+                        .as_symbol()
+                        .ok_or_else(|| format!("Expected marker name in 'mark', got {:?}", list[1]))?
+                        .to_string();
+                    Ok(Action::Mark(name))
+                }
                 "insert" => {
                     if list.len() < 2 {
                         return Err(format!("Invalid 'insert' action: {:?}", list));
@@ -267,7 +350,20 @@ fn parse_action(expr: &SExpr) -> Result<Action, String> {
                     Ok(Action::Insert(text))
                 }
                 "commit" => Ok(Action::Commit),
-                "undo" => Ok(Action::Undo),
+                "undo" | "backspace" => Ok(Action::Undo),
+                "if" => {
+                    if list.len() < 3 {
+                        return Err(format!("Invalid 'if' action: {:?}", list));
+                    }
+                    let cond = parse_cond_expr(&list[1])?;
+                    let then_act = parse_action(&list[2])?;
+                    let mut clauses = vec![(cond, vec![then_act])];
+                    if list.len() >= 4 {
+                        let else_act = parse_action(&list[3])?;
+                        clauses.push((CondExpr::AlwaysTrue, vec![else_act]));
+                    }
+                    Ok(Action::Cond(clauses))
+                }
                 "cond" => {
                     // (cond ((test1) a1 a2...) ((test2) b1...) ...)
                     let mut clauses = Vec::new();
@@ -287,7 +383,10 @@ fn parse_action(expr: &SExpr) -> Result<Action, String> {
                     }
                     Ok(Action::Cond(clauses))
                 }
-                _ => Err(format!("Unknown action '{}' in {:?}", tag, list)),
+                _ => {
+                    // Unknown keyword or macro invocation: (name)
+                    Ok(Action::MacroCall(tag.to_string()))
+                }
             }
         }
         _ => Err(format!("Invalid action expression: {:?}", expr)),
@@ -297,16 +396,14 @@ fn parse_action(expr: &SExpr) -> Result<Action, String> {
 fn parse_pos(expr: &SExpr) -> Result<Pos, String> {
     match expr {
         SExpr::Symbol(s) => match s.as_str() {
-            "@-" => Ok(Pos::Relative(-1)),
-            "@-1" => Ok(Pos::Relative(-1)),
+            "@-" | "@-1" => Ok(Pos::Relative(-1)),
             "@-2" => Ok(Pos::Relative(-2)),
             "@-3" => Ok(Pos::Relative(-3)),
             "@-4" => Ok(Pos::Relative(-4)),
             "@-5" => Ok(Pos::Relative(-5)),
             "@>" => Ok(Pos::End),
             "@<" => Ok(Pos::Begin),
-            "@+" => Ok(Pos::Relative(1)),
-            "@+1" => Ok(Pos::Relative(1)),
+            "@+" | "@+1" => Ok(Pos::Relative(1)),
             _ => {
                 if s.starts_with("@-") {
                     if let Ok(n) = s[2..].parse::<i32>() {
@@ -321,66 +418,136 @@ fn parse_pos(expr: &SExpr) -> Result<Pos, String> {
                         return Ok(Pos::Absolute(n));
                     }
                 }
-                Err(format!("Unrecognized position symbol: {}", s))
+                // Named marker: e.g. cstm1, cstm2, LAST_POS
+                Ok(Pos::Mark(s.clone()))
             }
         },
-        _ => Err(format!("Expected position symbol, got {:?}", expr)),
+        SExpr::Int(n) => {
+            if *n < 0 {
+                Ok(Pos::Relative(*n as i32))
+            } else {
+                Ok(Pos::Absolute(*n as usize))
+            }
+        }
+        _ => Err(format!("Invalid position: {:?}", expr)),
     }
 }
 
 fn parse_var_val(expr: &SExpr) -> Result<VarVal, String> {
     match expr {
-        SExpr::Int(i) => Ok(VarVal::Const(*i as i32)),
+        SExpr::Int(n) => Ok(VarVal::Const(*n as i32)),
+        SExpr::Char(c) => Ok(VarVal::Const(*c as i32)),
         SExpr::Symbol(s) => {
-            if let Ok(i) = s.parse::<i32>() {
-                Ok(VarVal::Const(i))
+            if let Ok(n) = s.parse::<i32>() {
+                Ok(VarVal::Const(n))
             } else {
                 Ok(VarVal::Var(s.clone()))
             }
         }
-        _ => Err(format!("Invalid variable value: {:?}", expr)),
+        _ => Err(format!("Expected integer, character literal or variable name, got {:?}", expr)),
+    }
+}
+
+fn parse_var_name(expr: &SExpr) -> Result<String, String> {
+    match expr {
+        SExpr::Symbol(s) => Ok(s.clone()),
+        _ => Err(format!("Expected variable name, got {:?}", expr)),
     }
 }
 
 fn parse_cond_expr(expr: &SExpr) -> Result<CondExpr, String> {
     match expr {
-        SExpr::Int(1) => Ok(CondExpr::AlwaysTrue),
-        SExpr::Symbol(s) if s == "1" || s == "t" => Ok(CondExpr::AlwaysTrue),
+        SExpr::Int(n) => {
+            if *n != 0 {
+                Ok(CondExpr::AlwaysTrue)
+            } else {
+                Ok(CondExpr::Not(Box::new(CondExpr::AlwaysTrue)))
+            }
+        }
+        SExpr::Symbol(s) => {
+            if s == "t" || s == "1" {
+                Ok(CondExpr::AlwaysTrue)
+            } else if s == "nil" || s == "0" {
+                Ok(CondExpr::Not(Box::new(CondExpr::AlwaysTrue)))
+            } else {
+                Ok(CondExpr::Gt(s.clone(), VarVal::Const(0)))
+            }
+        }
         SExpr::List(list) => {
             if list.is_empty() {
                 return Ok(CondExpr::AlwaysTrue);
+            }
+            if list.len() == 1 {
+                return parse_cond_expr(&list[0]);
             }
             let op = list[0]
                 .as_symbol()
                 .ok_or_else(|| format!("Expected operator symbol in condition, got {:?}", list[0]))?;
 
             match op {
-                "=" => {
+                "=" | "==" => {
                     if list.len() < 3 {
                         return Err(format!("Invalid '=' condition: {:?}", list));
                     }
-                    let var = list[1]
-                        .as_symbol()
-                        .ok_or_else(|| format!("Expected variable name in '=' condition: {:?}", list[1]))?
-                        .to_string();
+                    let var = parse_var_name(&list[1])?;
                     let val = parse_var_val(&list[2])?;
                     Ok(CondExpr::Eq(var, val))
                 }
-                "&" => {
+                "!=" | "/=" => {
+                    if list.len() < 3 {
+                        return Err(format!("Invalid '!=' condition: {:?}", list));
+                    }
+                    let var = parse_var_name(&list[1])?;
+                    let val = parse_var_val(&list[2])?;
+                    Ok(CondExpr::Ne(var, val))
+                }
+                "<" => {
+                    if list.len() < 3 {
+                        return Err(format!("Invalid '<' condition: {:?}", list));
+                    }
+                    let var = parse_var_name(&list[1])?;
+                    let val = parse_var_val(&list[2])?;
+                    Ok(CondExpr::Lt(var, val))
+                }
+                "<=" => {
+                    if list.len() < 3 {
+                        return Err(format!("Invalid '<=' condition: {:?}", list));
+                    }
+                    let var = parse_var_name(&list[1])?;
+                    let val = parse_var_val(&list[2])?;
+                    Ok(CondExpr::Le(var, val))
+                }
+                ">" => {
+                    if list.len() < 3 {
+                        return Err(format!("Invalid '>' condition: {:?}", list));
+                    }
+                    let var = parse_var_name(&list[1])?;
+                    let val = parse_var_val(&list[2])?;
+                    Ok(CondExpr::Gt(var, val))
+                }
+                ">=" => {
+                    if list.len() < 3 {
+                        return Err(format!("Invalid '>=' condition: {:?}", list));
+                    }
+                    let var = parse_var_name(&list[1])?;
+                    let val = parse_var_val(&list[2])?;
+                    Ok(CondExpr::Ge(var, val))
+                }
+                "&" | "and" => {
                     let mut subs = Vec::new();
                     for item in &list[1..] {
                         subs.push(parse_cond_expr(item)?);
                     }
                     Ok(CondExpr::And(subs))
                 }
-                "|" => {
+                "|" | "or" => {
                     let mut subs = Vec::new();
                     for item in &list[1..] {
                         subs.push(parse_cond_expr(item)?);
                     }
                     Ok(CondExpr::Or(subs))
                 }
-                "!" => {
+                "!" | "not" => {
                     if list.len() < 2 {
                         return Err(format!("Invalid '!' condition: {:?}", list));
                     }
@@ -393,4 +560,3 @@ fn parse_cond_expr(expr: &SExpr) -> Result<CondExpr, String> {
         _ => Err(format!("Invalid condition expression: {:?}", expr)),
     }
 }
-

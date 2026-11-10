@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.translit
+package com.codepotro.borno.feature.ime.translit
 
 import android.view.inputmethod.InputConnection
 import com.codepotro.borno.feature.ime.NativeEngine
@@ -252,7 +252,7 @@ object TransliterationManagerFactory {
         isAutoCorrectEnabled: Boolean = true,
         inputConnectionProvider: () -> InputConnection?
     ): TransliterationManager {
-        if (layoutId == "khipro" || layoutId == "bn_khipro" || NativeEngine.isM17nLayoutReady(layoutId)) {
+        if (NativeEngine.isM17nLayoutReady(layoutId)) {
             return M17nTransliterationManager(layoutId, inputConnectionProvider)
         }
         return GenericTransliterationManager(layoutId, inputConnectionProvider, isAutoCorrectEnabled)

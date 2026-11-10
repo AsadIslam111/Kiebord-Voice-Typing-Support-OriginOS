@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime
+package com.codepotro.borno.feature.ime
 
 object NativeEngine {
 
@@ -208,20 +208,44 @@ object NativeEngine {
         if (initializedM17nLayouts.contains(layoutId)) return true
 
         return try {
-            val candidates = listOf(
-                "rules/$rulesFileName",
-                rulesFileName,
-                "rules/bn-khipro.classic.mim",
-                "bn-khipro.classic.mim"
+            val fileNameOnly = java.io.File(rulesFileName).name
+            val fileCandidates = mutableListOf(
+                java.io.File(context.filesDir, "rules/$fileNameOnly"),
+                java.io.File(context.filesDir, "rules/$rulesFileName"),
+                java.io.File(context.filesDir, rulesFileName)
             )
+            val langpacksDir = java.io.File(context.filesDir, "langpacks")
+            if (langpacksDir.exists() && langpacksDir.isDirectory) {
+                langpacksDir.listFiles()?.filter { it.isDirectory }?.forEach { packDir ->
+                    fileCandidates.add(java.io.File(packDir, "rules/$fileNameOnly"))
+                    fileCandidates.add(java.io.File(packDir, "rules/$rulesFileName"))
+                }
+            }
             var content: String? = null
-            for (candidate in candidates) {
-                try {
-                    context.assets.open(candidate).use { stream ->
-                        content = stream.bufferedReader(Charsets.UTF_8).readText()
-                    }
-                    if (!content.isNullOrBlank()) break
-                } catch (_: Throwable) {}
+            for (file in fileCandidates) {
+                if (file.exists()) {
+                    try {
+                        content = file.readText(Charsets.UTF_8)
+                        if (!content.isNullOrBlank()) break
+                    } catch (_: Throwable) {}
+                }
+            }
+
+            if (content.isNullOrBlank()) {
+                val candidates = listOf(
+                    "rules/$rulesFileName",
+                    rulesFileName,
+                    "rules/$fileNameOnly",
+                    fileNameOnly
+                )
+                for (candidate in candidates) {
+                    try {
+                        context.assets.open(candidate).use { stream ->
+                            content = stream.bufferedReader(Charsets.UTF_8).readText()
+                        }
+                        if (!content.isNullOrBlank()) break
+                    } catch (_: Throwable) {}
+                }
             }
 
             if (!content.isNullOrBlank()) {

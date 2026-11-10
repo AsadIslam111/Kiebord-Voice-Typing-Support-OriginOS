@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.data.layout
+package com.codepotro.borno.data.layout
 
 import android.content.Context
 import com.codepotro.borno.common.model.KeyboardLayoutDef
@@ -57,6 +57,9 @@ class LayoutRepository private constructor(private val context: Context) {
     }
 
     fun preload() {
+        runCatching {
+            com.codepotro.borno.data.langpack.LanguagePackRepository.getInstance(context).installBundledExtensionsIfNeeded(context)
+        }
         for (id in bundledAssetIds) {
             getLayout(id)
         }
@@ -70,20 +73,28 @@ class LayoutRepository private constructor(private val context: Context) {
     fun getLayout(id: String): KeyboardLayoutDef {
         cache[id]?.let { return it }
 
+        val candidates = listOf(
+            id,
+            id.removePrefix("bn_"),
+            "bn_$id"
+        ).distinct()
+
         // 1. Check user custom files
-        val customFile = File(customLayoutsDir, "$id.json")
-        if (customFile.exists()) {
-            try {
-                val layout = json.decodeFromString<KeyboardLayoutDef>(customFile.readText(Charsets.UTF_8))
-                cache[id] = layout
-                layout.effectiveSymbolsLayout()?.let { cache[it.id] = it }
-                layout.effectiveMoreSymbolsLayout()?.let { cache[it.id] = it }
-                return layout
-            } catch (_: Exception) {}
+        for (name in candidates) {
+            val customFile = File(customLayoutsDir, "$name.json")
+            if (customFile.exists()) {
+                try {
+                    val layout = json.decodeFromString<KeyboardLayoutDef>(customFile.readText(Charsets.UTF_8))
+                    cache[id] = layout
+                    cache[layout.id] = layout
+                    layout.effectiveSymbolsLayout()?.let { cache[it.id] = it }
+                    layout.effectiveMoreSymbolsLayout()?.let { cache[it.id] = it }
+                    return layout
+                } catch (_: Exception) {}
+            }
         }
 
         // 2. Check bundled assets
-        val candidates = listOf(id, id.removePrefix("bn_"), "bn_$id").distinct()
         for (name in candidates) {
             try {
                 val assetPath = "layouts/$name.json"

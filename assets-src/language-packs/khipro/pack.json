@@ -1,0 +1,14 @@
+{
+  "id": "khipro",
+  "version": 1,
+  "language": "bn",
+  "locale": "bn-BD",
+  "displayName": "Khipro Layouts",
+  "author": "Khipro Team (rank_coder)",
+  "credit": "Touchscreen-optimized m17n input method rules for Bangla typing (https://github.com/KhiproTeam/khipro-mim-touchscreen and https://github.com/KhiproTeam/khipro-dark-m17n)",
+  "license": "MIT",
+  "layouts": [
+    "bn_khipro_classic",
+    "bn_khipro_dark"
+  ]
+}

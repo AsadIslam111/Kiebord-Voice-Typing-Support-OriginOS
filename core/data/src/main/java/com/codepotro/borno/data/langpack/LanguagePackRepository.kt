@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.data.langpack
+package com.codepotro.borno.data.langpack
 
 import android.content.Context
 import com.codepotro.borno.data.layout.LayoutRepository
@@ -40,6 +40,9 @@ class LanguagePackRepository internal constructor(
 
     val customLayoutsDir: File
         get() = File(filesDirProvider(), "layouts").apply { if (!exists()) mkdirs() }
+
+    val customRulesDir: File
+        get() = File(filesDirProvider(), "rules").apply { if (!exists()) mkdirs() }
 
     init {
         reloadInstalledCache()
@@ -159,6 +162,15 @@ class LanguagePackRepository internal constructor(
                     }
                 }
 
+                val rulesSourceDir = File(targetPackDir, "rules")
+                if (rulesSourceDir.exists() && rulesSourceDir.isDirectory) {
+                    val ruleFiles = rulesSourceDir.listFiles() ?: emptyArray()
+                    for (ruleFile in ruleFiles) {
+                        val destRule = File(customRulesDir, ruleFile.name)
+                        ruleFile.copyTo(destRule, overwrite = true)
+                    }
+                }
+
                 reloadInstalledCache()
                 onInvalidateLayouts()
 
@@ -175,7 +187,6 @@ class LanguagePackRepository internal constructor(
     fun uninstallPack(packId: String): Boolean {
         val pack = metadataCache[packId] ?: metadataCache.values.firstOrNull { it.id == packId }
         val targetPackDir = File(langpacksDir, packId)
-        val deleted = if (targetPackDir.exists()) targetPackDir.deleteRecursively() else false
 
         if (pack != null) {
             for (layoutName in pack.layouts) {
@@ -184,7 +195,20 @@ class LanguagePackRepository internal constructor(
                     layoutFile.delete()
                 }
             }
+
+            val targetRulesDir = File(targetPackDir, "rules")
+            if (targetRulesDir.exists()) {
+                val ruleFiles = targetRulesDir.listFiles() ?: emptyArray()
+                for (ruleFile in ruleFiles) {
+                    val destRule = File(customRulesDir, ruleFile.name)
+                    if (destRule.exists()) {
+                        destRule.delete()
+                    }
+                }
+            }
         }
+
+        val deleted = if (targetPackDir.exists()) targetPackDir.deleteRecursively() else false
 
         reloadInstalledCache()
         onInvalidateLayouts()
@@ -263,6 +287,46 @@ class LanguagePackRepository internal constructor(
         }
     }
 
+    fun installBundledExtensionsIfNeeded(context: Context) {
+        try {
+            val extensionFiles = context.assets.list("extensions") ?: emptyArray()
+            for (fileName in extensionFiles) {
+                if (!fileName.endsWith(".bornolang")) continue
+                val assetPath = "extensions/$fileName"
+                try {
+                    val (packId, version) = context.assets.open(assetPath).use { stream ->
+                        ZipInputStream(BufferedInputStream(stream)).use { zipIn ->
+                            var entry = zipIn.nextEntry
+                            var id: String? = null
+                            var ver = 1
+                            while (entry != null) {
+                                if (entry.name == "pack.json") {
+                                    val content = zipIn.bufferedReader(Charsets.UTF_8).readText()
+                                    val parsed = json.decodeFromString<LanguagePackMetadata>(content)
+                                    id = parsed.id
+                                    ver = parsed.version
+                                    break
+                                }
+                                zipIn.closeEntry()
+                                entry = zipIn.nextEntry
+                            }
+                            Pair(id, ver)
+                        }
+                    }
+
+                    if (packId != null) {
+                        val installed = metadataCache[packId]
+                        if (installed == null || installed.version < version) {
+                            context.assets.open(assetPath).use { stream ->
+                                installPack(stream)
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun unzipWithZipSlipProtection(inputStream: InputStream, targetDir: File) {
         val canonicalTarget = targetDir.canonicalPath
         ZipInputStream(BufferedInputStream(inputStream)).use { zipIn ->
@@ -297,7 +361,10 @@ class LanguagePackRepository internal constructor(
 
         fun getInstance(context: Context): LanguagePackRepository {
             return instance ?: synchronized(this) {
-                instance ?: LanguagePackRepository(context.applicationContext ?: context).also { instance = it }
+                instance ?: LanguagePackRepository(context.applicationContext ?: context).also {
+                    instance = it
+                    it.installBundledExtensionsIfNeeded(context)
+                }
             }
         }
     }

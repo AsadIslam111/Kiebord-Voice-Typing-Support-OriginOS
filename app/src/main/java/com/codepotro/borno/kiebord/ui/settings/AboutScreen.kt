@@ -234,10 +234,10 @@ fun AboutScreen(
                 url = "https://android.googlesource.com/platform/packages/inputmethods/LatinIME/"
             ),
             OpenSourceLib(
-                name = "Khipro (m17n Touchscreen Rules)",
+                name = "Khipro Classic & Khipro Dark (m17n Touchscreen Rules)",
                 author = "Khipro Team (rank_coder)",
                 license = "MIT",
-                description = "Touchscreen-optimized m17n input method rules for Bangla typing (https://github.com/KhiproTeam/khipro-mim-touchscreen).",
+                description = "Touchscreen-optimized m17n input method rules for Bangla typing (https://github.com/KhiproTeam/khipro-mim-touchscreen and https://github.com/KhiproTeam/khipro-dark-m17n).",
                 url = "https://github.com/KhiproTeam/khipro-mim-touchscreen"
             ),
             OpenSourceLib(

@@ -1095,21 +1095,19 @@ class PredefinedLayoutsTest {
     @Test
     fun testKhiproJsonAssetIntegrity() {
         val candidates = listOf(
-            java.io.File("../../feature/ime/src/main/assets/layouts/bn_khipro.json"),
-            java.io.File("feature/ime/src/main/assets/layouts/bn_khipro.json"),
-            java.io.File("../feature/ime/src/main/assets/layouts/bn_khipro.json"),
-            java.io.File("../../assets-src/layouts/bn_khipro.json"),
-            java.io.File("assets-src/layouts/bn_khipro.json"),
+            java.io.File("../../assets-src/language-packs/khipro/layouts/bn_khipro_classic.json"),
+            java.io.File("assets-src/language-packs/khipro/layouts/bn_khipro_classic.json"),
+            java.io.File("../assets-src/language-packs/khipro/layouts/bn_khipro_classic.json"),
         )
         val jsonFile = candidates.firstOrNull { it.exists() }
-        assertNotNull("bn_khipro.json must exist in assets/layouts/", jsonFile)
+        assertNotNull("bn_khipro_classic.json must exist in assets-src/language-packs/khipro/layouts/", jsonFile)
 
         val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
         val layout = json.decodeFromString<com.codepotro.borno.common.model.KeyboardLayoutDef>(jsonFile!!.readText())
 
-        assertEquals("bn_khipro", layout.id)
-        assertEquals("Khipro", layout.name)
-        assertEquals("Khipro", layout.displayName)
+        assertEquals("bn_khipro_classic", layout.id)
+        assertEquals("Khipro Classic", layout.name)
+        assertEquals("Khipro Classic", layout.displayName)
         assertEquals("bn", layout.language)
         assertEquals("LTR", layout.direction)
         assertEquals("m17n", layout.processor)
@@ -1170,15 +1168,57 @@ class PredefinedLayoutsTest {
         assertEquals(4, moreSym.rows.size)
         assertEquals(listOf("~", "`", "|", "•", "√", "π", "÷", "×", "¶", "∆"), moreSym.rows[0].keys.map { it.label })
 
-        // Verify rules file exists in assets
+        // Verify Khipro Dark layout
+        val darkCandidates = listOf(
+            java.io.File("../../assets-src/language-packs/khipro/layouts/bn_khipro_dark.json"),
+            java.io.File("assets-src/language-packs/khipro/layouts/bn_khipro_dark.json"),
+            java.io.File("../assets-src/language-packs/khipro/layouts/bn_khipro_dark.json"),
+        )
+        val darkJsonFile = darkCandidates.firstOrNull { it.exists() }
+        assertNotNull("bn_khipro_dark.json must exist in assets-src/language-packs/khipro/layouts/", darkJsonFile)
+        val darkLayout = json.decodeFromString<com.codepotro.borno.common.model.KeyboardLayoutDef>(darkJsonFile!!.readText())
+        assertEquals("bn_khipro_dark", darkLayout.id)
+        assertEquals("Khipro Dark", darkLayout.name)
+        assertEquals("Khipro Dark", darkLayout.displayName)
+        assertEquals("bn-khipro-dark.mim", darkLayout.rules)
+
+        // Verify rules files exist in extension pack source
         val rulesCandidates = listOf(
-            java.io.File("../../feature/ime/src/main/assets/rules/bn-khipro.classic.mim"),
-            java.io.File("feature/ime/src/main/assets/rules/bn-khipro.classic.mim"),
-            java.io.File("../feature/ime/src/main/assets/rules/bn-khipro.classic.mim"),
+            java.io.File("../../assets-src/language-packs/khipro/rules/bn-khipro.classic.mim"),
+            java.io.File("assets-src/language-packs/khipro/rules/bn-khipro.classic.mim"),
+            java.io.File("../assets-src/language-packs/khipro/rules/bn-khipro.classic.mim"),
         )
         val rulesFile = rulesCandidates.firstOrNull { it.exists() }
-        assertNotNull("bn-khipro.classic.mim must exist in assets/rules/", rulesFile)
-        assertTrue("rules file must not be empty", rulesFile!!.length() > 0)
+        assertNotNull("bn-khipro.classic.mim must exist in pack rules", rulesFile)
+        assertTrue("classic rules file must not be empty", rulesFile!!.length() > 0)
+
+        val darkRulesCandidates = listOf(
+            java.io.File("../../assets-src/language-packs/khipro/rules/bn-khipro-dark.mim"),
+            java.io.File("assets-src/language-packs/khipro/rules/bn-khipro-dark.mim"),
+            java.io.File("../assets-src/language-packs/khipro/rules/bn-khipro-dark.mim"),
+        )
+        val darkRulesFile = darkRulesCandidates.firstOrNull { it.exists() }
+        assertNotNull("bn-khipro-dark.mim must exist in pack rules", darkRulesFile)
+        assertTrue("dark rules file must not be empty", darkRulesFile!!.length() > 0)
+
+        // Verify bundled .bornolang extension archive in APK assets
+        val extensionCandidates = listOf(
+            java.io.File("../../feature/ime/src/main/assets/extensions/khipro.bornolang"),
+            java.io.File("feature/ime/src/main/assets/extensions/khipro.bornolang"),
+            java.io.File("../feature/ime/src/main/assets/extensions/khipro.bornolang"),
+        )
+        val extFile = extensionCandidates.firstOrNull { it.exists() }
+        assertNotNull("khipro.bornolang must be bundled in APK assets/extensions/", extFile)
+
+        java.util.zip.ZipFile(extFile!!).use { zip ->
+            assertNotNull("pack.json must exist in khipro.bornolang", zip.getEntry("pack.json"))
+            assertNotNull("bn_khipro_classic.json must exist in khipro.bornolang", zip.getEntry("layouts/bn_khipro_classic.json"))
+            assertNotNull("bn_khipro_dark.json must exist in khipro.bornolang", zip.getEntry("layouts/bn_khipro_dark.json"))
+            assertNotNull("bn-khipro.classic.mim must exist in khipro.bornolang", zip.getEntry("rules/bn-khipro.classic.mim"))
+            assertNotNull("bn-khipro-dark.mim must exist in khipro.bornolang", zip.getEntry("rules/bn-khipro-dark.mim"))
+            val entries = zip.entries().asSequence().map { it.name }.toList()
+            assertFalse("khipro.bornolang must not contain a dictionary", entries.any { it.startsWith("dictionaries/") || it.endsWith(".dict") })
+        }
     }
 
     @Test

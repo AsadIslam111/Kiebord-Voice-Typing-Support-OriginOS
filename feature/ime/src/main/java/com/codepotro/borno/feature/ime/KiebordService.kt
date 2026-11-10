@@ -95,8 +95,6 @@ class KiebordService : InputMethodService() {
     private fun isM17nLayout(): Boolean {
         return activeLayout.processor == "m17n" ||
                 !activeLayout.rules.isNullOrBlank() ||
-                activeLayout.id == "khipro" ||
-                activeLayout.id == "bn_khipro" ||
                 NativeEngine.isM17nLayoutReady(activeLayout.id)
     }
 
@@ -189,8 +187,6 @@ class KiebordService : InputMethodService() {
     private fun ensureLayoutProcessorInitialized(layout: KeyboardLayoutDef) {
         if (layout.processor == "m17n" && !layout.rules.isNullOrBlank()) {
             NativeEngine.ensureM17nInitialized(this@KiebordService, layout.id, layout.rules!!)
-        } else if (layout.id == "khipro" || layout.id == "bn_khipro") {
-            NativeEngine.ensureM17nInitialized(this@KiebordService, layout.id, "bn-khipro.classic.mim")
         }
     }
 
