@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.kiebord
+package com.codepotro.borno.kiebord
 
 import android.content.Context
 import android.content.Intent
@@ -292,13 +292,7 @@ fun KiebordSettingsApp(
     onSwitchIme: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val isSetupFinished = preferences.setupCompleted || preferencesRepo.isSetupCompletedSync() || (isImeEnabled && isImeSelected)
-
-    LaunchedEffect(isImeEnabled, isImeSelected) {
-        if (isImeEnabled && isImeSelected && !preferences.setupCompleted) {
-            preferencesRepo.updateSetupCompleted(true)
-        }
-    }
+    val isSetupFinished = preferences.setupCompleted || preferencesRepo.isSetupCompletedSync()
 
     val initialScreen = remember(isSetupFinished) {
         val target = navigationTarget

@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.kiebord.ui.onboarding
+package com.codepotro.borno.kiebord.ui.onboarding
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -77,6 +77,11 @@ fun OnboardingLayoutSelectionStep(
                 subtitle = "Smart transliteration: type 'ami' -> 'আমি'"
             ),
             LayoutOption(
+                id = KiebordPreferences.LAYOUT_BN_NATIONAL,
+                title = "জাতীয় (BSTI)",
+                subtitle = "Official national standard Bengali layout"
+            ),
+            LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_AVRO,
                 title = "অভ্র",
                 subtitle = "Popular phonetic parser by OmicronLab"
@@ -85,11 +90,6 @@ fun OnboardingLayoutSelectionStep(
                 id = KiebordPreferences.LAYOUT_BN_EASY,
                 title = "বর্ণ ইজি",
                 subtitle = "Easy alphabetical layout"
-            ),
-            LayoutOption(
-                id = KiebordPreferences.LAYOUT_BN_NATIONAL,
-                title = "জাতীয় (BSTI)",
-                subtitle = "Official national standard Bengali layout"
             ),
             LayoutOption(
                 id = KiebordPreferences.LAYOUT_BN_PROBHAT,

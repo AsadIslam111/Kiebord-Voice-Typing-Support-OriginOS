@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.theme
+package com.codepotro.borno.theme
 
 import androidx.compose.ui.graphics.Color
 import com.codepotro.borno.theme.ThemeColorUtils.isColorDark

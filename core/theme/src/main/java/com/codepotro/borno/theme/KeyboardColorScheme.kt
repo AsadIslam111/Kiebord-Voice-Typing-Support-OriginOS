@@ -208,7 +208,7 @@ data class KeyboardColorScheme(
         val effectiveModifierBg = if (modifierKeyBackground != Color.Unspecified) modifierKeyBackground else actionKeyBackground
         val effectiveModifierFg = if (modifierKeyForeground != Color.Unspecified) modifierKeyForeground else keyForeground
 
-        val isPillColoredKey = isActionKey || key.type == KeyType.SPACE || (showKeyBorders && key.type == KeyType.SYMBOLS)
+        val isPillColoredKey = isActionKey || key.type == KeyType.SPACE || key.type == KeyType.SYMBOLS
         val baseBackground = when {
             isActionKey -> if (isAdaptive) actionKeyBackground else accentColor
             key.type == KeyType.SPACE -> keyBackground
@@ -242,7 +242,7 @@ data class KeyboardColorScheme(
             else -> keyForeground
         }
 
-        val isPillShape = isActionKey || (showKeyBorders && key.type == KeyType.SYMBOLS) || (!showKeyBorders && key.type == KeyType.SPACE)
+        val isPillShape = isActionKey || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
         val hasTile = showKeyBorders || isActionKey || key.type == KeyType.SPACE || (!isAdaptive && key.type == KeyType.SYMBOLS)
         val strokeCol = if (showKeyBorders && keyBorder.alpha > 0.01f) keyBorder else Color.Transparent
         val strokeWidth = if (showKeyBorders && keyBorder.alpha > 0.01f) 0.5.dp else 0.dp

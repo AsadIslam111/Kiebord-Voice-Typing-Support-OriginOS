@@ -52,8 +52,6 @@ data class KiebordPreferences(
     val enabledLayoutIds: Set<String> = linkedSetOf(
         LAYOUT_EN_QWERTY,
         LAYOUT_BN_BORNO,
-        LAYOUT_BN_AVRO,
-        LAYOUT_BN_EASY,
         LAYOUT_BN_NATIONAL
     ),
 

@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.kiebord.ui.settings
+package com.codepotro.borno.kiebord.ui.settings
 
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -163,6 +163,12 @@ fun KeyboardLayoutsScreen(
                 layoutDef = PredefinedLayouts.BengaliBorno
             ),
             LayoutCardData(
+                id = KiebordPreferences.LAYOUT_BN_NATIONAL,
+                name = "জাতীয় (BSTI)",
+                description = PredefinedLayouts.BengaliNational.description ?: "National BSTI layout",
+                layoutDef = PredefinedLayouts.BengaliNational
+            ),
+            LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_AVRO,
                 name = "অভ্র ফোনেটিক",
                 description = PredefinedLayouts.BengaliAvro.description ?: "Popular Bangla Phonetic Layout by OmicronLab.",
@@ -173,12 +179,6 @@ fun KeyboardLayoutsScreen(
                 name = "বর্ণ ইজি",
                 description = PredefinedLayouts.BengaliBornoEasy.description ?: "Easy 5-row alphabetical layout",
                 layoutDef = PredefinedLayouts.BengaliBornoEasy
-            ),
-            LayoutCardData(
-                id = KiebordPreferences.LAYOUT_BN_NATIONAL,
-                name = "জাতীয় (BSTI)",
-                description = PredefinedLayouts.BengaliNational.description ?: "National BSTI layout",
-                layoutDef = PredefinedLayouts.BengaliNational
             ),
             LayoutCardData(
                 id = KiebordPreferences.LAYOUT_BN_PROBHAT,
@@ -1294,7 +1294,7 @@ private fun KeyboardMiniPreview(
                 val effectiveModifierBg = if (colorScheme.modifierKeyBackground != Color.Unspecified) colorScheme.modifierKeyBackground else colorScheme.actionKeyBackground
                 val effectiveModifierFg = if (colorScheme.modifierKeyForeground != Color.Unspecified) colorScheme.modifierKeyForeground else colorScheme.keyForeground
 
-                val isPill = isActionKey || (showKeyBorders && key.type == KeyType.SYMBOLS) || (!showKeyBorders && key.type == KeyType.SPACE)
+                val isPill = isActionKey || key.type == KeyType.SYMBOLS || (!showKeyBorders && key.type == KeyType.SPACE)
                 val bg = when {
                     isActionKey -> if (colorScheme.isAdaptive) colorScheme.actionKeyBackground else colorScheme.accentColor
                     key.type == KeyType.SPACE -> colorScheme.keyBackground
