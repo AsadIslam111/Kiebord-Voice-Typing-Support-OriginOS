@@ -101,9 +101,26 @@ impl M17nEngine {
             // Check if key_buffer can be a prefix of any rule in current state
             let can_be_prefix = self.can_prefix_any_rule(&rem);
             if !can_be_prefix {
-                // If not a prefix, process first char as fallback
-                let first = self.key_buffer.remove(0);
-                self.fallback_char(first);
+                if self.state != self.im.initial_state {
+                    // According to m17n specification:
+                    // If the typed key sequence does not match any branch in the current state,
+                    // the input method transits to the initial state without consuming the key event.
+                    self.commit();
+                    self.state = self.im.initial_state.clone();
+                    self.run_transient_rules();
+
+                    let rem2: String = self.key_buffer.iter().collect();
+                    if let Some(matched_len) = self.step_longest_match(&rem2) {
+                        self.key_buffer.drain(0..matched_len);
+                    } else if !self.can_prefix_any_rule(&rem2) {
+                        let first = self.key_buffer.remove(0);
+                        self.committed.push(first);
+                    }
+                } else {
+                    // If already in initial state and not a prefix, output first char
+                    let first = self.key_buffer.remove(0);
+                    self.committed.push(first);
+                }
             }
         }
     }
@@ -130,20 +147,6 @@ impl M17nEngine {
         false
     }
 
-    fn fallback_char(&mut self, c: char) {
-        if self.state != self.im.initial_state {
-            self.commit();
-            self.state = self.im.initial_state.clone();
-            self.run_transient_rules();
-            let s = c.to_string();
-            if self.step_longest_match(&s).is_none() {
-                self.committed.push(c);
-            }
-        } else {
-            self.committed.push(c);
-        }
-    }
-
     pub fn transliterate(&mut self, input: &str) -> String {
         self.reset();
         let input_chars: Vec<char> = input.chars().collect();
@@ -153,9 +156,17 @@ impl M17nEngine {
             let rem: String = input_chars[pos..].iter().collect();
             if let Some(matched_len) = self.step_longest_match(&rem) {
                 pos += matched_len;
+            } else if self.state != self.im.initial_state {
+                // According to m17n specification:
+                // If the typed key sequence does not match any branch in the current state
+                // (and there's no nil branch), the input method transits to the initial state
+                // without consuming the key event.
+                self.commit();
+                self.state = self.im.initial_state.clone();
+                self.run_transient_rules();
             } else {
                 let c = input_chars[pos];
-                self.fallback_char(c);
+                self.committed.push(c);
                 pos += 1;
             }
         }

@@ -213,4 +213,31 @@ mod test_cases {
         engine.feed_char('r');
         assert_eq!(engine.current_output(), "ALOW");
     }
+
+    #[test]
+    fn test_khipro_dark_reported_issues() {
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mim_candidates = [
+            manifest_dir.join("../../assets-src/language-packs/khipro/rules/bn-khipro-dark.mim"),
+            std::path::PathBuf::from("../../assets-src/language-packs/khipro/rules/bn-khipro-dark.mim"),
+            std::path::PathBuf::from("assets-src/language-packs/khipro/rules/bn-khipro-dark.mim"),
+        ];
+        let mim_path = mim_candidates.iter().find(|p| p.exists())
+            .unwrap_or(&mim_candidates[0]);
+
+        let mim_content = fs::read_to_string(mim_path)
+            .unwrap_or_else(|_| panic!("Failed to read {}", mim_path.display()));
+
+        let mut engine = create_engine(&mim_content).expect("Failed to parse and compile bn-khipro-dark.mim");
+
+        assert_eq!(engine.transliterate("kka/tf"), "ক্কাট");
+        assert_eq!(engine.transliterate("kka/jh"), "ক্কাঝ");
+        assert_eq!(engine.transliterate("kka/rrk"), "ক্কার্ক");
+        assert_eq!(engine.transliterate("kk/atf"), "ক্কাট");
+        assert_eq!(engine.transliterate("kk/ajh"), "ক্কাঝ");
+        assert_eq!(engine.transliterate("kk/arrk"), "ক্কার্ক");
+        assert_eq!(engine.transliterate("kkatf"), "ককাট");
+        assert_eq!(engine.transliterate("kkajh"), "ককাঝ");
+        assert_eq!(engine.transliterate("kkarrk"), "ককার্ক");
+    }
 }
