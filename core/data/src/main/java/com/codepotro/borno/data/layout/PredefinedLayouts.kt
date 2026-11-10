@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.data.layout
+package com.codepotro.borno.data.layout
 
 import com.codepotro.borno.common.model.KeyDef
 import com.codepotro.borno.common.model.KeyRow
@@ -788,6 +788,23 @@ object PredefinedLayouts {
         )
     )
 
+    val BengaliBornoEasySymbolsWithNumberRow: KeyboardLayoutDef = KeyboardLayoutDef(
+        id = "bn_easy_symbols",
+        name = "বর্ণ ইজি Symbols",
+        displayName = "বর্ণ ইজি",
+        language = "bn",
+        numberRow = NumberRowBn,
+        rows = listOf(
+            NumberRowBn,
+            BengaliBornoEasySymbols.rows[1],
+            KeyboardLayoutDef.SymbolsEnQwertyRow,
+            BengaliBornoEasySymbols.rows[2],
+            BengaliBornoEasySymbols.rows[3],
+            BengaliBornoEasySymbols.rows[4],
+            BengaliBornoEasySymbols.rows[5]
+        )
+    )
+
     val BengaliBornoEasySymbolsMore: KeyboardLayoutDef = KeyboardLayoutDef(
         id = "bn_easy_symbols_more",
         name = "বর্ণ ইজি Symbols More",
@@ -1161,6 +1178,7 @@ object PredefinedLayouts {
     fun getSymbolsLayout(id: String, hasNumberRow: Boolean): KeyboardLayoutDef {
         return when (id) {
             "symbols_2" -> if (hasNumberRow) SymbolsMoreWithNumberRow else SymbolsMore
+            "bn_easy_symbols" -> if (hasNumberRow) BengaliBornoEasySymbolsWithNumberRow else BengaliBornoEasySymbols
             else -> if (hasNumberRow) SymbolsWithNumberRow else Symbols
         }
     }

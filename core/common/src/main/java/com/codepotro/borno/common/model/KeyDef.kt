@@ -225,6 +225,7 @@ data class KeyboardLayoutDef(
     fun effectiveSymbolsLayout(): KeyboardLayoutDef? = symbolsLayout ?: symbols
     fun effectiveMoreSymbolsLayout(): KeyboardLayoutDef? = moreSymbolsLayout
     fun isSymbolsLayout(): Boolean = id.startsWith("symbols") || id.contains("_symbols") || language == "sym"
+    fun isMoreSymbolsLayout(): Boolean = isSymbolsLayout() && (id.contains("symbols_2") || id.contains("more"))
 
     fun isGestureTypingSupported(): Boolean {
         if (isSymbolsLayout() || noGesture) return false
@@ -286,12 +287,35 @@ data class KeyboardLayoutDef(
     fun resolveCoreRowsForSymbols(showNumberRow: Boolean): List<KeyRow> {
         if (this.rows.isEmpty()) return emptyList()
 
-        // 6-row layouts (e.g. Borno Easy symbols) preserve all 6 core rows across both modes
+        val isBornoEasySymbols = this.id == "bn_easy_symbols" || (this.id.contains("easy_symbols") && !this.id.contains("more"))
+        if (isBornoEasySymbols) {
+            if (!showNumberRow) {
+                return if (this.rows.size >= 7) listOf(this.rows[0]) + this.rows.drop(2) else this.rows
+            }
+            return if (this.rows.size >= 6 && isDigitsRow(this.rows[0])) {
+                listOf(this.rows[1], SymbolsEnQwertyRow) + this.rows.drop(2)
+            } else {
+                this.rows
+            }
+        }
+
+        val isBornoEasySymbolsMore = this.id == "bn_easy_symbols_more" || this.id.contains("easy_symbols_more")
+        if (isBornoEasySymbolsMore) {
+            if (!showNumberRow) {
+                return if (this.rows.size >= 7) listOf(this.rows[0]) + this.rows.drop(2) else this.rows
+            }
+            return if (this.rows.size == 6) {
+                listOf(this.rows[0], this.rows[1], SymbolsMoreAlternateRow) + this.rows.drop(2)
+            } else {
+                this.rows
+            }
+        }
+
         if (this.rows.size >= 6) {
             return this.rows
         }
 
-        val isMoreSymbols = this.id.contains("symbols_2") || this.id.contains("more")
+        val isMoreSymbols = isMoreSymbolsLayout()
 
         if (!showNumberRow) {
             return if (this.rows.size >= 5) {
@@ -305,25 +329,42 @@ data class KeyboardLayoutDef(
             }
         }
 
-        // When showNumberRow is true:
-        if (this.rows.size >= 5) {
-            if (isDigitsRow(this.rows[0]) || isMoreSymbols) {
-                return this.rows.drop(1)
+        if (isMoreSymbols) {
+            if (this.rows.size >= 5) {
+                return this.rows
             }
+            if (this.rows.size == 4) {
+                return listOf(this.rows[0], SymbolsMoreAlternateRow) + this.rows.drop(1)
+            }
+            return this.rows
         }
 
-        if (this.rows.size == 4) {
-            if (isMoreSymbols) {
-                return listOf(SymbolsMoreAlternateRow) + this.rows.drop(1)
-            } else if (isDigitsRow(this.rows[0])) {
-                return listOf(SymbolsAlternateRow) + this.rows.drop(1)
-            }
+        if (this.rows.size >= 5 && isDigitsRow(this.rows[0])) {
+            return this.rows.drop(1)
+        }
+
+        if (this.rows.size == 4 && isDigitsRow(this.rows[0])) {
+            return listOf(SymbolsAlternateRow) + this.rows.drop(1)
         }
 
         return this.rows
     }
 
     companion object {
+        val SymbolsEnQwertyRow = KeyRow(
+            listOf(
+                KeyDef("÷"),
+                KeyDef("×"),
+                KeyDef("$", moreKeys = listOf("$", "€", "£", "¥", "₹", "¢")),
+                KeyDef("€", moreKeys = listOf("€", "£", "¥", "¢")),
+                KeyDef("•", moreKeys = listOf("•", "♪", "♥", "♠", "♦", "♣")),
+                KeyDef("°", moreKeys = listOf("°", "′", "″")),
+                KeyDef("±", moreKeys = listOf("±", "∓")),
+                KeyDef("≠", moreKeys = listOf("≠", "≈", "∞")),
+                KeyDef("√"),
+                KeyDef("π", moreKeys = listOf("π", "Π"))
+            )
+        )
         val SymbolsAlternateRow = KeyRow(
             listOf(
                 KeyDef("~"),

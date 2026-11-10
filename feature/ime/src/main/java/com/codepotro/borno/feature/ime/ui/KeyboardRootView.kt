@@ -723,10 +723,11 @@ fun KeyboardRootView(
     }
     val isShiftActive = effectiveShiftState != ShiftState.UNSHIFTED
     val isSymbolLayout = displayLayout.isSymbolsLayout()
+    val isMoreSymbolsLayout = displayLayout.isMoreSymbolsLayout()
     val baseAlphaLayout = if (isSymbolLayout) (if (isSlidingSymbolMode) layout else primaryAlphaLayout) else displayLayout
 
     val keyboardRows: List<KeyRow> = remember(displayLayout, baseAlphaLayout, showNumberRow, extraRowOverrides, isShiftActive, isBornoEasyKarMode, bornoEasyTypedCluster, showGlobeKey) {
-        val numberRow: List<KeyRow> = if (showNumberRow && !isNumberLayout) {
+        val numberRow: List<KeyRow> = if (showNumberRow && !isNumberLayout && !isMoreSymbolsLayout) {
             val baseRow = displayLayout.numberRow
                 ?: (if (isSymbolLayout) baseAlphaLayout.numberRow else null)
                 ?: PredefinedLayouts.createNumberRow(if (isSymbolLayout) baseAlphaLayout.language else displayLayout.language)
@@ -850,7 +851,7 @@ fun KeyboardRootView(
     }
 
     val isKeysInteractive = isInteractive && !isResizerOpen
-    val hasTopNumberRow = showNumberRow && !isNumberLayout
+    val hasTopNumberRow = showNumberRow && !isNumberLayout && !isMoreSymbolsLayout
     val keyboardContentHeight = remember(
         isNumberLayout,
         targetKeyboardHeight,
@@ -860,7 +861,9 @@ fun KeyboardRootView(
         standardRowHeight,
         scaleFactor,
         hasTopNumberRow,
-        isDisplayBornoEasy
+        isDisplayBornoEasy,
+        isMoreSymbolsLayout,
+        showNumberRow
     ) {
         if (isNumberLayout) {
             targetKeyboardHeight
@@ -869,9 +872,10 @@ fun KeyboardRootView(
             keyboardRows.forEachIndexed { index, _ ->
                 val isBottom = index == keyboardRows.lastIndex
                 val isTopNumber = hasTopNumberRow && index == 0
+                val isMoreSymbolsTopRow = isMoreSymbolsLayout && showNumberRow && index == 0
                 total += when {
                     isBottom -> bottomRowHeight
-                    isTopNumber -> (50 * scaleFactor).dp
+                    isTopNumber || isMoreSymbolsTopRow -> (50 * scaleFactor).dp
                     isDisplayBornoEasy -> bornoEasyRowHeight
                     else -> standardRowHeight
                 }
@@ -906,9 +910,10 @@ fun KeyboardRootView(
             keyboardRows.forEachIndexed { index, _ ->
                 val isBottom = index == keyboardRows.lastIndex
                 val isTopNumber = hasTopNumberRow && index == 0
+                val isMoreSymbolsTopRow = isMoreSymbolsLayout && showNumberRow && index == 0
                 total += when {
                     isBottom -> bRow
-                    isTopNumber -> (50 * s).dp
+                    isTopNumber || isMoreSymbolsTopRow -> (50 * s).dp
                     isDisplayBornoEasy -> bEasyRow
                     else -> stdRow
                 }
@@ -1921,9 +1926,10 @@ fun KeyboardRootView(
                         keyboardRows.forEachIndexed { rowIndex, row ->
                         val isBottomRow = rowIndex == keyboardRows.lastIndex
                         val isTopNumberRow = hasTopNumberRow && rowIndex == 0
+                        val isMoreSymbolsTopRow = isMoreSymbolsLayout && showNumberRow && rowIndex == 0
                         val currentRowHeight = when {
                             isBottomRow -> bottomRowHeight
-                            isTopNumberRow -> (50 * scaleFactor).dp
+                            isTopNumberRow || isMoreSymbolsTopRow -> (50 * scaleFactor).dp
                             isNumberLayout -> numberUpperRowHeight
                             isDisplayBornoEasy -> bornoEasyRowHeight
                             else -> standardRowHeight
@@ -1932,7 +1938,7 @@ fun KeyboardRootView(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(currentRowHeight)
-                                .then(if (isTopNumberRow) Modifier.padding(bottom = 1.dp) else Modifier)
+                                .then(if (isTopNumberRow || isMoreSymbolsTopRow) Modifier.padding(bottom = 1.dp) else Modifier)
                         ) {
                         if (row.startPaddingDp > 0f) {
                             Spacer(

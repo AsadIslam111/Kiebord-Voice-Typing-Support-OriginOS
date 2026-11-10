@@ -640,7 +640,8 @@ class PredefinedLayoutsTest {
             overrides: Map<String, Boolean>
         ): List<com.codepotro.borno.common.model.KeyRow> {
             val isSymbol = display.isSymbolsLayout()
-            val numRow: List<com.codepotro.borno.common.model.KeyRow> = if (showNumberRow) {
+            val isMoreSymbols = display.isMoreSymbolsLayout()
+            val numRow: List<com.codepotro.borno.common.model.KeyRow> = if (showNumberRow && !isMoreSymbols) {
                 listOf(display.numberRow ?: baseAlpha.numberRow ?: PredefinedLayouts.createNumberRow(baseAlpha.language))
             } else {
                 emptyList()
@@ -713,7 +714,8 @@ class PredefinedLayoutsTest {
             showNumberRow: Boolean
         ): List<com.codepotro.borno.common.model.KeyRow> {
             val isSymbol = display.isSymbolsLayout()
-            val numRow: List<com.codepotro.borno.common.model.KeyRow> = if (showNumberRow) {
+            val isMoreSymbols = display.isMoreSymbolsLayout()
+            val numRow: List<com.codepotro.borno.common.model.KeyRow> = if (showNumberRow && !isMoreSymbols) {
                 listOf(display.numberRow ?: baseAlpha.numberRow ?: PredefinedLayouts.createNumberRow(baseAlpha.language))
             } else {
                 emptyList()
@@ -764,18 +766,38 @@ class PredefinedLayoutsTest {
     }
 
     @Test
-    fun testResolveCoreRowsForSymbolsAlwaysReturnsFourCoreRows() {
-        // 4-row layouts
+    fun testResolveCoreRowsForSymbols() {
         assertEquals(4, PredefinedLayouts.Symbols.resolveCoreRowsForSymbols(showNumberRow = true).size)
         assertEquals(4, PredefinedLayouts.Symbols.resolveCoreRowsForSymbols(showNumberRow = false).size)
-        assertEquals(4, PredefinedLayouts.SymbolsMore.resolveCoreRowsForSymbols(showNumberRow = true).size)
+        assertEquals(5, PredefinedLayouts.SymbolsMore.resolveCoreRowsForSymbols(showNumberRow = true).size)
         assertEquals(4, PredefinedLayouts.SymbolsMore.resolveCoreRowsForSymbols(showNumberRow = false).size)
 
-        // 5-row layouts (such as SymbolsWithNumberRow and SymbolsMoreWithNumberRow)
         assertEquals(4, PredefinedLayouts.SymbolsWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = true).size)
         assertEquals(4, PredefinedLayouts.SymbolsWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = false).size)
-        assertEquals(4, PredefinedLayouts.SymbolsMoreWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = true).size)
+        assertEquals(5, PredefinedLayouts.SymbolsMoreWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = true).size)
         assertEquals(4, PredefinedLayouts.SymbolsMoreWithNumberRow.resolveCoreRowsForSymbols(showNumberRow = false).size)
+
+        // SymbolsMore top row preservation (must remain ~ and not replaced with 1)
+        val moreWithNum = PredefinedLayouts.SymbolsMore.resolveCoreRowsForSymbols(showNumberRow = true)
+        assertEquals("~", moreWithNum[0].keys[0].label)
+        assertEquals("≠", moreWithNum[1].keys[0].label)
+
+        // Borno Easy ?123 resolution
+        val bornoEasyWithNum = PredefinedLayouts.BengaliBornoEasySymbols.resolveCoreRowsForSymbols(showNumberRow = true)
+        assertEquals(6, bornoEasyWithNum.size)
+        assertEquals("1", bornoEasyWithNum[0].keys[0].label)
+        assertEquals("÷", bornoEasyWithNum[1].keys[0].label)
+        assertEquals("!", bornoEasyWithNum[2].keys[0].label)
+
+        // Ensure row 1 symbols are not duplicated in rows 2, 3, 4
+        val insertedRowLabels = bornoEasyWithNum[1].keys.map { it.label }.toSet()
+        val subsequentLabels = (bornoEasyWithNum[2].keys + bornoEasyWithNum[3].keys + bornoEasyWithNum[4].keys).map { it.label }.toSet()
+        assertTrue(insertedRowLabels.intersect(subsequentLabels).isEmpty())
+
+        val bornoEasyNoNum = PredefinedLayouts.BengaliBornoEasySymbols.resolveCoreRowsForSymbols(showNumberRow = false)
+        assertEquals(6, bornoEasyNoNum.size)
+        assertEquals("১", bornoEasyNoNum[0].keys[0].label)
+        assertEquals("1", bornoEasyNoNum[1].keys[0].label)
     }
 
     @Test
