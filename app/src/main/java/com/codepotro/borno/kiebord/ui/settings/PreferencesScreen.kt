@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.kiebord.ui.settings
+package com.codepotro.borno.kiebord.ui.settings
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -43,6 +43,7 @@ fun PreferencesScreen(
     onUpdateVibrationType: (String) -> Unit = {},
     onUpdateVibrationStrength: (Int) -> Unit,
     onUpdateSound: (Boolean) -> Unit,
+    onUpdateSoundVolume: (Int) -> Unit = {},
     onUpdateLongPressDelay: (Int) -> Unit,
     onUpdateShowNumberRow: (Boolean) -> Unit,
     onUpdateShowKeyPopups: (Boolean) -> Unit,
@@ -179,11 +180,31 @@ fun PreferencesScreen(
 
             SettingsToggleItem(
                 title = "Sound on Keypress",
-                subtitle = "Audible click feedback when typing",
+                subtitle = "Audible click feedback when typing (requires device sound on)",
                 checked = preferences.soundOnKeypress,
-                position = GroupPosition.BOTTOM,
+                position = if (preferences.soundOnKeypress) GroupPosition.MIDDLE else GroupPosition.BOTTOM,
                 onCheckedChange = onUpdateSound
             )
+
+            AnimatedVisibility(
+                visible = preferences.soundOnKeypress,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                val volume = preferences.soundVolume
+                val volumeLabel = "$volume%"
+
+                SettingsSliderItem(
+                    title = "Sound Volume",
+                    subtitle = "Keypress click volume",
+                    value = volume.toFloat(),
+                    valueRange = 10f..100f,
+                    steps = 8,
+                    valueLabel = volumeLabel,
+                    position = GroupPosition.BOTTOM,
+                    onValueChange = { onUpdateSoundVolume(it.toInt()) }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))

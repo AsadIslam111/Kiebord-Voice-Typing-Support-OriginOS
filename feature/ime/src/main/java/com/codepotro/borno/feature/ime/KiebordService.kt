@@ -540,7 +540,7 @@ class KiebordService : InputMethodService() {
                     },
                     onDismissVoiceTyping = { voiceInputManager.stop() },
                     voiceTypingEnabled = preferencesState.voiceTypingEnabled,
-                    onKeyPress = { performKeyFeedback() },
+                    onKeyPress = { keyDef -> performKeyFeedback(keyDef) },
                     onKeyTap = ::handleKeyTap,
                     onKeyLongPress = ::handleKeyLongPress,
                     onTextAction = ::handleTextAction,
@@ -1067,10 +1067,17 @@ class KiebordService : InputMethodService() {
     private var cachedOneShotStrength: Int = -1
     private var cachedOneShotEffect: VibrationEffect? = null
 
-    private fun performKeyFeedback() {
+    private fun performKeyFeedback(key: KeyDef? = null) {
         if (preferencesState.soundOnKeypress) {
             try {
-                audioManager?.playSoundEffect(android.media.AudioManager.FX_KEYPRESS_STANDARD)
+                val soundEffect = when (key?.type) {
+                    KeyType.DELETE -> android.media.AudioManager.FX_KEYPRESS_DELETE
+                    KeyType.SPACE -> android.media.AudioManager.FX_KEYPRESS_SPACEBAR
+                    KeyType.ACTION -> android.media.AudioManager.FX_KEYPRESS_RETURN
+                    else -> android.media.AudioManager.FX_KEYPRESS_STANDARD
+                }
+                val volume = (preferencesState.soundVolume / 100f).coerceIn(0.01f, 1.0f)
+                audioManager?.playSoundEffect(soundEffect, volume)
             } catch (_: Exception) {}
         }
         if (!preferencesState.vibrateOnKeypress) return

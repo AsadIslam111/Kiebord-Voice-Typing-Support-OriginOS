@@ -27,6 +27,7 @@ data class KiebordPreferences(
     val vibrationType: String = VIBRATION_TYPE_HAPTIC,
     val vibrationStrength: Int = 50, // 0 - 100%
     val soundOnKeypress: Boolean = false,
+    val soundVolume: Int = 100, // 1 - 100%
     val longPressDelayMs: Int = 300, // 150 - 600 ms
     val cursorTrackpadEnabled: Boolean = true,
     val spacebarSwipeMode: String = SPACEBAR_MODE_SWIPE_LAYOUT_HOLD_CURSOR,

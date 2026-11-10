@@ -569,6 +569,9 @@ fun KiebordSettingsApp(
                             onUpdateSound = { enabled ->
                                 scope.launch { preferencesRepo.updateSoundOnKeypress(enabled) }
                             },
+                            onUpdateSoundVolume = { volume ->
+                                scope.launch { preferencesRepo.updateSoundVolume(volume) }
+                            },
                             onUpdateLongPressDelay = { delayMs ->
                                 scope.launch { preferencesRepo.updateLongPressDelayMs(delayMs) }
                             },

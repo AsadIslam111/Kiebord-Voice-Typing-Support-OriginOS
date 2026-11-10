@@ -53,6 +53,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val VIBRATION_TYPE = stringPreferencesKey("pref_vibration_type")
         val VIBRATION_STRENGTH = intPreferencesKey("pref_vibration_strength")
         val SOUND_ON_KEYPRESS = booleanPreferencesKey("pref_sound_on_keypress")
+        val SOUND_VOLUME = intPreferencesKey("pref_sound_volume")
         val LONG_PRESS_DELAY_MS = intPreferencesKey("pref_long_press_delay_ms")
         val CURSOR_TRACKPAD_ENABLED = booleanPreferencesKey("pref_cursor_trackpad_enabled")
         val SPACEBAR_SWIPE_MODE = stringPreferencesKey("pref_spacebar_swipe_mode")
@@ -136,6 +137,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 vibrationType = prefs[PreferencesKeys.VIBRATION_TYPE] ?: KiebordPreferences.VIBRATION_TYPE_HAPTIC,
                 vibrationStrength = prefs[PreferencesKeys.VIBRATION_STRENGTH] ?: 50,
                 soundOnKeypress = prefs[PreferencesKeys.SOUND_ON_KEYPRESS] ?: false,
+                soundVolume = prefs[PreferencesKeys.SOUND_VOLUME] ?: 100,
                 longPressDelayMs = prefs[PreferencesKeys.LONG_PRESS_DELAY_MS] ?: 300,
                 cursorTrackpadEnabled = prefs[PreferencesKeys.CURSOR_TRACKPAD_ENABLED] ?: true,
                 spacebarSwipeMode = prefs[PreferencesKeys.SPACEBAR_SWIPE_MODE] ?: KiebordPreferences.SPACEBAR_MODE_SWIPE_LAYOUT_HOLD_CURSOR,
@@ -327,6 +329,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateSoundOnKeypress(enabled: Boolean) {
         context.kiebordDataStore.edit { it[PreferencesKeys.SOUND_ON_KEYPRESS] = enabled }
+    }
+
+    suspend fun updateSoundVolume(volume: Int) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.SOUND_VOLUME] = volume.coerceIn(1, 100) }
     }
 
     suspend fun updateLongPressDelayMs(delayMs: Int) {
