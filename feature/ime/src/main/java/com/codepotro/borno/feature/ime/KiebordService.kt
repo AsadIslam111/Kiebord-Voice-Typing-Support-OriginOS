@@ -523,6 +523,9 @@ class KiebordService : InputMethodService() {
             val isEmailField = remember(currentEditorInfoState) {
                 InputModeResolver.isEmailField(currentEditorInfoState)
             }
+            val isIncognitoMode = remember(currentEditorInfoState) {
+                InputModeResolver.isIncognitoMode(currentEditorInfoState)
+            }
             val availableLayoutIds = remember(preferencesState.enabledLayoutIds) {
                 layoutRepo.getAvailableLayouts().map { it.id }.toSet()
             }
@@ -532,6 +535,7 @@ class KiebordService : InputMethodService() {
                     layout = activeLayout,
                     primaryAlphaLayout = primaryAlphaLayout,
                     isEmailField = isEmailField,
+                    isIncognitoMode = isIncognitoMode,
                     isNumberPadActive = activeLayout.id == PredefinedLayouts.NumberPadExtended.id,
                     onToggleNumberPad = {
                         finishComposing()

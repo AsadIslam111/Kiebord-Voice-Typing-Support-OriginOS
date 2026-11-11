@@ -154,6 +154,7 @@ fun KeyboardRootView(
     layout: KeyboardLayoutDef,
     primaryAlphaLayout: KeyboardLayoutDef = layout,
     isEmailField: Boolean = false,
+    isIncognitoMode: Boolean = false,
     shiftState: ShiftState,
     isBornoEasyKarMode: Boolean = false,
     bornoEasyTypedCluster: String = "",
@@ -1308,6 +1309,13 @@ fun KeyboardRootView(
                                 },
                                 tint = colorScheme.effectiveToolbarForeground,
                                 modifier = Modifier.size((20 * scaleFactor).coerceAtLeast(16f).dp)
+                            )
+                        } else if (isIncognitoMode) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_incognito),
+                                contentDescription = "Incognito Mode",
+                                tint = colorScheme.effectiveToolbarForeground,
+                                modifier = Modifier.size((24 * scaleFactor).coerceAtLeast(18f).dp)
                             )
                         } else {
                             Icon(
