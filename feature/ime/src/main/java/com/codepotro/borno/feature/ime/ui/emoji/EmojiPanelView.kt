@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.ui.emoji
+package com.codepotro.borno.feature.ime.ui.emoji
 
 import android.content.Context
 import android.content.res.ColorStateList
@@ -108,6 +108,7 @@ private fun attachHeaderControls(
             }
             isClickable = true
             isFocusable = true
+            isHapticFeedbackEnabled = true
             setOnClickListener { onClose() }
         }
 
@@ -123,6 +124,7 @@ private fun attachHeaderControls(
             }
             isClickable = true
             isFocusable = true
+            isHapticFeedbackEnabled = true
             setOnClickListener { onOpenSearch() }
         }
 
@@ -240,6 +242,7 @@ fun EmojiPanelView(
             AndroidView(
                 factory = {
                     EmojiPickerView(themedContext).apply {
+                        isHapticFeedbackEnabled = true
                         emojiGridColumns = calculatedColumns
                         setOnEmojiPickedListener { item ->
                             onEmojiSelected(item.emoji)

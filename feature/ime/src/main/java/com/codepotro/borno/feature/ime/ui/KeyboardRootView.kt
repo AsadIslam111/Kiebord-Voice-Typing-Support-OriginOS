@@ -461,7 +461,10 @@ fun KeyboardRootView(
                 KeyType.ACTION -> {
                     val topEmoji = EmojiSearchCatalog.search(emojiSearchQuery).firstOrNull()
                     if (topEmoji != null) {
-                        onKeyTap(KeyDef(label = topEmoji, type = KeyType.CHARACTER))
+                        val keyDef = KeyDef(label = topEmoji, type = KeyType.CHARACTER)
+                        onKeyPress(keyDef)
+                        onKeyTap(keyDef)
+                        onRecordRecentEmoji?.invoke(topEmoji)
                     }
                     isEmojiSearchOpen = false
                     emojiSearchQuery = ""
@@ -1193,17 +1196,27 @@ fun KeyboardRootView(
         } else if (isEmojiOpen) {
             EmojiPanelView(
                 onEmojiSelected = { emoji ->
-                    onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                    val keyDef = KeyDef(label = emoji, type = KeyType.CHARACTER)
+                    onKeyPress(keyDef)
+                    onKeyTap(keyDef)
                     onRecordRecentEmoji?.invoke(emoji)
                 },
                 onDelete = {
-                    onKeyTap(KeyDef(type = KeyType.DELETE))
+                    val keyDef = KeyDef(type = KeyType.DELETE)
+                    onKeyPress(keyDef)
+                    onKeyTap(keyDef)
                 },
                 onSpace = {
-                    onKeyTap(KeyDef(label = " ", type = KeyType.CHARACTER))
+                    val keyDef = KeyDef(label = " ", type = KeyType.CHARACTER)
+                    onKeyPress(keyDef)
+                    onKeyTap(keyDef)
                 },
-                onClose = { isEmojiOpen = false },
+                onClose = {
+                    performHaptic(HapticFeedbackType.TextHandleMove)
+                    isEmojiOpen = false
+                },
                 onOpenSearch = {
+                    performHaptic(HapticFeedbackType.TextHandleMove)
                     isEmojiOpen = false
                     isEmojiSearchOpen = true
                     emojiSearchQuery = ""
@@ -1217,10 +1230,13 @@ fun KeyboardRootView(
                     query = emojiSearchQuery,
                     onQueryChange = { emojiSearchQuery = it },
                     onEmojiSelected = { emoji ->
-                        onKeyTap(KeyDef(label = emoji, type = KeyType.CHARACTER))
+                        val keyDef = KeyDef(label = emoji, type = KeyType.CHARACTER)
+                        onKeyPress(keyDef)
+                        onKeyTap(keyDef)
                         onRecordRecentEmoji?.invoke(emoji)
                     },
                     onClose = {
+                        performHaptic(HapticFeedbackType.TextHandleMove)
                         isEmojiSearchOpen = false
                         emojiSearchQuery = ""
                         isEmojiOpen = true
