@@ -318,6 +318,11 @@ class KiebordService : InputMethodService() {
         layoutRepo = LayoutRepository.getInstance(this)
         languagePackRepo = LanguagePackRepository.getInstance(this)
         clipboardManager = SandboxedClipboardManager.getInstance(this)
+        try {
+            (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                ?.addPrimaryClipChangedListener(clipboardListener)
+        } catch (_: Exception) {}
+        clipboardManager.syncFromSystemClipboard(this)
         userDictionaryRepo = UserDictionaryRepository.getInstance(this)
         bornoSuggestionChoiceRepo = BornoSuggestionChoiceRepository.getInstance(this)
         personalDictionaryRepo = PersonalDictionaryRepository.getInstance(this)
@@ -699,10 +704,6 @@ class KiebordService : InputMethodService() {
 
     override fun onWindowShown() {
         super.onWindowShown()
-        try {
-            (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
-                ?.addPrimaryClipChangedListener(clipboardListener)
-        } catch (_: Exception) {}
         clipboardManager.syncFromSystemClipboard(this)
         serviceScope.launch {
             delay(150)
@@ -714,10 +715,6 @@ class KiebordService : InputMethodService() {
         finishComposing()
         super.onWindowHidden()
         navBarInsetBottomPx = 0
-        try {
-            (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
-                ?.removePrimaryClipChangedListener(clipboardListener)
-        } catch (_: Exception) {}
     }
 
     override fun onFinishInput() {
@@ -851,10 +848,6 @@ class KiebordService : InputMethodService() {
         if (::voiceInputManager.isInitialized) {
             voiceInputManager.stop()
         }
-        try {
-            (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
-                ?.removePrimaryClipChangedListener(clipboardListener)
-        } catch (_: Exception) {}
         lastGestureCommittedWord = ""
         isGestureAlternativeActive = false
         lastSpaceTapTime = 0L

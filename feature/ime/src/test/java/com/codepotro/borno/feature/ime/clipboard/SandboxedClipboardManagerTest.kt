@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.clipboard
+package com.codepotro.borno.feature.ime.clipboard
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -198,6 +198,36 @@ class SandboxedClipboardManagerTest {
         assertTrue(manager.clips.any { it.text == "Fresh clip" })
         assertTrue(manager.clips.any { it.text == "Pinned old clip" })
         assertFalse(manager.clips.any { it.text == "Old clip" })
+    }
+
+    @Test
+    fun testMultipleRapidClipsAddedAndPreservedOrder() {
+        val manager = SandboxedClipboardManager(filesDir = tempFolder.root)
+
+        for (i in 1..10) {
+            manager.addClip("Rapid clip $i", notifyQuickPaste = true)
+        }
+
+        assertEquals(10, manager.clips.size)
+        assertEquals("Rapid clip 10", manager.clips[0].text)
+        assertEquals("Rapid clip 1", manager.clips[9].text)
+        assertEquals("Rapid clip 10", manager.quickPasteClip?.text)
+    }
+
+    @Test
+    fun testRapidClipsConcurrentPersistenceSafety() = kotlinx.coroutines.runBlocking {
+        val manager1 = SandboxedClipboardManager(filesDir = tempFolder.root)
+
+        for (i in 1..20) {
+            manager1.addClip("Item $i")
+        }
+
+        manager1.saveClipsToDiskAwait()
+
+        val manager2 = SandboxedClipboardManager(filesDir = tempFolder.root)
+        assertEquals(20, manager2.clips.size)
+        assertEquals("Item 20", manager2.clips[0].text)
+        assertEquals("Item 1", manager2.clips[19].text)
     }
 }
 

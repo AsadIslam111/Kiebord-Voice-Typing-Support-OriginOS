@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.clipboard
+package com.codepotro.borno.feature.ime.clipboard
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -8,6 +8,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 
 data class ClipboardEntry(
@@ -38,6 +40,7 @@ class SandboxedClipboardManager internal constructor(
     private val otpPattern = Regex("^\\b\\d{4,8}\\b$")
     private val storageFile by lazy { File(filesDir, "kiebord_clipboard_v1.json") }
     private val ioScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private val fileWriteMutex = Mutex()
 
     private var lastSyncedText: String? = null
     private var lastSyncedTimestamp: Long = 0L
@@ -408,13 +411,17 @@ class SandboxedClipboardManager internal constructor(
     private fun saveClipsToDisk() {
         val snapshot = clips.toList()
         ioScope.launch {
-            writeClipsToFileDirect(snapshot)
+            fileWriteMutex.withLock {
+                writeClipsToFileDirect(snapshot)
+            }
         }
     }
 
     suspend fun saveClipsToDiskAwait() = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val snapshot = clips.toList()
-        writeClipsToFileDirect(snapshot)
+        fileWriteMutex.withLock {
+            writeClipsToFileDirect(snapshot)
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
