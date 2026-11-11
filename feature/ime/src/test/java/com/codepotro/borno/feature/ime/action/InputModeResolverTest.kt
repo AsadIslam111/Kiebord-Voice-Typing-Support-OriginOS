@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.action
+package com.codepotro.borno.feature.ime.action
 
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
@@ -278,5 +278,104 @@ class InputModeResolverTest {
         assertFalse(InputModeResolver.isUrlOrCodeField(chromeWebTextArea))
         assertTrue(InputModeResolver.isGeneralTextInput(chromeWebTextArea))
         assertTrue(InputModeResolver.isAutoSpaceFriendly(chromeWebTextArea))
+    }
+
+    @Test
+    fun testIsPasswordFieldDetections() {
+        // Standard text passwords
+        val textPassword = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        assertTrue(InputModeResolver.isPasswordField(textPassword))
+
+        val visiblePassword = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+        }
+        assertTrue(InputModeResolver.isPasswordField(visiblePassword))
+
+        val webPassword = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+        }
+        assertTrue(InputModeResolver.isPasswordField(webPassword))
+
+        // Numeric password (PIN pad)
+        val numberPin = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        }
+        assertTrue(InputModeResolver.isPasswordField(numberPin))
+
+        // Banking heuristics via fieldName
+        val mpinField = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            fieldName = "user_mpin"
+        }
+        assertTrue(InputModeResolver.isPasswordField(mpinField))
+
+        val passcodeField = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            fieldName = "app_passcode"
+        }
+        assertTrue(InputModeResolver.isPasswordField(passcodeField))
+
+        val pinField = EditorInfo().apply {
+            inputType = InputType.TYPE_NULL
+            fieldName = "pin"
+        }
+        assertTrue(InputModeResolver.isPasswordField(pinField))
+
+        // Banking heuristics via hintText
+        val hintPinField = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            hintText = "Enter PIN to confirm"
+        }
+        assertTrue(InputModeResolver.isPasswordField(hintPinField))
+
+        // Normal text is not a password
+        val normalText = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_NORMAL
+            fieldName = "comment_body"
+            hintText = "Type a message"
+        }
+        assertFalse(InputModeResolver.isPasswordField(normalText))
+    }
+
+    @Test
+    fun testIsIncognitoModeDetection() {
+        val incognitoInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            imeOptions = EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+        }
+        assertTrue(InputModeResolver.isIncognitoMode(incognitoInfo))
+
+        val normalInfo = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            imeOptions = EditorInfo.IME_ACTION_DONE
+        }
+        assertFalse(InputModeResolver.isIncognitoMode(normalInfo))
+        assertFalse(InputModeResolver.isIncognitoMode(null))
+    }
+
+    @Test
+    fun testSuggestionsSuppressedOnAllPasswordAndPinFields() {
+        val textPassword = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        assertTrue(InputModeResolver.shouldSuppressSuggestions(textPassword))
+
+        val webPassword = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+        }
+        assertTrue(InputModeResolver.shouldSuppressSuggestions(webPassword))
+
+        val numberPin = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        }
+        assertTrue(InputModeResolver.shouldSuppressSuggestions(numberPin))
+
+        val bankingPin = EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            fieldName = "bank_pin"
+        }
+        assertTrue(InputModeResolver.shouldSuppressSuggestions(bankingPin))
     }
 }

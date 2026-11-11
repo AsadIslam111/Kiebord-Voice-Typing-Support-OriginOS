@@ -126,6 +126,16 @@ class KiebordService : InputMethodService() {
         return true
     }
 
+    private fun canLearnFromCurrentEditor(): Boolean {
+        val info = currentEditorInfoState ?: currentInputEditorInfo ?: return false
+        if (!preferencesState.learnedWordsEnabled) return false
+        if (activeLayout.noLearnedWords || primaryAlphaLayout.noLearnedWords) return false
+        if (InputModeResolver.isIncognitoMode(info)) return false
+        if (InputModeResolver.isPasswordField(info)) return false
+        if (InputModeResolver.isDirectCommit(info)) return false
+        return true
+    }
+
     private fun isDedicatedNumberKey(key: KeyDef): Boolean {
         if (key.type != KeyType.CHARACTER) return false
         val label = key.label
@@ -704,10 +714,14 @@ class KiebordService : InputMethodService() {
 
     override fun onWindowShown() {
         super.onWindowShown()
-        clipboardManager.syncFromSystemClipboard(this)
-        serviceScope.launch {
-            delay(150)
-            clipboardManager.syncFromSystemClipboard(this@KiebordService)
+        lifecycleOwner.onStart()
+        val info = currentEditorInfoState ?: currentInputEditorInfo
+        if (!InputModeResolver.isPasswordField(info)) {
+            clipboardManager.syncFromSystemClipboard(this)
+            serviceScope.launch {
+                delay(150)
+                clipboardManager.syncFromSystemClipboard(this@KiebordService)
+            }
         }
     }
 
@@ -715,6 +729,7 @@ class KiebordService : InputMethodService() {
         finishComposing()
         super.onWindowHidden()
         navBarInsetBottomPx = 0
+        lifecycleOwner.onStop()
     }
 
     override fun onFinishInput() {
@@ -734,8 +749,11 @@ class KiebordService : InputMethodService() {
             colorScheme = com.codepotro.borno.theme.ThemeRepository.getInstance(this).getColorScheme(preferencesState.theme, this, isDark = isDark)
         }
         currentEditorInfoState = info
-        clipboardManager.syncFromSystemClipboard(this)
-        if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
+        val isPass = InputModeResolver.isPasswordField(info)
+        if (!isPass) {
+            clipboardManager.syncFromSystemClipboard(this)
+        }
+        if (PredefinedLayouts.isBornoEasy(activeLayout.id) && !isPass) {
             val before = currentInputConnection?.getTextBeforeCursor(10, 0)?.toString() ?: ""
             updateBornoEasyStateFromText(before)
         }
@@ -761,8 +779,20 @@ class KiebordService : InputMethodService() {
         val inputClass = inputType and InputType.TYPE_MASK_CLASS
         val variation = inputType and InputType.TYPE_MASK_VARIATION
         val numberLayout = PredefinedLayouts.resolveNumberLayout(inputClass, variation)
-        activeLayout = numberLayout ?: primaryAlphaLayout
-        updateAutoCapitalizationState(currentInputConnection, info)
+        activeLayout = when {
+            numberLayout != null -> numberLayout
+            isPass && !isEnglishLayout(primaryAlphaLayout) -> {
+                val enLayout = layoutRepo.getLayout(KiebordPreferences.LAYOUT_EN_QWERTY)
+                ensureLayoutProcessorInitialized(enLayout)
+                enLayout
+            }
+            else -> primaryAlphaLayout
+        }
+        if (!isPass) {
+            updateAutoCapitalizationState(currentInputConnection, info)
+        } else {
+            shiftState = ShiftState.UNSHIFTED
+        }
         getTransliterationManager().reset()
         composingBuffer.clear()
         lastGestureCommittedWord = ""
@@ -771,7 +801,11 @@ class KiebordService : InputMethodService() {
         lastAutoSpacePunctuationTime = 0L
         selectionAnchor = null
         selectionCursor = null
-        updateSuggestions()
+        if (!isPass) {
+            updateSuggestions()
+        } else {
+            activeSuggestions = emptyList()
+        }
     }
 
     override fun onUpdateSelection(
@@ -808,7 +842,7 @@ class KiebordService : InputMethodService() {
                     composingBuffer.isNotEmpty() -> BengaliBstiEngine.cleanPending(composingBuffer.toString()).trim()
                     else -> ""
                 }
-                if (preferencesState.learnedWordsEnabled && wordToLearn.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                if (canLearnFromCurrentEditor() && wordToLearn.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                     val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
                     userDictionaryRepo.recordWord(wordToLearn, prevWord)
                 }
@@ -819,7 +853,13 @@ class KiebordService : InputMethodService() {
                 isGestureAlternativeActive = false
 
                 ic?.finishComposingText()
-                updateSuggestions()
+                val info = currentEditorInfoState ?: currentInputEditorInfo
+                val isPassOrPin = InputModeResolver.isPasswordField(info) || InputModeResolver.isDirectCommit(info) || PredefinedLayouts.isNumberLayout(activeLayout.id)
+                if (!isPassOrPin) {
+                    updateSuggestions()
+                } else {
+                    activeSuggestions = emptyList()
+                }
                 return
             }
         }
@@ -834,7 +874,9 @@ class KiebordService : InputMethodService() {
                 lastGestureCommittedWord = ""
             }
         }
-        if (!translitMgr.isComposing && composingBuffer.isEmpty()) {
+        val info = currentEditorInfoState ?: currentInputEditorInfo
+        val isPassOrPin = InputModeResolver.isPasswordField(info) || InputModeResolver.isDirectCommit(info) || PredefinedLayouts.isNumberLayout(activeLayout.id)
+        if (!translitMgr.isComposing && composingBuffer.isEmpty() && !isPassOrPin) {
             updateSuggestions()
             if (shiftState != ShiftState.CAPS_LOCK) {
                 updateAutoCapitalizationState()
@@ -855,7 +897,9 @@ class KiebordService : InputMethodService() {
         selectionAnchor = null
         selectionCursor = null
         activeSuggestions = emptyList()
-        lifecycleOwner.onStop()
+        if (finishingInput) {
+            lifecycleOwner.onStop()
+        }
     }
 
     override fun onDestroy() {
@@ -1013,7 +1057,7 @@ class KiebordService : InputMethodService() {
         var wasComposing = false
         if (translitMgr.isComposing) {
             val word = translitMgr.currentTransliteration.trim()
-            if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+            if (canLearnFromCurrentEditor() && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                 val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
                 userDictionaryRepo.recordWord(word, prevWord)
             }
@@ -1023,7 +1067,7 @@ class KiebordService : InputMethodService() {
         if (composingBuffer.isNotEmpty()) {
             val word = composingBuffer.toString().trim()
             val clean = BengaliBstiEngine.cleanPending(word)
-            if (preferencesState.learnedWordsEnabled && clean.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+            if (canLearnFromCurrentEditor() && clean.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                 val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
                 userDictionaryRepo.recordWord(clean, prevWord)
             }
@@ -1141,6 +1185,34 @@ class KiebordService : InputMethodService() {
                 val initialShiftState = shiftState
                 val text = key.textToCommit(effectiveShift)
 
+                val editorInfo = currentEditorInfoState ?: currentInputEditorInfo
+                val isPass = InputModeResolver.isPasswordField(editorInfo)
+                val isDirect = isPass || InputModeResolver.isDirectCommit(editorInfo) || PredefinedLayouts.isNumberLayout(activeLayout.id)
+
+                if (isDirect) {
+                    composingBuffer.clear()
+                    try {
+                        if (editorInfo?.inputType == InputType.TYPE_NULL) {
+                            for (c in text) sendKeyChar(c)
+                        } else {
+                            ic.beginBatchEdit()
+                            ic.commitText(text, 1)
+                            ic.endBatchEdit()
+                        }
+                    } catch (_: Exception) {
+                        try {
+                            for (c in text) sendKeyChar(c)
+                        } catch (_: Exception) {}
+                    }
+                    if (initialShiftState == ShiftState.ONE_SHOT && shiftState == ShiftState.ONE_SHOT) {
+                        if (!shouldAutoCapitalize() || !isSentenceTerminator(text)) {
+                            shiftState = ShiftState.UNSHIFTED
+                        }
+                    }
+                    activeSuggestions = emptyList()
+                    return
+                }
+
                 when {
                     isTransliterationLayout() -> {
                         if (isTransliterableChar(text) || isBengaliOrModifier(text) || isExtraCompositionChar(text)) {
@@ -1155,7 +1227,7 @@ class KiebordService : InputMethodService() {
                         } else {
                             val translitMgr = getTransliterationManager()
                             val word = translitMgr.currentTransliteration.trim().trimEnd { isPunctuationChar(it) }
-                            if (preferencesState.learnedWordsEnabled && !activeLayout.noLearnedWords && !primaryAlphaLayout.noLearnedWords &&
+                            if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && !activeLayout.noLearnedWords && !primaryAlphaLayout.noLearnedWords &&
                                 translitMgr.isComposing && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH
                             ) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
@@ -1167,7 +1239,7 @@ class KiebordService : InputMethodService() {
                     }
                     // English and other alphabetic / extension layouts
                     !isBanglaLayout() && !PredefinedLayouts.isNumberLayout(activeLayout.id) && !activeLayout.isSymbolsLayout() -> {
-                        if (InputModeResolver.isDirectCommit(currentInputEditorInfo)) {
+                        if (InputModeResolver.isDirectCommit(editorInfo)) {
                             finishComposing()
                             commitCharacterWithPunctuationHandling(ic, text)
                         } else if (isComposingLetter(text, activeLayout)) {
@@ -1175,7 +1247,7 @@ class KiebordService : InputMethodService() {
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
                             val word = composingBuffer.toString().trim()
-                            if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                            if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
                                 userDictionaryRepo.recordWord(word, prevWord)
                             }
@@ -1190,7 +1262,7 @@ class KiebordService : InputMethodService() {
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
                             val word = composingBuffer.toString().trim()
-                            if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                            if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
                                 userDictionaryRepo.recordWord(word, prevWord)
                             }
@@ -1210,7 +1282,7 @@ class KiebordService : InputMethodService() {
                             updateBornoEasyStateFromText(composingBuffer.toString())
                         } else {
                             val word = composingBuffer.toString().trim()
-                            if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                            if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
                                 userDictionaryRepo.recordWord(word, prevWord)
                             }
@@ -1243,7 +1315,7 @@ class KiebordService : InputMethodService() {
                             ic.setComposingText(composingBuffer.toString(), 1)
                         } else {
                             val cleanWord = BengaliBstiEngine.cleanPending(composingBuffer.toString().trim())
-                            if (preferencesState.learnedWordsEnabled && cleanWord.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                            if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && cleanWord.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                                 val prevWord = getPrecedingWord(excludeComposing = true)
                                 userDictionaryRepo.recordWord(cleanWord, prevWord)
                             }
@@ -1254,7 +1326,7 @@ class KiebordService : InputMethodService() {
                     // Other layouts (Symbols, etc.)
                     else -> {
                         val word = composingBuffer.toString().trim()
-                        if (preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                        if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && word.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                             val prevWord = getPrecedingWord(excludeComposing = true)
                             userDictionaryRepo.recordWord(word, prevWord)
                         }
@@ -1298,12 +1370,35 @@ class KiebordService : InputMethodService() {
                 if (shiftState == ShiftState.ONE_SHOT) {
                     shiftState = ShiftState.UNSHIFTED
                 }
+                val editorInfo = currentEditorInfoState ?: currentInputEditorInfo
+                val isPass = InputModeResolver.isPasswordField(editorInfo)
+                val isDirect = isPass || InputModeResolver.isDirectCommit(editorInfo) || PredefinedLayouts.isNumberLayout(activeLayout.id)
+
                 val selectedText = ic.getSelectedText(0)
                 if (!selectedText.isNullOrEmpty()) {
                     ic.commitText("", 1)
-                    updateSuggestions()
+                    if (!isDirect) updateSuggestions() else activeSuggestions = emptyList()
                     return
                 }
+
+                if (isDirect) {
+                    composingBuffer.clear()
+                    try {
+                        ic.beginBatchEdit()
+                        val deleted = ic.deleteSurroundingText(1, 0)
+                        ic.endBatchEdit()
+                        if (!deleted || editorInfo?.inputType == InputType.TYPE_NULL) {
+                            sendNavKeyEvent(ic, KeyEvent.KEYCODE_DEL, isSelecting = false)
+                        }
+                    } catch (_: Exception) {
+                        try {
+                            sendNavKeyEvent(ic, KeyEvent.KEYCODE_DEL, isSelecting = false)
+                        } catch (_: Exception) {}
+                    }
+                    activeSuggestions = emptyList()
+                    return
+                }
+
                 if (lastGestureCommittedWord.isNotEmpty()) {
                     ic.deleteSurroundingText(lastGestureCommittedWord.length, 0)
                     lastGestureCommittedWord = ""
@@ -1335,7 +1430,7 @@ class KiebordService : InputMethodService() {
                 }
 
                 val deleted = ic.deleteSurroundingText(1, 0)
-                if (!deleted && (InputModeResolver.isDirectCommit(currentInputEditorInfo) || currentInputEditorInfo?.inputType == InputType.TYPE_NULL)) {
+                if (!deleted && (InputModeResolver.isDirectCommit(editorInfo) || editorInfo?.inputType == InputType.TYPE_NULL)) {
                     sendNavKeyEvent(ic, KeyEvent.KEYCODE_DEL, isSelecting = false)
                 }
                 if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
@@ -1353,10 +1448,14 @@ class KiebordService : InputMethodService() {
                     isBornoEasyKarMode = false
                     bornoEasyTypedCluster = ""
                 }
-                val visual = ActionKeyResolver.resolve(currentInputEditorInfo, shiftState)
+                val editorInfo = currentEditorInfoState ?: currentInputEditorInfo
+                val isPass = InputModeResolver.isPasswordField(editorInfo)
+                val isDirect = isPass || InputModeResolver.isDirectCommit(editorInfo) || PredefinedLayouts.isNumberLayout(activeLayout.id)
+
+                val visual = ActionKeyResolver.resolve(editorInfo, shiftState)
                 if (visual.isAction) {
-                    val actionIdToPerform = if (currentInputEditorInfo?.actionId != 0 && currentInputEditorInfo?.actionId != null) {
-                        currentInputEditorInfo!!.actionId
+                    val actionIdToPerform = if (editorInfo?.actionId != 0 && editorInfo?.actionId != null) {
+                        editorInfo.actionId
                     } else {
                         visual.actionId
                     }
@@ -1370,9 +1469,35 @@ class KiebordService : InputMethodService() {
                         shiftState = ShiftState.ONE_SHOT
                     }
                 }
-                updateSuggestions()
+                if (isDirect) {
+                    activeSuggestions = emptyList()
+                } else {
+                    updateSuggestions()
+                }
             }
             KeyType.SPACE -> {
+                val editorInfo = currentEditorInfoState ?: currentInputEditorInfo
+                val isPass = InputModeResolver.isPasswordField(editorInfo)
+                val isDirect = isPass || InputModeResolver.isDirectCommit(editorInfo) || PredefinedLayouts.isNumberLayout(activeLayout.id)
+
+                if (isDirect) {
+                    composingBuffer.clear()
+                    try {
+                        if (editorInfo?.inputType == InputType.TYPE_NULL) {
+                            sendKeyChar(' ')
+                        } else {
+                            ic.beginBatchEdit()
+                            ic.commitText(" ", 1)
+                            ic.endBatchEdit()
+                        }
+                    } catch (_: Exception) {
+                        try { sendKeyChar(' ') } catch (_: Exception) {}
+                    }
+                    lastSpaceTapTime = SystemClock.uptimeMillis()
+                    activeSuggestions = emptyList()
+                    return
+                }
+
                 if (PredefinedLayouts.isBornoEasy(activeLayout.id)) {
                     isBornoEasyKarMode = false
                     bornoEasyTypedCluster = ""
@@ -1385,7 +1510,7 @@ class KiebordService : InputMethodService() {
                     } else null
                     val committed = shortcutMatch ?: translitMgr.currentTransliteration
                     val cleanCommitted = committed.trim().trimEnd { isPunctuationChar(it) }
-                    if (preferencesState.learnedWordsEnabled && !activeLayout.noLearnedWords && !primaryAlphaLayout.noLearnedWords &&
+                    if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && !activeLayout.noLearnedWords && !primaryAlphaLayout.noLearnedWords &&
                         cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH
                     ) {
                         val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
@@ -1400,7 +1525,7 @@ class KiebordService : InputMethodService() {
                     val shortcutMatch = personalDictionaryRepo.getShortcutMatches(raw, config.dictLang).firstOrNull()?.word
                     val committed = shortcutMatch ?: BengaliBstiEngine.cleanPending(raw)
                     val cleanCommitted = committed.trim()
-                    if (preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                    if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && cleanCommitted.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                         val prevWord = getPrecedingWord(excludeComposing = true).takeIf { it.isNotBlank() }
                         userDictionaryRepo.recordWord(cleanCommitted, prevWord)
                     }
@@ -1549,6 +1674,26 @@ class KiebordService : InputMethodService() {
             else -> ""
         }
         if (charToInsert.isEmpty()) return
+
+        val editorInfo = currentEditorInfoState ?: currentInputEditorInfo
+        val isPass = InputModeResolver.isPasswordField(editorInfo)
+        val isDirect = isPass || InputModeResolver.isDirectCommit(editorInfo) || PredefinedLayouts.isNumberLayout(activeLayout.id)
+        if (isDirect) {
+            finishComposing()
+            try {
+                if (editorInfo?.inputType == InputType.TYPE_NULL) {
+                    for (c in charToInsert) sendKeyChar(c)
+                } else {
+                    ic.beginBatchEdit()
+                    ic.commitText(charToInsert, 1)
+                    ic.endBatchEdit()
+                }
+            } catch (_: Exception) {
+                try { for (c in charToInsert) sendKeyChar(c) } catch (_: Exception) {}
+            }
+            activeSuggestions = emptyList()
+            return
+        }
 
         if (isTransliterationLayout() && (isTransliterableChar(charToInsert) || isBengaliOrModifier(charToInsert) || isExtraCompositionChar(charToInsert))) {
             val translitMgr = getTransliterationManager()
@@ -2489,7 +2634,7 @@ class KiebordService : InputMethodService() {
 
         if (isGestureAlternativeActive && lastGestureCommittedWord.isNotEmpty()) {
             val prevWord = getPrecedingWord(excludeComposing = true)
-            if (preferencesState.learnedWordsEnabled && candidateText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+            if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && candidateText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                 repeat(3) {
                     userDictionaryRepo.recordWord(candidateText, prevWord, isGesture = true)
                 }
@@ -2503,12 +2648,13 @@ class KiebordService : InputMethodService() {
             return
         }
 
-        if (preferencesState.learnedWordsEnabled && candidateText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+        if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && candidateText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
             val prevWord = getPrecedingWord(excludeComposing = true)
             userDictionaryRepo.recordWord(candidateText, prevWord)
         }
         val translitMgr = getTransliterationManager()
-        if (preferencesState.bornoRememberSuggestionChoice &&
+        if (canLearnFromCurrentEditor() &&
+            preferencesState.bornoRememberSuggestionChoice &&
             activeLayout.id == KiebordPreferences.LAYOUT_BN_BORNO &&
             translitMgr.isComposing
         ) {
@@ -2669,7 +2815,9 @@ class KiebordService : InputMethodService() {
         centroids: List<KeyCentroid>,
         keyWidthPx: Float
     ) {
-        if (!preferencesState.gestureTypingEnabled || !activeLayout.isQwertyBased() || (isEnglishLayout() && InputModeResolver.isDirectCommit(currentInputEditorInfo))) return
+        val editorInfo = currentEditorInfoState ?: currentInputEditorInfo
+        if (!preferencesState.gestureTypingEnabled || !activeLayout.isQwertyBased() ||
+            InputModeResolver.isDirectCommit(editorInfo) || InputModeResolver.isPasswordField(editorInfo)) return
         if (trail.size < 2 || centroids.isEmpty()) return
 
         gestureCommitJob?.cancel()
@@ -2694,7 +2842,7 @@ class KiebordService : InputMethodService() {
                     val shouldAutoSpace = preferencesState.autoSpaceAfterSuggestion
                     val textToCommit = if (shouldAutoSpace) "$primaryText " else primaryText
                     val ic = currentInputConnection
-                    if (preferencesState.learnedWordsEnabled && primaryText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
+                    if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && primaryText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
                         val prevWord = getPrecedingWord()
                         userDictionaryRepo.recordWord(primaryText, prevWord, isGesture = false)
                     }
@@ -2752,13 +2900,12 @@ class KiebordService : InputMethodService() {
     }
 
     private fun updateSuggestions() {
+        val editorInfo = currentEditorInfoState ?: currentInputEditorInfo
         if (!preferencesState.suggestionsEnabled || activeLayout.noSuggestions || primaryAlphaLayout.noSuggestions ||
-            !NativeEngine.isAvailable() || isSymbolsMode || PredefinedLayouts.isNumberLayout(activeLayout.id)) {
-            activeSuggestions = emptyList()
-            return
-        }
-
-        if (isEnglishLayout() && (InputModeResolver.isDirectCommit(currentInputEditorInfo) || InputModeResolver.shouldSuppressSuggestions(currentInputEditorInfo))) {
+            !NativeEngine.isAvailable() || isSymbolsMode || PredefinedLayouts.isNumberLayout(activeLayout.id) ||
+            InputModeResolver.isPasswordField(editorInfo) ||
+            InputModeResolver.isDirectCommit(editorInfo) ||
+            InputModeResolver.shouldSuppressSuggestions(editorInfo)) {
             activeSuggestions = emptyList()
             return
         }
