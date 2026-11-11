@@ -209,6 +209,13 @@ fun AboutScreen(
                 description = "Emoji compatibility font renderer and integrated interactive emoji picker."
             ),
             OpenSourceLib(
+                name = "emojilib",
+                author = "Mu-An Chiou (muan) / contributors",
+                license = "MIT",
+                description = "Keyword dictionary for emoji search and exact keyword matching.",
+                url = "https://github.com/muan/emojilib"
+            ),
+            OpenSourceLib(
                 name = "Kotlin & Kotlin Coroutines",
                 author = "JetBrains s.r.o. / Kotlin Foundation",
                 license = "Apache 2.0",

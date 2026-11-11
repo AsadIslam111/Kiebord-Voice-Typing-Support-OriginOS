@@ -74,6 +74,7 @@ data class KiebordPreferences(
     val removeSpaceBeforePunctuation: Boolean = true,
     val traditionalMode: Boolean = false,
     val suggestionBarMode: String = SUGGESTION_BAR_MODE_NORMAL,
+    val emojiSuggestions: Boolean = true,
 
     // Toolbar rearrangement persistence
     val pinnedTools: List<String> = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE"),

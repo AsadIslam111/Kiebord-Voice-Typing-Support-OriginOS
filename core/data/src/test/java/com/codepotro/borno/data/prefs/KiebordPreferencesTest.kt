@@ -17,6 +17,15 @@ class KiebordPreferencesTest {
     }
 
     @Test
+    fun testEmojiSuggestionsDefaultAndMutation() {
+        val prefs = KiebordPreferences()
+        assertEquals(true, prefs.emojiSuggestions)
+
+        val disabledPrefs = prefs.copy(emojiSuggestions = false)
+        assertEquals(false, disabledPrefs.emojiSuggestions)
+    }
+
+    @Test
     fun testPhoneticAutoCorrectDefault() {
         val prefs = KiebordPreferences()
         assertEquals(true, prefs.phoneticAutoCorrect)

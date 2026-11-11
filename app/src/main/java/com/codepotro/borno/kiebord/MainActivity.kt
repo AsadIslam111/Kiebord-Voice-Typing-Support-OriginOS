@@ -689,6 +689,9 @@ fun KiebordSettingsApp(
                             onUpdateSuggestionBarMode = { mode ->
                                 scope.launch { preferencesRepo.updateSuggestionBarMode(mode) }
                             },
+                            onUpdateEmojiSuggestions = { enabled ->
+                                scope.launch { preferencesRepo.updateEmojiSuggestions(enabled) }
+                            },
                             onBack = navigateBack
                         )
                     }

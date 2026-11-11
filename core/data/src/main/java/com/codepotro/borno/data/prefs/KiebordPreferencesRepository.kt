@@ -86,6 +86,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
         val REMOVE_SPACE_BEFORE_PUNCTUATION = booleanPreferencesKey("pref_remove_space_before_punctuation")
         val TRADITIONAL_MODE = booleanPreferencesKey("pref_traditional_mode")
         val SUGGESTION_BAR_MODE = stringPreferencesKey("pref_suggestion_bar_mode")
+        val EMOJI_SUGGESTIONS = booleanPreferencesKey("pref_emoji_suggestions")
 
         val PINNED_TOOLS = stringPreferencesKey("pref_pinned_tools")
         val DRAWER_TOOLS = stringPreferencesKey("pref_drawer_tools")
@@ -192,6 +193,7 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
                 removeSpaceBeforePunctuation = prefs[PreferencesKeys.REMOVE_SPACE_BEFORE_PUNCTUATION] ?: true,
                 traditionalMode = prefs[PreferencesKeys.TRADITIONAL_MODE] ?: false,
                 suggestionBarMode = prefs[PreferencesKeys.SUGGESTION_BAR_MODE] ?: KiebordPreferences.SUGGESTION_BAR_MODE_NORMAL,
+                emojiSuggestions = prefs[PreferencesKeys.EMOJI_SUGGESTIONS] ?: true,
 
                 pinnedTools = run {
                     val defaultPinned = listOf("EMOJI", "TEXT_EDIT", "NUMBER_PAD", "CLIPBOARD", "THEME_TOGGLE")
@@ -543,6 +545,10 @@ class KiebordPreferencesRepository private constructor(private val context: Cont
 
     suspend fun updateSuggestionBarMode(mode: String) {
         context.kiebordDataStore.edit { it[PreferencesKeys.SUGGESTION_BAR_MODE] = mode }
+    }
+
+    suspend fun updateEmojiSuggestions(enabled: Boolean) {
+        context.kiebordDataStore.edit { it[PreferencesKeys.EMOJI_SUGGESTIONS] = enabled }
     }
 
     suspend fun updateToolbarTools(pinned: List<String>, drawer: List<String>) {

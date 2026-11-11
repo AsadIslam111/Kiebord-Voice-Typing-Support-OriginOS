@@ -52,6 +52,7 @@ import com.codepotro.borno.feature.ime.translit.BornoTransliterationManager
 import com.codepotro.borno.feature.ime.translit.GenericTransliterationManager
 import com.codepotro.borno.feature.ime.translit.TransliterationManager
 import com.codepotro.borno.feature.ime.ui.emoji.EmojiFontManager
+import com.codepotro.borno.feature.ime.ui.emoji.EmojiSearchCatalog
 import androidx.compose.ui.unit.dp
 import com.codepotro.borno.data.prefs.KiebordPreferences
 import com.codepotro.borno.data.prefs.KiebordPreferencesRepository
@@ -2636,6 +2637,25 @@ class KiebordService : InputMethodService() {
         val shouldAutoSpace = preferencesState.isAutoSpaceAfterSuggestionEnabled(activeLang)
         val textToCommit = if (shouldAutoSpace) "$candidateText " else candidateText
 
+        if (EmojiSearchCatalog.isEmoji(candidateText)) {
+            val translitMgr = getTransliterationManager()
+            if (translitMgr.isComposing) {
+                translitMgr.commitCustom(textToCommit)
+            } else {
+                ic.commitText(textToCommit, 1)
+                composingBuffer.clear()
+            }
+            serviceScope.launch { preferencesRepo.recordRecentEmoji(candidateText) }
+            if (shiftState == ShiftState.ONE_SHOT) {
+                shiftState = ShiftState.UNSHIFTED
+            }
+            if (shouldAutoSpace) {
+                lastSpaceTapTime = SystemClock.uptimeMillis()
+            }
+            updateSuggestions()
+            return
+        }
+
         if (isGestureAlternativeActive && lastGestureCommittedWord.isNotEmpty()) {
             val prevWord = getPrecedingWord(excludeComposing = true)
             if (canLearnFromCurrentEditor() && preferencesState.learnedWordsEnabled && candidateText.length >= UserDictionaryRepository.MIN_LEARN_LENGTH) {
@@ -3052,6 +3072,7 @@ class KiebordService : InputMethodService() {
                     }
                 }
 
+                insertEmojiSuggestions(list, raw)
                 activeSuggestions = filterAndMarkCandidates(list.take(12))
             } else {
                 if (!preferencesState.nextWordPrediction || hasDoubleOrGreaterSpacing()) {
@@ -3103,7 +3124,7 @@ class KiebordService : InputMethodService() {
 
             val mergedWords = rawMergedWords.map { formatSuggestionCandidateCase(it, prefix) }.distinct()
 
-            activeSuggestions = filterAndMarkCandidates(if (mergedWords.isNotEmpty()) {
+            val candidateList = if (mergedWords.isNotEmpty()) {
                 mergedWords.mapIndexed { i, w ->
                     val isPersonal = personalWords.any { it.equals(w, ignoreCase = true) }
                     SuggestionCandidate(
@@ -3112,13 +3133,20 @@ class KiebordService : InputMethodService() {
                         rawInput = prefix,
                         isLearned = isPersonal
                     )
-                }
+                }.toMutableList()
             } else {
                 val formattedPrefix = formatSuggestionCandidateCase(prefix, prefix)
                 if (config.isValidCandidate(formattedPrefix)) {
-                    listOf(SuggestionCandidate(text = formattedPrefix, isPrimary = true))
-                } else emptyList()
-            })
+                    mutableListOf(SuggestionCandidate(text = formattedPrefix, isPrimary = true))
+                } else mutableListOf()
+            }
+
+            val isEnglishLayout = config.dictLang == "en" || activeLayout.language == "en" || (!isBanglaLayout(activeLayout) && activeLayout.id.startsWith("en"))
+            if (isEnglishLayout) {
+                insertEmojiSuggestions(candidateList, prefix)
+            }
+
+            activeSuggestions = filterAndMarkCandidates(candidateList)
         } else {
             if (!preferencesState.nextWordPrediction || hasDoubleOrGreaterSpacing()) {
                 activeSuggestions = emptyList()
@@ -3141,6 +3169,19 @@ class KiebordService : InputMethodService() {
                 SuggestionCandidate(text = word, isPrimary = idx == 0)
             })
         }
+    }
+
+    private fun insertEmojiSuggestions(
+        candidateList: MutableList<SuggestionCandidate>,
+        rawPrefix: String
+    ) {
+        val isScrollable = preferencesState.suggestionBarMode == KiebordPreferences.SUGGESTION_BAR_MODE_SCROLLABLE
+        EmojiSearchCatalog.insertEmojiSuggestions(
+            candidateList = candidateList,
+            rawPrefix = rawPrefix,
+            isScrollable = isScrollable,
+            emojiSuggestionsEnabled = preferencesState.emojiSuggestions
+        )
     }
 
     private fun sendNavKeyEvent(

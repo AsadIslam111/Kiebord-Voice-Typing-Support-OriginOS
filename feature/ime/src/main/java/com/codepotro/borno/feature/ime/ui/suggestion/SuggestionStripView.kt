@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.feature.ime.ui.suggestion
+package com.codepotro.borno.feature.ime.ui.suggestion
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -47,7 +47,8 @@ data class SuggestionCandidate(
     val text: String,
     val isPrimary: Boolean = false,
     val rawInput: String? = null,
-    val isLearned: Boolean = false
+    val isLearned: Boolean = false,
+    val isEmoji: Boolean = false
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -138,18 +139,48 @@ fun SuggestionStripView(
                 val availableWithBtn = (totalWidthPx - expandBtnWidthPx).coerceAtLeast(0f)
                 val availableWithoutBtn = totalWidthPx.coerceAtLeast(0f)
 
-                // 1. Try 3 candidates
-                if (candidates.size >= 3) {
-                    val pool3 = candidates.take(3)
-                    val needsBtn = candidates.size > 3 || isExpanded
-                    val availWidth = if (needsBtn && onExpandToggle != null) availableWithBtn else availableWithoutBtn
-                    val slotWidth3 = (availWidth - 2 * dividerWidthPx) / 3f
-                    if (slotWidth3 > 0f && pool3.all { requiredWidth(it) <= slotWidth3 }) {
-                        return@remember pool3
+                var hasEmoji = false
+                val checkLimit = minOf(candidates.size, 4)
+                for (i in 0 until checkLimit) {
+                    if (candidates[i].isEmoji) {
+                        hasEmoji = true
+                        break
                     }
                 }
 
-                // 2. Try 2 candidates
+                if (hasEmoji && candidates.size >= 4) {
+                    val pool4 = candidates.take(4)
+                    val needsBtn4 = candidates.size > 4 || isExpanded
+                    val availWidth4 = if (needsBtn4 && onExpandToggle != null) availableWithBtn else availableWithoutBtn
+                    val slotWidth4 = (availWidth4 - 3 * dividerWidthPx) / 4f
+                    if (slotWidth4 > 0f && pool4.all { requiredWidth(it) <= slotWidth4 }) {
+                        return@remember pool4
+                    }
+                }
+
+                if (candidates.size >= 3) {
+                    val pool3 = if (candidates.size >= 4 &&
+                        candidates[3].isEmoji &&
+                        !candidates[2].isEmoji
+                    ) {
+                        listOf(candidates[0], candidates[1], candidates[3])
+                    } else {
+                        candidates.take(3)
+                    }
+                    val needsBtn3 = candidates.size > 3 || isExpanded
+                    val availWidth3 = if (needsBtn3 && onExpandToggle != null) availableWithBtn else availableWithoutBtn
+                    val slotWidth3 = (availWidth3 - 2 * dividerWidthPx) / 3f
+                    if (slotWidth3 > 0f && pool3.all { requiredWidth(it) <= slotWidth3 }) {
+                        return@remember pool3
+                    }
+                    if (pool3 != candidates.take(3)) {
+                        val fallback3 = candidates.take(3)
+                        if (slotWidth3 > 0f && fallback3.all { requiredWidth(it) <= slotWidth3 }) {
+                            return@remember fallback3
+                        }
+                    }
+                }
+
                 val pool2 = if (candidates.size >= 3 && candidates[2].isPrimary) {
                     listOf(candidates[0], candidates[2])
                 } else {
@@ -162,7 +193,6 @@ fun SuggestionStripView(
                     return@remember pool2
                 }
 
-                // 3. Fallback to 1 candidate (always prioritize primary candidate)
                 val primary = candidates.firstOrNull { it.isPrimary } ?: candidates.first()
                 listOf(primary)
             }

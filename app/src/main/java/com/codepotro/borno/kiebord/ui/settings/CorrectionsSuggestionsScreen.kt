@@ -1,4 +1,4 @@
-﻿package com.codepotro.borno.kiebord.ui.settings
+package com.codepotro.borno.kiebord.ui.settings
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -65,6 +65,7 @@ fun CorrectionsSuggestionsScreen(
     onUpdateAutoSpaceAfterPunctuation: (Boolean) -> Unit = {},
     onUpdateRemoveSpaceBeforePunctuation: (Boolean) -> Unit = {},
     onUpdateSuggestionBarMode: (String) -> Unit = {},
+    onUpdateEmojiSuggestions: (Boolean) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
@@ -178,8 +179,16 @@ fun CorrectionsSuggestionsScreen(
                     title = "Phonetic Auto Correct",
                     subtitle = "Automatically correct common phonetic misspellings",
                     checked = preferences.phoneticAutoCorrect,
-                    position = GroupPosition.BOTTOM,
+                    position = GroupPosition.MIDDLE,
                     onCheckedChange = onUpdatePhoneticAutoCorrect
+                )
+
+                SettingsToggleItem(
+                    title = "Emoji Suggestions",
+                    subtitle = "Show matching emoji candidates while typing",
+                    checked = preferences.emojiSuggestions,
+                    position = GroupPosition.BOTTOM,
+                    onCheckedChange = onUpdateEmojiSuggestions
                 )
             }
         }
