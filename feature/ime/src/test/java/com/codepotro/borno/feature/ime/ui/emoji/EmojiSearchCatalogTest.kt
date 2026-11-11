@@ -215,5 +215,42 @@ class EmojiSearchCatalogTest {
         val candidateTexts = translitCandidates.map { it.text }
         assertEquals(listOf("বাংলাদেশ", "bangladesh", "🇧🇩"), candidateTexts.take(3))
     }
+
+    @Test
+    fun testDeleteLengthBeforeCursor() {
+        assertEquals(0, EmojiSearchCatalog.getDeleteLengthBeforeCursor(null))
+        assertEquals(0, EmojiSearchCatalog.getDeleteLengthBeforeCursor(""))
+        assertEquals(1, EmojiSearchCatalog.getDeleteLengthBeforeCursor("a"))
+        assertEquals(1, EmojiSearchCatalog.getDeleteLengthBeforeCursor("hello"))
+        assertEquals(1, EmojiSearchCatalog.getDeleteLengthBeforeCursor(" "))
+        assertEquals(1, EmojiSearchCatalog.getDeleteLengthBeforeCursor("বাংলাদেশ"))
+
+        // Simple surrogate pair: 😀 (U+1F600, 2 UTF-16 code units)
+        assertEquals(2, EmojiSearchCatalog.getDeleteLengthBeforeCursor("😀"))
+        assertEquals(2, EmojiSearchCatalog.getDeleteLengthBeforeCursor("hello 😀"))
+
+        // Variation selector: 🛏️ (3 UTF-16 code units)
+        assertEquals(3, EmojiSearchCatalog.getDeleteLengthBeforeCursor("🛏️"))
+        assertEquals(3, EmojiSearchCatalog.getDeleteLengthBeforeCursor("hello 🛏️"))
+
+        // Skin tone modifier: 👍🏽 (4 UTF-16 code units)
+        assertEquals(4, EmojiSearchCatalog.getDeleteLengthBeforeCursor("👍🏽"))
+        assertEquals(4, EmojiSearchCatalog.getDeleteLengthBeforeCursor("hello 👍🏽"))
+
+        // Regional Indicator Flag: 🇧🇩 (4 UTF-16 code units)
+        assertEquals(4, EmojiSearchCatalog.getDeleteLengthBeforeCursor("🇧🇩"))
+        assertEquals(4, EmojiSearchCatalog.getDeleteLengthBeforeCursor("hello 🇧🇩"))
+
+        // Multiple flags: 🇧🇩🇮🇳 (deletes India flag, leaving Bangladesh flag)
+        assertEquals(4, EmojiSearchCatalog.getDeleteLengthBeforeCursor("🇧🇩🇮🇳"))
+
+        // ZWJ Sequences
+        assertEquals(5, EmojiSearchCatalog.getDeleteLengthBeforeCursor("👨‍🏫"))
+        assertEquals(5, EmojiSearchCatalog.getDeleteLengthBeforeCursor("hello 👨‍🏫"))
+        assertEquals(11, EmojiSearchCatalog.getDeleteLengthBeforeCursor("👨‍👩‍👧‍👦"))
+
+        // Keycap sequence: #️⃣ (3 UTF-16 code units)
+        assertEquals(3, EmojiSearchCatalog.getDeleteLengthBeforeCursor("#️⃣"))
+    }
 }
 

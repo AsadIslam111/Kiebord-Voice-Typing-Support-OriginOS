@@ -1390,7 +1390,9 @@ class KiebordService : InputMethodService() {
                     composingBuffer.clear()
                     try {
                         ic.beginBatchEdit()
-                        val deleted = ic.deleteSurroundingText(1, 0)
+                        val textBefore = ic.getTextBeforeCursor(16, 0)
+                        val deleteLen = if (!textBefore.isNullOrEmpty()) EmojiSearchCatalog.getDeleteLengthBeforeCursor(textBefore) else 1
+                        val deleted = ic.deleteSurroundingText(deleteLen, 0)
                         ic.endBatchEdit()
                         if (!deleted || editorInfo?.inputType == InputType.TYPE_NULL) {
                             sendNavKeyEvent(ic, KeyEvent.KEYCODE_DEL, isSelecting = false)
@@ -1434,7 +1436,9 @@ class KiebordService : InputMethodService() {
                     return
                 }
 
-                val deleted = ic.deleteSurroundingText(1, 0)
+                val textBefore = ic.getTextBeforeCursor(16, 0)
+                val deleteLen = if (!textBefore.isNullOrEmpty()) EmojiSearchCatalog.getDeleteLengthBeforeCursor(textBefore) else 1
+                val deleted = ic.deleteSurroundingText(deleteLen, 0)
                 if (!deleted && (InputModeResolver.isDirectCommit(editorInfo) || editorInfo?.inputType == InputType.TYPE_NULL)) {
                     sendNavKeyEvent(ic, KeyEvent.KEYCODE_DEL, isSelecting = false)
                 }
@@ -1861,7 +1865,9 @@ class KiebordService : InputMethodService() {
         }
 
         // 5. Normal continuous deletion
-        ic.deleteSurroundingText(1, 0)
+        val textBefore = ic.getTextBeforeCursor(16, 0)
+        val deleteLen = if (!textBefore.isNullOrEmpty()) EmojiSearchCatalog.getDeleteLengthBeforeCursor(textBefore) else 1
+        ic.deleteSurroundingText(deleteLen, 0)
         updateSuggestions()
     }
 
@@ -2500,7 +2506,9 @@ class KiebordService : InputMethodService() {
                 if (!selected.isNullOrEmpty()) {
                     ic.commitText("", 1)
                 } else {
-                    ic.deleteSurroundingText(1, 0)
+                    val textBefore = ic.getTextBeforeCursor(16, 0)
+                    val deleteLen = if (!textBefore.isNullOrEmpty()) EmojiSearchCatalog.getDeleteLengthBeforeCursor(textBefore) else 1
+                    ic.deleteSurroundingText(deleteLen, 0)
                 }
                 true
             }

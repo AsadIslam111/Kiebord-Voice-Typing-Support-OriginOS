@@ -260,5 +260,108 @@ object EmojiSearchCatalog {
         }
         return result
     }
+
+    fun getDeleteLengthBeforeCursor(text: CharSequence?): Int {
+        if (text == null || text.isEmpty()) return 0
+
+        val len = text.length
+        val end = len
+        var i = len
+
+        val lastCodePoint = Character.codePointBefore(text, i)
+        val lastCharCount = Character.charCount(lastCodePoint)
+        i -= lastCharCount
+
+        if (lastCodePoint < 0x2000 && lastCodePoint != 0x00A9 && lastCodePoint != 0x00AE) {
+            return 1
+        }
+
+        if (lastCodePoint == 0x20E3 && i > 0) {
+            var prevCp = Character.codePointBefore(text, i)
+            if (prevCp == 0xFE0F) {
+                i -= Character.charCount(prevCp)
+                if (i > 0) {
+                    prevCp = Character.codePointBefore(text, i)
+                }
+            }
+            if ((prevCp in '0'.code..'9'.code) || prevCp == '#'.code || prevCp == '*'.code) {
+                i -= Character.charCount(prevCp)
+                return end - i
+            }
+        }
+
+        if (lastCodePoint == 0xE007F && i > 0) {
+            while (i > 0) {
+                val cp = Character.codePointBefore(text, i)
+                if (cp in 0xE0020..0xE007E) {
+                    i -= Character.charCount(cp)
+                } else if (cp == 0x1F3F4) {
+                    i -= Character.charCount(cp)
+                    return end - i
+                } else {
+                    break
+                }
+            }
+        }
+
+        if (lastCodePoint in 0x1F1E6..0x1F1FF) {
+            var riCount = 1
+            var tempI = i
+            while (tempI > 0) {
+                val prevCp = Character.codePointBefore(text, tempI)
+                if (prevCp in 0x1F1E6..0x1F1FF) {
+                    riCount++
+                    tempI -= Character.charCount(prevCp)
+                } else {
+                    break
+                }
+            }
+            return if (riCount % 2 == 0) {
+                Character.charCount(lastCodePoint) * 2
+            } else {
+                Character.charCount(lastCodePoint)
+            }
+        }
+
+        var currentCp = lastCodePoint
+        while (i > 0) {
+            val cp = Character.codePointBefore(text, i)
+            val cpChars = Character.charCount(cp)
+
+            if (cp in 0x1F3FB..0x1F3FF) {
+                i -= cpChars
+                currentCp = cp
+                continue
+            }
+
+            if (cp == 0xFE0F || cp == 0xFE0E) {
+                i -= cpChars
+                currentCp = cp
+                continue
+            }
+
+            if (cp == 0x200D) {
+                i -= cpChars
+                if (i > 0) {
+                    val prevCp = Character.codePointBefore(text, i)
+                    i -= Character.charCount(prevCp)
+                    currentCp = prevCp
+                    continue
+                } else {
+                    break
+                }
+            }
+
+            if (currentCp in 0x1F3FB..0x1F3FF || currentCp == 0xFE0F || currentCp == 0xFE0E) {
+                i -= cpChars
+                currentCp = cp
+                continue
+            }
+
+            break
+        }
+
+        return (end - i).coerceAtLeast(1)
+    }
 }
 
