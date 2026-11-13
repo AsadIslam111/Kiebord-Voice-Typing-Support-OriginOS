@@ -82,6 +82,8 @@ class KiebordService : InputMethodService() {
     private var preferencesState by mutableStateOf(KiebordPreferences())
     private var currentEditorInfoState by mutableStateOf<EditorInfo?>(null)
     private lateinit var voiceInputManager: VoiceInputManager
+    private var pendingVoiceCommit: String? = null
+    private var pendingVoiceCommitTime = 0L
 
     private val lifecycleOwner = KeyboardViewLifecycleOwner()
     private var transliterationManager: TransliterationManager =
@@ -342,10 +344,7 @@ class KiebordService : InputMethodService() {
                 currentInputConnection?.setComposingText(text, 1)
             }
             onFinalResult = { text ->
-                currentInputConnection?.let { ic ->
-                    ic.commitText("$text ", 1)
-                }
-                updateSuggestions()
+                commitVoiceText(text)
             }
             onSpeechDismissed = {
                 currentInputConnection?.finishComposingText()
@@ -728,6 +727,13 @@ class KiebordService : InputMethodService() {
                 clipboardManager.syncFromSystemClipboard(this@KiebordService)
             }
         }
+        commitPendingVoiceText()
+        if (pendingVoiceCommit != null || VoiceInputManager.pendingStaticVoiceResult != null) {
+            serviceScope.launch(Dispatchers.Main) {
+                delay(60)
+                commitPendingVoiceText()
+            }
+        }
     }
 
     override fun onWindowHidden() {
@@ -887,6 +893,81 @@ class KiebordService : InputMethodService() {
                 updateAutoCapitalizationState()
             }
         }
+        commitPendingVoiceText()
+        if (pendingVoiceCommit != null || VoiceInputManager.pendingStaticVoiceResult != null) {
+            serviceScope.launch(Dispatchers.Main) {
+                delay(60)
+                commitPendingVoiceText()
+            }
+        }
+    }
+
+    private fun commitVoiceText(text: String) {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return
+        val textToCommit = if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) trimmed else "$trimmed "
+        pendingVoiceCommit = textToCommit
+        pendingVoiceCommitTime = SystemClock.uptimeMillis()
+
+        // 1. Force the soft keyboard to show so window focus & InputConnection are restored
+        try {
+            requestShowSelf(0)
+        } catch (_: Exception) {}
+
+        // 2. If the input view is already actively shown and connected, commit immediately
+        if (isInputViewShown && currentInputConnection != null) {
+            if (commitPendingVoiceText()) return
+        }
+
+        // 3. Retry loop: wait for target window focus and input view to be ready
+        serviceScope.launch(Dispatchers.Main) {
+            for (i in 1..30) {
+                delay(60)
+                if (pendingVoiceCommit == null && VoiceInputManager.pendingStaticVoiceResult == null) break
+                if (isInputViewShown && currentInputConnection != null) {
+                    if (commitPendingVoiceText()) break
+                }
+            }
+            // 4. Fallback: if after 1.8s isInputViewShown was not marked shown, attempt commit anyway
+            if ((pendingVoiceCommit != null || VoiceInputManager.pendingStaticVoiceResult != null) && currentInputConnection != null) {
+                commitPendingVoiceText()
+            }
+        }
+    }
+
+    private fun commitPendingVoiceText(): Boolean {
+        // Discard stale voice text older than 10 seconds
+        if (pendingVoiceCommitTime > 0L && (SystemClock.uptimeMillis() - pendingVoiceCommitTime) > 10000L) {
+            pendingVoiceCommit = null
+            VoiceInputManager.consumePendingVoiceResult()
+            return false
+        }
+
+        val pending = pendingVoiceCommit ?: VoiceInputManager.consumePendingVoiceResult()?.let {
+            if (it.endsWith(" ") || it.endsWith("\n")) it else "$it "
+        } ?: return false
+
+        val ic = currentInputConnection ?: return false
+
+        val success = try {
+            ic.beginBatchEdit()
+            val res = ic.commitText(pending, 1)
+            ic.endBatchEdit()
+            res
+        } catch (_: Exception) {
+            false
+        }
+
+        if (success) {
+            pendingVoiceCommit = null
+            pendingVoiceCommitTime = 0L
+            VoiceInputManager.consumePendingVoiceResult()
+            updateSuggestions()
+            return true
+        } else {
+            pendingVoiceCommit = pending
+        }
+        return false
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {

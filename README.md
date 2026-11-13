@@ -1,140 +1,103 @@
-# Kiebord (Borno Community Edition)
+# Kiebord (Vivo & OriginOS Edition with Voice Typing)
+
 <p align="center">
-<img width="128" height="128" alt="Kiebord" src="https://github.com/user-attachments/assets/346d3099-7f42-462a-931c-959a216ebccc" />
+  <img width="128" height="128" alt="Kiebord" src="https://github.com/user-attachments/assets/346d3099-7f42-462a-931c-959a216ebccc" />
 </p>
 
+<p align="center">
+  <b>A customized build of Kiebord tailored specifically for Vivo OriginOS, Xiaomi HyperOS, and Chinese ROM devices with 100% working Voice Typing & Speech-to-Text.</b>
+</p>
 
-<table>
-  <tr>
-<td><img width="512" alt="borno-phonetic" src="https://github.com/user-attachments/assets/35c84108-40bb-4f04-99e7-04c9f9d58019" /></td>
-<td><img width="512" alt="national" src="https://github.com/user-attachments/assets/ce2f1910-4eb1-4d67-8f2b-b00b0153ae72" /></td>
-  </tr>
-</table>
-
-[![CI Build](https://github.com/JayedAhsan/Kiebord/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/JayedAhsan/Kiebord/actions/workflows/publish.yml)
-[![Latest Release](https://img.shields.io/github/v/release/JayedAhsan/Kiebord?include_prereleases&label=Latest%20Release)](https://github.com/JayedAhsan/Kiebord/releases)
-[![Android](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2024%2B)-blue)](https://developer.android.com)
-[![Rust](https://img.shields.io/badge/Engine-Rust%20NDK-orange)](https://www.rust-lang.org)
-[![Kotlin](https://img.shields.io/badge/UI-Jetpack%20Compose-purple)](https://developer.android.com/jetpack/compose)
-[![License](https://img.shields.io/badge/License-GPL%203.0-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-
-A free, open-source input method editor (IME) for Android built with Jetpack Compose and a native Rust engine.
+<p align="center">
+  <a href="#-quick-setup-for-vivo--originos-users">Quick Setup</a> •
+  <a href="#-why-this-fork-exists">Why This Project Exists</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-download-apk">Download APK</a> •
+  <a href="docs/VIVO_ORIGINOS_VOICE_GUIDE.md">Full Setup Guide</a>
+</p>
 
 ---
 
-## Overview
+## 🌟 Why This Project Exists
 
-Kiebord is the result of over 6 years of development on Borno Keyboard, heavily relying on its foundational transliteration architecture while introducing improved gesture typing, spatial touch modeling, and optimized runtime performance.
+On **Vivo OriginOS** (and other Chinese ROMs like Xiaomi HyperOS CN, Honor MagicOS CN, Oppo ColorOS):
+1. **Background Voice Services are Blocked**: OriginOS aggressively prevents third-party keyboards from connecting to Google's background speech recognizer, resulting in immediate failures (`Error 5: Client Error` or silent drops).
+2. **Missing AOSP Voice Settings**: Vivo replaces standard Android voice settings with proprietary Chinese assistants (Jovi / BlueLM), leaving Google voice typing broken out of the box.
+3. **IME Window Loss on Popup**: Standard speech dialogs cause the soft keyboard to lose focus, dropping recognized text before it can reach the text field.
 
-The codebase represents an extensive modernization from legacy Java and C++ into modern Kotlin, Jetpack Compose, and a pure Rust core (`borno-engine`), with every migration step manually audited, refined, and verified.
-
----
-
-## Features
-
-Kiebord comes with the essential features you need for everyday typing, without bloat or complicated configuration menus. Additional capabilities will be implemented gradually.
-
-### Supported Layouts
-
-| Language | Layouts |
-|---|---|
-| Bangla | Borno Phonetic, Avro Phonetic, Borno Easy, National (BSTI), Probhat, Khipro |
-| English | QWERTY, Borno Math |
-| Arabic | Arabic (with dedicated Harakat / diacritics row) |
-| Turkish *(Extension)* | Türkçe (Q), Türkçe (Compact), Türkçe (F) |
-
-*Additional languages, layouts, and dictionaries can be installed as `.bornolang` packs via **Settings > Language Extensions** (available through the in-app catalog or sideloaded from device storage). Custom layouts can also be added by placing JSON layout files in `assets/layouts/`.*
-
-### Input & Editing
-* **Gesture Typing**: Swipe-to-type support across supported layouts.
-* **Next-Word Predictions**: On-device candidate completions and next-word suggestions.
-* **Spacebar & Backspace Gestures**: Slide across the spacebar to navigate the cursor; slide left from the backspace key to quickly erase words.
-* **Clipboard Manager**: History of copied text with pin/unpin support.
-* **Text Editing Panel**: Dedicated directional arrows, text selection handles, copy, cut, paste, undo, and redo.
-* **Emoji Picker**: Built-in emoji panel with search (WIP) and category tabs.
-* **Voice Typing**: Direct speech-to-text input via the system voice recognizer.
-* **One-Handed Mode & Resizing**: Toggleable left/right one-handed modes and adjustable keyboard height.
-* **Haptic Feedback**: Keypress vibration support.
-* **Themes**: Themes curated from Borno Keyboard.
-* **Straightforward Settings**: Clean, uncluttered preference screens without confusing toggles.
+### How this build solves it:
+* 🚀 **Foreground Proxy Engine (`VoiceRecognitionActivity`)**: Bypasses 100% of OriginOS background restrictions by running recognition in a transparent foreground activity with direct ActivityManager priority.
+* 🔄 **Smart Asynchronous Commit Queue**: Guarantees that speech text is buffered and committed directly into the text field even across asynchronous window focus changes.
+* 🎙️ **Dual Mode Flexibility**: Choose between **Google Voice Dialog (Popup)** (zero setup needed) or **Continuous Inline Typing** with automatic fallback.
+* ⚡ **Pre-configured Google Speech Component Discovery**: Directly binds to `com.google.android.tts` (`GoogleTTSRecognitionService`) and `com.google.android.googlequicksearchbox`.
+* 📦 **Lightweight ARM64 Build**: Stripped of legacy 32-bit binaries, optimized with R8/ProGuard down to just **~7.8 MB**.
 
 ---
 
-## Project Structure
+## 📱 Quick Setup for Vivo & OriginOS Users
 
-```
-kiebord/
-├── app/                  # Application entry point, onboarding, and settings UI
-├── core/
-│   ├── common/           # Shared models (KeyDef, KeyType, etc.)
-│   ├── data/             # Preferences datastore and layout repositories
-│   └── theme/            # Theme models and theme parser
-├── feature/
-│   └── ime/              # InputMethodService implementation, Compose canvas, and JNI bindings
-├── native/
-│   └── borno-engine/     # Rust native library (spatial model, trie dictionaries, BornoTSF)
-└── docs/                 # Layout and theme development specifications
-```
+### Recommended Method: Google Voice Dialog (Zero Setup)
+Inside Kiebord settings:
+1. Open **Kiebord Settings** $\to$ **Voice Typing**.
+2. Select **Google Voice Dialog (Popup)** or leave it on **Auto**.
+3. Done! Tap the microphone icon on the keyboard anytime and speak.
 
 ---
 
-## Building from Source
+### For Continuous Inline Dictation (Toolbar Mode)
+If you prefer voice typing directly on the keyboard toolbar without any popup:
 
-### Prerequisites
-* Android Studio Ladybug / Meerkat or Android SDK command-line tools
-* JDK 17 or 21
-* Android SDK Platform 35
-* Android NDK `26.2.11394342`
-* Rust 1.75+ with `cargo-ndk` (only required if modifying native Rust sources)
+1. **Install Google Speech Services**:
+   - Install **Speech Recognition and Synthesis by Google** (`com.google.android.tts`) and **Google** from Google Play Store.
+2. **Set Default Assist App**:
+   - Go to phone **Settings** $\to$ **Apps** $\to$ **Default apps** $\to$ **Assist app & voice input**.
+   - Set **Default assist app** to **Google**.
+3. **Grant Background Permissions**:
+   - In phone **Settings** $\to$ **Battery** $\to$ **Background power consumption management**, set both **Kiebord** and **Google** to **High background power consumption**.
+   - In **Permission management** $\to$ **Autostart**, turn **ON** both **Autostart** and **Associated startup** for Kiebord.
 
-### Build Commands
+> 📖 **Full step-by-step guide with screenshots & ADB commands:** See [docs/VIVO_ORIGINOS_VOICE_GUIDE.md](docs/VIVO_ORIGINOS_VOICE_GUIDE.md).
 
-Clone the repository:
+---
+
+## 📥 Download APK
+
+| Build | Architecture | Size | Link |
+| :--- | :--- | :--- | :--- |
+| **Release APK** | `arm64-v8a` | **~7.86 MB** | [app-release.apk](app/build/outputs/apk/release/app-release.apk) |
+
+---
+
+## ✨ General Kiebord Features
+
+* **Supported Layouts**:
+  * **Bangla**: Borno Phonetic, Avro Phonetic, Borno Easy, National (BSTI), Probhat, Khipro
+  * **English**: QWERTY, Borno Math
+  * **Arabic**: Arabic with dedicated Harakat/diacritics row
+  * **Custom extensions**: `.bornolang` pack support
+* **Native Rust Engine**: High-performance spatial touch modeling and dictionary lookup (`borno-engine`).
+* **Gesture Typing**: Glide typing and word predictions.
+* **Smart Gestures**: Slide spacebar to navigate cursor, slide backspace to delete words.
+* **Clipboard Manager & Text Editing Panel**: Built-in clipboard history and precision cursor arrows.
+* **Privacy-First**: No internet access required for regular typing, 100% on-device keyboard logic.
+
+---
+
+## 🛠️ Building from Source
+
 ```bash
-git clone https://github.com/JayedAhsan/Kiebord.git
+# Clone this repository
+git clone https://github.com/AsadIslam111/Kiebord.git
 cd Kiebord
-```
 
-Build the debug APK:
-```bash
-./gradlew assembleDebug
-```
-
-Build the release APK:
-```bash
+# Build the Release APK (arm64-v8a)
 ./gradlew assembleRelease
 ```
-
-Build the release Android App Bundle (for Google Play):
-```bash
-./gradlew bundleRelease
-```
-
-Binary dictionary assets (`.dict`) are tracked in the repository. To compile the native Rust engine (`borno-engine`) into `libborno_engine.so`:
-
-```bash
-cd native/borno-engine
-cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ../../feature/ime/src/main/jniLibs build --release
-```
+Output APK location: `app/build/outputs/apk/release/app-release.apk`.
 
 ---
 
-## Support & Sponsor
+## 📜 Credits & License
 
-If you find Kiebord helpful, you can support its ongoing maintenance and development:
-* [Support Kiebord](https://jayed.me/support-kiebord)
-
----
-
-## Organization & Maintainer
-
-* **Organization**: [Codepotro](https://codepotro.com)
-* **Lead Maintainer**: [Jayed Ahsan Saad](https://jayed.me) ([@JayedAhsan](https://github.com/JayedAhsan))
-
----
-
-## License
-
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. See the `LICENSE` file for the full license text.
-
-All contributions are subject to the [Contributor License Agreement (CLA)](CLA.md), granting **Codepotro** dual-licensing rights for the Borno keyboard ecosystem.
+* Forked from the upstream project [Kiebord](https://github.com/JayedAhsan/Kiebord) by [Jayed Ahsan Saad](https://jayed.me) / [Codepotro](https://codepotro.com).
+* Licensed under the **GNU General Public License v3.0 (GPL-3.0)**.

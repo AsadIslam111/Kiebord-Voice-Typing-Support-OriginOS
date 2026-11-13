@@ -113,6 +113,8 @@ data class KiebordPreferences(
 
     companion object {
         const val VOICE_PROVIDER_GOOGLE = "google"
+        const val VOICE_PROVIDER_INLINE = "inline"
+        const val VOICE_PROVIDER_POPUP = "popup"
 
         const val THEME_DEFAULT_DARK = "default_dark"
         const val THEME_AMOLED_BLACK = "amoled_black"

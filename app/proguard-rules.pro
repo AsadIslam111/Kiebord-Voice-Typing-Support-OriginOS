@@ -11,6 +11,7 @@
 # Keep Activities, Services, and components launched by intent or reflection
 -keep class com.codepotro.borno.kiebord.MainActivity { *; }
 -keep class com.codepotro.borno.feature.ime.KiebordService { *; }
+-keep class com.codepotro.borno.feature.ime.voice.** { *; }
 -keep class androidx.emoji2.emojipicker.BundledEmojiListLoader { *; }
 
 # Keep Kotlinx Serialization data models
