@@ -1,82 +1,92 @@
-# Kiebord (Vivo OriginOS Voice Typing Edition)
+# Kiebord – OriginOS Voice Typing Edition
 
 <p align="center">
   <img width="128" height="128" alt="Kiebord" src="https://github.com/user-attachments/assets/346d3099-7f42-462a-931c-959a216ebccc" />
 </p>
 
 <p align="center">
-  <b>A specialized fork of Kiebord customized specifically for Vivo OriginOS (and Chinese ROMs) with 100% working Voice Typing & Speech-to-Text.</b>
+  <b>A customized version of Kiebord with working voice typing support for Vivo OriginOS and other Chinese ROMs.</b>
 </p>
 
 ---
 
-## 📌 About This Project
+## About
 
-This repository is a customized side-project of **Kiebord** tailored for **Vivo OriginOS** users. 
+Kiebord – OriginOS Edition is a specialized fork of [Kiebord](https://github.com/JayedAhsan/Kiebord), designed to bring reliable voice typing to Vivo OriginOS and other Chinese ROMs.
 
-On OriginOS, third-party keyboards fail to use voice typing because the system restricts background services, lacks standard AOSP voice input menus, and delegates voice commands to Jovi/BlueLM. 
+Since these systems often restrict standard Android voice input services, third-party keyboards may not support voice typing properly.
 
-This build solves those issues completely by integrating a **Foreground Recognition Proxy (`VoiceRecognitionActivity`)** and a **Smart Text-Commit Loop**, allowing seamless speech-to-text on OriginOS without missing or dropped text.
+This version addresses that limitation with a **Foreground Recognition Proxy** and a **Smart Text-Commit Loop**, enabling speech-to-text directly from the keyboard.
 
-> ℹ️ *For the full keyboard features, layouts (Bangla Phonetic, Avro, Probhat, English, Arabic), themes, and general documentation, please visit the [Official Main Repository](https://github.com/JayedAhsan/Kiebord).*
+For keyboard layouts, themes, and other features, visit the [Official Kiebord Repository](https://github.com/JayedAhsan/Kiebord).
 
----
+## Voice Typing Setup
 
-## 🚀 How to Set Up & Enable Voice Typing on Vivo OriginOS
+Two voice typing modes are available.
 
-There are two ways to use voice typing in this build:
+### 1. Google Voice Dialog (Recommended)
 
-### Method 1: Google Voice Dialog / Popup (Zero Setup Required) ⭐ *Easiest*
-1. Open **Kiebord Settings** $\to$ **Voice Typing**.
-2. Under **Voice Typing Engine**, choose **Google Voice Dialog (Popup)** (or leave it on **Auto**).
-3. Tap the microphone icon on your keyboard, speak, and your text will be inserted directly into the active field. No permission tweaks or ADB needed!
+The easiest option. No additional configuration or ADB commands required.
 
----
+1. Open **Kiebord Settings → Voice Typing**.
+2. Select **Google Voice Dialog (Popup)** or leave it on **Auto**.
+3. Tap the microphone icon and start speaking.
 
-### Method 2: Inline Dictation (Directly on the Keyboard Bar)
-If you prefer continuous voice typing directly on the keyboard toolbar without a popup dialog, configure these settings:
+Your recognized text will be inserted into the active input field.
 
-#### 1. Required Apps
-Make sure these two Google apps are installed on your device (from Play Store):
-* **Speech Recognition and Synthesis by Google** (`com.google.android.tts`)
-* **Google** (`com.google.android.googlequicksearchbox`)
+### 2. Inline Dictation
 
-#### 2. System Permissions & Battery Settings
-Because OriginOS aggressively freezes background apps, grant these permissions:
+For continuous voice recognition directly from the keyboard toolbar.
 
-| Setting | Location in OriginOS Settings | Configuration |
-| :--- | :--- | :--- |
-| **Kiebord Autostart** | Settings $\to$ Apps $\to$ Permission management $\to$ Autostart | Turn **ON** |
-| **Associated Startup** | Inside Autostart $\to$ Associated startup | Turn **ON** for Kiebord |
-| **Background Power** | Settings $\to$ Battery $\to$ Background power consumption | Set both **Kiebord** and **Google** to **High background power consumption** |
-| **Default Assist App** | Settings $\to$ Apps $\to$ Default apps $\to$ Assist app & voice input | Set to **Google** |
+**Step 1 – Install Required Apps**
 
-#### 3. Activity Launcher Setup (If Assist Settings Are Hidden)
-If your OriginOS build hides the default assist app settings:
-1. Install **Activity Launcher** from Play Store.
-2. Search for `VoiceInputSettingsActivity` or `Default apps` under `Settings`.
-3. Open it and ensure **Speech Services by Google** is selected as the active voice recognizer.
+Make sure these Google apps are installed:
 
-*(Alternatively, via one-time ADB command: `adb shell settings put secure voice_recognition_service com.google.android.tts/com.google.android.apps.speech.tts.googletts.service.GoogleTTSRecognitionService`)*
+- [Speech Recognition & Synthesis by Google](https://play.google.com/store/apps/details?id=com.google.android.tts)
+- [Google](https://play.google.com/store/apps/details?id=com.google.android.googlequicksearchbox)
 
----
+**Step 2 – Configure System Settings**
 
-## 📥 Download APK
+Allow the following permissions to prevent OriginOS from restricting background recognition.
 
-Pre-built and optimized exclusively for 64-bit devices (`arm64-v8a`), stripped of bloated architectures:
+| Setting | Configuration |
+|---|---|
+| Autostart | Enable for Kiebord |
+| Associated Startup | Enable for Kiebord |
+| Background Power | Set Kiebord and Google to High background power consumption |
+| Assist App | Select Google, if available |
 
-* **Direct Release APK**: [app-release.apk](app/build/outputs/apk/release/app-release.apk) *(~7.86 MB)*
-* Or check the **[Releases](https://github.com/AsadIslam111/Kiebord-Voice-Typing-Support-OriginOS/releases)** section.
+**Step 3 – Set Default Voice Recognition**
 
----
+If OriginOS hides the voice input settings:
 
-## 🙏 Credits & Special Thanks
+1. Install [Activity Launcher](https://play.google.com/store/apps/details?id=de.szalkowski.activitylauncher).
+2. Search for `VoiceInputSettingsActivity` or `Default apps`.
+3. Open the relevant settings and select Google as the voice recognition provider.
 
-A huge thanks and heartfelt credit to **[Jayed Ahsan Saad](https://jayed.me)** ([@JayedAhsan](https://github.com/JayedAhsan)) and **[Codepotro](https://codepotro.com)** for creating and maintaining the amazing **[Kiebord](https://github.com/JayedAhsan/Kiebord)** open-source project and its high-performance Rust engine. 
+Alternatively, run this ADB command:
 
-Without their foundational work on Borno / Kiebord, this specialized OriginOS edition would not have been possible.
+```bash
+adb shell settings put secure voice_recognition_service com.google.android.tts/com.google.android.apps.speech.tts.googletts.service.GoogleTTSRecognitionService
+```
 
 ---
 
-## 📄 License
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)** in accordance with the original Kiebord repository.
+## Download
+
+**Latest APK:** [Download from Releases](https://github.com/AsadIslam111/Kiebord-Voice-Typing-Support-OriginOS/releases)
+
+- Architecture: `arm64-v8a` (64-bit ARM devices)
+- APK Size: Approximately 7.86 MB
+
+---
+
+## Credits
+
+Special thanks to [Jayed Ahsan Saad](https://jayed.me) ([@JayedAhsan](https://github.com/JayedAhsan)) and [Codepotro](https://codepotro.com) for creating and maintaining the original [Kiebord](https://github.com/JayedAhsan/Kiebord) project and its Rust-based engine.
+
+This project is built upon their open-source work.
+
+## License
+
+Licensed under the **GNU General Public License v3.0 (GPL-3.0)**, following the original Kiebord project.
